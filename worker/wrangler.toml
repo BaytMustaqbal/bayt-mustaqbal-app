@@ -1,0 +1,35 @@
+name = "bayt-mustaqbal-worker"
+main = "src/index.ts"
+compatibility_date = "2024-10-11"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (set via wrangler secret put)
+# JWT_SECRET = "your-super-secret-jwt-key-min-32-chars"
+# FONNTE_TOKEN = "your-fonnte-api-token"
+# FONNTE_TARGET = "628xxxxxxxxxx@g.us"
+# FONNTE_DEVICE = "default"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "bayt-mustaqbal-db"
+database_id = "5ef3e68f-7c29-4dda-ac2a-8d3b633f0d3c"
+
+# KV for sessions/cache (optional)
+[[kv_namespaces]]
+binding = "KV"
+id = "9c3511cc69a94e1ab6426b2424910790"
+preview_id = "d37d99730daf43bd80ab727a7bb379c7"
+
+# Cron Triggers
+[triggers]
+crons = [
+  "0 7 * * *",      # Daily digest 07:00
+  "0 * * * *",      # Hourly bill reminders
+  "30 0 1 * *"      # Monthly generate 1st 00:30
+]
+
+# Custom domain (configure in Cloudflare dashboard)
+# routes = [
+#   { pattern = "api.baytmustaqbal.my.id/*", zone_name = "baytmustaqbal.my.id" }
+# ]
