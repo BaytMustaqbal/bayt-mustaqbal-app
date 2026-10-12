@@ -31,6 +31,17 @@ export const FAMILY_CATEGORIES = [
   { id: 'kontak', label: 'Kontak & Darurat', icon: 'phone' },
 ];
 
+// Filter tugas — status & prioritas jadi satu daftar pilihan (dropdown & chip).
+// id prioritas = nilai `priority` di data tugas (high/medium/low), label tetap Indonesia.
+export const TASK_FILTERS = [
+  { id: 'semua', label: 'Semua Tugas', icon: 'tasks' },
+  { id: 'belum', label: 'Belum Selesai', icon: 'clock' },
+  { id: 'selesai', label: 'Sudah Selesai', icon: 'circleCheck' },
+  { id: 'high', label: 'Prioritas Tinggi', icon: 'alertTriangle' },
+  { id: 'medium', label: 'Prioritas Sedang', icon: 'target' },
+  { id: 'low', label: 'Prioritas Rendah', icon: 'arrowDownRight' },
+];
+
 export const getCategoryMeta = (categories, id) => categories.find((c) => c.id === id);
 
 // Jumlah item per kategori. `semua` = total.
@@ -38,4 +49,13 @@ export const countByCategory = (items, id) => {
   if (!Array.isArray(items)) return 0;
   if (id === 'semua') return items.length;
   return items.filter((item) => item.category === id).length;
+};
+
+// Jumlah tugas per filter. `semua` = total; belum/selesai = status; lainnya = prioritas.
+export const countByTaskFilter = (items, id) => {
+  if (!Array.isArray(items)) return 0;
+  if (id === 'semua') return items.length;
+  if (id === 'belum') return items.filter((t) => !t.completed).length;
+  if (id === 'selesai') return items.filter((t) => t.completed).length;
+  return items.filter((t) => t.priority === id).length;
 };

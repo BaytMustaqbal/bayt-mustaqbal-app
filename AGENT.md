@@ -42,8 +42,8 @@ bayt-mustaqbal-app/
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
 │   │                       #   QuickAction, EmptyState, ExpenseCard, Badge, FamilyList, CTA_CLASS
 │   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass;
-│   │                       #   tab Agenda, Keuangan & Keluarga = dropdown kategori (animasi, badge jumlah, a11y menu)
-│   ├── categories.js       # Kategori agenda, keuangan & keluarga + penghitung per kategori + meta ikon
+│   │                       #   tab Agenda, Keuangan, Keluarga & Tugas = dropdown filter (animasi, badge jumlah, a11y menu)
+│   ├── categories.js       # Kategori agenda, keuangan, keluarga + filter tugas & penghitung per item + meta ikon
 │   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) → nanti jadi login
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
 │   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline
@@ -78,7 +78,7 @@ bayt-mustaqbal-app/
 | Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; toggle **Daftar | Kalender** (default Daftar); mode Kalender = `Calendar.jsx` (Minggu/Bulan/Tahun, warna per member + legenda, daftar agenda hari terpilih, tugas jatuh tempo); grid `ScheduleItem` + chip filter sinkron | `mockData` di `App.jsx` |
 | Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → filter; grid `ExpenseCard` (ikon kategori + nominal IDR) + chip sinkron + total terfilter di header | `mockData` di `App.jsx` |
 | Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
-| Tugas | `TaskList` toggle selesai + badge prioritas (Tinggi/Sedang/Rendah) | `mockData` |
+| Tugas | Dropdown filter status & prioritas di tab Tugas (nav HP+desktop) → filter; chip sinkron; `TaskList` toggle selesai + badge prioritas (Tinggi/Sedang/Rendah) | `mockData` di `App.jsx` |
 
 > **Tidak ada panggilan jaringan.** Data sepenuhnya dummy sesuai permintaan Kakang — fokus ke frontend dulu.
 

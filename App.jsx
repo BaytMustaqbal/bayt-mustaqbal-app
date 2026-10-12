@@ -8,7 +8,14 @@ import { Dashboard } from './components/Dashboard';
 import { WelcomeGate } from './components/WelcomeGate';
 import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList } from './components/ui';
 import { FamilyCalendar } from './components/Calendar';
-import { AGENDA_CATEGORIES, FINANCE_CATEGORIES, FAMILY_CATEGORIES, countByCategory } from './components/categories';
+import {
+  AGENDA_CATEGORIES,
+  FINANCE_CATEGORIES,
+  FAMILY_CATEGORIES,
+  TASK_FILTERS,
+  countByCategory,
+  countByTaskFilter,
+} from './components/categories';
 import './App.css';
 
 // Data contoh (sementara, sampai backend Worker + D1 siap)
@@ -79,6 +86,10 @@ const mockData = {
     { id: 2, title: 'Cuci mobil', completed: true, assignedTo: 'RAJABRANA', dueDate: '2026-10-14', priority: 'medium' },
     { id: 3, title: 'Belanja mingguan', completed: false, assignedTo: 'Hilda AK', dueDate: '2026-10-16', priority: 'high' },
     { id: 4, title: 'Baca buku anak', completed: true, assignedTo: 'Rezki YT', dueDate: '2026-10-14', priority: 'low' },
+    { id: 5, title: 'Ganti oli motor', completed: false, assignedTo: 'Rezki YT', dueDate: '2026-10-18', priority: 'medium' },
+    { id: 6, title: 'Strika seragam sekolah', completed: false, assignedTo: 'Hilda AK', dueDate: '2026-10-19', priority: 'low' },
+    { id: 7, title: 'Potong rumput halaman', completed: false, assignedTo: 'RAJABRANA', dueDate: '2026-10-21', priority: 'medium' },
+    { id: 8, title: 'Periksa tagihan listrik', completed: true, assignedTo: 'Rezki YT', dueDate: '2026-10-20', priority: 'high' },
   ],
   // --- Data analitik (dummy) ---
   // Anggaran & tren masih contoh: di D1 nanti ini dari tabel budget + expenses.
@@ -159,6 +170,8 @@ export default function App() {
   const [financeFilter, setFinanceFilter] = useState('semua');
   // Filter bagian keluarga (default: semua) — pola sama dengan agenda & keuangan
   const [familyFilter, setFamilyFilter] = useState('semua');
+  // Filter tugas: status (semua/belum/selesai) & prioritas (tinggi/sedang/rendah)
+  const [taskFilter, setTaskFilter] = useState('semua');
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
   // Ganti dengan state + fetch saat Worker + D1 sudah siap.
@@ -196,6 +209,14 @@ export default function App() {
     [data]
   );
 
+  // Tugas sesuai filter aktif (status/prioritas) untuk daftar & chip.
+  const filteredTasks = useMemo(() => {
+    if (taskFilter === 'semua') return data.tasks;
+    if (taskFilter === 'belum') return data.tasks.filter((t) => !t.completed);
+    if (taskFilter === 'selesai') return data.tasks.filter((t) => t.completed);
+    return data.tasks.filter((t) => t.priority === taskFilter);
+  }, [data, taskFilter]);
+
   const handleEnter = (userId) => {
     storeUser(userId);
     setActiveUserId(userId);
@@ -219,6 +240,12 @@ export default function App() {
   const handleFamilySelect = (categoryId) => {
     setFamilyFilter(categoryId);
     setActiveSection('family');
+  };
+
+  // Dipanggil dropdown tugas di navigasi → buka section + set filter
+  const handleTaskSelect = (filterId) => {
+    setTaskFilter(filterId);
+    setActiveSection('tasks');
   };
 
   const renderSection = () => {
@@ -436,22 +463,51 @@ export default function App() {
         );
       }
 
-      case 'tasks':
+      case 'tasks': {
+        const activeMeta = TASK_FILTERS.find((c) => c.id === taskFilter) || TASK_FILTERS[0];
         return (
           <section className="app-fade-in">
             <SectionHeader
-              icon="tasks"
-              title="Tugas Keluarga"
-              subtitle={`${totals.tasksDone} dari ${data.tasks.length} selesai`}
+              icon={activeMeta.icon}
+              title={activeMeta.label}
+              subtitle={`${filteredTasks.length} dari ${data.tasks.length} tugas`}
               actionLabel="Tambah"
             />
-            {data.tasks.length === 0 ? (
-              <EmptyState icon="tasks" title="Belum ada tugas" message="Buat daftar tugas agar pekerjaan rumah terbagi rata." />
+            {/* Filter tugas — sinkron dengan dropdown di navigasi */}
+            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter tugas">
+              {TASK_FILTERS.map((cat) => {
+                const active = taskFilter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setTaskFilter(cat.id)}
+                    aria-pressed={active}
+                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
+                      active
+                        ? 'border-brand/50 bg-brandtint text-brandfg'
+                        : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
+                    }`}
+                  >
+                    <Icon name={cat.icon} size={16} />
+                    {cat.label}
+                    <span className="font-mono text-xs opacity-80">{countByTaskFilter(data.tasks, cat.id)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {filteredTasks.length === 0 ? (
+              <EmptyState
+                icon="tasks"
+                title="Tidak ada tugas di filter ini"
+                message="Ubah filter (status/prioritas) atau tambahkan tugas baru."
+              />
             ) : (
-              <TaskList tasks={data.tasks} />
+              <TaskList tasks={filteredTasks} />
             )}
           </section>
         );
+      }
 
       default:
         return (
@@ -480,12 +536,15 @@ export default function App() {
         schedule={data.schedule}
         expenses={data.expenses}
         family={familyAll}
+        tasks={data.tasks}
         agendaFilter={agendaFilter}
         onAgendaSelect={handleAgendaSelect}
         financeFilter={financeFilter}
         onFinanceSelect={handleFinanceSelect}
         familyFilter={familyFilter}
         onFamilySelect={handleFamilySelect}
+        taskFilter={taskFilter}
+        onTaskSelect={handleTaskSelect}
       />
 
       <main

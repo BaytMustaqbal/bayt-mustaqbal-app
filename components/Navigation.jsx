@@ -1,7 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { CTA_CLASS } from './ui';
-import { AGENDA_CATEGORIES, FINANCE_CATEGORIES, FAMILY_CATEGORIES, countByCategory } from './categories';
+import {
+  AGENDA_CATEGORIES,
+  FINANCE_CATEGORIES,
+  FAMILY_CATEGORIES,
+  TASK_FILTERS,
+  countByCategory,
+  countByTaskFilter,
+} from './categories';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
@@ -16,11 +23,12 @@ const DROPDOWNS = {
   agenda: { items: AGENDA_CATEGORIES, ariaLabel: 'Kategori agenda' },
   expenses: { items: FINANCE_CATEGORIES, ariaLabel: 'Kategori pengeluaran' },
   family: { items: FAMILY_CATEGORIES, ariaLabel: 'Bagian keluarga' },
+  tasks: { items: TASK_FILTERS, ariaLabel: 'Filter tugas' },
 };
 
 /* Panel dropdown kategori (dipakai 2x per tab: bawah HP + atas desktop).
    Animasi slide-up + fade berundak via App.css; exit lebih cepat dari enter. */
-function CategoryMenu({ items, data, activeId, closing, menuId, onSelect, ariaLabel }) {
+function CategoryMenu({ items, data, activeId, closing, menuId, onSelect, ariaLabel, count = countByCategory }) {
   return (
     <div
       id={menuId}
@@ -54,7 +62,7 @@ function CategoryMenu({ items, data, activeId, closing, menuId, onSelect, ariaLa
               <Icon name={cat.icon} size={16} />
             </span>
             <span className="min-w-0 flex-1 truncate font-medium">{cat.label}</span>
-            <span className="shrink-0 font-mono text-xs opacity-80">{countByCategory(data, cat.id)}</span>
+            <span className="shrink-0 font-mono text-xs opacity-80">{count(data, cat.id)}</span>
             {active && <Icon name="check" size={15} className="shrink-0" />}
           </button>
         );
@@ -71,12 +79,15 @@ export function Navigation({
   schedule,
   expenses,
   family,
+  tasks,
   agendaFilter,
   onAgendaSelect,
   financeFilter,
   onFinanceSelect,
   familyFilter,
   onFamilySelect,
+  taskFilter,
+  onTaskSelect,
 }) {
   // Hanya satu dropdown terbuka pada satu waktu (openKey = 'agenda' | 'expenses' | null)
   const [openKey, setOpenKey] = useState(null);
@@ -141,6 +152,7 @@ export function Navigation({
     closeMenu();
     if (key === 'agenda') onAgendaSelect(categoryId);
     else if (key === 'expenses') onFinanceSelect(categoryId);
+    else if (key === 'tasks') onTaskSelect(categoryId);
     else onFamilySelect(categoryId);
   };
 
@@ -150,9 +162,16 @@ export function Navigation({
     onSectionChange(id);
   };
 
-  const dropdownData = { agenda: schedule, expenses, family };
+  const dropdownData = { agenda: schedule, expenses, family, tasks };
+  const dropdownCount = { agenda: countByCategory, expenses: countByCategory, family: countByCategory, tasks: countByTaskFilter };
   const activeFilter = (key) =>
-    key === 'agenda' ? agendaFilter : key === 'expenses' ? financeFilter : familyFilter;
+    key === 'agenda'
+      ? agendaFilter
+      : key === 'expenses'
+        ? financeFilter
+        : key === 'family'
+          ? familyFilter
+          : taskFilter;
 
   return (
     <>
@@ -217,6 +236,7 @@ export function Navigation({
                         <CategoryMenu
                           items={DROPDOWNS[item.id].items}
                           data={dropdownData[item.id]}
+                          count={dropdownCount[item.id]}
                           activeId={activeFilter(item.id)}
                           closing={closingKey === item.id}
                           menuId={`${item.id}-menu-desktop`}
@@ -316,6 +336,7 @@ export function Navigation({
             <CategoryMenu
               items={DROPDOWNS[openKey].items}
               data={dropdownData[openKey]}
+              count={dropdownCount[openKey]}
               activeId={activeFilter(openKey)}
               closing={closingKey === openKey}
               menuId={`${openKey}-menu-mobile`}
