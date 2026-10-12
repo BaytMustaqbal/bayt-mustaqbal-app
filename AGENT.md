@@ -14,9 +14,9 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 ## Stack Aktual (Saat Ini)
 
 - **Frontend:** React 18 (JSX, bukan TS) + Vite 4
-- **Styling:** Tailwind CSS via **PostCSS** (`tailwind.config.js` + `postcss.config.js`) + `App.css` custom — design system **Flat Design** (teal `#0D9488` + oranye `#EA580C`)
+- **Styling:** Tailwind CSS via **PostCSS** (`tailwind.config.js` + `postcss.config.js`) + `App.css` custom — design system **High-Tech Blue**: dark navy `#0A192F` + electric cyan `#22D3EE`, glassmorphism terukur, glow tipis (lihat `DESIGN-SYSTEM.md`)
 - **Icons:** SVG inline custom (`components/Icon.jsx`, gaya Lucide) — Font Awesome **sudah dihapus**
-- **Font:** Plus Jakarta Sans (Google Fonts)
+- **Font:** Plus Jakarta Sans (teks) + **Fira Code** (angka/KPI/label chart) — Google Fonts
 - **PWA:** `public/manifest.json` + `public/service-worker.js` (cache-first, background sync) — SW diregistrasi **hanya di build production** (`main.jsx`). Aset statis **wajib** di `public/`, karena Vite hanya menyalin folder itu ke `dist/`
 - **State:** React `useState`/`useEffect` (no Zustand/React Query)
 - **Data:** **Dummy murni** di `App.jsx` (`const data = mockData`) — **belum ada panggilan API sama sekali**, atas permintaan Kakang
@@ -30,23 +30,27 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 bayt-mustaqbal-app/
 ├── index.html              # Entry PWA: Plus Jakarta Sans, manifest, install prompt, network monitor
 ├── main.jsx                # React entry: createRoot → render <App /> ke #root + registrasi SW (production)
-├── App.jsx                 # Root component: 5 section (dashboard/agenda/expenses/family/tasks) + dummy data
+├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + dummy data + banner offline
 ├── App.css                 # Tailwind (@tailwind base/components/utilities) + design token, focus-visible, scrollbar, animasi
-├── tailwind.config.js      # Theme tokens (warna flat teal/oranye, font) + content paths
+├── tailwind.config.js      # Theme tokens (navy/cyan high-tech, font sans+mono) + content paths
 ├── postcss.config.js       # Plugin: tailwindcss + autoprefixer
 ├── vite.config.js          # Vite config: react plugin, port 3000
 ├── package.json            # Deps: react, react-dom, vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer
-├── DESIGN-SYSTEM.md        # Design system: flat teal, tipografi, layout, komponen, PWA, a11y
+├── DESIGN-SYSTEM.md        # Design system: High-Tech Blue, tipografi, layout, komponen, PWA, a11y
 ├── components/
-│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, dll.)
-│   ├── ui.jsx              # Primitif UI: Card, SectionHeader, StatCard, EmptyState, ExpenseCard, Badge
-│   ├── Navigation.jsx      # Header sticky (merek + nav lg+) + bottom tab bar 56px (< lg, safe-area)
+│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, barChart, target, dll.)
+│   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
+│   │                       #   QuickAction, EmptyState, ExpenseCard, Badge, CTA_CLASS
+│   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass
+│   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) → nanti jadi login
+│   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
+│   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline
 │   ├── FamilyCard.jsx      # Card anggota (baris horizontal)
 │   ├── FamilyMemberCard.jsx# Card anggota versi besar (centered)
 │   ├── ScheduleItem.jsx    # Item agenda (ikon, judul, jam, tanggal, badge anggota)
 │   └── TaskList.jsx        # Daftar tugas (toggle selesai, badge prioritas)
 ├── public/                 # Aset statis → disalin apa adanya ke dist/ oleh Vite
-│   ├── manifest.json       # PWA manifest (theme #0D9488; 8 ikon "any" + 2 maskable)
+│   ├── manifest.json       # PWA manifest (theme #0A192F; ikon cyan #22D3EE; 8 "any" + 2 maskable)
 │   ├── service-worker.js   # Cache strategy: static cache-first, API network-first, bg sync, push
 │   └── icons/              # 12 berkas ikon (lihat bagian Ikon PWA)
 ├── scripts/
@@ -66,7 +70,7 @@ bayt-mustaqbal-app/
 
 | Section | Isi | Sumber Data |
 |---------|-----|-------------|
-| Dashboard | Hero + 4 KPI cards (agenda, pengeluaran, anggota, tugas) + 2 panel ringkasan | `mockData` di `App.jsx` |
+| Dashboard | Sapaan + hero glass (pengeluaran & anggaran) + aksi cepat + 4 KPI + chart (tren/bar/donut) + 2 panel ringkasan | `mockData` di `App.jsx` |
 | Agenda | Grid `ScheduleItem` (ikon + badge anggota + tanggal) | `mockData` |
 | Pengeluaran | Grid `ExpenseCard` (kategori + jumlah, format IDR) | `mockData` |
 | Keluarga | Grid `FamilyMemberCard` (avatar inisial + badge status) | `mockData` |
@@ -92,7 +96,7 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 | Sentuh | `-webkit-tap-highlight-color: transparent` + `touch-action: manipulation`; checkbox 28px dengan area sentuh 44px |
 | Teks | `-webkit-text-size-adjust: 100%` |
 
-**Hasil verifikasi** (iframe 320/360/390/414/768/1024/1280 px): **0 overflow horizontal**, **0 elemen interaktif < 44px**, semua 5 section bersih; toggle tugas berfungsi (`aria-pressed` false→true + coret).
+**Hasil verifikasi** (iframe 320/360/390/414/768 px; 5 section + gerbang): **0 overflow horizontal**, **0 elemen interaktif < 44px**; konsol 0 error/0 warning; toggle tugas berfungsi (`aria-pressed` false→true + coret). (Pernah meluber 44px di 320px pada legenda donut — sudah diperbaiki jadi kolom di HP.)
 
 ---
 
@@ -107,9 +111,9 @@ Dibuat dengan `npm run icons` → `scripts/generate-icons.mjs`. Skripnya **tanpa
 | `public/icons/apple-touch-icon.png` | 180px, tanpa sudut (iOS membulatkan sendiri) |
 | `public/icons/favicon.ico` | 16/32/48 px, PNG di dalam ICO |
 
-Desain: latar `#0F766E`, glyph rumah putih, pintu tembus ke warna latar (flat, tanpa gradasi/shadow).
+Desain (High-Tech Blue): latar cyan `#22D3EE`, glyph rumah navy `#0A192F`, pintu tembus ke warna latar. Alasan ikon bukan navy: `background_color` splash PWA = navy → ikon navy akan tenggelam; ikon cyan kontras kuat di atasnya.
 
-**Verifikasi:** setiap PNG dibuka di canvas dan pikselnya dicek — sudut transparan untuk `any`, sudut berwarna untuk `maskable`/apple, tengah putih, pintu & area luar teal; ICO di-parse (3 entri, semuanya PNG, ter-decode 32×32); 12 URL ikon + manifest + service worker dibalas **HTTP 200** di dev, dan `npm run build` menaruh semuanya di `dist/`.
+**Verifikasi:** setiap PNG dibuka di canvas dan pikselnya dicek — sudut transparan untuk `any`, sudut berwarna untuk `maskable`/apple, glyph navy di tengah, pintu & area luar cyan; ICO di-parse (3 entri, semuanya PNG, ter-decode 32×32); 12 URL ikon + manifest + service worker dibalas **HTTP 200** di dev, dan `npm run build` menaruh semuanya di `dist/`.
 
 ---
 

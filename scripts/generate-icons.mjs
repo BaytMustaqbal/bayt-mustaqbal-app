@@ -3,10 +3,9 @@
 //
 //   npm run icons
 //
-// Desain (flat, sesuai DESIGN-SYSTEM.md):
-//   latar #0F766E (branddark — kontras 5,47:1 terhadap putih)
-//   glyph  rumah putih, mengikuti ikon "home" pada UI
-//   pintu  tembus ke warna latar
+// Desain (High-Tech Blue, sesuai DESIGN-SYSTEM.md):
+//   latar #22D3EE (cyan listrik), glyph rumah navy #0A192F
+//   pintu tembus ke warna latar
 //
 // Tiga varian:
 //   icon-<n>.png      purpose "any"      → sudut membulat, glyph 60%
@@ -22,8 +21,11 @@ import { fileURLToPath } from 'node:url';
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'icons');
 mkdirSync(OUT, { recursive: true });
 
-const BG = { r: 0x0f, g: 0x76, b: 0x6e }; // #0F766E
-const FG = { r: 255, g: 255, b: 255 }; // putih
+// Tema "High-Tech Blue": latar cyan listrik, glyph navy gelap.
+// Sengaja TIDAK memakai navy sebagai latar ikon: splash screen PWA
+// memakai background_color navy, jadi ikon navy di atas navy = hilang.
+const BG = { r: 0x22, g: 0xd3, b: 0xee }; // #22D3EE
+const FG = { r: 0x0a, g: 0x19, b: 0x2f }; // #0A192F
 
 /* ---------------- geometri (ruang 0..1) ---------------- */
 

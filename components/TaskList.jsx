@@ -36,7 +36,7 @@ export function TaskList({ tasks }) {
                 <span
                   className={`grid h-7 w-7 place-items-center rounded-lg border-2 transition-colors ${
                     task.completed
-                      ? 'border-branddark bg-branddark text-white'
+                      ? 'border-cta bg-cta text-white'
                       : 'border-line text-transparent'
                   }`}
                 >

@@ -62,7 +62,9 @@ bayt-mustaqbal-app/
 - **Mobile-first:** bottom tab bar 56 px (< 1024 px) dengan safe-area iOS, header sticky, desktop nav muncul di `lg`
 - **PWA:** manifest + service worker + 12 ikon; service worker hanya didaftarkan di produksi
 - **Banner install** muncul setelah event `beforeinstallprompt`; toast status jaringan hanya saat online/offline berubah
-- **Flat design:** teal `#0D9488` / `#0F766E`, aksen oranye `#EA580C`, Plus Jakarta Sans, tanpa shadow & gradasi
+- **Tema High-Tech Blue:** dark navy `#0A192F` + aksen cyan `#22D3EE`, glass pada elemen kunci, glow tipis, angka dengan Fira Code (lihat `DESIGN-SYSTEM.md`)
+- **Layar gerbang** muncul tiap app dibuka: pilih Kakang/Istri (tersimpan di `localStorage`) — nanti menjadi layar login
+- **Dashboard baru:** kartu hero glass (pengeluaran + realisasi anggaran), aksi cepat, KPI, dan 3 chart tulis sendiri (tren 6 bulan, 7 hari, komposisi)
 - **Terverifikasi** di 320 / 360 / 390 / 414 / 768 px: 0 overflow horizontal, 0 elemen interaktif di bawah 44 px
 
 ## Belum ada

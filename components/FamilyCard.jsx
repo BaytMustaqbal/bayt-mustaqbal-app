@@ -11,7 +11,7 @@ export function FamilyCard({ member, onClick }) {
       onClick={() => onClick && onClick(member)}
     >
       <span
-        className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brandtint text-base font-bold text-branddark"
+        className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brandtint text-base font-bold text-brandfg"
         aria-hidden="true"
       >
         {member.initials}

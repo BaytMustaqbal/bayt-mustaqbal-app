@@ -1,75 +1,81 @@
 # Bayt Mustaqbal - Design System
 
-> Design system ini dihasilkan lewat skill `ui-ux-pro-max` (query: *family management productivity dashboard warm trustworthy*).
-> Gaya: **Flat Design** — minimalis, tanpa gradient/shadow, berani warna, fokus tipografi & ikon.
+> Design system ini dihasilkan lewat skill `ui-ux-pro-max` (query: *high-tech navy family finance dashboard*), kemudian disesuaikan dengan kebutuhan keluarga.
+> Gaya: **High-Tech Blue** — dark navy + electric cyan, glassmorphism terukur, glow tipis, font mono untuk angka.
+>
+> **Riwayat:** versi lama = Flat Design teal (`#0D9488`) tanpa shadow/gradasi — **diganti total** pada iterasi tema (keputusan Kakang: *biru nuansa high-tech*). Mode terang direncanakan nanti; token warna sudah dipisah di `:root` supaya mode terang bisa ditambah tanpa membongkar ulang.
 
 ## 1. Visual Identity
 
 ### Brand Personality
-- **Flat & Clean**: Tanpa shadow/gradient — border tipis, sudut membulat, warna solid
-- **Warm & Trustworthy**: Teal yang menenangkan + aksen oranye hangat
-- **Family-Oriented**: Tampilan lapang, target sentuh besar, bahasa sederhana
+- **High-Tech & Terpercaya**: navy gelap seperti panel instrumen, aksen cyan listrik yang "hidup" hanya di atas latar gelap
+- **Menggunakan efek dengan disiplin**: kaca (glassmorphism) hanya di elemen kunci; glow tipis hanya saat hover/fokus; grid teknis hanya di belakang gerbang & chart
+- **Family-Oriented**: target sentuh ≥ 44px, bahasa sederhana, kontras teks ≥ 4.5:1 tetap dijaga
 
 ### Logo & Icon System
-- App mark: rumah (house) sederhana di dalam kotak teal
-- Ikon UI: **SVG inline** (gaya Lucide, stroke 24×24) — lihat `components/Icon.jsx`
-- ❌ Tidak pakai emoji sebagai ikon; ❌ tidak pakai font ikon (Font Awesome dihapus)
+- App mark: rumah (house) sederhana — glyph **navy `#0A192F`** di atas kotak **cyan `#22D3EE`** (ikon PWA; lihat §8)
+- Ikon UI: **SVG inline** (gaya Lucide, stroke 24×24, stroke-width 1.75) — lihat `components/Icon.jsx`
+- Ikon di dalam UI: tile `bg-brandtint` + ikon `text-brandfg` (bukan kotak solid terang)
+- ❌ Tidak pakai emoji sebagai ikon; ❌ tidak pakai font ikon
 
 ## 2. Color System
 
-Token dipakai sebagai Tailwind theme extension (lihat `index.html`) dan CSS variable (lihat `App.css`).
+Token dipakai sebagai Tailwind theme extension (lihat `tailwind.config.js`) dan CSS variable (lihat `App.css`).
 
-### Primary Palette
+### Primary Palette (dark)
 ```
-Brand            (#0D9488) - Aksen, ikon, elemen besar
-Brand Dark       (#0F766E) - Tombol & teks interaktif di atas putih (kontras 5.5:1)
-Brand Tint       (#CCFBF1) - Latar aktif / badge lembut
-Accent Orange    (#EA580C) - Sorotan sekunder (pakai teks gelap)
-Danger           (#DC2626) - Error / offline
+Brand            (#22D3EE) - Aksen cyan listrik: garis chart, titik status, glow, indikator tab
+Brand FG         (#7DD3FC) - Teks/ikon aksen di atas tint & surface (kontras ≥ 8:1)
+Brand Tint       (rgba 34 211 238 / 0.14) - Latar aktif nav, tile ikon, badge
+CTA              (#2563EB) - Tombol utama (teks putih, kontras 5.2:1) + hover #1D4ED8
+Accent Warm      (#F59E0B) - Sorotan hangat (peringatan, ikon aksi amber)
+Success          (#22C55E) - Nilai positif / tersimpan
+Danger           (#F43F5E) - Error / offline
 ```
 
-### Secondary Palette
+### Secondary Palette (dark)
 ```
-Canvas           (#F0FDFA) - Latar halaman
-Surface          (#FFFFFF) - Kartu & panel
-Ink              (#134E4A) - Judul / teks utama (kontras 9.5:1)
-Muted FG         (#475569) - Teks sekunder (kontras 7.6:1)
-Muted            (#E8F1F4) - Latar hover
-Line             (#99F6E4) - Border & pemisah
+Canvas           (#0A192F) - Latar halaman (deep navy)
+Surface          (#0F1E38) - Kartu & panel
+Muted            (#16283F) - Latar hover / elevated
+Ink              (#E8F1FF) - Teks utama (kontras 15:1 di atas canvas)
+Muted FG         (#93A7C4) - Teks sekunder (kontras 6.5:1 di atas surface)
+Line             (#1E3A5F) - Border & pemisah
+```
+
+### Chart Series
+```
+chart1 #22D3EE (cyan) · chart2 #3B82F6 (cobalt) · chart3 #8B5CF6 (violet)
+chart4 #F59E0B (amber) · chart5 #10B981 (emerald)
 ```
 
 ### Usage Guidelines
-- **Brand Dark**: tombol utama, tautan, teks aksen (di atas putih) — dipilih karena kontras lolos WCAG AA
-- **Brand**: ikon dekoratif, titik status, elemen besar (≥24px) di mana 3:1 cukup
-- **Brand Tint**: latar state aktif nav, badge
-- **Accent Orange**: sorotan sekunder, wajib pakai teks gelap (kontras teks-hitam 5.9:1)
-- **Catatan kontras**: teks **putih di atas #0D9488 hanya 3.75:1** → jangan untuk teks normal; gunakan #0F766E (5.47:1)
+- **CTA (cobalt)**: tombol utama + teks putih → kontras 5.2:1; gradasi tipis `#1D4ED8 → #2563EB` aman di kedua ujungnya
+- **Brand (cyan)**: ikon dekoratif, titik status, garis — jangan untuk teks kecil di atas cyan (kontras putih di cyan hanya ~2:1)
+- **Brand FG**: teks/ikon aksen di atas tint atau surface (kontras ≥ 8:1)
+- **Teks putih di atas cobalt CTA**: aman 5.2:1 (tombol "Masuk", "Pasang", "Lihat Keuangan")
+- **Glow** (`shadow-glow`): hanya untuk elemen yang perlu menonjol (hero, fokus, ikon aktif); jangan ditumpuk
 
 ## 3. Typography System
 
 ### Font Hierarchy
 ```
-Primary Font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif
-- Weight: 300 (Light), 400 (Regular), 500 (Medium), 600 (Semi-Bold), 700 (Bold), 800 (Extra-Bold)
-- Letter-spacing: -0.025em (tracking-tight) untuk judul; normal untuk body
-- Line-height: 1.5 untuk body, 1.1-1.2 untuk judul besar
+Teks  : 'Plus Jakarta Sans', system-ui, sans-serif   (300–800)
+Angka : 'Fira Code', ui-monospace, monospace          (400–700)
 ```
+- **Fira Code khusus angka/KPI/label chart**: nilai uang, persentase, tanggal → kesan panel instrumen
+- `font-variant-numeric: tabular-nums` agar angka tidak berubah lebar saat berubah
+- Letter-spacing: `-0.025em` (tracking-tight) untuk judul; normal untuk body
+- Line-height: 1.5 body, 1.1–1.2 judul
 
 ### Type Scale (aktual di app)
 ```
-H1 (dashboard hero): 30px → 36px (md)  — font-extrabold
-H2 (judul section):   20px             — font-bold
-H3 (judul panel/item):16px             — font-semibold
-Body:                 16px
-Small:                14px (text-sm)
-Caption/label:        12px (text-xs) / 11px (nav mobile)
-Angka besar (KPI):    24px (text-2xl)  — font-bold
+H1 (sapaan dashboard): 20px → 24px (sm)  — font-extrabold
+H2 (judul panel):       16px              — font-bold
+Body:                   16px
+Small:                  14px (text-sm) · Caption: 12px (text-xs) · Nav mobile: 11px
+Angka besar (KPI):      16px → 24px (sm)  — font-mono bold
 ```
-
-### Responsive Typography
-- Mobile: Scale down by 0.8 for tablets
-- Touch devices: Minimum 16px for body text
-- Readability: Line length 45-65 characters
 
 ## 4. Layout System
 
@@ -79,24 +85,21 @@ Container : max-w-6xl (1152px), padding px-4 → sm:px-6
 Grid      : CSS Grid (grid-cols-*) — bukan grid 12 kolom kaku
 Breakpoint: sm 640px · md 768px · lg 1024px (default Tailwind)
 Nav       : header sticky (semua lebar) + bottom tab bar 56px (di bawah lg)
-Safe area : env(safe-area-inset-top) pada header,
-            env(safe-area-inset-bottom) pada bottom nav + padding bawah <main>
+Safe area : env(safe-area-inset-top) pada header, env(safe-area-inset-bottom) pada bottom nav + padding bawah <main>
 ```
 
 ### Layout Patterns (aktual)
-- **Dashboard KPI**: 2 kolom di HP → 4 kolom di `lg`
-- **Panel ringkasan**: 1 kolom → 2 kolom di `lg`
-- **Daftar kartu** (agenda/keuangan): 1 → 2 (`md`) → 3 kolom (`lg`)
-- **Grid anggota keluarga**: 2 → 3 (`sm`) → 4 kolom (`lg`)
+- **Dashboard**: sapaan → kartu hero glass (keuangan bulan ini + realisasi anggaran) → aksi cepat 4 tile → KPI 2→4 kolom (`lg`) → tren (line, full width) → bar+donat (1→2 kolom `lg`) → 2 panel daftar terbaru
+- **Layar gerbang**: kartu sentral max-w-md, konten vertikal: identitas → ilustrasi → pilih pengguna → tombol masuk
+- **Daftar kartu** (agenda/keuangan/keluarga/tugas): grid 1 → 2 (`md`) → 3/4 kolom (`lg`)
 - **Form / isi konten**: satu kolom, label di atas input
 
 ### Spacing Scale (yang dipakai)
 ```
 Kartu   : p-3.5 / p-4 / sm:p-5 / md:p-6
-Section : space-y-6 (HP) → space-y-8 (sm)
+Section : space-y-5 (HP) → space-y-6 (sm)
 Grid gap: gap-3 (HP) → gap-4 (sm) → gap-6 (lg)
 Padding bawah konten: pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]
-  → 72px+, agar kartu terakhir tidak tertutup bottom tab bar
 ```
 
 ## 5. Component Library
@@ -104,177 +107,141 @@ Padding bawah konten: pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]
 ### Core Components
 
 #### Button System
-- **Primary Button**: Latar `#0F766E`, teks putih, tinggi min 44px, sudut `rounded-full`
-- **Ghost / Secondary**: Tanpa latar, teks `mutedfg`, hover latar `muted`
-- **Outline Button**: Border `line`, teks `branddark`, tinggi min 44px
-- **Destructive Button**: `#DC2626` untuk hapus/keluar
-- **Transisi**: 150–200ms (`transition-colors`), tanpa shadow
+- **CTA / Primary**: gradasi cobalt `#1D4ED8 → #2563EB`, teks putih, min-h 44px, `rounded-xl`, `shadow-glow` lembut — konstanta `CTA_CLASS` di `components/ui.jsx` (dipakai ulang: gerbang, header, hero)
+- **Ghost / Secondary**: tanpa latar, teks `mutedfg`, hover `bg-muted`
+- **Outline**: border `line`, teks `brandfg`, min-h 44px
+- **Aksi kecil (panel)**: "Semua" → `grid h-11 place-items-center` (tetap ≥ 44px)
+- **Transisi**: 150–200ms (`transition-colors`/`transition-transform`), `active:scale-[0.99]` pada CTA
 
 #### Card Components
 ```
-Base Card: rounded-2xl, border 1px #99F6E4, latar putih, TANPA shadow
-Hover: border berubah ke brand (bukan elevation/shadow)
-Status Card: badge bertinta (green/amber/rose/gray) + teks, bukan warna saja
+Base Card : rounded-2xl, bg-surface, border 1px line, inset highlight 1px putih 5%
+            (shadow-card) — TANPA backdrop-blur (kartu banyak → hemat performa)
+Glass Card: .glass — gradient putih 6%→2%, border cyan 16%, backdrop blur 14px,
+            hanya untuk: hero dashboard, layar gerbang, header, tab bar.
+            Fallback solid via @supports (HP tanpa backdrop-filter).
+Hover     : border → brand/50 (+ glow tipis pada hero)
+Status    : Badge bertinta translucent (cyan/emerald/amber/rose/gray) + teks
 ```
 
 #### Navigation System
-- **Bar atas (sticky)**: merek + nav desktop (pill aktif `bg-brandtint`) + tombol Pasang. Tinggi 56px (HP) → 64px (`sm`); nav desktop baru muncul di `lg`
-- **Bottom Tab Bar (mobile & tablet, < `lg`)**: 5 ikon, tinggi **tetap 56px** (dikunci `h-[56px]`), label 11px, aksen aktif teal pada ikon + pill; lebar isi dibatasi `max-w-md` agar tidak melar di tablet
-- **Aktif**: `aria-current="page"` + warna teal + pill tint (bukan warna saja)
-- **Banner install** diposisikan `bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]` = tepat di atas tab bar, `lg:bottom-0`
+- **Bar atas (sticky)**: glass `bg-canvas/80 backdrop-blur-xl`; logo tile tint; chip pengguna (kembali ke gerbang); nav desktop pill di `lg`; tombol Pasang (CTA, `sm`+)
+- **Bottom Tab Bar (< `lg`)**: glass, tinggi **tetap 56px** (`h-[56px]`), 5 tab, label 11px; tab aktif = teks `brandfg` + pill tint + **garis indikator cyan** di tepi atas; isi `max-w-md`
+- **Aktif**: `aria-current="page"` + cyan, bukan warna saja
+- **Banner install**: `bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]` = tepat di atas tab bar
+
+### Dashboard-Specific
+```
+Hero (GlassCard) : label + nilai mono besar + badge delta naik/turun + ProgressBar
+                   realisasi anggaran + CTA; latar grid-lines halus + glow
+QuickAction      : tile 4-kolom, min-h 76px, ikon tile 40px ber-warna (cyan/blue/violet/amber)
+StatCard (KPI)   : ikon tile ber-warna + nilai mono + label + hint opsional (+ sparkline sm+)
+Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat components/charts.jsx
+                   SEMUA label di HTML (bukan di SVG) agar tajam di semua lebar;
+                   tiap chart punya aria-label + <figcaption class="sr-only">
+```
 
 ### Family-Specific Components
-
-#### Family Member Card
-```css
-.avatar : 56px (HP) → 64px (sm), rounded-2xl, bg #0F766E, inisial putih
-.info   : nama (truncate), peran, badge hubungan
-.aksi   : cepat (pesan, telepon, lihat)
 ```
-
-#### Schedule Items
-```
-Color-coded by family member
-Time indicators with visual markers
-Status dots (completed/pending/in-progress)
-```
-
-#### Task Management
-```
-Priority indicators (red/yellow/green)
-Due date visual cues
-Team member assignments
+FamilyMemberCard : avatar `bg-brandtint border brand/25` + inisial `brandfg`
+ScheduleItem     : tile ikon tint + badge anggota; tombol opsi area 44px (visual 36px)
+TaskList         : checkbox visual 28px dengan area sentuh 44px;
+                   selesai = border-cta bg-cta text-white (ikon check)
 ```
 
 ## 6. Screen Hierarchy & Information Architecture
 
-### Primary Screens
-1. **Dashboard**: Overview, KPIs, quick actions
-2. **Family List**: All members, search, filters
-3. **Calendar**: Events, schedules, reminders
-4. **Tasks**: To-do list, completed items, assignments
-5. **Messages**: Family communication, threads
-6. **Photos**: Family gallery, albums, sharing
+### Primary Screens (5 section, in-file switch, tanpa router)
+1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, daftar terbaru
+2. **Agenda**: grid `ScheduleItem`
+3. **Keuangan**: grid `ExpenseCard` + ringkasan di header
+4. **Keluarga**: grid `FamilyMemberCard`
+5. **Tugas**: `TaskList` dengan toggle selesai
 
-### Secondary Screens
-- Profile details
-- Settings & preferences
-- Family tree
-- Financial overview
-- Health & wellness tracker
-
-### Hierarchical Information Flow
-- **Level 1**: Dashboard (most important information)
-- **Level 2**: Family overview (family-specific data)
-- **Level 3**: Specific sections (tasks, calendar, messages)
-- **Level 4**: Detail screens (individual items, profiles)
+### Screens Khusus
+- **Layar Gerbang (WelcomeGate)**: muncul **setiap app dibuka** (keputusan Kakang) — pilih pengguna (Kakang/Istri, tersimpan `localStorage`) → nanti menjadi layar login saat backend siap
 
 ## 7. Touch Targets & Interaction Patterns
 
-### Touch Target Guidelines
-- **Minimum Size**: 44px × 44px untuk semua elemen interaktif
-- **Spacing**: 12px antar target (`gap-3`)
-- **Hit Test**: Area sentuh boleh lebih besar dari tampilan visual — contoh: checkbox tugas tampil 28px, area sentuh 44px (`-m-2 h-11 w-11` + kotak 28px di dalamnya)
-- **Thumb Zone**: aksi utama (navigasi) di bottom tab bar
-- **Verifikasi**: diuji di lebar 320 / 360 / 390 / 414 / 768 / 1024 / 1280 px → 0 elemen di bawah 44px, 0 overflow horizontal
-
-### Interaction Feedback
-- **Tap**: Color change + subtle ripple effect
-- **Hold**: Context menu or preview
-- **Swipe**: 200px threshold for navigation
-- **Pinch**: Zoom for photo viewing
-- **Scroll**: Momentum-based, smooth scrolling
-
-### Micro-interactions
-- **Loading**: Spinner or progress bar
-- **Success**: Confetti celebration or checkmark
-- **Error**: Vibration + error message
-- **Empty State**: Animated, helpful messaging
+- **Minimum**: 44×44 px semua elemen interaktif; QuickAction 76px; tab bar 56px
+- **Spacing**: 12px antar target (`gap-3`); area sentuh boleh lebih besar dari visual (checkbox 28px + `-m-2 h-11 w-11`)
+- **Thumb zone**: aksi utama di bottom tab bar
+- **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang → **0 overflow, 0 elemen < 44px**
+- **Feedback**: hover border/glow, `active:scale` pada CTA; `prefers-reduced-motion` mematikan animasi
 
 ## 8. PWA-Specific Implementation
 
 ### App Manifest (`public/manifest.json` — sumber kebenaran)
-
 ```
 name / short_name : Bayt Mustaqbal — Manajemen Keluarga / Bayt Mustaqbal
 display           : standalone              orientation: portrait-primary
-theme_color       : #0D9488                 background_color: #F0FDFA
+theme_color       : #0A192F                 background_color: #0A192F
 start_url / scope : /
 
 Ikon (dibuat via `npm run icons`):
   any      : icons/icon-{72,96,128,144,152,192,384,512}.png  — sudut membulat, glyph 60%
   maskable : icons/maskable-{192,512}.png                    — penuh, glyph 52% (safe zone 80%)
   favicon  : icons/favicon.ico (16/32/48) · icons/apple-touch-icon.png (180)
+  warna    : latar #22D3EE (cyan), glyph rumah #0A192F (navy)
 ```
+> Kenapa ikon **cyan**, bukan navy? `background_color` manifest = navy → ikon navy akan tenggelam di splash screen; ikon cyan kontras kuat di atasnya dan tetap terlihat di wallpaper gelap maupun terang.
 
 ### Aset statis & build (PENTING)
 - Vite **hanya** menyalin folder `public/` ke `dist/`. Jadi `manifest.json`, `service-worker.js`, dan `icons/` wajib berada di `public/` — kalau ditaruh di root, semuanya 404 di produksi (install PWA & mode offline mati, ikon tidak muncul)
-- `index.html` tetap di root; di dev, isi `public/` disajikan di `/`
+- `service-worker.js`: naikkan nomor versi cache (`family-*-v2`) setiap ada perubahan tampilan agar HP yang sudah memasang PWA mengambil berkas baru
 
 ## 9. Offline Capabilities
 
-### Offline-First Strategy
-- **App Shell Cache**: Basic UI loads instantly
-- **Critical Data**: Family list, basic schedules
-- **Forms**: Local storage with sync on reconnection
-- **Messages**: Local queue for delivery
+- **App Shell Cache**: UI statis termuat instan dari cache (`cache-first` untuk aset statis)
+- **API**: `network-first` → cache (backend belum ada, endpoint `/api/` masih kosong)
+- **Status**: toast singkat saat online/offline berubah (3s) + banner menetap di `<main>` saat offline
+- **Data**: dummy lokal; sinkronisasi & antrian gagal = rencana backend (lihat `PROJECT_SUMMARY.md`)
 
 ## 10. Responsive Design (Mobile-First)
 
-### Breakpoints & Adaptations (aktual)
 ```
-< 640px  (HP kecil: 320–414px) : 1–2 kolom, px-4, nav bawah 56px, hero text-2xl
-                          KPI 2 kolom; nilai uang ringkas ("Rp 2,8 jt")
->= 640px (sm)             : px-6, gap-4, hero text-3xl, avatar 64px, tombol Pasang muncul
->= 768px (md)             : agenda & keuangan jadi 2 kolom
->= 1024px (lg)            : nav atas muncul, tab bar bawah hilang, KPI 4 kolom,
-                          daftar 3 kolom, padding bawah 48px
+< 640px  (HP 320–414px) : 1 kolom, donat & legenda bertumpuk (donat di atas),
+                          KPI 2 kolom, nilai uang ringkas ("Rp 2,8 jt")
+>= 640px (sm)           : px-6, gap-4, hero 2 kolom (nilai | anggaran+CTA),
+                          tombol Pasang muncul, sparkline KPI muncul
+>= 768px (md)           : agenda & keuangan jadi 2 kolom
+>= 1024px (lg)          : nav atas muncul, tab bar bawah hilang, KPI 4 kolom, daftar 3 kolom
 ```
 
 ### Perilaku khas mobile
-- **Nilai uang di kartu KPI**: diringkas (`Rp 2,8 jt`) agar tidak meluber di kartu separuh layar; nilai penuh ada di atribut `title` dan di section Keuangan
-- **Anti-overflow**: kartu diberi `min-w-0` supaya boleh menyusut di dalam grid/flex
-- **Tap**: `-webkit-tap-highlight-color: transparent`, `touch-action: manipulation` (hilangkan delay 300ms)
-- **Teks**: `-webkit-text-size-adjust: 100%` (cegah pembesaran otomatis iOS)
-- **Header sticky (bukan fixed)**: tidak "goyang" saat address bar HP menyusut/muncul
+- **Nilai uang**: diringkas di KPI & label chart (`Rp 2,8 jt`) via `formatCurrencyShort`; nilai penuh di atribut `title` dan section Keuangan
+- **Anti-overflow**: `Card` `min-w-0`; legenda donut `flex-col` di HP → `flex-row` di `sm` (pernah meluber di 320px — sudah diperbaiki)
+- **Tap**: `-webkit-tap-highlight-color: transparent` + `touch-action: manipulation`
+- **Teks**: `-webkit-text-size-adjust: 100%`; **Header sticky** (bukan fixed) agar tidak goyang saat address bar HP menyusut
 
 ## 11. Accessibility Guidelines
 
-### WCAG Compliance
-- **Color Contrast**: 4.5:1 for normal text, 3:1 for large text
-- **Font Size**: Minimum 16px body, 12px small text
-- **Touch Targets**: 44px minimum for interactive elements
-- **Focus Indicators**: High contrast, visible focus rings
-- **Screen Reader**: Semantic HTML, ARIA labels
+- **Kontras**: ≥ 4.5:1 teks normal (ink 15:1, mutedfg 6.5:1, CTA putih 5.2:1); 3:1 untuk dekorasi besar
+- **Ukuran**: body 16px min; chart punya `role="img"` + `aria-label` + `figcaption` sr-only (tabel data alternatif)
+- **Target sentuh**: 44px minimum (terverifikasi otomatis)
+- **Fokus**: `:focus-visible` ring cyan 2px; gerbang meng-fokus tombol masuk saat dibuka
+- **Screen reader**: HTML semantik, `aria-current="page"`, `aria-pressed`, `role="radio"` di pemilih pengguna
 
 ## 12. Animation & Motion
 
-### Animation Principles
-- **Duration**: 0.2s - 0.4s for standard interactions
-- **Easing**: `cubic-bezier(0.4, 0, 0.2, 1)` for material design
-- **Delay**: Stagger animations for sequential content
-- **Spring Physics**: Natural feel for UI feedback
+- **Durasi**: 0.2–0.4s; easing `cubic-bezier(0.22,1,0.36,1)` untuk gerbang
+- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `softPulse` (denyut node ilustrasi)
+- **Reduced motion**: `prefers-reduced-motion` mematikan semua animasi/transisi (App.css)
+- **Glow**: boleh berdenyut pelan (`soft-pulse` 3.2s) hanya pada elemen dekoratif, jangan pada teks
 
 ## 13. Device-Specific Considerations
 
-### iOS Design
-- **Safe Areas**: Account for notch and home indicator
-- **System Fonts**: SF Pro, San Francisco
-- **Human Interface Guidelines**: Follow Apple's HIG
-- **Dynamic Type**: Respect system font size settings
-
-### Android Design
-- **Material Design**: Follow Material Design principles
-- **System Fonts**: Roboto, Noto Sans
-- **Material Shadows**: Elevations 1-24dp
-- **Navigation Patterns**: Bottom navigation, drawer
+- **iOS**: safe-area notch & home indicator; `apple-mobile-web-app-status-bar-style: black`; Dynamic Type dihormati
+- **Android**: maskable icon memakai safe zone 80%; bottom nav sesuai Material guidance
+- **HP kelas bawah**: tanpa `backdrop-filter` berulang (kartu solid; glass hanya elemen kunci); fallback `@supports`
 
 ## 14. Performance Optimization
 
-### Visual Performance
-- **Reduce Repaints**: Use CSS transforms
-- **Hardware Acceleration**: `transform` instead of `left/top`
-- **Debounced Resizes**: Prevent layout thrashing
-- **Image Optimization**: WebP, lazy loading, responsive images
+- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS tetap ~182 kB, CSS ~25 kB
+- **Reduce Repaints**: animasi via transform/opacity; `transition-[width]` pada progressbar
+- **Blur hemat**: backdrop-filter hanya di header/tab bar/hero/gerbang
+- **Chart**: `vectorEffect="non-scaling-stroke"` + label HTML → tidak ada teks yang melar saat responsive
 
-This design system provides a comprehensive foundation for your family management PWA, ensuring consistency across all platforms while maintaining the warm, trustworthy personality essential for family applications. The system balances modern design trends with accessibility, performance, and the specific needs of family-oriented interfaces.
+---
+
+Design system ini adalah **sumber kebenaran** visual app. Setiap perubahan tampilan harus menyesuaikan di sini (dan sebaliknya: catat dulu di sini sebelum implementasi besar).

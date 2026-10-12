@@ -4,18 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Bayt Mustaqbal — aplikasi manajemen keluarga: keuangan, agenda, absensi, dan service.">
-  <meta name="theme-color" content="#0D9488">
+  <meta name="theme-color" content="#0A192F">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
 
-  <!-- Fonts: Plus Jakarta Sans -->
+  <!-- Fonts: Plus Jakarta Sans (teks) + Fira Code (angka/KPI) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Tailwind CSS diproses PostCSS (lihat tailwind.config.js) via App.css -->
 
@@ -29,7 +29,7 @@
 <body class="bg-canvas font-sans text-ink antialiased">
   <!-- Skip link (aksesibilitas keyboard) -->
   <a href="#main"
-     class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-branddark focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white">
+     class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-cta focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white">
     Lewati ke konten utama
   </a>
 
@@ -37,11 +37,11 @@
 
   <!-- PWA Install Prompt (di atas bottom nav pada mobile) -->
   <div id="install-prompt"
-       class="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-[60] translate-y-[calc(100%_+_7rem)] border-t border-line bg-surface p-3 transition-transform duration-200 sm:p-4 lg:bottom-0"
+       class="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-[60] translate-y-[calc(100%_+_7rem)] border-t border-line bg-canvas/90 p-3 backdrop-blur-xl transition-transform duration-200 sm:p-4 lg:bottom-0"
        style="display: none;">
     <div class="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-1 items-center gap-3">
-        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brandtint text-branddark sm:h-11 sm:w-11">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand/25 bg-brandtint text-brand sm:h-11 sm:w-11">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -59,7 +59,7 @@
           Nanti
         </button>
         <button onclick="window.installApp()"
-                class="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-branddark px-5 text-sm font-semibold text-white transition-colors hover:bg-brand">
+                class="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-5 text-sm font-semibold text-white shadow-glow transition-transform hover:from-[#1E40AF] hover:to-[#1D4ED8] active:scale-[0.99]">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -92,7 +92,7 @@
       bar.setAttribute('aria-live', 'polite');
       bar.className =
         'fixed inset-x-0 top-0 z-[70] flex items-center justify-center gap-2 px-4 py-2 text-center text-sm font-medium text-white transition-transform duration-200';
-      bar.style.backgroundColor = isOnline ? '#0F766E' : '#DC2626';
+      bar.style.backgroundColor = isOnline ? '#155E75' : '#BE123C';
       bar.innerHTML =
         '<span aria-hidden="true" style="display:inline-block;width:8px;height:8px;border-radius:9999px;background:currentColor;opacity:.9"></span>' +
         (isOnline ? 'Tersambung kembali' : 'Koneksi terputus');

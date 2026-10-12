@@ -4,8 +4,8 @@
   "description": "Kelola agenda, keuangan, anggota, dan tugas keluarga dalam satu tempat",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F0FDFA",
-  "theme_color": "#0D9488",
+  "background_color": "#0A192F",
+  "theme_color": "#0A192F",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [

@@ -7,7 +7,7 @@ export function FamilyMemberCard({ member }) {
   return (
     <Card className="p-4 text-center transition-colors hover:border-brand sm:p-5">
       <span
-        className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-branddark text-base font-bold text-white sm:h-16 sm:w-16 sm:text-lg"
+        className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-brand/25 bg-brandtint text-base font-bold text-brandfg sm:h-16 sm:w-16 sm:text-lg"
         aria-hidden="true"
       >
         {member.initials}

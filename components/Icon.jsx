@@ -121,6 +121,55 @@ const PATHS = {
     </>
   ),
   chevronRight: <path d="m9 18 6-6-6-6" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  barChart: (
+    <>
+      <path d="M3 3v18h18" />
+      <path d="M8 17v-6M13 17V7M18 17v-4" />
+    </>
+  ),
+  pieChart: (
+    <>
+      <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+      <path d="M22 12A10 10 0 0 0 12 2v10z" />
+    </>
+  ),
+  target: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </>
+  ),
+  shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+  zap: <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />,
+  arrowUpRight: (
+    <>
+      <path d="M7 17 17 7" />
+      <path d="M7 7h10v10" />
+    </>
+  ),
+  arrowDownRight: (
+    <>
+      <path d="m7 7 10 10" />
+      <path d="M17 7v10H7" />
+    </>
+  ),
+  bell: (
+    <>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect width="18" height="11" x="3" y="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </>
+  ),
+  sparkles: (
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" />
+  ),
 };
 
 export function Icon({ name, size = 20, strokeWidth = 1.75, className = '', title }) {

@@ -4,11 +4,17 @@ import { Navigation } from './components/Navigation';
 import { ScheduleItem } from './components/ScheduleItem';
 import { FamilyMemberCard } from './components/FamilyMemberCard';
 import { TaskList } from './components/TaskList';
-import { Card, SectionHeader, StatCard, EmptyState, ExpenseCard } from './components/ui';
+import { Dashboard } from './components/Dashboard';
+import { WelcomeGate } from './components/WelcomeGate';
+import { Card, SectionHeader, EmptyState, ExpenseCard } from './components/ui';
 import './App.css';
 
 // Data contoh (sementara, sampai backend Worker + D1 siap)
 const mockData = {
+  users: [
+    { id: 'kakang', name: 'Kakang', role: 'Admin', initials: 'KA' },
+    { id: 'istri', name: 'Istri', role: 'Anggota', initials: 'IS' },
+  ],
   family: [
     { id: 1, name: 'Kakang', role: 'Admin', initials: 'KA', status: 'active' },
     { id: 2, name: 'Istri', role: 'Anggota', initials: 'IS', status: 'active' },
@@ -33,6 +39,32 @@ const mockData = {
     { id: 3, title: 'Belanja mingguan', completed: false, assignedTo: 'Istri', dueDate: '2026-10-16', priority: 'high' },
     { id: 4, title: 'Baca buku anak', completed: true, assignedTo: 'Kakang', dueDate: '2026-10-14', priority: 'low' },
   ],
+  // --- Data analitik (dummy) ---
+  // Anggaran & tren masih contoh: di D1 nanti ini dari tabel budget + expenses.
+  budget: { total: 4500000, month: 'Oktober 2026' },
+  monthlyTrend: [
+    { label: 'Mei', value: 3120000 },
+    { label: 'Jun', value: 2875000 },
+    { label: 'Jul', value: 3410000 },
+    { label: 'Agu', value: 2960000 },
+    { label: 'Sep', value: 3620000 },
+    { label: 'Okt', value: 2780000 },
+  ],
+  weekly: [
+    { label: 'Sen', value: 95000 },
+    { label: 'Sel', value: 120000 },
+    { label: 'Rab', value: 60000 },
+    { label: 'Kam', value: 180000 },
+    { label: 'Jum', value: 240000 },
+    { label: 'Sab', value: 420000 },
+    { label: 'Min', value: 150000 },
+  ],
+  categories: [
+    { label: 'Belanja Bulanan', value: 1250000, color: '#22D3EE' },
+    { label: 'Pendidikan', value: 750000, color: '#3B82F6' },
+    { label: 'Listrik & Air', value: 480000, color: '#8B5CF6' },
+    { label: 'Transportasi', value: 300000, color: '#F59E0B' },
+  ],
 };
 
 const formatCurrency = (value) =>
@@ -42,7 +74,7 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
-// Versi ringkas untuk KPI di layar kecil: 2.780.000 → "Rp 2,8 jt"
+// Versi ringkas untuk KPI & label chart: 2.780.000 → "Rp 2,8 jt"
 const formatCurrencyShort = (value) => {
   const n = Number(value) || 0;
   const short = (v, unit) => `Rp ${v.toFixed(1).replace('.', ',').replace(',0', '')} ${unit}`;
@@ -52,13 +84,37 @@ const formatCurrencyShort = (value) => {
   return formatCurrency(n);
 };
 
+const USER_STORAGE_KEY = 'bm-user';
+
+// localStorage bisa dilarang (mode privat) → jangan sampai app gagal render
+const readStoredUser = () => {
+  try {
+    return localStorage.getItem(USER_STORAGE_KEY) || 'kakang';
+  } catch {
+    return 'kakang';
+  }
+};
+
+const storeUser = (userId) => {
+  try {
+    localStorage.setItem(USER_STORAGE_KEY, userId);
+  } catch {
+    /* diabaikan */
+  }
+};
+
 export default function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [activeUserId, setActiveUserId] = useState(readStoredUser);
+  // Gerbang welcome muncul SETIAP app dibuka (keputusan Kakang).
+  // Saat backend siap, state ini tinggal ditukar jadi status login.
+  const [entered, setEntered] = useState(false);
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
   // Ganti dengan state + fetch saat Worker + D1 sudah siap.
   const data = mockData;
+  const currentUser = data.users.find((u) => u.id === activeUserId) || data.users[0];
 
   // Pantau status online/offline
   useEffect(() => {
@@ -78,6 +134,13 @@ export default function App() {
     const tasksDone = data.tasks.filter((t) => t.completed).length;
     return { totalExpense, tasksDone };
   }, [data]);
+
+  const handleEnter = (userId) => {
+    storeUser(userId);
+    setActiveUserId(userId);
+    setActiveSection('dashboard');
+    setEntered(true);
+  };
 
   const renderSection = () => {
     switch (activeSection) {
@@ -108,7 +171,7 @@ export default function App() {
             <SectionHeader
               icon="wallet"
               title="Pengeluaran"
-              subtitle={`Total bulan ini: ${formatCurrency(totals.totalExpense)}`}
+              subtitle={`Total: ${formatCurrency(totals.totalExpense)} · anggaran ${formatCurrencyShort(data.budget.total)}`}
               actionLabel="Tambah"
               actionTone="accent"
             />
@@ -164,95 +227,29 @@ export default function App() {
 
       default:
         return (
-          <section className="app-fade-in space-y-6 sm:space-y-8">
-            {/* Hero */}
-            <div className="rounded-2xl border border-line bg-surface p-5 sm:p-6 md:p-8">
-              <p className="inline-flex items-center gap-2 rounded-full bg-brandtint px-3 py-1 text-xs font-semibold text-branddark">
-                <Icon name="home" size={14} />
-                Rumah Masa Depan
-              </p>
-              <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-ink sm:mt-4 sm:text-3xl md:text-4xl">
-                Dashboard Keluarga
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm text-mutedfg sm:text-base">
-                Pantau agenda, pengeluaran, anggota, dan tugas keluarga dalam satu tempat.
-              </p>
-            </div>
-
-            {/* Statistik */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-              <StatCard icon="calendar" tone="teal" value={data.schedule.length} label="Agenda" hint="Jadwal aktif" />
-              <StatCard
-                icon="wallet"
-                tone="emerald"
-                value={formatCurrencyShort(totals.totalExpense)}
-                valueTitle={formatCurrency(totals.totalExpense)}
-                label="Pengeluaran"
-                hint="Bulan ini"
-              />
-              <StatCard icon="users" tone="sky" value={data.family.length} label="Anggota" hint="Terdaftar" />
-              <StatCard icon="tasks" tone="amber" value={`${totals.tasksDone}/${data.tasks.length}`} label="Tugas" hint="Selesai" />
-            </div>
-
-            {/* Panel ringkasan */}
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-              <Card className="p-4 sm:p-5 md:p-6">
-                <div className="mb-3 flex items-center gap-2 sm:mb-4">
-                  <Icon name="calendar" size={18} className="text-branddark" />
-                  <h2 className="font-bold text-ink">Agenda Terdekat</h2>
-                </div>
-                {data.schedule.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-mutedfg">Belum ada agenda.</p>
-                ) : (
-                  <ul className="divide-y divide-line">
-                    {data.schedule.slice(0, 4).map((item) => (
-                      <li key={item.id} className="flex items-center justify-between gap-3 py-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-ink">{item.title}</p>
-                            <p className="truncate text-xs text-mutedfg">{item.time} · {item.member}</p>
-                          </div>
-                        </div>
-                        <span className="shrink-0 text-xs text-mutedfg">{item.date}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-
-              <Card className="p-4 sm:p-5 md:p-6">
-                <div className="mb-3 flex items-center gap-2 sm:mb-4">
-                  <Icon name="wallet" size={18} className="text-branddark" />
-                  <h2 className="font-bold text-ink">Pengeluaran Terbaru</h2>
-                </div>
-                {data.expenses.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-mutedfg">Belum ada pengeluaran.</p>
-                ) : (
-                  <ul className="divide-y divide-line">
-                    {data.expenses.slice(0, 4).map((item) => (
-                      <li key={item.id} className="flex items-center justify-between gap-3 py-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-ink">{item.category}</p>
-                          <p className="truncate text-xs text-mutedfg">{item.description}</p>
-                        </div>
-                        <span className="shrink-0 text-sm font-semibold text-branddark">
-                          {formatCurrency(item.amount)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-            </div>
-          </section>
+          <Dashboard
+            data={data}
+            user={currentUser}
+            formatCurrency={formatCurrency}
+            formatCurrencyShort={formatCurrencyShort}
+            onNavigate={setActiveSection}
+          />
         );
     }
   };
 
+  if (!entered) {
+    return <WelcomeGate users={data.users} defaultUserId={activeUserId} onEnter={handleEnter} />;
+  }
+
   return (
-    <div className="flex min-h-screen flex-col bg-canvas text-ink">
-      <Navigation activeSection={activeSection} onSectionChange={setActiveSection} />
+    <div className="app-bg flex min-h-screen flex-col text-ink">
+      <Navigation
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        user={currentUser}
+        onSwitchUser={() => setEntered(false)}
+      />
 
       <main
         id="main"
@@ -261,7 +258,7 @@ export default function App() {
         {!isOnline && (
           <div
             role="status"
-            className="mb-4 flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+            className="mb-4 flex items-center gap-2.5 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-rose-200"
           >
             <Icon name="wifiOff" size={16} />
             <span>Mode offline — perubahan akan disinkronkan saat online.</span>

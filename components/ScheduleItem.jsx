@@ -7,7 +7,7 @@ export function ScheduleItem({ item }) {
     <Card className="p-4 transition-colors hover:border-brand sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brandtint text-branddark" aria-hidden="true">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
             <Icon name="calendar" size={19} />
           </span>
           <div className="min-w-0">
