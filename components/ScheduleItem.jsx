@@ -1,10 +1,10 @@
 import React from 'react';
 import { Icon } from './Icon';
 import { Card, Badge } from './ui';
-import { getCategoryMeta } from './agendaCategories';
+import { AGENDA_CATEGORIES, getCategoryMeta } from './categories';
 
 export function ScheduleItem({ item }) {
-  const meta = getCategoryMeta(item.category);
+  const meta = getCategoryMeta(AGENDA_CATEGORIES, item.category);
   return (
     <Card className="p-4 transition-colors hover:border-brand sm:p-5">
       <div className="flex items-start justify-between gap-3">

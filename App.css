@@ -168,31 +168,31 @@ summary,
   animation: softPulse 3.2s ease-in-out infinite;
 }
 
-/* ---------- Dropdown kategori agenda ----------
+/* ---------- Dropdown kategori (Agenda & Keuangan) ----------
    Terbuka: menu naik + fade (0.3s ease-out lembut), item berundak 30ms.
    Tutup: cepat (0.15s) — pola "exit lebih cepat dari enter". */
 
-.agenda-menu {
+.drop-menu {
   transform-origin: top center;
-  animation: agendaMenuIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: dropMenuIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.agenda-menu__item {
+.drop-menu__item {
   opacity: 0;
-  animation: agendaItemIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: dropItemIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(var(--i, 0) * 30ms);
 }
 
-.agenda-menu--closing {
-  animation: agendaMenuOut 0.15s ease-in both;
+.drop-menu--closing {
+  animation: dropMenuOut 0.15s ease-in both;
 }
 
-.agenda-menu--closing .agenda-menu__item {
-  animation: agendaItemOut 0.12s ease-in both;
+.drop-menu--closing .drop-menu__item {
+  animation: dropItemOut 0.12s ease-in both;
   animation-delay: 0ms;
 }
 
-@keyframes agendaMenuIn {
+@keyframes dropMenuIn {
   from {
     opacity: 0;
     transform: translateY(12px) scale(0.98);
@@ -203,7 +203,7 @@ summary,
   }
 }
 
-@keyframes agendaItemIn {
+@keyframes dropItemIn {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -214,7 +214,7 @@ summary,
   }
 }
 
-@keyframes agendaMenuOut {
+@keyframes dropMenuOut {
   from {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -225,7 +225,7 @@ summary,
   }
 }
 
-@keyframes agendaItemOut {
+@keyframes dropItemOut {
   from {
     opacity: 1;
     transform: translateY(0);
@@ -248,8 +248,8 @@ summary,
   }
 
   /* Menu: tanpa delay berundak → langsung tampil utuh */
-  .agenda-menu,
-  .agenda-menu__item {
+  .drop-menu,
+  .drop-menu__item {
     animation: none !important;
     opacity: 1 !important;
   }

@@ -7,7 +7,7 @@ import { TaskList } from './components/TaskList';
 import { Dashboard } from './components/Dashboard';
 import { WelcomeGate } from './components/WelcomeGate';
 import { Card, SectionHeader, EmptyState, ExpenseCard } from './components/ui';
-import { AGENDA_CATEGORIES, countByCategory } from './components/agendaCategories';
+import { AGENDA_CATEGORIES, FINANCE_CATEGORIES, countByCategory } from './components/categories';
 import './App.css';
 
 // Data contoh (sementara, sampai backend Worker + D1 siap)
@@ -34,10 +34,16 @@ const mockData = {
     { id: 9, title: 'Donasi & Zakat Bulanan', time: '10:00', date: '2026-10-26', member: 'Keluarga', category: 'lainnya' },
   ],
   expenses: [
-    { id: 1, category: 'Belanja Bulanan', amount: 1250000, description: 'Belanja kebutuhan dapur', date: '2026-10-14' },
-    { id: 2, category: 'Listrik & Air', amount: 480000, description: 'Tagihan bulanan', date: '2026-10-13' },
-    { id: 3, category: 'Pendidikan', amount: 750000, description: 'SPP sekolah', date: '2026-10-12' },
-    { id: 4, category: 'Transportasi', amount: 300000, description: 'Bensin & tol', date: '2026-10-11' },
+    { id: 1, category: 'belanja', description: 'Belanja kebutuhan dapur', amount: 1250000, date: '2026-10-14' },
+    { id: 2, category: 'utilitas', description: 'Tagihan listrik & air', amount: 480000, date: '2026-10-13' },
+    { id: 3, category: 'pendidikan', description: 'SPP sekolah', amount: 750000, date: '2026-10-12' },
+    { id: 4, category: 'transportasi', description: 'Bensin & tol', amount: 300000, date: '2026-10-11' },
+    { id: 5, category: 'utilitas', description: 'Internet & pulsa', amount: 280000, date: '2026-10-10' },
+    { id: 6, category: 'ibadah', description: 'Zakat & infak', amount: 500000, date: '2026-10-09' },
+    { id: 7, category: 'kesehatan', description: 'Obat & vitamin keluarga', amount: 150000, date: '2026-10-08' },
+    { id: 8, category: 'belanja', description: 'Makan siang keluarga', amount: 350000, date: '2026-10-07' },
+    { id: 9, category: 'pendidikan', description: 'Perlengkapan sekolah', amount: 200000, date: '2026-10-06' },
+    { id: 10, category: 'transportasi', description: 'Servis motor', amount: 450000, date: '2026-10-05' },
   ],
   tasks: [
     { id: 1, title: 'Bersihkan dapur', completed: false, assignedTo: 'RAGASUCI', dueDate: '2026-10-15', priority: 'high' },
@@ -118,6 +124,8 @@ export default function App() {
   const [entered, setEntered] = useState(false);
   // Filter kategori agenda (default: semua) — sinkron antara dropdown nav & chip di section
   const [agendaFilter, setAgendaFilter] = useState('semua');
+  // Filter kategori pengeluaran (default: semua) — pola sama dengan agenda
+  const [financeFilter, setFinanceFilter] = useState('semua');
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
   // Ganti dengan state + fetch saat Worker + D1 sudah siap.
@@ -154,6 +162,12 @@ export default function App() {
   const handleAgendaSelect = (categoryId) => {
     setAgendaFilter(categoryId);
     setActiveSection('agenda');
+  };
+
+  // Dipanggil dropdown kategori keuangan di navigasi → buka section + set filter
+  const handleFinanceSelect = (categoryId) => {
+    setFinanceFilter(categoryId);
+    setActiveSection('expenses');
   };
 
   const renderSection = () => {
@@ -215,27 +229,64 @@ export default function App() {
         );
       }
 
-      case 'expenses':
+      case 'expenses': {
+        const activeMeta =
+          FINANCE_CATEGORIES.find((c) => c.id === financeFilter) || FINANCE_CATEGORIES[0];
+        const filtered =
+          financeFilter === 'semua'
+            ? data.expenses
+            : data.expenses.filter((item) => item.category === financeFilter);
+        const filteredTotal = filtered.reduce((sum, item) => sum + item.amount, 0);
         return (
           <section className="app-fade-in">
             <SectionHeader
               icon="wallet"
-              title="Pengeluaran"
-              subtitle={`Total: ${formatCurrency(totals.totalExpense)} · anggaran ${formatCurrencyShort(data.budget.total)}`}
+              title={activeMeta.label}
+              subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(data.budget.total)}`}
               actionLabel="Tambah"
               actionTone="accent"
             />
-            {data.expenses.length === 0 ? (
-              <EmptyState icon="wallet" title="Belum ada pengeluaran" message="Catat pengeluaran agar keuangan keluarga lebih terkontrol." />
+
+            {/* Filter kategori — sinkron dengan dropdown di navigasi */}
+            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter kategori pengeluaran">
+              {FINANCE_CATEGORIES.map((cat) => {
+                const active = financeFilter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setFinanceFilter(cat.id)}
+                    aria-pressed={active}
+                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
+                      active
+                        ? 'border-brand/50 bg-brandtint text-brandfg'
+                        : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
+                    }`}
+                  >
+                    <Icon name={cat.icon} size={16} />
+                    {cat.label}
+                    <span className="font-mono text-xs opacity-80">{countByCategory(data.expenses, cat.id)}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon="wallet"
+                title="Tidak ada pengeluaran di kategori ini"
+                message="Pilih kategori lain, atau catat pengeluaran baru."
+              />
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {data.expenses.map((item) => (
+                {filtered.map((item) => (
                   <ExpenseCard key={item.id} item={item} formatCurrency={formatCurrency} />
                 ))}
               </div>
             )}
           </section>
         );
+      }
 
       case 'family':
         return (
@@ -300,8 +351,11 @@ export default function App() {
         user={currentUser}
         onSwitchUser={() => setEntered(false)}
         schedule={data.schedule}
+        expenses={data.expenses}
         agendaFilter={agendaFilter}
         onAgendaSelect={handleAgendaSelect}
+        financeFilter={financeFilter}
+        onFinanceSelect={handleFinanceSelect}
       />
 
       <main

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon } from './Icon';
 import { Sparkline } from './charts';
+import { FINANCE_CATEGORIES, getCategoryMeta } from './categories';
 
 /* Tombol utama (CTA) — gradasi cobalt dengan teks putih (kontras 5,2:1).
    Ditulis sekali di sini supaya semua tombol utama konsisten. */
@@ -151,20 +152,26 @@ export function EmptyState({ icon = 'inbox', title, message }) {
   );
 }
 
-/* Kartu pengeluaran */
+/* Kartu pengeluaran (tile ikon mengikuti kategori) */
 export function ExpenseCard({ item, formatCurrency }) {
+  const meta = getCategoryMeta(FINANCE_CATEGORIES, item.category);
   return (
     <Card className="p-4 transition-colors hover:border-brand/50 sm:p-5">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-semibold text-ink">{item.category}</p>
-          <p className="mt-0.5 truncate text-sm text-mutedfg">{item.description}</p>
-          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-mutedfg">
-            <Icon name="clock" size={13} />
-            {item.date}
-          </p>
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
+            <Icon name={meta?.icon || 'wallet'} size={19} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-ink">{item.category}</p>
+            <p className="mt-0.5 truncate text-sm text-mutedfg">{item.description}</p>
+            <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-mutedfg">
+              <Icon name="clock" size={13} />
+              {item.date}
+            </p>
+          </div>
         </div>
-        <p className="shrink-0 text-right font-mono text-sm font-bold text-brandfg sm:text-base">
+        <p className="shrink-0 pt-0.5 text-right font-mono text-sm font-bold text-brandfg sm:text-base">
           {formatCurrency(item.amount)}
         </p>
       </div>

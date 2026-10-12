@@ -144,7 +144,8 @@ Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat compon
 ### Family-Specific Components
 ```
 FamilyMemberCard : avatar `bg-brandtint border brand/25` + inisial `brandfg`
-ScheduleItem     : tile ikon tint + badge anggota; tombol opsi area 44px (visual 36px)
+ScheduleItem     : tile ikon kategori + badge anggota; tombol opsi area 44px (visual 36px)
+ExpenseCard      : tile ikon kategori + nominal `brandfg` mono; deskripsi & tanggal
 TaskList         : checkbox visual 28px dengan area sentuh 44px;
                    selesai = border-cta bg-cta text-white (ikon check)
 ```
@@ -154,7 +155,7 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 ### Primary Screens (5 section, in-file switch, tanpa router)
 1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, daftar terbaru
 2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Service/Lainnya, badge jumlah) + chip filter sinkron di dalam section; grid `ScheduleItem`
-3. **Keuangan**: grid `ExpenseCard` + ringkasan di header
+3. **Keuangan**: dropdown kategori di tab Keuangan (Semua/Belanja/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah) + chip sinkron; grid `ExpenseCard` berikon kategori + total terfilter di header
 4. **Keluarga**: grid `FamilyMemberCard`
 5. **Tugas**: `TaskList` dengan toggle selesai
 
@@ -166,8 +167,8 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 - **Minimum**: 44×44 px semua elemen interaktif; QuickAction 76px; tab bar 56px
 - **Spacing**: 12px antar target (`gap-3`); area sentuh boleh lebih besar dari visual (checkbox 28px + `-m-2 h-11 w-11`)
 - **Thumb zone**: aksi utama di bottom tab bar
-- **Dropdown kategori Agenda** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; `prefers-reduced-motion` → muncul langsung tanpa animasi
-- **Chip filter** (di section Agenda): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`
+- **Dropdown kategori (Agenda & Keuangan)** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; hanya satu dropdown terbuka pada satu waktu; `prefers-reduced-motion` → muncul langsung tanpa animasi
+- **Chip filter** (di section Agenda & Keuangan): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`
 - **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka → **0 overflow, 0 elemen < 44px**
 - **Feedback**: hover border/glow, `active:scale` pada CTA; `prefers-reduced-motion` mematikan animasi
 
