@@ -194,3 +194,35 @@ export function Badge({ children, tone = 'brand' }) {
     </span>
   );
 }
+
+/* Daftar baris untuk sub-bagian keluarga (Kesehatan / Pendidikan / Kontak) */
+export function FamilyList({ title, icon, items }) {
+  return (
+    <div>
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-mutedfg">
+        <Icon name={icon} size={16} />
+        {title}
+        <span className="ml-auto font-mono text-xs font-normal opacity-70">{items.length}</span>
+      </h2>
+      {items.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-line bg-surface/60 px-4 py-6 text-center text-sm text-mutedfg">
+          Belum ada catatan di bagian ini.
+        </p>
+      ) : (
+        <ul className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <li key={item.id}>
+              <Card className="flex items-start justify-between gap-3 p-4 sm:p-5">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-ink">{item.title}</p>
+                  <p className="mt-0.5 truncate text-sm text-mutedfg">{item.meta}</p>
+                </div>
+                {item.badge && <Badge tone={item.tone || 'brand'}>{item.badge}</Badge>}
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

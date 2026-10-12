@@ -21,6 +21,14 @@ export const FINANCE_CATEGORIES = [
   { id: 'ibadah', label: 'Ibadah & Sosial', icon: 'handCoins' },
 ];
 
+export const FAMILY_CATEGORIES = [
+  { id: 'semua', label: 'Semua Keluarga', icon: 'users' },
+  { id: 'anggota', label: 'Anggota', icon: 'userCheck' },
+  { id: 'kesehatan', label: 'Kesehatan', icon: 'activity' },
+  { id: 'pendidikan', label: 'Pendidikan Anak', icon: 'book' },
+  { id: 'kontak', label: 'Kontak & Darurat', icon: 'phone' },
+];
+
 export const getCategoryMeta = (categories, id) => categories.find((c) => c.id === id);
 
 // Jumlah item per kategori. `semua` = total.

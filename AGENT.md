@@ -40,10 +40,10 @@ bayt-mustaqbal-app/
 ├── components/
 │   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, barChart, target, dll.)
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
-│   │                       #   QuickAction, EmptyState, ExpenseCard, Badge, CTA_CLASS
+│   │                       #   QuickAction, EmptyState, ExpenseCard, Badge, FamilyList, CTA_CLASS
 │   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass;
-│   │                       #   tab Agenda & Keuangan = dropdown kategori (animasi, badge jumlah, a11y menu)
-│   ├── categories.js       # Kategori agenda & keuangan (Semua + 4/6 kategori) + penghitung per kategori + meta ikon
+│   │                       #   tab Agenda, Keuangan & Keluarga = dropdown kategori (animasi, badge jumlah, a11y menu)
+│   ├── categories.js       # Kategori agenda, keuangan & keluarga + penghitung per kategori + meta ikon
 │   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) → nanti jadi login
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
 │   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline
@@ -75,7 +75,7 @@ bayt-mustaqbal-app/
 | Dashboard | Sapaan + hero glass (pengeluaran & anggaran) + aksi cepat + 4 KPI + chart (tren/bar/donut) + 2 panel ringkasan | `mockData` di `App.jsx` |
 | Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; grid `ScheduleItem` (ikon kategori, badge) + chip filter sinkron | `mockData` di `App.jsx` |
 | Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → filter; grid `ExpenseCard` (ikon kategori + nominal IDR) + chip sinkron + total terfilter di header | `mockData` di `App.jsx` |
-| Keluarga | Grid `FamilyMemberCard` (avatar inisial + badge status) | `mockData` |
+| Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
 | Tugas | `TaskList` toggle selesai + badge prioritas (Tinggi/Sedang/Rendah) | `mockData` |
 
 > **Tidak ada panggilan jaringan.** Data sepenuhnya dummy sesuai permintaan Kakang — fokus ke frontend dulu.
@@ -215,4 +215,4 @@ npx vite preview
 ---
 
 *Generated for AI agents working on Bayt Mustaqbal project.*
-*Last updated: 2026-10-12 — Tailwind PostCSS + data dummy murni (fokus frontend).*
+*Last updated: 2026-10-12 — Tailwind PostCSS + data dummy murni (fokus frontend) + dropdown kategori Keluarga.*

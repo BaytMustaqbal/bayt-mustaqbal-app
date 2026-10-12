@@ -146,6 +146,8 @@ Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat compon
 FamilyMemberCard : avatar `bg-brandtint border brand/25` + inisial `brandfg`
 ScheduleItem     : tile ikon kategori + badge anggota; tombol opsi area 44px (visual 36px)
 ExpenseCard      : tile ikon kategori + nominal `brandfg` mono; deskripsi & tanggal
+FamilyList       : baris kartu sub-bagian (judul + meta + badge opsional); header mini berikon + jumlah;
+                   kosong = placeholder garis putus-putus "Belum ada catatan"
 TaskList         : checkbox visual 28px dengan area sentuh 44px;
                    selesai = border-cta bg-cta text-white (ikon check)
 ```
@@ -156,7 +158,7 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, daftar terbaru
 2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Service/Lainnya, badge jumlah) + chip filter sinkron di dalam section; grid `ScheduleItem`
 3. **Keuangan**: dropdown kategori di tab Keuangan (Semua/Belanja/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah) + chip sinkron; grid `ExpenseCard` berikon kategori + total terfilter di header
-4. **Keluarga**: grid `FamilyMemberCard`
+4. **Keluarga**: dropdown bagian di tab Keluarga (Semua/Anggota/Kesehatan/Pendidikan Anak/Kontak & Darurat, badge jumlah) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk (grid `FamilyMemberCard` + daftar `FamilyList` tiap sub-bagian)
 5. **Tugas**: `TaskList` dengan toggle selesai
 
 ### Screens Khusus
@@ -167,8 +169,8 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 - **Minimum**: 44×44 px semua elemen interaktif; QuickAction 76px; tab bar 56px
 - **Spacing**: 12px antar target (`gap-3`); area sentuh boleh lebih besar dari visual (checkbox 28px + `-m-2 h-11 w-11`)
 - **Thumb zone**: aksi utama di bottom tab bar
-- **Dropdown kategori (Agenda & Keuangan)** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; hanya satu dropdown terbuka pada satu waktu; `prefers-reduced-motion` → muncul langsung tanpa animasi
-- **Chip filter** (di section Agenda & Keuangan): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`
+- **Dropdown kategori (Agenda, Keuangan & Keluarga)** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; hanya satu dropdown terbuka pada satu waktu; `prefers-reduced-motion` → muncul langsung tanpa animasi
+- **Chip filter** (di section Agenda, Keuangan & Keluarga): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`
 - **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka → **0 overflow, 0 elemen < 44px**
 - **Feedback**: hover border/glow, `active:scale` pada CTA; `prefers-reduced-motion` mematikan animasi
 

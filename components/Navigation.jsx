@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { CTA_CLASS } from './ui';
-import { AGENDA_CATEGORIES, FINANCE_CATEGORIES, countByCategory } from './categories';
+import { AGENDA_CATEGORIES, FINANCE_CATEGORIES, FAMILY_CATEGORIES, countByCategory } from './categories';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
 const DROPDOWNS = {
   agenda: { items: AGENDA_CATEGORIES, ariaLabel: 'Kategori agenda' },
   expenses: { items: FINANCE_CATEGORIES, ariaLabel: 'Kategori pengeluaran' },
+  family: { items: FAMILY_CATEGORIES, ariaLabel: 'Bagian keluarga' },
 };
 
 /* Panel dropdown kategori (dipakai 2x per tab: bawah HP + atas desktop).
@@ -69,10 +70,13 @@ export function Navigation({
   onSwitchUser,
   schedule,
   expenses,
+  family,
   agendaFilter,
   onAgendaSelect,
   financeFilter,
   onFinanceSelect,
+  familyFilter,
+  onFamilySelect,
 }) {
   // Hanya satu dropdown terbuka pada satu waktu (openKey = 'agenda' | 'expenses' | null)
   const [openKey, setOpenKey] = useState(null);
@@ -136,7 +140,8 @@ export function Navigation({
   const handleDropdownSelect = (key, categoryId) => {
     closeMenu();
     if (key === 'agenda') onAgendaSelect(categoryId);
-    else onFinanceSelect(categoryId);
+    else if (key === 'expenses') onFinanceSelect(categoryId);
+    else onFamilySelect(categoryId);
   };
 
   const handleSection = (id) => {
@@ -145,7 +150,9 @@ export function Navigation({
     onSectionChange(id);
   };
 
-  const dropdownData = { agenda: schedule, expenses };
+  const dropdownData = { agenda: schedule, expenses, family };
+  const activeFilter = (key) =>
+    key === 'agenda' ? agendaFilter : key === 'expenses' ? financeFilter : familyFilter;
 
   return (
     <>
@@ -210,7 +217,7 @@ export function Navigation({
                         <CategoryMenu
                           items={DROPDOWNS[item.id].items}
                           data={dropdownData[item.id]}
-                          activeId={item.id === 'agenda' ? agendaFilter : financeFilter}
+                          activeId={activeFilter(item.id)}
                           closing={closingKey === item.id}
                           menuId={`${item.id}-menu-desktop`}
                           onSelect={(cat) => handleDropdownSelect(item.id, cat)}
@@ -309,7 +316,7 @@ export function Navigation({
             <CategoryMenu
               items={DROPDOWNS[openKey].items}
               data={dropdownData[openKey]}
-              activeId={openKey === 'agenda' ? agendaFilter : financeFilter}
+              activeId={activeFilter(openKey)}
               closing={closingKey === openKey}
               menuId={`${openKey}-menu-mobile`}
               onSelect={(cat) => handleDropdownSelect(openKey, cat)}
