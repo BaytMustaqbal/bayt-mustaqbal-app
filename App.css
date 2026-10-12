@@ -168,6 +168,74 @@ summary,
   animation: softPulse 3.2s ease-in-out infinite;
 }
 
+/* ---------- Dropdown kategori agenda ----------
+   Terbuka: menu naik + fade (0.3s ease-out lembut), item berundak 30ms.
+   Tutup: cepat (0.15s) — pola "exit lebih cepat dari enter". */
+
+.agenda-menu {
+  transform-origin: top center;
+  animation: agendaMenuIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.agenda-menu__item {
+  opacity: 0;
+  animation: agendaItemIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+.agenda-menu--closing {
+  animation: agendaMenuOut 0.15s ease-in both;
+}
+
+.agenda-menu--closing .agenda-menu__item {
+  animation: agendaItemOut 0.12s ease-in both;
+  animation-delay: 0ms;
+}
+
+@keyframes agendaMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes agendaItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes agendaMenuOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes agendaItemOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
 /* Hormati preferensi reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -177,5 +245,12 @@ summary,
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Menu: tanpa delay berundak → langsung tampil utuh */
+  .agenda-menu,
+  .agenda-menu__item {
+    animation: none !important;
+    opacity: 1 !important;
   }
 }

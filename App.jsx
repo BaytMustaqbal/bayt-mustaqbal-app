@@ -7,25 +7,31 @@ import { TaskList } from './components/TaskList';
 import { Dashboard } from './components/Dashboard';
 import { WelcomeGate } from './components/WelcomeGate';
 import { Card, SectionHeader, EmptyState, ExpenseCard } from './components/ui';
+import { AGENDA_CATEGORIES, countByCategory } from './components/agendaCategories';
 import './App.css';
 
 // Data contoh (sementara, sampai backend Worker + D1 siap)
 const mockData = {
   users: [
-    { id: 'kakang', name: 'Kakang', role: 'Admin', initials: 'KA' },
-    { id: 'istri', name: 'Istri', role: 'Anggota', initials: 'IS' },
+    { id: 'kakang', name: 'Rezki YT', role: 'Admin', initials: 'RY' },
+    { id: 'istri', name: 'Hilda AK', role: 'Anggota', initials: 'HA' },
   ],
   family: [
-    { id: 1, name: 'Kakang', role: 'Admin', initials: 'KA', status: 'active' },
-    { id: 2, name: 'Istri', role: 'Anggota', initials: 'IS', status: 'active' },
-    { id: 3, name: 'Anak 1', role: 'Anggota', initials: 'A1', status: 'active' },
-    { id: 4, name: 'Anak 2', role: 'Anggota', initials: 'A2', status: 'active' },
+    { id: 1, name: 'Rezki YT', role: 'Admin', initials: 'RY', status: 'active' },
+    { id: 2, name: 'Hilda AK', role: 'Anggota', initials: 'HA', status: 'active' },
+    { id: 3, name: 'RAGASUCI', role: 'Anggota', initials: 'RS', status: 'active' },
+    { id: 4, name: 'RAJABRANA', role: 'Anggota', initials: 'RB', status: 'active' },
   ],
   schedule: [
-    { id: 1, title: 'Makan Malam Keluarga', time: '19:00', date: '2026-10-15', member: 'Kakang' },
-    { id: 2, title: 'Rapat Wali Murid', time: '14:00', date: '2026-10-16', member: 'Istri' },
-    { id: 3, title: 'Service Motor', time: '09:00', date: '2026-10-17', member: 'Kakang' },
-    { id: 4, title: 'Les Musik Anak', time: '16:00', date: '2026-10-18', member: 'Anak 1' },
+    { id: 1, title: 'Makan Malam Keluarga', time: '19:00', date: '2026-10-15', member: 'Rezki YT', category: 'keluarga' },
+    { id: 2, title: 'Rapat Wali Murid', time: '14:00', date: '2026-10-16', member: 'Hilda AK', category: 'anak' },
+    { id: 3, title: 'Service Motor', time: '09:00', date: '2026-10-17', member: 'Rezki YT', category: 'service' },
+    { id: 4, title: 'Les Musik Anak', time: '16:00', date: '2026-10-18', member: 'RAGASUCI', category: 'anak' },
+    { id: 5, title: 'Servis Rutin (ganti oli & filter)', time: '10:30', date: '2026-10-20', member: 'Rezki YT', category: 'service' },
+    { id: 6, title: 'Arisan Keluarga Besar', time: '18:30', date: '2026-10-22', member: 'Hilda AK', category: 'keluarga' },
+    { id: 7, title: 'Olahraga Pagi Anak', time: '06:30', date: '2026-10-19', member: 'RAJABRANA', category: 'anak' },
+    { id: 8, title: 'Kebersihan Rumah Akhir Pekan', time: '08:00', date: '2026-10-24', member: 'Keluarga', category: 'lainnya' },
+    { id: 9, title: 'Donasi & Zakat Bulanan', time: '10:00', date: '2026-10-26', member: 'Keluarga', category: 'lainnya' },
   ],
   expenses: [
     { id: 1, category: 'Belanja Bulanan', amount: 1250000, description: 'Belanja kebutuhan dapur', date: '2026-10-14' },
@@ -34,10 +40,10 @@ const mockData = {
     { id: 4, category: 'Transportasi', amount: 300000, description: 'Bensin & tol', date: '2026-10-11' },
   ],
   tasks: [
-    { id: 1, title: 'Bersihkan dapur', completed: false, assignedTo: 'Anak 1', dueDate: '2026-10-15', priority: 'high' },
-    { id: 2, title: 'Cuci mobil', completed: true, assignedTo: 'Anak 2', dueDate: '2026-10-14', priority: 'medium' },
-    { id: 3, title: 'Belanja mingguan', completed: false, assignedTo: 'Istri', dueDate: '2026-10-16', priority: 'high' },
-    { id: 4, title: 'Baca buku anak', completed: true, assignedTo: 'Kakang', dueDate: '2026-10-14', priority: 'low' },
+    { id: 1, title: 'Bersihkan dapur', completed: false, assignedTo: 'RAGASUCI', dueDate: '2026-10-15', priority: 'high' },
+    { id: 2, title: 'Cuci mobil', completed: true, assignedTo: 'RAJABRANA', dueDate: '2026-10-14', priority: 'medium' },
+    { id: 3, title: 'Belanja mingguan', completed: false, assignedTo: 'Hilda AK', dueDate: '2026-10-16', priority: 'high' },
+    { id: 4, title: 'Baca buku anak', completed: true, assignedTo: 'Rezki YT', dueDate: '2026-10-14', priority: 'low' },
   ],
   // --- Data analitik (dummy) ---
   // Anggaran & tren masih contoh: di D1 nanti ini dari tabel budget + expenses.
@@ -110,6 +116,8 @@ export default function App() {
   // Gerbang welcome muncul SETIAP app dibuka (keputusan Kakang).
   // Saat backend siap, state ini tinggal ditukar jadi status login.
   const [entered, setEntered] = useState(false);
+  // Filter kategori agenda (default: semua) — sinkron antara dropdown nav & chip di section
+  const [agendaFilter, setAgendaFilter] = useState('semua');
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
   // Ganti dengan state + fetch saat Worker + D1 sudah siap.
@@ -142,28 +150,70 @@ export default function App() {
     setEntered(true);
   };
 
+  // Dipanggil dropdown kategori agenda di navigasi → buka section + set filter
+  const handleAgendaSelect = (categoryId) => {
+    setAgendaFilter(categoryId);
+    setActiveSection('agenda');
+  };
+
   const renderSection = () => {
     switch (activeSection) {
-      case 'agenda':
+      case 'agenda': {
+        const activeMeta =
+          AGENDA_CATEGORIES.find((c) => c.id === agendaFilter) || AGENDA_CATEGORIES[0];
+        const filtered =
+          agendaFilter === 'semua'
+            ? data.schedule
+            : data.schedule.filter((item) => item.category === agendaFilter);
         return (
           <section className="app-fade-in">
             <SectionHeader
               icon="calendar"
-              title="Agenda Keluarga"
-              subtitle="Jadwal kegiatan bersama"
+              title={activeMeta.label}
+              subtitle={`${filtered.length} dari ${data.schedule.length} jadwal`}
               actionLabel="Tambah"
             />
-            {data.schedule.length === 0 ? (
-              <EmptyState icon="calendar" title="Belum ada agenda" message="Tambahkan agenda pertama untuk mengatur kegiatan keluarga." />
+
+            {/* Filter kategori — sinkron dengan dropdown di navigasi */}
+            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter kategori agenda">
+              {AGENDA_CATEGORIES.map((cat) => {
+                const active = agendaFilter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setAgendaFilter(cat.id)}
+                    aria-pressed={active}
+                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
+                      active
+                        ? 'border-brand/50 bg-brandtint text-brandfg'
+                        : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
+                    }`}
+                  >
+                    <Icon name={cat.icon} size={16} />
+                    {cat.label}
+                    <span className="font-mono text-xs opacity-80">{countByCategory(data.schedule, cat.id)}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon="calendar"
+                title="Tidak ada agenda di kategori ini"
+                message="Pilih kategori lain, atau tambahkan agenda baru."
+              />
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {data.schedule.map((item) => (
+                {filtered.map((item) => (
                   <ScheduleItem key={item.id} item={item} />
                 ))}
               </div>
             )}
           </section>
         );
+      }
 
       case 'expenses':
         return (
@@ -249,6 +299,9 @@ export default function App() {
         onSectionChange={setActiveSection}
         user={currentUser}
         onSwitchUser={() => setEntered(false)}
+        schedule={data.schedule}
+        agendaFilter={agendaFilter}
+        onAgendaSelect={handleAgendaSelect}
       />
 
       <main

@@ -153,7 +153,7 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 
 ### Primary Screens (5 section, in-file switch, tanpa router)
 1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, daftar terbaru
-2. **Agenda**: grid `ScheduleItem`
+2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Service/Lainnya, badge jumlah) + chip filter sinkron di dalam section; grid `ScheduleItem`
 3. **Keuangan**: grid `ExpenseCard` + ringkasan di header
 4. **Keluarga**: grid `FamilyMemberCard`
 5. **Tugas**: `TaskList` dengan toggle selesai
@@ -166,7 +166,9 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 - **Minimum**: 44×44 px semua elemen interaktif; QuickAction 76px; tab bar 56px
 - **Spacing**: 12px antar target (`gap-3`); area sentuh boleh lebih besar dari visual (checkbox 28px + `-m-2 h-11 w-11`)
 - **Thumb zone**: aksi utama di bottom tab bar
-- **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang → **0 overflow, 0 elemen < 44px**
+- **Dropdown kategori Agenda** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; `prefers-reduced-motion` → muncul langsung tanpa animasi
+- **Chip filter** (di section Agenda): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`
+- **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka → **0 overflow, 0 elemen < 44px**
 - **Feedback**: hover border/glow, `active:scale` pada CTA; `prefers-reduced-motion` mematikan animasi
 
 ## 8. PWA-Specific Implementation

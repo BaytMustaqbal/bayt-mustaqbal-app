@@ -41,7 +41,9 @@ bayt-mustaqbal-app/
 │   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, barChart, target, dll.)
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
 │   │                       #   QuickAction, EmptyState, ExpenseCard, Badge, CTA_CLASS
-│   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass
+│   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass;
+│   │                       #   tab Agenda = dropdown kategori (animasi, badge jumlah, a11y menu)
+│   ├── agendaCategories.js # Kategori agenda (Semua/Keluarga/Anak/Service/Lainnya) + number per kategori
 │   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) → nanti jadi login
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
 │   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline
@@ -71,7 +73,7 @@ bayt-mustaqbal-app/
 | Section | Isi | Sumber Data |
 |---------|-----|-------------|
 | Dashboard | Sapaan + hero glass (pengeluaran & anggaran) + aksi cepat + 4 KPI + chart (tren/bar/donut) + 2 panel ringkasan | `mockData` di `App.jsx` |
-| Agenda | Grid `ScheduleItem` (ikon + badge anggota + tanggal) | `mockData` |
+| Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; grid `ScheduleItem` (ikon kategori, badge) + chip filter sinkron | `mockData` di `App.jsx` |
 | Pengeluaran | Grid `ExpenseCard` (kategori + jumlah, format IDR) | `mockData` |
 | Keluarga | Grid `FamilyMemberCard` (avatar inisial + badge status) | `mockData` |
 | Tugas | `TaskList` toggle selesai + badge prioritas (Tinggi/Sedang/Rendah) | `mockData` |
