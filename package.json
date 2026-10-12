@@ -1,0 +1,38 @@
+{
+  "name": "family-manager-pwa",
+  "version": "1.0.0",
+  "description": "Family management PWA application",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite serve",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "keywords": [
+    "family",
+    "pwa",
+    "offline",
+    "management"
+  ],
+  "author": "Family Manager Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/username/family-manager-pwa.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/family-manager-pwa/issues"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "vite": "^4.0.0",
+    "@vitejs/plugin-react": "^3.0.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.2.0"
+  }
+}

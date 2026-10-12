@@ -1,0 +1,111 @@
+/* =========================================================
+   Bayt Mustaqbal — App.css
+   Tailwind (PostCSS) + design token (Flat Design: teal + orange)
+   ========================================================= */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Design token ---------- */
+
+:root {
+  --brand: #0d9488;
+  --brand-dark: #0f766e;
+  --brand-tint: #ccfbf1;
+  --accent: #ea580c;
+  --ink: #134e4a;
+  --muted: #e8f1f4;
+  --muted-fg: #475569;
+  --canvas: #f0fdfa;
+  --surface: #ffffff;
+  --line: #99f6e4;
+  --danger: #dc2626;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background-color: var(--canvas);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hapus delay 300ms & highlight biru di elemen sentuh */
+a,
+button,
+summary,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+/* Fokus keyboard yang jelas (aksesibilitas) */
+:focus-visible {
+  outline: 2px solid var(--brand-dark);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Scrollbar tipis & rapi */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 9999px;
+  border: 2px solid var(--canvas);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand);
+}
+
+/* Animasi masuk halus */
+@keyframes appFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-fade-in {
+  animation: appFadeIn 0.24s ease-out both;
+}
+
+/* Cegah pull-to-refresh yang tak diinginkan di mobile */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Hormati preferensi reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

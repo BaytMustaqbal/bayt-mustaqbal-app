@@ -1,0 +1,18 @@
+# Dependensi
+node_modules/
+
+# Hasil build (dibuat ulang oleh `npm run build`)
+dist/
+
+# Log
+*.log
+npm-debug.log*
+
+# Variabel lingkungan (jangan pernah di-commit)
+.env
+.env.local
+.env.*.local
+
+# Berkas sistem operasi
+.DS_Store
+Thumbs.db

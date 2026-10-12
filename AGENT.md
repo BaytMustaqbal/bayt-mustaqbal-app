@@ -1,381 +1,205 @@
 # AGENT.md - Bayt Mustaqbal Project
 
-## Project Overview
+## ⚠️ Status Proyek: FASE PROTOTYPE (PWA Statis)
 
-**Bayt Mustaqbal** (بَيْت الْمُسْتَقْبَل) = "Rumah Masa Depan"
-Aplikasi keluarga untuk keuangan, absensi, kalender, dan service motor/rumah.
+Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Backend (Cloudflare Worker + D1) **belum dibangun**. Jangan asumsikan API, database, atau auth sudah ada.
 
-**Stack:**
-- Frontend: React 18 + TypeScript + Vite → Cloudflare Pages
-- Backend: Hono + TypeScript → Cloudflare Workers
-- Database: D1 (SQLite) → Cloudflare D1
-- Auth: JWT (HS256) + bcryptjs (cost 12)
-- Notifikasi: Fonnte WhatsApp API
-- Deploy: GitHub Actions → Cloudflare Pages + Workers
+**Project:** Bayt Mustaqbal (بَيْت الْمُسْتَقْبَل) = "Rumah Masa Depan"
+**Pemilik:** Kakang (Rezki Yudi Triana)
+**Target User:** Kakang + Istri (2 user)
+**Visi:** Satu app untuk keuangan, absensi, kalender, service motor/rumah.
 
 ---
 
-## Project Structure
+## Stack Aktual (Saat Ini)
+
+- **Frontend:** React 18 (JSX, bukan TS) + Vite 4
+- **Styling:** Tailwind CSS via **PostCSS** (`tailwind.config.js` + `postcss.config.js`) + `App.css` custom — design system **Flat Design** (teal `#0D9488` + oranye `#EA580C`)
+- **Icons:** SVG inline custom (`components/Icon.jsx`, gaya Lucide) — Font Awesome **sudah dihapus**
+- **Font:** Plus Jakarta Sans (Google Fonts)
+- **PWA:** `public/manifest.json` + `public/service-worker.js` (cache-first, background sync) — SW diregistrasi **hanya di build production** (`main.jsx`). Aset statis **wajib** di `public/`, karena Vite hanya menyalin folder itu ke `dist/`
+- **State:** React `useState`/`useEffect` (no Zustand/React Query)
+- **Data:** **Dummy murni** di `App.jsx` (`const data = mockData`) — **belum ada panggilan API sama sekali**, atas permintaan Kakang
+- **Deploy target (rencana):** Cloudflare Pages (frontend) + Cloudflare Worker + D1 (backend)
+
+---
+
+## Struktur Folder Aktual
 
 ```
 bayt-mustaqbal-app/
-├── worker/                      # Cloudflare Worker (Backend API)
-│   ├── src/
-│   │   ├── index.ts             # Entry point + 15 routes registration
-│   │   ├── cron.ts              # 3 scheduled jobs (daily, hourly, monthly)
-│   │   ├── routes/              # 15 API modules
-│   │   │   ├── auth.ts          # Login, register, users
-│   │   │   ├── transactions.ts  # CRUD transaksi + conflict detection
-│   │   │   ├── bills.ts         # CRUD tagihan + bayar + generate
-│   │   │   ├── recurring.ts     # Template transaksi rutin
-│   │   │   ├── categories.ts    # CRUD kategori (admin)
-│   │   │   ├── attendance.ts    # Absensi + quota cuti
-│   │   │   ├── calendar.ts      # Acara keluarga
-│   │   │   ├── service.ts       # Aset motor/rumah + log service
-│   │   │   ├── notes.ts         # Catatan bebas
-│   │   │   ├── review.ts        # Analisis keuangan
-│   │   │   ├── dashboard.ts     # Ringkasan dashboard
-│   │   │   ├── settings.ts      # Settings admin
-│   │   │   └── notif.ts         # Notifikasi WA via Fonnte
-│   │   ├── middleware/          # Auth (JWT) + Validation (Zod)
-│   │   ├── utils/               # Auth, DB, Fonnte helpers
-│   │   └── types/env.ts         # TypeScript bindings
-│   ├── migrations/              # 0001_schema.sql + 0002_seed.sql
-│   ├── wrangler.toml            # D1, KV, Cron, Secrets config
-│   └── package.json
-├── frontend/                     # React + Vite (PWA ready)
-│   ├── src/
-│   │   ├── App.tsx              # Routing + Auth init + Protected/Admin routes
-│   │   ├── main.tsx             # Entry point
-│   │   ├── api/client.ts        # API client (fetch wrapper)
-│   │   ├── stores/authStore.ts  # Zustand persist (token, user, role)
-│   │   ├── components/          # Layout, ProtectedRoute, AdminRoute
-│   │   ├── pages/               # 11 pages lengkap
-│   │   ├── stores/              # Zustand stores
-│   │   ├── utils/helpers.ts     # Formatters, date, rupiah
-│   │   └── styles.css           # Design system (dark mode, mobile-first)
-│   ├── public/manifest.json     # PWA manifest
-│   ├── vite.config.ts           # Proxy /api → Worker
-│   └── package.json
-├── .github/workflows/deploy.yml # CI/CD Pipeline
-├── docs/                        # Dokumentasi perencanaan
-│   ├── 01-ARSITEKTUR-DATA.md    # 15 tabel schema + relasi
-│   ├── 02-SPESIFIKASI-MODUL.md  # 11 modul + kontrak API
-│   ├── 03-ROADMAP.md            # Fase 0-4 + kriteria selesai
-│   ├── 04-KEPUTUSAN-TERKUNCI.md # 16 keputusan + alasan
-│   └── SETUP-FONNTE.md          # Panduan setup Fonnte step-by-step
-├── PROJECT_SUMMARY.md           # Ringkasan teknis lengkap
-└── README.md                    # Root documentation
+├── index.html              # Entry PWA: Plus Jakarta Sans, manifest, install prompt, network monitor
+├── main.jsx                # React entry: createRoot → render <App /> ke #root + registrasi SW (production)
+├── App.jsx                 # Root component: 5 section (dashboard/agenda/expenses/family/tasks) + dummy data
+├── App.css                 # Tailwind (@tailwind base/components/utilities) + design token, focus-visible, scrollbar, animasi
+├── tailwind.config.js      # Theme tokens (warna flat teal/oranye, font) + content paths
+├── postcss.config.js       # Plugin: tailwindcss + autoprefixer
+├── vite.config.js          # Vite config: react plugin, port 3000
+├── package.json            # Deps: react, react-dom, vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer
+├── DESIGN-SYSTEM.md        # Design system: flat teal, tipografi, layout, komponen, PWA, a11y
+├── components/
+│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, dll.)
+│   ├── ui.jsx              # Primitif UI: Card, SectionHeader, StatCard, EmptyState, ExpenseCard, Badge
+│   ├── Navigation.jsx      # Header sticky (merek + nav lg+) + bottom tab bar 56px (< lg, safe-area)
+│   ├── FamilyCard.jsx      # Card anggota (baris horizontal)
+│   ├── FamilyMemberCard.jsx# Card anggota versi besar (centered)
+│   ├── ScheduleItem.jsx    # Item agenda (ikon, judul, jam, tanggal, badge anggota)
+│   └── TaskList.jsx        # Daftar tugas (toggle selesai, badge prioritas)
+├── public/                 # Aset statis → disalin apa adanya ke dist/ oleh Vite
+│   ├── manifest.json       # PWA manifest (theme #0D9488; 8 ikon "any" + 2 maskable)
+│   ├── service-worker.js   # Cache strategy: static cache-first, API network-first, bg sync, push
+│   └── icons/              # 12 berkas ikon (lihat bagian Ikon PWA)
+├── scripts/
+│   └── generate-icons.mjs  # Generator ikon PWA (`npm run icons`) — tanpa dependensi
+├── README.md               # Dokumentasi root
+├── PROJECT_SUMMARY.md      # Ringkasan proyek
+└── AGENT.md                # File ini
 ```
 
----
-
-## Key Technical Decisions (16 Keputusan Terkunci)
-
-| ID | Keputusan | Alasan |
-|----|-----------|--------|
-| D1 | Admin (Kakang) + User (Istri) | Role-based access, Istri view+input only |
-| D2 | Single Web App + Hash routing | 1 URL, konsisten, easy maintenance |
-| D3 | WA only (Fonnte), no email | Higher read rate, simpler |
-| D4 | Google Sheets → D1 migration | Better query, concurrency, proper FK |
-| D5 | 1 tab `calendar_events` + kategori | No data fragmentation |
-| D6 | `recurring` ≠ `bills` ≠ `transactions` | Data integrity, audit trail |
-| D7 | Vanilla JS + Hono, no build step | Zero config, portable |
-| D8 | System fonts only | Performance, no FOIT |
-| D9 | Edit 24 jam only | Audit trail protection |
-| D10 | 2 deploy versions (dev/prod) | Safe deployment |
-| D11 | Rekening aktif dari Fase 1 | Saldo per rekening real-time |
-| D12 | No photo upload (manual only) | Simplicity, avoid complexity |
-| D13 | Tagihan variabel = estimasi + edit | Accuracy, no phantom numbers |
-| D14 | Hari libur hardcode di settings | Zero dependency |
-| D15 | WA only via Fonnte | Cost-effective, readable |
-| D16 | Iuran sampah = bill type khusus | Special reminder with jam |
+> **Status git (penting):** repo ini sudah punya **1 commit** — `15f51a2 feat: initial commit - Bayt Mustaqbal complete project`. Isi commit itu adalah proyek **versi lama**: `frontend/` (React + TypeScript), `worker/` (Cloudflare Worker + D1 + `migrations/0001_initial_schema.sql`), `docs/`, dan `.github/workflows/deploy.yml`.
+> Saat ini semua file itu **sudah dihapus dari working tree tetapi belum di-commit** (status ` D`), sedangkan app yang berjalan sekarang (React root + Tailwind PostCSS) **belum pernah di-commit** (`??`).
+> Jadi: kode Worker + migrasi D1 lama masih bisa dipulihkan lewat git (`git show HEAD:worker/...`) kalau nanti dibutuhkan untuk backend. Keputusan menyimpan atau menghapus permanen ada di Kakang — belum ada staging/commit yang dilakukan.
 
 ---
 
-## Database Schema (15 Tabel D1)
+## Halaman & Fitur (Dummy)
 
-| Tabel | Deskripsi | Key Columns |
-|-------|-----------|-------------|
-| `users` | Pengguna + role | user_id, email, nama, role, aktif |
-| `settings` | Key-value config | k, v, tipe |
-| `categories` | Master kategori | category_id, nama, tipe, scope, budget_bulanan |
-| `accounts` | Rekening/e-wallet | account_id, nama, tipe, saldo_awal |
-| `transactions` | Transaksi keuangan | txn_id, tanggal, tipe, kategori_id, jumlah, account_id |
-| `recurring` | Template rutin | rec_id, frekuensi, hari_tanggal, auto_post |
-| `bills` | Tagihan real | bill_id, tipe, jatuh_tempo, status, remind_at |
-| `attendance` | Absensi kerja | att_id, tanggal, nama, status, terjadwal |
-| `attendance_quota` | Jatah cuti/izin | tahun, nama, jatah_cuti, jatah_izin |
-| `calendar_events` | Acara keluarga | event_id, kategori, tanggal_mulai/selesai |
-| `service_asset` | Aset motor/rumah | asset_id, grup, interval_hari/km |
-| `service_log` | Riwayat service | svc_id, asset_id, jenis, kilometer, biaya |
-| `notes` | Catatan bebas | note_id, judul, isi, kategori, pin |
-| `audit_log` | Jejak perubahan | log_id, email, aksi, entity, sebelum/sesudah |
-| `notification_log` | Log notifikasi | notif_id, tipe, status, error |
+| Section | Isi | Sumber Data |
+|---------|-----|-------------|
+| Dashboard | Hero + 4 KPI cards (agenda, pengeluaran, anggota, tugas) + 2 panel ringkasan | `mockData` di `App.jsx` |
+| Agenda | Grid `ScheduleItem` (ikon + badge anggota + tanggal) | `mockData` |
+| Pengeluaran | Grid `ExpenseCard` (kategori + jumlah, format IDR) | `mockData` |
+| Keluarga | Grid `FamilyMemberCard` (avatar inisial + badge status) | `mockData` |
+| Tugas | `TaskList` toggle selesai + badge prioritas (Tinggi/Sedang/Rendah) | `mockData` |
 
-**Aturan Wajib:**
-- Semua query **WAJIB** pakai nama header, BUKAN indeks kolom
-- Semua operasi tulis **WAJIB** dibungkus `LockService`
-- Soft delete: kolom `void` (YA/TIDAK), jangan hard delete
-- Kolom `rev` untuk optimistic locking (conflict detection)
+> **Tidak ada panggilan jaringan.** Data sepenuhnya dummy sesuai permintaan Kakang — fokus ke frontend dulu.
 
 ---
 
-## API Contract
+## Mobile-First (Fokus HP)
 
-**Base URL:** `/api`
+Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku sekarang:
 
-**Response Format:**
-```json
-{ "ok": true, "data": {...}, "error": null }
-{ "ok": false, "data": null, "error": { "code": "VALIDATION", "message": "...", "details": {} } }
-```
+| Aspek | Aturan |
+|-------|--------|
+| Navigasi < `lg` | **Bottom tab bar** 56px (dikunci `h-[56px]`), 5 tab, area sentuh 60×56px di HP 320px |
+| Navigasi ≥ `lg` | Nav atas (pill) + tombol Pasang; tab bar bawah disembunyikan |
+| Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]` |
+| Safe area bawah | Tab bar `pb-[env(safe-area-inset-bottom)]`; `<main>` `pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]` |
+| Banner install | Diposisikan tepat di atas tab bar (`bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]`, `lg:bottom-0`) |
+| Kartu KPI | Nilai uang diringkas di HP (`Rp 2,8 jt`) via `formatCurrencyShort`; nilai penuh di `title` + section Keuangan |
+| Anti-overflow | Semua `Card` punya `min-w-0` agar boleh menyusut di grid/flex |
+| Sentuh | `-webkit-tap-highlight-color: transparent` + `touch-action: manipulation`; checkbox 28px dengan area sentuh 44px |
+| Teks | `-webkit-text-size-adjust: 100%` |
 
-**Error Codes:**
-- `UNAUTHENTICATED` - Token invalid/expired
-- `FORBIDDEN` - Role tidak cukup
-- `VALIDATION` - Input tidak valid (details per field)
-- `NOT_FOUND` - Resource tidak ditemukan
-- `CONFLICT` - Rev mismatch (concurrent edit)
-- `LOCK_TIMEOUT` - Sheet busy > 30s
-- `SERVER` - Unexpected error
-
-**Auth:** Bearer token (JWT HS256, 30d expiry)
+**Hasil verifikasi** (iframe 320/360/390/414/768/1024/1280 px): **0 overflow horizontal**, **0 elemen interaktif < 44px**, semua 5 section bersih; toggle tugas berfungsi (`aria-pressed` false→true + coret).
 
 ---
 
-## 11 Modul & Endpoints
+## Ikon PWA
 
-| Modul | Prefix | Key Endpoints |
-|-------|--------|---------------|
-| Auth | `/api/auth` | `login`, `me`, `register`, `users` |
-| Transactions | `/api/txn` | `list`, `create`, `update`, `delete` |
-| Bills | `/api/bill` | `list`, `create`, `pay`, `generate` |
-| Recurring | `/api/rec` | `list`, `create`, `update`, `delete` |
-| Categories | `/api/categories` | `list`, `create`, `update`, `delete`, `reorder` |
-| Attendance | `/api/att` | `list`, `calendar`, `upsert`, `quota` |
-| Calendar | `/api/cal` | `list`, `create`, `toggle_done`, `delete` |
-| Service | `/api/svc` | `asset.list`, `asset.create`, `list`, `create`, `due` |
-| Notes | `/api/note` | `list`, `create`, `update`, `delete` |
-| Review | `/api/review` | `monthly`, `compare`, `by_category`, `trend` |
-| Dashboard | `/api/dash` | `summary` |
-| Settings | `/api/cfg` | `get`, `set`, `test-wa`, `triggers` |
-| Notifications | `/api/notif` | `send`, `daily_digest`, `bill_reminder_check`, `test` |
+Dibuat dengan `npm run icons` → `scripts/generate-icons.mjs`. Skripnya **tanpa dependensi** (hanya modul bawaan Node: `zlib` untuk PNG, `fs`) — bentuk rumah digambar manual, lalu di-encode sendiri jadi PNG dan ICO.
+
+| Berkas | Kegunaan |
+|--------|----------|
+| `public/icons/icon-{72,96,128,144,152,192,384,512}.png` | `purpose: any` — sudut membulat, glyph 60% |
+| `public/icons/maskable-{192,512}.png` | `purpose: maskable` — penuh tanpa sudut, glyph 52% (aman di safe zone 80% Android) |
+| `public/icons/apple-touch-icon.png` | 180px, tanpa sudut (iOS membulatkan sendiri) |
+| `public/icons/favicon.ico` | 16/32/48 px, PNG di dalam ICO |
+
+Desain: latar `#0F766E`, glyph rumah putih, pintu tembus ke warna latar (flat, tanpa gradasi/shadow).
+
+**Verifikasi:** setiap PNG dibuka di canvas dan pikselnya dicek — sudut transparan untuk `any`, sudut berwarna untuk `maskable`/apple, tengah putih, pintu & area luar teal; ICO di-parse (3 entri, semuanya PNG, ter-decode 32×32); 12 URL ikon + manifest + service worker dibalas **HTTP 200** di dev, dan `npm run build` menaruh semuanya di `dist/`.
 
 ---
 
-## Cron Jobs (Scheduled Triggers)
-
-| Cron | Waktu | Handler | Fungsi |
-|------|-------|---------|--------|
-| `0 7 * * *` | 07:00 WIB | `handleDailyDigest` | Daily digest WA ke grup |
-| `0 * * * *` | Setiap jam | `handleBillReminders` | Cek `bills.remind_at` ≤ now |
-| `30 0 1 * *` | Tgl 1 00:30 | `handleMonthlyGenerate` | Generate tagihan dari `recurring` |
-
----
-
-## Frontend Architecture
-
-**State Management:**
-- **Zustand** untuk auth state (token, user, role) + persist ke localStorage
-- React hooks untuk local component state
-- No React Query - fetch manual via API client
-
-**Routing:**
-- React Router 6 + Hash routing (`#/keuangan`, `#/tagihan`, dll)
-- `ProtectedRoute` - redirect ke `/login` kalau belum auth
-- `AdminRoute` - hanya role `admin` bisa akses `/settings`
-
-**API Client (`src/api/client.ts`):**
-- Wrapper fetch + Bearer token auto-attach
-- Auto redirect ke `/login` kalau 401
-- Promise-based, error handling terpusat
-
-**Styling:**
-- Custom CSS Variables (design tokens)
-- Dark mode ready (`prefers-color-scheme`)
-- Mobile-first responsive
-- No CSS framework - pure CSS, lightweight
-
----
-
-## Development Commands
+## Commands
 
 ```bash
-# Worker (Backend)
-cd worker
+# Dev
 npm install
-npm run dev              # wrangler dev (local)
-npm run deploy           # wrangler deploy (production)
-npm run migrate          # Local D1 migration
-npm run migrate:remote   # Remote D1 migration
-npm run typecheck        # tsc --noEmit
+npm run dev          # Vite → http://localhost:3000 (3001 kalau 3000 dipakai)
 
-# Frontend
-cd frontend
-npm install
-npm run dev              # Vite dev server (port 5173)
-npm run build            # Production build → ./dist
-npm run preview          # Preview build
+# Build
+npm run build        # Output: ./dist (untuk Cloudflare Pages)
+
+# Preview build
+npx vite preview
 ```
 
 ---
 
-## Local Development Setup
+## PWA: Cara Kerja
 
-### 1. Worker (Backend)
-```bash
-cd worker
-npm install
-
-# Local D1
-wrangler d1 create bayt-mustaqbal-db
-# Copy database_id ke wrangler.toml
-npm run migrate
-npm run migrate:create seed_data
-
-# Secrets (local)
-wrangler secret put JWT_SECRET
-wrangler secret put FONNTE_TOKEN
-wrangler secret put FONNTE_TARGET
-wrangler secret put FONNTE_DEVICE
-
-# Run dev
-npm run dev  # http://localhost:8787
-```
-
-### 2. Frontend
-```bash
-cd frontend
-npm install
-npm run dev  # http://localhost:5173 (proxy /api → localhost:8787)
-```
-
-### 3. Test Login
-- Email: `kakang@email.com` (admin) / `istri@email.com` (user)
-- Password: apa saja (seed tidak set password hash, butuh register via API atau set manual di D1)
+- **Install prompt:** muncul saat `beforeinstallprompt` (setelah 3x kunjungan, bisa di-skip via localStorage)
+- **Network status:** **toast** sesaat di atas saat status berubah (teal "Tersambung kembali" / merah "Koneksi terputus", hilang otomatis 3 detik). Status offline yang menetap ditampilkan **banner** di dalam `<main>` — jadi tidak dobel saat pertama kali dibuka
+- **Auto-sync:** saat event `online` → `registration.sync.register('family-api-sync')`
+- **Service Worker:**
+  - Static assets → **cache-first**
+  - `/api/*` → **network-first**, fallback cache
+  - **Background sync** untuk request gagal (queue di localStorage)
+  - **Push notification** handler (belum ada server push)
+- **Offline banner:** muncul saat `navigator.onLine === false` — ikon + teks (bukan warna saja)
 
 ---
 
-## 4 Secret yang Harus Di-set (Cloudflare Dashboard)
+## Known Issues (Perbaiki Sebelum Deploy)
 
-| Secret | Contoh | Cara Dapat |
-|--------|--------|------------|
-| `JWT_SECRET` | `openssl rand -base64 32` | Generate random 32+ char |
-| `FONNTE_TOKEN` | `abc123...` | Dashboard fonnte.com → API Token |
-| `FONNTE_TARGET` | `6281234567890@g.us` | WhatsApp Web → Grup → URL |
-| `FONNTE_DEVICE` | `default` | Atau Device ID dari Fonnte |
-
----
-
-## Fonnte Setup (5 Menit)
-
-1. Daftar `fonnte.com` → dapatkan **API Token**
-2. Buat grup WA keluarga → tambah nomor Fonnte sebagai **Admin**
-3. Buka WhatsApp Web → grup → URL `https://web.whatsapp.com/?group=628xxx@g.us` → copy **Group ID**
-4. Settings Admin → isi Token, Target, Device → **Test Kirim WA**
+| Issue | Dampak | Solusi |
+|-------|--------|--------|
+| ~~`cdn.tailwindcss.com should not be used in production`~~ | ~~Warning, bundle besar~~ | **SELESAI:** Tailwind dipindah ke PostCSS (`tailwind.config.js` + `postcss.config.js`); CSS ter-generate 19 kB (gzip 4,6 kB) |
+| ~~`icon-144.png 404`~~ | ~~Install prompt tidak ada ikon~~ | **SELESAI:** 12 ikon dibuat via `npm run icons` → `public/icons/`; manifest dipecah `any` + `maskable` |
+| ~~`favicon.ico` kosong (0 byte)~~ | ~~Ikon tab browser default~~ | **SELESAI:** `favicon.ico` asli (16/32/48, PNG di dalam ICO) + `apple-touch-icon.png` 180px |
+| ~~Aset statis tidak ikut ke `dist/`~~ | ~~`manifest.json`, `service-worker.js`, `icons/*` 404 di produksi → install PWA & mode offline mati~~ | **SELESAI:** ketiganya dipindah ke `public/` (Vite menyalin `public/` apa adanya ke `dist/`) |
+| ~~`service-worker.js` reference path component~~ | ~~SW cache `addAll` mungkin gagal~~ | **SELESAI:** cache list dirampingkan + 3 ikon; berkas kini di `public/` |
+| Data dummy hardcode | Bukan data real | Bangun Worker + D1, ganti `const data = mockData` dengan state + fetch |
+| Belum ada `wrangler.toml` | Backend belum jalan | Buat Worker + D1 binding |
 
 ---
 
-## Deploy ke Production
+## Rencana (Roadmap — BELUM DIBUAT)
 
-```bash
-# 1. Cloudflare Resources
-wrangler d1 create bayt-mustaqbal-db --remote
-wrangler kv namespace create BAYT_KV --remote
-# Update wrangler.toml dengan database_id & kv ids
+**Backend (Cloudflare Worker + D1):**
+- Auth: JWT (HS256) + bcryptjs
+- Modul: auth, transactions, bills, recurring, categories, attendance, calendar, service, notes, review, dashboard, settings, notifikasi WA (Fonnte)
+- Cron: daily digest (07:00), bill reminder (hourly), monthly generate (tgl 1)
+- Notifikasi: Fonnte WhatsApp API
 
-# 2. Secrets Remote
-wrangler secret put JWT_SECRET --remote
-wrangler secret put FONNTE_TOKEN --remote
-wrangler secret put FONNTE_TARGET --remote
-wrangler secret put FONNTE_DEVICE --remote
+**Frontend (evolusi):**
+- TypeScript, React Router (hash), Zustand persist, Admin/User role
+- 11 pages, dark mode, mobile-first
 
-# 4. Migrate & Deploy
-npm run migrate:remote
-npm run deploy
+**Deploy:**
+- GitHub Actions → Cloudflare Pages (frontend) + Workers (backend)
+- Custom domain: `app.baytmustaqbal.my.id`
 
-# 5. GitHub Actions (Auto)
-# GitHub Secrets: CF_ACCOUNT_ID, CF_API_TOKEN
-# Push ke main → Auto deploy
-```
+> Detail spesifikasi lengkap (15 tabel, kontrak API, keputusan teknis) ada di `PROJECT_SUMMARY.md` / `README.md` — **verifikasi dulu apakah sesuai sebelum implementasi**.
 
 ---
 
-## Custom Domain (Cloudflare Pages)
+## Aturan Wajib untuk Agent
 
-1. Cloudflare Pages → Project `bayt-mustaqbal` → Custom domains
-2. Add `app.baytmustaqbal.my.id` (subdomain recommended)
-3. DNS: CNAME `app` → `bayt-mustaqbal.pages.dev` (Proxy ON)
-
----
-
-## Documentation Files
-
-| File | Deskripsi |
-|------|-----------|
-| `README.md` | Root documentation + quick start |
-| `PROJECT_SUMMARY.md` | Ringkasan teknis lengkap |
-| `worker/README.md` | Backend API docs |
-| `frontend/README.md` | Frontend docs |
-| `docs/01-ARSITEKTUR-DATA.md` | 15 tabel schema + relasi |
-| `docs/02-SPESIFIKASI-MODUL.md` | 11 modul + kontrak API |
-| `docs/03-ROADMAP.md` | Fase 0-4 + kriteria selesai |
-| `docs/04-KEPUTUSAN-TERKUNCI.md` | 16 keputusan + alasan |
-| `docs/SETUP-FONNTE.md` | Panduan setup Fonnte step-by-step |
+1. **Jangan** asumsikan API/DB sudah ada — data masih **dummy murni** (`const data = mockData`), jangan tambahkan `fetch` tanpa persetujuan Kakang.
+2. **Jangan** `git push` tanpa konfirmasi eksplisit Kakang (larangan keras).
+3. **Selalu** jalankan `npm run dev` + cek Console (F12) sebelum klaim "beres".
+4. **Tailwind sudah pakai PostCSS** (`tailwind.config.js`) — tambah kelas/utility di sana, bukan lewat CDN.
+5. **Soft delete** saja nanti di D1 (kolom `void`), jangan hard delete.
+6. **Query D1 nanti** pakai nama header, bukan indeks kolom.
+7. **Jangan** commit secret — pakai `wrangler secret put`.
 
 ---
 
-## Common Tasks for Agents
+## Troubleshooting Cepat
 
-### Add New API Endpoint
-1. Create route file di `worker/src/routes/`
-2. Register di `worker/src/index.ts` → `app.route('/api/xxx', routes)`
-2. Add types di `worker/src/types/env.ts` jika perlu
-3. Add frontend API call di `frontend/src/api/client.ts`
-4. Create page/component di frontend
-
-### Add New Database Column
-1. Buat migration baru: `npm run migrate:create add_column_xxx`
-2. Edit file SQL di `worker/migrations/`
-4. Run `npm run migrate` (local) / `npm run migrate:remote` (prod)
-5. Update TypeScript types di `types/env.ts`
-6. Update frontend types jika perlu
-
-### Add New Frontend Page
-1. Create `frontend/src/pages/NewPage.tsx`
-2. Add route di `frontend/src/App.tsx`
-3. Add menu item di `frontend/src/components/Layout.tsx`
-4. Add API calls di `frontend/src/api/client.ts`
-
-### Debug Tips
-- Worker logs: `wrangler tail` (production) / console.log di `wrangler dev`
-- Frontend: React DevTools + Network tab
-- D1 queries: `wrangler d1 execute bayt-mustaqbal-db --remote --command="SELECT ..."`
-- D1 local: `wrangler d1 execute bayt-mustaqbal-db --local --command="SELECT ..."`
-
----
-
-## Important Reminders
-
-1. **NEVER** use column index in queries - always use header names
-2. **ALWAYS** wrap writes in `LockService` (handled by `withLock_` helper)
-3. **NEVER** hard delete - use soft delete (`void = 'YA'`)
-4. **ALWAYS** check `rev` for concurrent edits
-5. **NEVER** commit secrets - use `wrangler secret put`
-6. **ALWAYS** test locally with `wrangler dev` before deploy
-7. **ALWAYS** run typecheck (`npm run typecheck`) before commit
-
----
-
-## Contact / Context
-
-**Project Owner:** Kakang (Rezki Yudi Triana)
-**Target Users:** Kakang + Istri (2 users)
-**Project Name:** Bayt Mustaqbal (بَيْت الْمُسْتَقْبَل) = "Rumah Masa Depan"
-**Vision:** Satu aplikasi untuk semua kebutuhan keluarga: keuangan, absensi, kalender, service.
+| Masalah | Penyebab | Fix |
+|---------|----------|-----|
+| Blank white di browser | Cache lama / file:// | `npm run dev`, buka `http://localhost:3000`, **Hard Reload (Ctrl+F5)** |
+| CORS error di console | Buka via `file://` | Harus lewat `http://localhost`, bukan klik langsung `index.html` |
+| `Port 3000 in use` | Server lain | Vite otomatis ke 3001, atau matikan proses lama |
+| 404 icon | Folder `icons/` kosong | Buat PNG + favicon |
+| Kelas Tailwind tidak berefek | File tak tercakup `content` | Tambahkan path di `tailwind.config.js` → `content` |
 
 ---
 
 *Generated for AI agents working on Bayt Mustaqbal project.*
-*Last updated: 2026-10-11*
+*Last updated: 2026-10-12 — Tailwind PostCSS + data dummy murni (fokus frontend).*
