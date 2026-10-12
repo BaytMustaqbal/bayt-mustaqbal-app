@@ -7,6 +7,7 @@ import { TaskList } from './components/TaskList';
 import { Dashboard } from './components/Dashboard';
 import { WelcomeGate } from './components/WelcomeGate';
 import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList } from './components/ui';
+import { FamilyCalendar } from './components/Calendar';
 import { AGENDA_CATEGORIES, FINANCE_CATEGORIES, FAMILY_CATEGORIES, countByCategory } from './components/categories';
 import './App.css';
 
@@ -23,15 +24,25 @@ const mockData = {
     { id: 4, name: 'RAJABRANA', role: 'Anggota', initials: 'RB', status: 'active' },
   ],
   schedule: [
+    // Keluarga — kegiatan bersama
     { id: 1, title: 'Makan Malam Keluarga', time: '19:00', date: '2026-10-15', member: 'Rezki YT', category: 'keluarga' },
-    { id: 2, title: 'Rapat Wali Murid', time: '14:00', date: '2026-10-16', member: 'Hilda AK', category: 'anak' },
-    { id: 3, title: 'Service Motor', time: '09:00', date: '2026-10-17', member: 'Rezki YT', category: 'service' },
+    { id: 2, title: 'Arisan Keluarga Besar', time: '18:30', date: '2026-10-22', member: 'Hilda AK', category: 'keluarga' },
+    // Anak — sekolah, les & kegiatan anak
+    { id: 3, title: 'Rapat Wali Murid', time: '14:00', date: '2026-10-16', member: 'Hilda AK', category: 'anak' },
     { id: 4, title: 'Les Musik Anak', time: '16:00', date: '2026-10-18', member: 'RAGASUCI', category: 'anak' },
-    { id: 5, title: 'Servis Rutin (ganti oli & filter)', time: '10:30', date: '2026-10-20', member: 'Rezki YT', category: 'service' },
-    { id: 6, title: 'Arisan Keluarga Besar', time: '18:30', date: '2026-10-22', member: 'Hilda AK', category: 'keluarga' },
-    { id: 7, title: 'Olahraga Pagi Anak', time: '06:30', date: '2026-10-19', member: 'RAJABRANA', category: 'anak' },
-    { id: 8, title: 'Kebersihan Rumah Akhir Pekan', time: '08:00', date: '2026-10-24', member: 'Keluarga', category: 'lainnya' },
-    { id: 9, title: 'Donasi & Zakat Bulanan', time: '10:00', date: '2026-10-26', member: 'Keluarga', category: 'lainnya' },
+    { id: 5, title: 'Olahraga Pagi Anak', time: '06:30', date: '2026-10-19', member: 'RAJABRANA', category: 'anak' },
+    // Ibadah — pengajian, zakat & hari besar
+    { id: 6, title: 'Pengajian Rutin Keluarga', time: '19:30', date: '2026-10-17', member: 'Keluarga', category: 'ibadah' },
+    { id: 7, title: 'Donasi & Zakat Bulanan', time: '10:00', date: '2026-10-26', member: 'Keluarga', category: 'ibadah' },
+    // Kesehatan — periksa & imunisasi (sinkron data sub-bagian Keluarga)
+    { id: 8, title: 'Imunisasi lanjutan (RAGASUCI)', time: '09:00', date: '2026-11-02', member: 'Hilda AK', category: 'kesehatan' },
+    { id: 9, title: 'Kontrol gigi', time: '15:30', date: '2026-10-25', member: 'Hilda AK', category: 'kesehatan' },
+    // Rumah Tangga — kebersihan, belanja & perbaikan
+    { id: 10, title: 'Kebersihan Rumah Akhir Pekan', time: '08:00', date: '2026-10-24', member: 'Keluarga', category: 'rumahtangga' },
+    { id: 11, title: 'Perbaikan wastafel kamar mandi', time: '09:30', date: '2026-10-18', member: 'Rezki YT', category: 'rumahtangga' },
+    // Kendaraan — servis & perawatan motor/mobil
+    { id: 12, title: 'Service Motor', time: '09:00', date: '2026-10-17', member: 'Rezki YT', category: 'kendaraan' },
+    { id: 13, title: 'Servis Rutin (ganti oli & filter)', time: '10:30', date: '2026-10-20', member: 'Rezki YT', category: 'kendaraan' },
   ],
   familyHealth: [
     { id: 1, title: 'Imunisasi lanjutan', meta: 'RAGASUCI · Puskesmas · 2026-11-02', badge: 'Jadwal', tone: 'brand' },
@@ -142,6 +153,8 @@ export default function App() {
   const [entered, setEntered] = useState(false);
   // Filter kategori agenda (default: semua) — sinkron antara dropdown nav & chip di section
   const [agendaFilter, setAgendaFilter] = useState('semua');
+  // Mode tampilan section Agenda: daftar grid atau kalender keluarga
+  const [agendaMode, setAgendaMode] = useState('daftar');
   // Filter kategori pengeluaran (default: semua) — pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
   // Filter bagian keluarga (default: semua) — pola sama dengan agenda & keuangan
@@ -226,6 +239,32 @@ export default function App() {
               actionLabel="Tambah"
             />
 
+            {/* Pilih tampilan: daftar grid atau kalender gabungan member */}
+            <div className="mb-5 inline-flex rounded-xl border border-line bg-surface p-1" role="group" aria-label="Mode tampilan agenda">
+              <button
+                type="button"
+                onClick={() => setAgendaMode('daftar')}
+                aria-pressed={agendaMode === 'daftar'}
+                className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${
+                  agendaMode === 'daftar' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                }`}
+              >
+                <Icon name="tasks" size={16} />
+                Daftar
+              </button>
+              <button
+                type="button"
+                onClick={() => setAgendaMode('kalender')}
+                aria-pressed={agendaMode === 'kalender'}
+                className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${
+                  agendaMode === 'kalender' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                }`}
+              >
+                <Icon name="calendar" size={16} />
+                Kalender
+              </button>
+            </div>
+
             {/* Filter kategori — sinkron dengan dropdown di navigasi */}
             <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter kategori agenda">
               {AGENDA_CATEGORIES.map((cat) => {
@@ -250,18 +289,22 @@ export default function App() {
               })}
             </div>
 
-            {filtered.length === 0 ? (
-              <EmptyState
-                icon="calendar"
-                title="Tidak ada agenda di kategori ini"
-                message="Pilih kategori lain, atau tambahkan agenda baru."
-              />
+            {agendaMode === 'daftar' ? (
+              filtered.length === 0 ? (
+                <EmptyState
+                  icon="calendar"
+                  title="Tidak ada agenda di kategori ini"
+                  message="Pilih kategori lain, atau tambahkan agenda baru."
+                />
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {filtered.map((item) => (
+                    <ScheduleItem key={item.id} item={item} />
+                  ))}
+                </div>
+              )
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((item) => (
-                  <ScheduleItem key={item.id} item={item} />
-                ))}
-              </div>
+              <FamilyCalendar items={filtered} tasks={data.tasks} />
             )}
           </section>
         );

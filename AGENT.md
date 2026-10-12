@@ -38,7 +38,7 @@ bayt-mustaqbal-app/
 ├── package.json            # Deps: react, react-dom, vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer
 ├── DESIGN-SYSTEM.md        # Design system: High-Tech Blue, tipografi, layout, komponen, PWA, a11y
 ├── components/
-│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, barChart, target, dll.)
+│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, barChart, target, chevron dll.)
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
 │   │                       #   QuickAction, EmptyState, ExpenseCard, Badge, FamilyList, CTA_CLASS
 │   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass;
@@ -50,6 +50,8 @@ bayt-mustaqbal-app/
 │   ├── FamilyCard.jsx      # Card anggota (baris horizontal)
 │   ├── FamilyMemberCard.jsx# Card anggota versi besar (centered)
 │   ├── ScheduleItem.jsx    # Item agenda (ikon, judul, jam, tanggal, badge anggota)
+│   ├── Calendar.jsx        # Kalender keluarga (mode Kalender di tab Agenda): view Minggu/Bulan/Tahun,
+│   │                       #   warna per member + legenda, agenda hari terpilih, tugas jatuh tempo
 │   └── TaskList.jsx        # Daftar tugas (toggle selesai, badge prioritas)
 ├── public/                 # Aset statis → disalin apa adanya ke dist/ oleh Vite
 │   ├── manifest.json       # PWA manifest (theme #0A192F; ikon cyan #22D3EE; 8 "any" + 2 maskable)
@@ -73,7 +75,7 @@ bayt-mustaqbal-app/
 | Section | Isi | Sumber Data |
 |---------|-----|-------------|
 | Dashboard | Sapaan + hero glass (pengeluaran & anggaran) + aksi cepat + 4 KPI + chart (tren/bar/donut) + 2 panel ringkasan | `mockData` di `App.jsx` |
-| Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; grid `ScheduleItem` (ikon kategori, badge) + chip filter sinkron | `mockData` di `App.jsx` |
+| Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; toggle **Daftar | Kalender** (default Daftar); mode Kalender = `Calendar.jsx` (Minggu/Bulan/Tahun, warna per member + legenda, daftar agenda hari terpilih, tugas jatuh tempo); grid `ScheduleItem` + chip filter sinkron | `mockData` di `App.jsx` |
 | Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → filter; grid `ExpenseCard` (ikon kategori + nominal IDR) + chip sinkron + total terfilter di header | `mockData` di `App.jsx` |
 | Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
 | Tugas | `TaskList` toggle selesai + badge prioritas (Tinggi/Sedang/Rendah) | `mockData` |

@@ -5,10 +5,12 @@
 
 export const AGENDA_CATEGORIES = [
   { id: 'semua', label: 'Semua Agenda', icon: 'calendar' },
-  { id: 'keluarga', label: 'Agenda Keluarga', icon: 'heart' },
-  { id: 'anak', label: 'Agenda Anak', icon: 'child' },
-  { id: 'service', label: 'Service Motor', icon: 'wrench' },
-  { id: 'lainnya', label: 'Kegiatan Lainnya', icon: 'sparkles' },
+  { id: 'keluarga', label: 'Keluarga', icon: 'heart' },
+  { id: 'anak', label: 'Anak', icon: 'child' },
+  { id: 'ibadah', label: 'Ibadah', icon: 'sparkles' },
+  { id: 'kesehatan', label: 'Kesehatan', icon: 'activity' },
+  { id: 'rumahtangga', label: 'Rumah Tangga', icon: 'wrench' },
+  { id: 'kendaraan', label: 'Kendaraan', icon: 'car' },
 ];
 
 export const FINANCE_CATEGORIES = [

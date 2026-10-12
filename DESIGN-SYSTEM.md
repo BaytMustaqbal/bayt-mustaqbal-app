@@ -156,7 +156,7 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 
 ### Primary Screens (5 section, in-file switch, tanpa router)
 1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, daftar terbaru
-2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Service/Lainnya, badge jumlah) + chip filter sinkron di dalam section; grid `ScheduleItem`
+2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Ibadah/Kesehatan/Rumah Tangga/Kendaraan, badge jumlah) + chip filter sinkron di dalam section; toggle **Daftar | Kalender** (default Daftar); mode Kalender = kalender gabungan anggota (`Calendar.jsx`): view **Minggu/Bulan/Tahun** (default Bulan), **warna per member + legenda** (Rezki YT cyan, Hilda AK violet, RAGASUCI emerald, RAJABRANA amber, Keluarga sky), dot member di sel + bar bawah = ada tugas jatuh tempo, klik tanggal → daftar agenda hari itu, nav prev/next + "Hari Ini", filter kategori ikut memfilter kalender; grid `ScheduleItem` untuk mode Daftar
 3. **Keuangan**: dropdown kategori di tab Keuangan (Semua/Belanja/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah) + chip sinkron; grid `ExpenseCard` berikon kategori + total terfilter di header
 4. **Keluarga**: dropdown bagian di tab Keluarga (Semua/Anggota/Kesehatan/Pendidikan Anak/Kontak & Darurat, badge jumlah) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk (grid `FamilyMemberCard` + daftar `FamilyList` tiap sub-bagian)
 5. **Tugas**: `TaskList` dengan toggle selesai
@@ -171,7 +171,8 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 - **Thumb zone**: aksi utama di bottom tab bar
 - **Dropdown kategori (Agenda, Keuangan & Keluarga)** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; hanya satu dropdown terbuka pada satu waktu; `prefers-reduced-motion` → muncul langsung tanpa animasi
 - **Chip filter** (di section Agenda, Keuangan & Keluarga): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`
-- **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka → **0 overflow, 0 elemen < 44px**
+- **Kalender keluarga** (mode Kalender di tab Agenda): sel hari = button `aria-pressed` + `aria-label` deskriptif (tanggal + judul item + anggota + "ada tugas"); grid `role="grid"` + baris `role="row"` + header kolom `role="columnheader"`; tombol skala view (Minggu/Bulan/Tahun) `aria-pressed`; nav prev/next `aria-label` "Periode sebelumnya/berikutnya"; warna member hanya pelengkap — nama anggota selalu tampil (dot + teks, bukan warna saja); grid full-bleed `-mx-4 md:-mx-0` di layar kecil supaya sel ≥ 44px (320px → 7×44 + 6 garis = 314 ≤ 320)
+- **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka → **0 overflow, 0 elemen < 44px** (termasuk sel kalender di 320px)
 - **Feedback**: hover border/glow, `active:scale` pada CTA; `prefers-reduced-motion` mematikan animasi
 
 ## 8. PWA-Specific Implementation
