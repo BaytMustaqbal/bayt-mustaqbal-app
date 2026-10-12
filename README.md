@@ -1,244 +1,92 @@
-# Bayt Mustaqbal - Cloudflare Stack
+# Bayt Mustaqbal — Manajemen Keluarga
 
-Aplikasi keluarga (keuangan, absensi, kalender, service) dibangun dengan:
-- **Frontend**: React + TypeScript + Vite → Cloudflare Pages
-- **Backend**: Hono + TypeScript → Cloudflare Workers
-- **Database**: D1 (SQLite) → Cloudflare D1
-- **Auth**: JWT (HttpOnly Cookie) + bcryptjs
-- **Notifikasi**: Fonnte WhatsApp API
-- **Deploy**: GitHub Actions
+Web app keluarga untuk **2 pengguna**: Kakang (admin) + Istri.
+Isi sekarang: 5 section — Dashboard, Agenda, Keuangan, Keluarga, Tugas.
 
----
-
-## Struktur Project
-
-```
-bayt-mustaqbal-cf/
-├── worker/                    # Cloudflare Worker (Backend)
-│   ├── src/
-│   │   ├── index.ts          # Entry point + routes
-│   │   ├── cron.ts           # Scheduled jobs (daily digest, reminders, monthly generate)
-│   │   ├── routes/           # API routes per modul
-│   │   │   ├── auth.ts       # Login, register, users
-│   │   │   ├── transactions.ts
-│   │   │   ├── bills.ts
-│   │   │   ├── categories.ts
-│   │   │   └── settings.ts
-│   │   ├── middleware/       # Auth, validation
-│   │   ├── utils/            # Auth, DB helpers
-│   │   └── types/            # TypeScript types
-│   ├── migrations/           # D1 schema (0001_schema, 0002_seed)
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── wrangler.toml
-├── frontend/                  # React + Vite (Frontend)
-│   ├── src/
-│   │   ├── App.tsx           # Routing + auth init
-│   │   ├── main.tsx          # Entry point
-│   │   ├── api/client.ts     # API client (fetch wrapper)
-│   │   ├── stores/authStore.ts # Zustand auth state
-│   │   ├── components/       # Layout, ProtectedRoute, AdminRoute
-│   │   ├── pages/            # Dashboard, Login, Transactions, etc.
-│   │   ├── stores/           # Zustand stores
-│   │   ├── utils/helpers.ts  # Formatters, helpers
-│   │   └── styles.css        # Design system (dark mode ready)
-│   ├── public/manifest.json  # PWA manifest
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tsconfig.json
-├── .github/workflows/deploy.yml # CI/CD
-└── README.md
-```
+> **Status — 12 Okt 2026:** **frontend sudah jalan, backend belum dibuat.**
+> Semua angka masih **data dummy** (`const data = mockData` di `App.jsx`) — belum ada `fetch` ke mana pun.
+>
+> Peta dokumen (jangan tertukar):
+> - **`AGENT.md`** — aturan kerja + kondisi nyata proyek → baca ini dulu
+> - **`DESIGN-SYSTEM.md`** — token desain, navigasi, target sentuh
+> - **`PROJECT_SUMMARY.md`** — **rencana** backend Cloudflare Worker + D1 (belum dibuat)
+> - **`docs/`** — **riwayat** rencana FAMILY OS versi Google Sheets/Apps Script; stack-nya sudah gugur, keputusan produknya tetap berlaku
 
 ---
 
-## Quick Start (Local Development)
+## Menjalankan
 
-### Prerequisites
-- Node.js 20+
-- Cloudflare account (free tier OK)
-- Wrangler CLI: `npm install -g wrangler`
-
-### 1. Clone & Install
 ```bash
-cd bayt-mustaqbal-cf
-cd worker && npm install
-cd ../frontend && npm install
+npm install
+npm run dev        # http://localhost:3000 (buka browser otomatis)
 ```
 
-### 2. Setup D1 Database (Local)
-```bash
-cd worker
-wrangler d1 create bayt-mustaqbal-db
-# Copy database_id to wrangler.toml
-npm run migrate
-npm run migrate:create seed_data  # optional: create seed migration
+| Perintah | Fungsi |
+|---|---|
+| `npm run dev` | Dev server Vite (port 3000) |
+| `npm run build` | Build produksi → `dist/` |
+| `npm run icons` | Buat ulang 12 ikon PWA di `public/icons/` |
+
+Tidak ada langkah build tambahan: Tailwind diproses lewat PostCSS.
+
+---
+
+## Struktur
+
+```
+bayt-mustaqbal-app/
+├── index.html                  # Shell: meta PWA, banner install, skip link, toast jaringan
+├── main.jsx                    # Mount React + registrasi service worker (produksi saja)
+├── App.jsx                     # Root: state 5 section + mockData + formatter rupiah
+├── App.css                     # Token & utilitas dasar (entry Tailwind)
+├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/...), TaskList,
+│                               # FamilyCard, FamilyMemberCard, ScheduleItem, Icon
+├── public/                     # Disalin apa adanya ke dist/ — WAJIB ditaruh di sini
+│   ├── manifest.json           # 8 ikon "any" + 2 "maskable"
+│   ├── service-worker.js       # cache-first untuk aset, network-first untuk /api/*
+│   └── icons/                  # 12 berkas: icon-72…512, maskable-192/512, apple-touch-icon, favicon.ico
+├── scripts/generate-icons.mjs  # Generator ikon tanpa dependensi (dipanggil npm run icons)
+├── docs/                       # Riwayat: spesifikasi FAMILY OS versi Sheets/Apps Script
+├── AGENT.md                    # Aturan wajib untuk agent + kondisi nyata
+├── DESIGN-SYSTEM.md            # Warna, tipografi, navigasi, target sentuh
+└── PROJECT_SUMMARY.md          # Rencana backend Worker + D1 (belum dibuat)
 ```
 
-### 3. Set Secrets (Local)
-```bash
-cd worker
-wrangler secret put JWT_SECRET
-# Enter: your-super-secret-jwt-key-min-32-chars-random
-
-wrangler secret put FONNTE_TOKEN
-# Enter: your-fonnte-api-token
-
-wrangler secret put FONNTE_TARGET
-# Enter: 628xxxxxxxxxx@g.us
-
-wrangler secret put FONNTE_DEVICE
-# Enter: default
-```
-
-### 4. Run Dev Servers
-```bash
-# Terminal 1: Worker
-cd worker && npm run dev
-
-# Terminal 2: Frontend
-cd frontend && npm run dev
-```
-
-Frontend: `http://localhost:5173` (proxies `/api/*` to Worker)
-Worker: `http://localhost:8787`
+> **Penting:** Vite hanya menyalin folder `public/` ke `dist/`. Kalau `manifest.json`, `service-worker.js`, atau `icons/` ditaruh di root, semuanya akan 404 di produksi → install PWA dan mode offline mati.
 
 ---
 
-## Deploy ke Cloudflare
+## Yang sudah jalan (frontend)
 
-### 1. Setup Cloudflare Resources
-```bash
-# D1 Database (Production)
-wrangler d1 create bayt-mustaqbal-db --remote
-# Copy database_id ke wrangler.toml
+- 5 section dalam satu halaman, **tanpa router** — perpindahan section lewat state
+- **Mobile-first:** bottom tab bar 56 px (< 1024 px) dengan safe-area iOS, header sticky, desktop nav muncul di `lg`
+- **PWA:** manifest + service worker + 12 ikon; service worker hanya didaftarkan di produksi
+- **Banner install** muncul setelah event `beforeinstallprompt`; toast status jaringan hanya saat online/offline berubah
+- **Flat design:** teal `#0D9488` / `#0F766E`, aksen oranye `#EA580C`, Plus Jakarta Sans, tanpa shadow & gradasi
+- **Terverifikasi** di 320 / 360 / 390 / 414 / 768 px: 0 overflow horizontal, 0 elemen interaktif di bawah 44 px
 
-# KV Namespace (Optional - for sessions/cache)
-wrangler kv namespace create BAYT_KV --remote
-wrangler kv namespace create BAYT_KV --preview --remote
-# Copy IDs ke wrangler.toml
-```
+## Belum ada
 
-### 2. Set Production Secrets
-```bash
-wrangler secret put JWT_SECRET --remote
-wrangler secret put FONNTE_TOKEN --remote
-wrangler secret put FONNTE_TARGET --remote
-wrangler secret put FONNTE_DEVICE --remote
-```
+| Item | Catatan |
+|---|---|
+| Backend & database | Rencana: Cloudflare Worker + D1 → lihat `PROJECT_SUMMARY.md` |
+| Login & role | Kakang = admin, Istri = user (keputusan D1) |
+| Notifikasi WA | Rencana via Fonnte (keputusan D15) |
+| Data nyata | Sekarang dummy; `fetch` belum ditambahkan sama sekali |
 
-### 3. Apply Migrations (Remote)
-```bash
-cd worker
-npm run migrate:remote
-```
-
-### 3. GitHub Actions (Auto Deploy)
-1. Push ke GitHub
-2. Set GitHub Secrets:
-   - `CF_ACCOUNT_ID` (dari Cloudflare dashboard)
-   - `CF_API_TOKEN` (Create di Cloudflare → My Profile → API Tokens → Custom token dengan permission: Account:D1, Workers, Pages, KV)
-3. Push ke `main` branch → Auto deploy via GitHub Actions
-
-### 4. Custom Domain (Cloudflare Pages)
-1. Cloudflare Pages → Project `bayt-mustaqbal` → Custom domains
-2. Add `app.baytmustaqbal.my.id` (subdomain recommended)
-3. DNS: CNAME `app` → `bayt-mustaqbal.pages.dev` (Proxy ON)
+Modul berikutnya dibangun **setelah** modul sebelumnya dipakai ± 2 minggu (prinsip di `docs/03-ROADMAP.md`) — supaya yang dibangun sesuai kebutuhan nyata, bukan asumsi.
 
 ---
 
-## API Endpoints
+## Deploy (nanti)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/auth/login` | Public | Login email/password |
-| GET | `/api/auth/me` | Bearer | Current user |
-| GET | `/api/txn/list` | Bearer | List transaksi (pagination, filter) |
-| POST | `/api/txn/create` | Bearer | Buat transaksi |
-| PUT | `/api/txn/update` | Bearer | Update transaksi |
-| DELETE | `/api/txn/delete` | Bearer | Soft delete transaksi |
-| GET | `/api/bill/list` | Bearer | List tagihan (grouped by status) |
-| POST | `/api/bill/create` | Bearer | Buat tagihan |
-| POST | `/api/bill/pay` | Bearer | Bayar tagihan (1 operasi) |
-| POST | `/api/bill/generate` | Bearer | Generate dari recurring |
-| GET | `/api/categories/list` | Admin | List kategori |
-| POST | `/api/categories/create` | Admin | Buat kategori |
-| GET | `/api/settings/get` | Admin | Semua settings |
-| POST | `/api/settings/set` | Admin | Set setting (key-value) |
-| POST | `/api/settings/test-wa` | Admin | Test kirim WA |
+- **Frontend statis → Cloudflare Pages.** Build command `npm run build`, output `dist/`.
+- **Backend → Cloudflare Worker + D1** (belum dibuat). Langkah `wrangler` ada di `PROJECT_SUMMARY.md`.
+- Domain sasaran: `app.baytmustaqbal.my.id`.
+- `.github/workflows/deploy.yml` sudah dihapus karena masih menunjuk `frontend/` + `worker/` yang tidak ada; akan ditulis ulang saat setup deploy.
 
 ---
 
-## Cron Jobs (Scheduled)
+## Lisensi
 
-| Cron | Waktu | Handler |
-|------|-------|---------|
-| `0 7 * * *` | 07:00 WIB | Daily digest WA |
-| `0 * * * *` | Setiap jam | Cek reminder tagihan |
-| `30 0 1 * *` | Tgl 1 00:30 | Generate tagihan bulanan |
-
----
-
-## Fonnte Setup (WhatsApp Notifikasi)
-
-1. Daftar `fonnte.com` → Dapatkan **API Token**
-2. Buat grup WA keluarga → Tambah nomor Fonnte sebagai **Admin**
-3. Buka WhatsApp Web → Grup → URL: `https://web.whatsapp.com/?group=628xxx@g.us`
-4. Copy Group ID (`628xxxxxxxxxx@g.us`)
-5. Set di Settings Admin:
-   - `fonnte_token`: API Token
-   - `fonnte_target`: Group ID
-   - `fonnte_device`: `default`
-   - `notifikasi_channel`: `WA`
-   - `jam_notifikasi`: `07:00`
-
----
-
-## Migrasi dari GAS (Google Apps Script)
-
-Jika sudah punya data di GAS/Sheets:
-
-1. Export dari Sheets ke CSV
-2. Transform CSV → SQL INSERT (gunakan script Python/Node)
-3. Jalankan di D1: `wrangler d1 execute bayt-mustaqbal-db --remote --file=import.sql`
-
-Atau gunakan API `/api/txn/bulk_create` untuk batch insert.
-
----
-
-## Fitur Utama
-
-| Modul | Fitur |
-|-------|-------|
-| **Dashboard** | Saldo per rekening, budget vs realisasi, tagihan terdekat/terlambat, agenda 7 hari, absensi hari ini, sisa cuti, service due |
-| **Keuangan** | Input cepat grid kategori, filter + pagination, conflict detection (rev), soft delete |
-| **Review** | Budget vs realisasi (horizontal bar), komposisi kategori (doughnut), trend 12 bulan, top 5, prediksi akhir bulan |
-| **Tagihan** | Grouped by status, cicilan card, bayar 1 klik (txn + bill), generate dari recurring, iuran sampah dengan reminder jam |
-| **Absensi** | Kalender bulanan grid chip status, quick input Hadir/Izin/Cuti/Sakit, quota cuti/izin progress bar |
-| **Kalender** | Month view + Agenda view, filter kategori, toggle selesai, biaya rencana → suggest transaksi |
-| **Service** | Aset (motor/rumah/elektronik), interval hari/km, riwayat + biaya kumulatif, due summary (30 hari/500km) |
-| **Catatan** | Grid card, pin, search, kategori (ide/resep/referensi) |
-| **Notifikasi WA** | Daily digest 07:00, reminder jam spesifik per tagihan, test WA dari settings |
-| **Settings (Admin)** | CRUD kategori (drag-reorder ready), CRUD user (role), Fonnte config, trigger status, regenerate bills |
-
----
-
-## Tech Stack Detail
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18, TypeScript, Vite, React Router, Zustand, Chart.js |
-| Backend | Hono, TypeScript, Cloudflare Workers |
-| Database | D1 (SQLite), proper FK, indexes |
-| Auth | JWT (HS256, 30d expiry), bcryptjs (cost 12), HttpOnly Cookie ready |
-| Validation | Zod schemas + middleware |
-| Styling | Custom CSS (CSS Variables, Dark Mode ready, Mobile-first) |
-| Charts | Chart.js + react-chartjs-2 |
-| Deploy | GitHub Actions → Cloudflare Pages + Workers |
-| Notifications | Fonnte WhatsApp API |
-
----
-
-## License
-
-MIT License - Feel free to use for personal/family projects.
+MIT — untuk keperluan pribadi/keluarga.

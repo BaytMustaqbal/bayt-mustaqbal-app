@@ -51,14 +51,14 @@ bayt-mustaqbal-app/
 │   └── icons/              # 12 berkas ikon (lihat bagian Ikon PWA)
 ├── scripts/
 │   └── generate-icons.mjs  # Generator ikon PWA (`npm run icons`) — tanpa dependensi
-├── README.md               # Dokumentasi root
-├── PROJECT_SUMMARY.md      # Ringkasan proyek
+├── README.md               # Pintu masuk: cara menjalankan, struktur, apa yang sudah/belum ada
+├── PROJECT_SUMMARY.md      # Rencana backend Worker + D1 (belum dibuat)
 └── AGENT.md                # File ini
 ```
 
-> **Status git (penting):** repo ini sudah punya **1 commit** — `15f51a2 feat: initial commit - Bayt Mustaqbal complete project`. Isi commit itu adalah proyek **versi lama**: `frontend/` (React + TypeScript), `worker/` (Cloudflare Worker + D1 + `migrations/0001_initial_schema.sql`), `docs/`, dan `.github/workflows/deploy.yml`.
-> Saat ini semua file itu **sudah dihapus dari working tree tetapi belum di-commit** (status ` D`), sedangkan app yang berjalan sekarang (React root + Tailwind PostCSS) **belum pernah di-commit** (`??`).
-> Jadi: kode Worker + migrasi D1 lama masih bisa dipulihkan lewat git (`git show HEAD:worker/...`) kalau nanti dibutuhkan untuk backend. Keputusan menyimpan atau menghapus permanen ada di Kakang — belum ada staging/commit yang dilakukan.
+> **Status git:** `15f51a2` = proyek **versi lama** (`frontend/` TypeScript, `worker/` Worker + D1 + migrasi, `docs/`, `.github/workflows/deploy.yml`). Commit setelahnya = **app sekarang** (React + Vite + Tailwind di root, PWA, 12 ikon, `.gitignore`) **beserta penghapusan scaffold lama**, lalu commit dokumen (`docs/` dipulihkan sebagai riwayat + catatan status).
+> Kode Worker + migrasi D1 lama masih bisa dibaca kapan pun: `git show 15f51a2:worker/...` (lihat `PROJECT_SUMMARY.md`).
+> `.gitignore` mengecualikan `node_modules/` dan `dist/`. **Jangan `git push` tanpa izin Kakang.**
 
 ---
 
@@ -166,16 +166,18 @@ npx vite preview
 - Notifikasi: Fonnte WhatsApp API
 
 **Frontend (evolusi):**
-- TypeScript, React Router (hash), Zustand persist, Admin/User role
-- 11 pages, dark mode, mobile-first
+- Login + role admin/user, data nyata (bukan `mockData`), form input & validasi
+- Tetap React 18 + Vite + Tailwind, mobile-first. **Tanpa TypeScript & tanpa router** — 5 section yang sudah ada diperdalam, bukan ditambah jadi 11 halaman
 
 **Deploy:**
-- GitHub Actions → Cloudflare Pages (frontend) + Workers (backend)
+- Cloudflare Pages (frontend statis: `npm run build` → `dist/`) + Worker (backend)
+- `.github/workflows/deploy.yml` **sudah dihapus** (menunjuk `frontend/` + `worker/` yang tidak ada) — tulis ulang saat setup deploy
 - Custom domain: `app.baytmustaqbal.my.id`
 
 > **Peta dokumen (penting) — jangan tertukar:**
 > - `AGENT.md` + `DESIGN-SYSTEM.md` → kondisi **nyata** app sekarang (React + Vite + Tailwind PWA, data dummy)
-> - `README.md` + `PROJECT_SUMMARY.md` → rencana stack **Cloudflare Pages + Worker + D1** (tata letak folder di dalamnya masih menyebut `frontend/` + `worker/` yang **sudah tidak ada** — app kini di root repo)
+> - `README.md` → pintu masuk: cara menjalankan (`npm run dev`), struktur berkas, apa yang sudah & belum ada
+> - `PROJECT_SUMMARY.md` → **rencana** backend Cloudflare Worker + D1 (15 tabel, endpoint, cron, secret, D1–D16) — **belum dibuat**
 > - `docs/01–04` + `docs/SETUP-FONNTE.md` → **riwayat** rencana FAMILY OS versi **Google Sheets + Apps Script**. Stack-nya sudah digantikan (D4/D7/D8 gugur), tetapi **keputusan produknya tetap berlaku** (D1 admin/user, D5, D6, D9, D11, D13, D15, D16). Tiap berkas sudah diberi catatan status di bagian atas.
 >
 > Verifikasi dulu apakah isinya masih sesuai sebelum implementasi.
