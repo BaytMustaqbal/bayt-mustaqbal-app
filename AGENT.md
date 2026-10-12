@@ -173,7 +173,12 @@ npx vite preview
 - GitHub Actions → Cloudflare Pages (frontend) + Workers (backend)
 - Custom domain: `app.baytmustaqbal.my.id`
 
-> Detail spesifikasi lengkap (15 tabel, kontrak API, keputusan teknis) ada di `PROJECT_SUMMARY.md` / `README.md` — **verifikasi dulu apakah sesuai sebelum implementasi**.
+> **Peta dokumen (penting) — jangan tertukar:**
+> - `AGENT.md` + `DESIGN-SYSTEM.md` → kondisi **nyata** app sekarang (React + Vite + Tailwind PWA, data dummy)
+> - `README.md` + `PROJECT_SUMMARY.md` → rencana stack **Cloudflare Pages + Worker + D1** (tata letak folder di dalamnya masih menyebut `frontend/` + `worker/` yang **sudah tidak ada** — app kini di root repo)
+> - `docs/01–04` + `docs/SETUP-FONNTE.md` → **riwayat** rencana FAMILY OS versi **Google Sheets + Apps Script**. Stack-nya sudah digantikan (D4/D7/D8 gugur), tetapi **keputusan produknya tetap berlaku** (D1 admin/user, D5, D6, D9, D11, D13, D15, D16). Tiap berkas sudah diberi catatan status di bagian atas.
+>
+> Verifikasi dulu apakah isinya masih sesuai sebelum implementasi.
 
 ---
 
@@ -196,7 +201,7 @@ npx vite preview
 | Blank white di browser | Cache lama / file:// | `npm run dev`, buka `http://localhost:3000`, **Hard Reload (Ctrl+F5)** |
 | CORS error di console | Buka via `file://` | Harus lewat `http://localhost`, bukan klik langsung `index.html` |
 | `Port 3000 in use` | Server lain | Vite otomatis ke 3001, atau matikan proses lama |
-| 404 icon | Folder `icons/` kosong | Buat PNG + favicon |
+| Ikon 404 / manifest & SW tidak ikut build | Aset statis ditaruh di root project, bukan di `public/` | Taruh `manifest.json`, `service-worker.js`, `icons/` di `public/`; buat ulang ikon dengan `npm run icons` (lihat bagian **Ikon PWA**) |
 | Kelas Tailwind tidak berefek | File tak tercakup `content` | Tambahkan path di `tailwind.config.js` → `content` |
 
 ---
