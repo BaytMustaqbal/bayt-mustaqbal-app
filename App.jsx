@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon } from './components/Icon';
 import { Navigation } from './components/Navigation';
 import { ScheduleItem } from './components/ScheduleItem';
@@ -10,6 +10,7 @@ import { WelcomeGate } from './components/WelcomeGate';
 import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList } from './components/ui';
 import { FamilyCalendar } from './components/Calendar';
 import { FormSheet } from './components/FormSheet';
+import { Toast } from './components/Toast';
 import {
   AGENDA_CATEGORIES,
   FINANCE_CATEGORIES,
@@ -221,8 +222,8 @@ const SHEET_CONFIG = {
       { key: 'title', label: 'Judul agenda', type: 'text', required: true, placeholder: 'contoh: Piknik Keluarga' },
       { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
       { key: 'time', label: 'Jam', type: 'time', defaultValue: '08:00' },
-      { key: 'category', label: 'Kategori', type: 'select', required: true, options: catOptions(AGENDA_CATEGORIES) },
-      { key: 'member', label: 'Anggota', type: 'select', required: true, options: memberOptions(MEMBER_ALL) },
+      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(AGENDA_CATEGORIES)[0].value, options: catOptions(AGENDA_CATEGORIES) },
+      { key: 'member', label: 'Anggota', type: 'select', required: true, defaultValue: MEMBER_ALL[0], options: memberOptions(MEMBER_ALL) },
     ],
   },
   expenses: {
@@ -232,7 +233,7 @@ const SHEET_CONFIG = {
       { key: 'description', label: 'Deskripsi', type: 'text', required: true, placeholder: 'contoh: Bahan masakan mingguan' },
       { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 150000' },
       { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
-      { key: 'category', label: 'Kategori', type: 'select', required: true, options: catOptions(FINANCE_CATEGORIES) },
+      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(FINANCE_CATEGORIES)[0].value, options: catOptions(FINANCE_CATEGORIES) },
     ],
   },
   tasks: {
@@ -253,7 +254,7 @@ const SHEET_CONFIG = {
           { value: 'low', label: 'Rendah' },
         ],
       },
-      { key: 'assignedTo', label: 'Penanggung jawab', type: 'select', required: true, options: memberOptions(MEMBER_PEOPLE) },
+      { key: 'assignedTo', label: 'Penanggung jawab', type: 'select', required: true, defaultValue: MEMBER_PEOPLE[0], options: memberOptions(MEMBER_PEOPLE) },
     ],
   },
   notes: {
@@ -287,6 +288,30 @@ const SHEET_CONFIG = {
       { key: 'meta', label: 'Info singkat (opsional)', type: 'text', placeholder: 'contoh: Puskesmas · 0812-3456-7890' },
     ],
   },
+};
+
+// ---- Pemetaan section → kunci array data & label Indonesia ----------------
+// Dipakai seragam oleh tambah / ubah / hapus agar App tidak penuh if-else.
+const SECTION_KEY = { agenda: 'schedule', expenses: 'expenses', tasks: 'tasks', notes: 'notes' };
+const SECTION_LABEL = { agenda: 'Agenda', expenses: 'Pengeluaran', tasks: 'Tugas', notes: 'Catatan', family: 'Keluarga' };
+const sectionItemLabel = (item) => item.title || item.description || item.name || 'Item';
+
+// Nilai awal form ubah: bentuknya persis seperti `values` yang dikirim FormSheet
+// (angka dijadikan string agar cocok dengan <input type="number">).
+const toFormValues = (section, item) => {
+  if (section === 'agenda') {
+    return { title: item.title, date: item.date, time: item.time, category: item.category, member: item.member };
+  }
+  if (section === 'expenses') {
+    return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category };
+  }
+  if (section === 'tasks') {
+    return { title: item.title, dueDate: item.dueDate, priority: item.priority, assignedTo: item.assignedTo };
+  }
+  if (section === 'notes') {
+    return { title: item.title, body: item.body || '', category: item.category, pinned: !!item.pinned };
+  }
+  return {};
 };
 
 // Kunci localStorage untuk snapshot data (seed awal = mockData).
@@ -373,15 +398,22 @@ export default function App() {
   const [taskFilter, setTaskFilter] = useState('semua');
   // Filter catatan: semua | penting (disematkan) | kategori
   const [noteFilter, setNoteFilter] = useState('semua');
+  // Pencarian catatan (judul + isi) — hanya berlaku di tab Catatan
+  const [noteQuery, setNoteQuery] = useState('');
+  // Notifikasi ringkas + tombol "Urungkan" (undo hapus)
+  const [toast, setToast] = useState(null);
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
   // Seed = mockData; setiap perubahan disimpan ke localStorage (snapshot),
-  // jadi interaksi (tambah/toggle) tidak hilang saat reload.
+  // jadi interaksi (tambah/ubah/hapus/toggle) tidak hilang saat reload.
   const [data, setData] = useState(loadInitialData);
   const currentUser = data.users.find((u) => u.id === activeUserId) || data.users[0];
 
-  const saveData = (next) => {
-    setData(next);
+  // dataRef menjaga snapshot terbaru untuk aksi yang berjalan belakangan
+  // (mis. tombol "Urungkan" dari toast) tanpa closure basi.
+  const dataRef = useRef(data);
+
+  const persist = (next) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch (e) {
@@ -389,11 +421,21 @@ export default function App() {
     }
   };
 
+  const saveData = (next) => {
+    dataRef.current = next;
+    setData(next);
+    persist(next);
+  };
+
+  // Toast: tambah/ubah = konfirmasi singkat; hapus = tawarkan "Urungkan".
+  const pushToast = (t) => setToast({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...t });
+  const dismissToast = (id) => setToast((prev) => (prev && prev.id === id ? null : prev));
+
   // Toggle selesai tugas → disimpan (tidak hilang saat reload)
   const toggleTask = (taskId) => {
     saveData({
-      ...data,
-      tasks: data.tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)),
+      ...dataRef.current,
+      tasks: dataRef.current.tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)),
     });
   };
 
@@ -404,42 +446,44 @@ export default function App() {
     } catch (e) {
       /* abaikan */
     }
+    dataRef.current = mockData;
     setData(mockData);
   };
 
   // Tambah item sesuai section (dipanggil FormSheet)
   const addItem = (section, values) => {
     const id = Date.now();
-    let next = data;
+    const current = dataRef.current;
+    let next = current;
     if (section === 'agenda') {
       next = {
-        ...data,
+        ...current,
         schedule: [
-          ...data.schedule,
+          ...current.schedule,
           { id, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member },
         ],
       };
     } else if (section === 'expenses') {
       next = {
-        ...data,
+        ...current,
         expenses: [
-          ...data.expenses,
+          ...current.expenses,
           { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category },
         ],
       };
     } else if (section === 'tasks') {
       next = {
-        ...data,
+        ...current,
         tasks: [
-          ...data.tasks,
+          ...current.tasks,
           { id, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo, completed: false },
         ],
       };
     } else if (section === 'notes') {
       next = {
-        ...data,
+        ...current,
         notes: [
-          ...data.notes,
+          ...current.notes,
           {
             id,
             title: values.title,
@@ -460,24 +504,92 @@ export default function App() {
             .slice(0, 2)
             .join('')
             .toUpperCase() || '?';
-        next = { ...data, family: [...data.family, { id, name: values.title, role: 'Anggota', initials, status: 'active' }] };
+        next = { ...current, family: [...current.family, { id, name: values.title, role: 'Anggota', initials, status: 'active' }] };
       } else {
         const entry = { id, title: values.title, meta: values.meta || '' };
         if (values.bagian === 'kesehatan') {
-          next = { ...data, familyHealth: [...data.familyHealth, { ...entry, badge: 'Catatan', tone: 'gray' }] };
+          next = { ...current, familyHealth: [...current.familyHealth, { ...entry, badge: 'Catatan', tone: 'gray' }] };
         } else if (values.bagian === 'pendidikan') {
-          next = { ...data, familyEducation: [...data.familyEducation, { ...entry, badge: 'Catatan', tone: 'gray' }] };
+          next = { ...current, familyEducation: [...current.familyEducation, { ...entry, badge: 'Catatan', tone: 'gray' }] };
         } else {
-          next = { ...data, familyContacts: [...data.familyContacts, entry] };
+          next = { ...current, familyContacts: [...current.familyContacts, entry] };
         }
       }
     }
     saveData(next);
+    pushToast({ message: `${SECTION_LABEL[section]} ditambahkan`, duration: 2500 });
   };
 
-  // Bottom sheet "Tambah" — null = tertutup, selain itu = kunci section
+  // Ubah item yang sudah ada (mode edit FormSheet) — `completed`/`author` tetap.
+  const updateItem = (section, id, values) => {
+    const key = SECTION_KEY[section];
+    const current = dataRef.current;
+    const list = current[key] || [];
+    const applyEdit = (item) => {
+      if (section === 'agenda') {
+        return { ...item, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
+      }
+      if (section === 'expenses') {
+        return { ...item, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category };
+      }
+      if (section === 'tasks') {
+        return { ...item, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo };
+      }
+      if (section === 'notes') {
+        return { ...item, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned, updatedAt: todayKey() };
+      }
+      return item;
+    };
+    saveData({ ...current, [key]: list.map((it) => (it.id === id ? applyEdit(it) : it)) });
+    pushToast({ message: `${SECTION_LABEL[section]} diperbarui`, duration: 2500 });
+  };
+
+  // Hapus item + tawarkan "Urungkan" (dipulihkan ke posisi semula).
+  const deleteItem = (section, item) => {
+    const key = SECTION_KEY[section];
+    const list = dataRef.current[key] || [];
+    const index = list.findIndex((it) => it.id === item.id);
+    if (index < 0) return;
+    saveData({ ...dataRef.current, [key]: list.filter((it) => it.id !== item.id) });
+    pushToast({
+      message: `"${sectionItemLabel(item)}" dihapus`,
+      actionLabel: 'Urungkan',
+      duration: 6000,
+      onAction: () => {
+        const restored = [...(dataRef.current[key] || [])];
+        restored.splice(Math.min(index, restored.length), 0, item);
+        saveData({ ...dataRef.current, [key]: restored });
+      },
+    });
+  };
+
+  // Bottom sheet "Tambah/Ubah" — null = tertutup, selain itu = kunci section.
   const [sheetOpen, setSheetOpen] = useState(null);
-  const closeSheet = () => setSheetOpen(null);
+  // Mode ubah: { section, id } item yang sedang diedit + nilai awal formnya.
+  const [editing, setEditing] = useState(null);
+  const [sheetInitial, setSheetInitial] = useState(null);
+
+  const openAdd = (section) => {
+    setEditing(null);
+    setSheetInitial(null);
+    setSheetOpen(section);
+  };
+  const openEdit = (section, item) => {
+    setEditing({ section, id: item.id });
+    setSheetInitial(toFormValues(section, item));
+    setSheetOpen(section);
+  };
+  const closeSheet = () => {
+    setSheetOpen(null);
+    setEditing(null);
+    setSheetInitial(null);
+  };
+
+  // Kirim dari FormSheet: mode ubah → perbarui item, mode tambah → tambah baru.
+  const submitSheet = (section, values) => {
+    if (editing && editing.section === section) updateItem(section, editing.id, values);
+    else addItem(section, values);
+  };
 
   // Pantau status online/offline
   useEffect(() => {
@@ -512,12 +624,18 @@ export default function App() {
     return data.tasks.filter((t) => t.priority === taskFilter);
   }, [data, taskFilter]);
 
-  // Catatan sesuai filter aktif (semua | penting | kategori).
+  // Catatan sesuai filter aktif (semua | penting | kategori) + pencarian.
   const filteredNotes = useMemo(() => {
-    if (noteFilter === 'semua') return data.notes;
-    if (noteFilter === 'penting') return data.notes.filter((n) => n.pinned);
-    return data.notes.filter((n) => n.category === noteFilter);
-  }, [data, noteFilter]);
+    const base =
+      noteFilter === 'semua'
+        ? data.notes
+        : noteFilter === 'penting'
+          ? data.notes.filter((n) => n.pinned)
+          : data.notes.filter((n) => n.category === noteFilter);
+    const q = noteQuery.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((n) => `${n.title} ${n.body || ''}`.toLowerCase().includes(q));
+  }, [data, noteFilter, noteQuery]);
 
   const handleEnter = (userId) => {
     storeUser(userId);
@@ -570,7 +688,7 @@ export default function App() {
                       title: taskMeta.label,
                       subtitle: `${filteredTasks.length} dari ${data.tasks.length} tugas`,
                       actionLabel: 'Tambah',
-                      onAction: () => setSheetOpen('tasks'),
+                      onAction: () => openAdd('tasks'),
                     };
                   })()
                 : {
@@ -578,7 +696,7 @@ export default function App() {
                     title: activeMeta.label,
                     subtitle: `${filtered.length} dari ${data.schedule.length} jadwal`,
                     actionLabel: 'Tambah',
-                    onAction: () => setSheetOpen('agenda'),
+                    onAction: () => openAdd('agenda'),
                   })}
             />
 
@@ -655,7 +773,12 @@ export default function App() {
                     message="Ubah filter (status/prioritas) atau tambahkan tugas baru."
                   />
                 ) : (
-                  <TaskList tasks={filteredTasks} onToggle={toggleTask} />
+                  <TaskList
+                    tasks={filteredTasks}
+                    onToggle={toggleTask}
+                    onEdit={(item) => openEdit('tasks', item)}
+                    onDelete={(item) => deleteItem('tasks', item)}
+                  />
                 )}
               </>
             ) : (
@@ -694,7 +817,12 @@ export default function App() {
                   ) : (
                     <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {filtered.map((item) => (
-                        <ScheduleItem key={item.id} item={item} />
+                        <ScheduleItem
+                          key={item.id}
+                          item={item}
+                          onEdit={(it) => openEdit('agenda', it)}
+                          onDelete={(it) => deleteItem('agenda', it)}
+                        />
                       ))}
                     </div>
                   )
@@ -723,7 +851,7 @@ export default function App() {
               subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(data.budget.total)}`}
               actionLabel="Tambah"
               actionTone="accent"
-              onAction={() => setSheetOpen('expenses')}
+              onAction={() => openAdd('expenses')}
             />
 
             {/* Filter kategori — sinkron dengan dropdown di navigasi */}
@@ -759,7 +887,13 @@ export default function App() {
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filtered.map((item) => (
-                  <ExpenseCard key={item.id} item={item} formatCurrency={formatCurrency} />
+                  <ExpenseCard
+                    key={item.id}
+                    item={item}
+                    formatCurrency={formatCurrency}
+                    onEdit={(it) => openEdit('expenses', it)}
+                    onDelete={(it) => deleteItem('expenses', it)}
+                  />
                 ))}
               </div>
             )}
@@ -781,7 +915,7 @@ export default function App() {
               title={activeMeta.label}
               subtitle={`${bagianCount} catatan keluarga`}
               actionLabel="Tambah"
-              onAction={() => setSheetOpen('family')}
+              onAction={() => openAdd('family')}
             />
 
             {/* Filter bagian — sinkron dengan dropdown di navigasi */}
@@ -837,6 +971,7 @@ export default function App() {
 
       case 'notes': {
         const activeMeta = NOTES_FILTERS.find((c) => c.id === noteFilter) || NOTES_FILTERS[0];
+        const searching = noteQuery.trim().length > 0;
         return (
           <section className="app-fade-in">
             <SectionHeader
@@ -844,8 +979,34 @@ export default function App() {
               title={activeMeta.label}
               subtitle={`${filteredNotes.length} dari ${data.notes.length} catatan`}
               actionLabel="Tambah"
-              onAction={() => setSheetOpen('notes')}
+              onAction={() => openAdd('notes')}
             />
+
+            {/* Pencarian catatan (judul + isi) — kotak cari 48px, ikon di kiri */}
+            <div className="relative mb-4">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-mutedfg" aria-hidden="true">
+                <Icon name="search" size={17} />
+              </span>
+              <input
+                type="search"
+                value={noteQuery}
+                onChange={(e) => setNoteQuery(e.target.value)}
+                placeholder="Cari judul atau isi catatan…"
+                aria-label="Cari catatan"
+                className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas py-2 pl-11 pr-12 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand"
+              />
+              {searching && (
+                <button
+                  type="button"
+                  onClick={() => setNoteQuery('')}
+                  aria-label="Bersihkan pencarian"
+                  className="absolute right-0.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+                >
+                  <Icon name="close" size={16} />
+                </button>
+              )}
+            </div>
+
             {/* Filter catatan — sinkron dengan dropdown di navigasi */}
             <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter catatan">
               {NOTES_FILTERS.map((cat) => {
@@ -871,12 +1032,20 @@ export default function App() {
             </div>
             {filteredNotes.length === 0 ? (
               <EmptyState
-                icon="note"
-                title="Tidak ada catatan di filter ini"
-                message="Ubah filter, atau tambahkan catatan baru."
+                icon={searching ? 'search' : 'note'}
+                title={searching ? 'Catatan tidak ditemukan' : 'Tidak ada catatan di filter ini'}
+                message={
+                  searching
+                    ? `Tidak ada catatan yang cocok dengan "${noteQuery.trim()}". Coba kata kunci lain.`
+                    : 'Ubah filter, atau tambahkan catatan baru.'
+                }
               />
             ) : (
-              <NoteList notes={filteredNotes} />
+              <NoteList
+                notes={filteredNotes}
+                onEdit={(item) => openEdit('notes', item)}
+                onDelete={(item) => deleteItem('notes', item)}
+              />
             )}
           </section>
         );
@@ -936,15 +1105,26 @@ export default function App() {
         {renderSection()}
       </main>
 
-      {/* Bottom sheet "Tambah" — form per section */}
+      {/* Bottom sheet "Tambah/Ubah" — form per section (mode edit = nilai terisi) */}
       <FormSheet
         open={!!sheetOpen}
-        title={sheetOpen ? SHEET_CONFIG[sheetOpen].title : ''}
+        title={
+          sheetOpen
+            ? editing
+              ? SHEET_CONFIG[sheetOpen].title.replace(/^Tambah/, 'Ubah')
+              : SHEET_CONFIG[sheetOpen].title
+            : ''
+        }
         icon={sheetOpen ? SHEET_CONFIG[sheetOpen].icon : 'calendar'}
         fields={sheetOpen ? SHEET_CONFIG[sheetOpen].fields : []}
+        initialValues={sheetInitial}
+        submitLabel={editing ? 'Perbarui' : 'Simpan'}
         onClose={closeSheet}
-        onSubmit={(values) => addItem(sheetOpen, values)}
+        onSubmit={(values) => submitSheet(sheetOpen, values)}
       />
+
+      {/* Toast: konfirmasi ringkas + "Urungkan" untuk hapus */}
+      <Toast toast={toast} onDismiss={dismissToast} />
     </div>
   );
 }

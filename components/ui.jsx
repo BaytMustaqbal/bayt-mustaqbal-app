@@ -152,28 +152,58 @@ export function EmptyState({ icon = 'inbox', title, message }) {
   );
 }
 
+/* Tombol aksi per kartu data (edit + hapus). Dua kotak sentuh 44px agar
+   nyaman di jari; dipakai seragam oleh kartu agenda, pengeluaran, tugas,
+   dan catatan supaya pola "ubah/buang" konsisten. */
+export function ItemActions({ onEdit, onDelete, label = 'item' }) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5">
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label={`Ubah ${label}`}
+        className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+      >
+        <Icon name="edit" size={17} />
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={`Hapus ${label}`}
+        className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-rose-500/15 hover:text-rose-200"
+      >
+        <Icon name="trash" size={17} />
+      </button>
+    </div>
+  );
+}
+
 /* Kartu pengeluaran (tile ikon mengikuti kategori) */
-export function ExpenseCard({ item, formatCurrency }) {
+export function ExpenseCard({ item, formatCurrency, onEdit, onDelete }) {
   const meta = getCategoryMeta(FINANCE_CATEGORIES, item.category);
   return (
-    <Card className="p-4 transition-colors hover:border-brand/50 sm:p-5">
-      <div className="flex items-start justify-between gap-3">
+    <Card className="flex h-full flex-col p-4 transition-colors hover:border-brand/50 sm:p-5">
+      <div className="flex items-start justify-between gap-3 pb-4">
         <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
             <Icon name={meta?.icon || 'wallet'} size={19} />
           </span>
           <div className="min-w-0">
-            <p className="truncate font-semibold text-ink">{item.category}</p>
+            <p className="truncate font-semibold text-ink">{meta?.label || item.category}</p>
             <p className="mt-0.5 truncate text-sm text-mutedfg">{item.description}</p>
-            <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-mutedfg">
-              <Icon name="clock" size={13} />
-              {item.date}
-            </p>
           </div>
         </div>
         <p className="shrink-0 pt-0.5 text-right font-mono text-sm font-bold text-brandfg sm:text-base">
           {formatCurrency(item.amount)}
         </p>
+      </div>
+
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-2.5">
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-mutedfg">
+          <Icon name="clock" size={13} />
+          {item.date}
+        </span>
+        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} />
       </div>
     </Card>
   );

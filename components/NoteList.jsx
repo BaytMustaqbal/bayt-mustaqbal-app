@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from './Icon';
-import { Card, Badge } from './ui';
+import { Card, Badge, ItemActions } from './ui';
 import { NOTE_CATEGORIES, getCategoryMeta } from './categories';
 
 /* ============================================================================
@@ -10,7 +10,7 @@ import { NOTE_CATEGORIES, getCategoryMeta } from './categories';
    (kategori + penulis + tanggal). Catatan "penting" (pinned) diberi badge.
    ============================================================================ */
 
-export function NoteList({ notes = [] }) {
+export function NoteList({ notes = [], onEdit, onDelete }) {
   return (
     <ul className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
       {notes.map((note) => {
@@ -39,13 +39,16 @@ export function NoteList({ notes = [] }) {
 
               {note.body && <p className="clamp-3 text-sm leading-relaxed text-mutedfg">{note.body}</p>}
 
-              <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-                <Badge tone={note.pinned ? 'amber' : 'brand'}>{meta?.label || 'Catatan'}</Badge>
-                <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-mutedfg">
-                  {note.author && <span className="truncate">{note.author}</span>}
-                  {note.author && note.updatedAt && <span aria-hidden="true">·</span>}
-                  {note.updatedAt && <span className="font-mono">{note.updatedAt}</span>}
-                </span>
+              <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-2.5">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <Badge tone={note.pinned ? 'amber' : 'brand'}>{meta?.label || 'Catatan'}</Badge>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-mutedfg">
+                    {note.author && <span className="truncate">{note.author}</span>}
+                    {note.author && note.updatedAt && <span aria-hidden="true">·</span>}
+                    {note.updatedAt && <span className="font-mono">{note.updatedAt}</span>}
+                  </span>
+                </div>
+                <ItemActions label={note.title} onEdit={() => onEdit?.(note)} onDelete={() => onDelete?.(note)} />
               </div>
             </Card>
           </li>

@@ -3,18 +3,30 @@ import { Icon } from './Icon';
 import { CTA_CLASS } from './ui';
 
 /* ============================================================================
-   Bottom sheet "Tambah" — formulir generik per section.
+   Bottom sheet "Tambah / Ubah" — formulir generik per section.
 
    Field spec:
-     { key, label, type: 'text'|'date'|'time'|'number'|'select',
-       required, options?:[{value,label}], defaultValue?, placeholder?, min? }
+     { key, label, type: 'text'|'date'|'time'|'number'|'select'|'textarea'|'checkbox',
+       required, options?:[{value,label}], defaultValue?, placeholder?, min?, rows?, help? }
+
+   Mode ubah: kirim `initialValues` (nilai terisi) + `submitLabel` lain
+   (mis. "Perbarui"). Tanpa `initialValues`, sheet berperilaku seperti tambah.
 
    Aksesibilitas: role="dialog" aria-modal, label terhubung (htmlFor/id),
    Escape/klik luar menutup, error wajib diisi + aria-invalid, scroll body
    dikunci selama sheet terbuka, reduced-motion nonaktifkan animasi (global).
    ============================================================================ */
 
-export function FormSheet({ open, title, icon, fields, onClose, onSubmit }) {
+export function FormSheet({
+  open,
+  title,
+  icon,
+  fields,
+  initialValues,
+  submitLabel = 'Simpan',
+  onClose,
+  onSubmit,
+}) {
   const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
   const firstFieldRef = useRef(null);
@@ -25,13 +37,13 @@ export function FormSheet({ open, title, icon, fields, onClose, onSubmit }) {
     if (!open) return undefined;
     const init = {};
     fields.forEach((f) => {
-      init[f.key] = f.defaultValue ?? '';
+      init[f.key] = initialValues?.[f.key] ?? f.defaultValue ?? '';
     });
     setValues(init);
     setErrors({});
     const t = setTimeout(() => firstFieldRef.current?.focus(), 80);
     return () => clearTimeout(t);
-    // fields dianggap statis per section — cukup re-run saat open berubah
+    // fields/initialValues dianggap statis per bukaan — cukup re-run saat open berubah
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Kunci scroll body + tutup via Escape
@@ -221,7 +233,7 @@ export function FormSheet({ open, title, icon, fields, onClose, onSubmit }) {
           </button>
           <button type="submit" className={`${CTA_CLASS} min-h-[48px] flex-[2]`}>
             <Icon name="check" size={16} />
-            Simpan
+            {submitLabel}
           </button>
         </div>
       </form>

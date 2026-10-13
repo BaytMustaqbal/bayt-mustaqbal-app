@@ -3,7 +3,7 @@
 Web app keluarga untuk **2 pengguna**: Kakang (admin) + Istri.
 Isi sekarang: 5 section — Dashboard, Agenda (Jadwal/Tugas/Kalender), Keuangan, Keluarga, Catatan.
 
-> **Status — 12 Okt 2026:** **frontend sudah jalan, backend belum dibuat.**
+> **Status — 13 Okt 2026:** **frontend sudah jalan, backend belum dibuat.**
 > Semua angka masih **data dummy** (`const data = mockData` di `App.jsx`) — belum ada `fetch` ke mana pun.
 >
 > Peta dokumen (jangan tertukar):
@@ -39,8 +39,9 @@ bayt-mustaqbal-app/
 ├── main.jsx                    # Mount React + registrasi service worker (produksi saja)
 ├── App.jsx                     # Root: state 5 section + mockData + formatter rupiah
 ├── App.css                     # Token & utilitas dasar (entry Tailwind)
-├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/...), TaskList, NoteList,
-│                               # FamilyCard, FamilyMemberCard, ScheduleItem, Icon
+├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/ItemActions/...),
+│                               # TaskList, NoteList, Toast, FormSheet, FamilyCard, FamilyMemberCard,
+│                               # ScheduleItem, Calendar, Icon
 ├── public/                     # Disalin apa adanya ke dist/ — WAJIB ditaruh di sini
 │   ├── manifest.json           # 8 ikon "any" + 2 "maskable"
 │   ├── service-worker.js       # cache-first untuk aset, network-first untuk /api/*
@@ -64,6 +65,8 @@ bayt-mustaqbal-app/
 - **Banner install** muncul setelah event `beforeinstallprompt`; toast status jaringan hanya saat online/offline berubah
 - **Tema High-Tech Blue:** dark navy `#0A192F` + aksen cyan `#22D3EE`, glass pada elemen kunci, glow tipis, angka dengan Fira Code (lihat `DESIGN-SYSTEM.md`)
 - **Layar gerbang** muncul tiap app dibuka: pilih Kakang/Istri (tersimpan di `localStorage`) — nanti menjadi layar login
+- **Tambah / Ubah / Hapus item** di Agenda (Jadwal & Tugas), Keuangan, dan Catatan: form bottom sheet (mode ubah berisi nilai lama) + tombol Ubah/Hapus di tiap kartu. Hapus = langsung + **toast "Urungkan"** (6 detik, tanpa dialog)
+- **Pencarian catatan** (judul + isi) di tab Catatan, di atas filter kategori
 - **Dashboard baru:** kartu hero glass (pengeluaran + realisasi anggaran), aksi cepat, KPI, dan 3 chart tulis sendiri (tren 6 bulan, 7 hari, komposisi)
 - **Terverifikasi** di 320 / 360 / 390 / 414 / 768 px: 0 overflow horizontal, 0 elemen interaktif di bawah 44 px
 

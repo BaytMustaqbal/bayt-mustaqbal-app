@@ -30,7 +30,7 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 bayt-mustaqbal-app/
 ├── index.html              # Entry PWA: Plus Jakarta Sans, manifest, install prompt, network monitor
 ├── main.jsx                # React entry: createRoot → render <App /> ke #root + registrasi SW (production)
-├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + data dummy (seed) + persist localStorage + bottom sheet Tambah + banner offline
+├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + data dummy (seed) + persist localStorage + bottom sheet Tambah/Ubah + toast (undo hapus) + banner offline
 ├── App.css                 # Tailwind (@tailwind base/components/utilities) + design token, focus-visible, scrollbar, animasi
 ├── tailwind.config.js      # Theme tokens (navy/cyan high-tech, font sans+mono) + content paths
 ├── postcss.config.js       # Plugin: tailwindcss + autoprefixer
@@ -38,22 +38,24 @@ bayt-mustaqbal-app/
 ├── package.json            # Deps: react, react-dom, vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer
 ├── DESIGN-SYSTEM.md        # Design system: High-Tech Blue, tipografi, layout, komponen, PWA, a11y
 ├── components/
-│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, note, pin, utensils, barChart, target, chevron dll.)
+│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, note, pin, utensils, edit, trash, search, undo, barChart, target, chevron dll.)
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
-│   │                       #   QuickAction, EmptyState, ExpenseCard, Badge, FamilyList, CTA_CLASS
+│   │                       #   QuickAction, EmptyState, ExpenseCard, ItemActions, Badge, FamilyList, CTA_CLASS
 │   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass;
 │   │                       #   tab Agenda, Keuangan, Keluarga & Catatan = dropdown filter (animasi, badge jumlah, a11y menu)
 │   ├── categories.js       # Kategori agenda, keuangan, keluarga, catatan + filter tugas & penghitung per item + meta ikon
 │   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) + tombol "Muat ulang data contoh" → nanti jadi login
-│   ├── FormSheet.jsx      # Bottom sheet "Tambah" generik (field teks/angka/tanggal/jam/select, validasi wajib, role=dialog, Escape/klik luar)
+│   ├── FormSheet.jsx       # Bottom sheet "Tambah/Ubah" generik (field teks/angka/tanggal/jam/select/textarea/checkbox, validasi wajib, mode ubah via initialValues, role=dialog, Escape/klik luar)
+│   ├── Toast.jsx           # Notifikasi ringkas di atas tab bar: konfirmasi tambah/ubah + tombol "Urungkan" (undo hapus), role=status
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
 │   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline
 │   ├── FamilyCard.jsx      # Card anggota (baris horizontal)
 │   ├── FamilyMemberCard.jsx# Card anggota versi besar (centered)
-│   ├── ScheduleItem.jsx    # Item agenda (ikon, judul, jam, tanggal, badge anggota)
+│   ├── NoteList.jsx        # Daftar kartu catatan keluarga (ikon kategori, isi 3 baris, badge, pin, tombol Ubah/Hapus)
+│   ├── ScheduleItem.jsx    # Item agenda (ikon, judul, jam, tanggal, badge anggota) + tombol Ubah/Hapus
 │   ├── Calendar.jsx        # Kalender keluarga (mode Kalender di tab Agenda): view Minggu/Bulan/Tahun,
 │   │                       #   warna per member + legenda, agenda hari terpilih, tugas jatuh tempo
-│   └── TaskList.jsx        # Daftar tugas (controlled: toggle selesai diteruskan ke App, badge prioritas)
+│   └── TaskList.jsx        # Daftar tugas (controlled: toggle selesai diteruskan ke App, badge prioritas) + tombol Ubah/Hapus
 ├── public/                 # Aset statis → disalin apa adanya ke dist/ oleh Vite
 │   ├── manifest.json       # PWA manifest (theme #0A192F; ikon cyan #22D3EE; 8 "any" + 2 maskable)
 │   ├── service-worker.js   # Cache strategy: static cache-first, API network-first, bg sync, push
@@ -76,14 +78,16 @@ bayt-mustaqbal-app/
 | Section | Isi | Sumber Data |
 |---------|-----|-------------|
 | Dashboard | Sapaan + hero glass (pengeluaran & anggaran) + aksi cepat + 4 KPI + chart (tren/bar/donut) + 2 panel ringkasan | `mockData` di `App.jsx` |
-| Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; sub-tampilan **Jadwal | Tugas | Kalender** (default Jadwal); **Jadwal** = grid `ScheduleItem` + chip kategori; **Tugas** = chip filter status/prioritas + `TaskList` (toggle selesai); **Kalender** = `Calendar.jsx` (Minggu/Bulan/Tahun, warna per member + legenda, daftar agenda hari terpilih, bar tugas jatuh tempo) | `mockData` di `App.jsx` |
-| Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → filter; grid `ExpenseCard` (ikon kategori + nominal IDR) + chip sinkron + total terfilter di header | `mockData` di `App.jsx` |
+| Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; sub-tampilan **Jadwal | Tugas | Kalender** (default Jadwal); **Jadwal** = grid `ScheduleItem` (tombol Ubah/Hapus) + chip kategori; **Tugas** = chip filter status/prioritas + `TaskList` (toggle selesai + tombol Ubah/Hapus); **Kalender** = `Calendar.jsx` (Minggu/Bulan/Tahun, warna per member + legenda, daftar agenda hari terpilih, bar tugas jatuh tempo) | `mockData` di `App.jsx` |
+| Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → filter; grid `ExpenseCard` (ikon kategori + nominal IDR + tombol Ubah/Hapus) + chip sinkron + total terfilter di header | `mockData` di `App.jsx` |
 | Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
-| Catatan | Dropdown filter catatan (nav HP+desktop): Semua/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info (badge jumlah) + chip sinkron; grid `NoteList` (kartu + badge kategori + pin "penting") | `mockData` di `App.jsx` |
+| Catatan | Dropdown filter catatan (nav HP+desktop): Semua/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info (badge jumlah) + chip sinkron; **kotak cari** (judul + isi) + grid `NoteList` (kartu + badge kategori + pin "penting" + tombol Ubah/Hapus) | `mockData` di `App.jsx` |
 
-> **Tombol "Tambah" berfungsi di 4 tab** (Agenda — Jadwal & Tugas, Keuangan, Keluarga, Catatan): membuka `FormSheet` (bottom sheet) → item baru masuk ke section terkait (agenda muncul di grid + kalender + chip; pengeluaran ikut total; tugas ikut kalender + KPI Dashboard; keluarga ikut grid/daftar; catatan ikut grid + chip).
+> **Tambah / Ubah / Hapus berfungsi di 4 tab data** (Agenda — Jadwal & Tugas, Keuangan, Catatan; Keluarga baru **tambah**): `SectionHeader` "Tambah" membuka `FormSheet` mode tambah; tombol **Ubah** di kartu membuka `FormSheet` mode ubah (`initialValues` terisi, judul "Ubah …", tombol "Perbarui"); tombol **Hapus** langsung membuang item + `Toast` dengan **"Urungkan"** (6 detik, pulihkan ke posisi semula) — jaring aman pengganti dialog konfirmasi. Item baru/berubah langsung ikut grid, chip, kalender, dan KPI Dashboard.
 >
-> **Persistensi (`localStorage` key `bayt-mustaqbal-data-v1`):** seed awal = `mockData`; setiap perubahan (tambah item, toggle tugas) disimpan sebagai snapshot, jadi tidak hilang saat reload. Saat dimuat, snapshot **digabung dengan `mockData`** (kunci baru seperti `notes` otomatis terisi walau snapshot lama); snapshot rusak/parsial ditolak (app kembali ke data contoh, tidak blank). Tombol **"Muat ulang data contoh"** di layar gerbang menghapus snapshot dan kembali ke `mockData`.
+> **Pencarian catatan**: kotak `type="search"` di tab Catatan menyaring judul + isi (real-time, case-insensitive) di atas filter kategori; tanpa hasil → `EmptyState` "Catatan tidak ditemukan".
+>
+> **Persistensi (`localStorage` key `bayt-mustaqbal-data-v1`):** seed awal = `mockData`; setiap perubahan (tambah/ubah/hapus, toggle tugas) disimpan sebagai snapshot, jadi tidak hilang saat reload. Saat dimuat, snapshot **digabung dengan `mockData`** (kunci baru seperti `notes` otomatis terisi walau snapshot lama); snapshot rusak/parsial ditolak (app kembali ke data contoh, tidak blank). Tombol **"Muat ulang data contoh"** di layar gerbang menghapus snapshot dan kembali ke `mockData`.
 
 > **Tidak ada panggilan jaringan.** Data sepenuhnya dummy sesuai permintaan Kakang — fokus ke frontend dulu.
 
@@ -105,7 +109,7 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 | Sentuh | `-webkit-tap-highlight-color: transparent` + `touch-action: manipulation`; checkbox 28px dengan area sentuh 44px |
 | Teks | `-webkit-text-size-adjust: 100%` |
 
-**Hasil verifikasi** (iframe 320/360/390/414/768 px; 5 section + gerbang): **0 overflow horizontal**, **0 elemen interaktif < 44px**; konsol 0 error/0 warning; toggle tugas berfungsi (`aria-pressed` false→true + coret). (Pernah meluber 44px di 320px pada legenda donut — sudah diperbaiki jadi kolom di HP.)
+**Hasil verifikasi** (iframe 320/360/390/414/768 px; 5 section + gerbang): **0 overflow horizontal**, **0 elemen interaktif < 44px**; konsol 0 error/0 warning; toggle tugas berfungsi (`aria-pressed` false→true + coret); tambah/ubah/hapus + undo toast + pencarian catatan terverifikasi di browser (data persist lintas reload). (Pernah meluber 44px di 320px pada legenda donut — sudah diperbaiki jadi kolom di HP.)
 
 ---
 
@@ -172,7 +176,7 @@ npx vite preview
 | ~~`service-worker.js` reference path component~~ | ~~SW cache `addAll` mungkin gagal~~ | **SELESAI:** cache list dirampingkan + 3 ikon; berkas kini di `public/` |
 | Data dummy hardcode | Bukan data real | Bangun Worker + D1, ganti seed `mockData` + persist `localStorage` dengan state + fetch |
 | Belum ada `wrangler.toml` | Backend belum jalan | Buat Worker + D1 binding |
-| Belum ada edit/hapus item | Hanya bisa tambah + toggle selesai | Tambah aksi edit/hapus (aksi di kartu item) — sementara tanpa backend |
+| ~~Belum ada edit/hapus item~~ | ~~Hanya bisa tambah + toggle selesai~~ | **SELESAI:** `ItemActions` (Ubah/Hapus) di kartu agenda/pengeluaran/tugas/catatan; ubah lewat `FormSheet` mode edit; hapus cepat + `Toast` "Urungkan" (undo). Keluarga baru **tambah** (belum ubah/hapus anggota & sub-bagian) |
 
 ---
 
@@ -185,7 +189,7 @@ npx vite preview
 - Notifikasi: Fonnte WhatsApp API
 
 **Frontend (evolusi):**
-- Login + role admin/user, data nyata (bukan `mockData`), form input & validasi (bottom sheet "Tambah" **sudah ada** — tinggal edit/hapus + sinkron ke server)
+- Login + role admin/user, data nyata (bukan `mockData`), form input & validasi (bottom sheet "Tambah/Ubah" **sudah ada** beserta hapus + undo — tinggal sinkron ke server)
 - Tetap React 18 + Vite + Tailwind, mobile-first. **Tanpa TypeScript & tanpa router** — 5 section yang sudah ada diperdalam, bukan ditambah jadi 11 halaman
 
 **Deploy:**
@@ -228,4 +232,4 @@ npx vite preview
 ---
 
 *Generated for AI agents working on Bayt Mustaqbal project.*
-*Last updated: 2026-10-12 — Tailwind PostCSS + data dummy murni (fokus frontend) + dropdown kategori Keluarga.*
+*Last updated: 2026-10-13 — edit/hapus item (+ toast undo) di 4 tab data, pencarian catatan, dropdown form ber-default.*

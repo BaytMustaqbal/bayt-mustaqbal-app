@@ -144,20 +144,33 @@ Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat compon
 ### Family-Specific Components
 ```
 FamilyMemberCard : avatar `bg-brandtint border brand/25` + inisial `brandfg`
-ScheduleItem     : tile ikon kategori + badge anggota; tombol opsi area 44px (visual 36px)
-ExpenseCard      : tile ikon kategori + nominal `brandfg` mono; deskripsi & tanggal
+ScheduleItem     : tile ikon kategori + badge anggota; footer: anggota + tanggal +
+                   `ItemActions` (Ubah/Hapus)
+ExpenseCard      : tile ikon kategori + nominal `brandfg` mono; judul = label kategori;
+                   footer: tanggal + `ItemActions`
 FamilyList       : baris kartu sub-bagian (judul + meta + badge opsional); header mini berikon + jumlah;
                    kosong = placeholder garis putus-putus "Belum ada catatan"
 TaskList         : checkbox visual 28px dengan area sentuh 44px;
                    selesai = border-cta bg-cta text-white (ikon check);
+                   footer: penanggung jawab + jatuh tempo + `ItemActions`;
                    controlled — toggle diteruskan ke App lalu disimpan (localStorage)
 NoteList         : kartu catatan (grid 1/2/3 kolom): tile ikon kategori, judul, isi
                    dibatasi 3 baris (`.clamp-3`), badge kategori; pin amber bila "penting";
-                   baris meta penulis + tanggal (font-mono)
-FormSheet        : bottom sheet "Tambah" generik (fixed inset-x-0 bottom-0, max-w-lg center,
+                   footer: kategori + penulis/tanggal (font-mono) + `ItemActions`
+ItemActions      : sepasang tombol ikon 44px (Ubah `edit`, Hapus `trash`) di footer kartu
+                   agenda/pengeluaran/tugas/catatan; hapus = `hover:bg-rose-500/15`,
+                   `aria-label` menyebut judul item; pola seragam lintas 4 tab data
+Toast            : notifikasi melayang tepat di atas tab bar
+                   (`bottom-[calc(4.5rem+env(safe-area-inset-bottom))]`, `lg:bottom-6`, z-60);
+                   role="status" + aria-live="polite"; `min-h-[52px]`, `max-w-md`,
+                   glass (`bg-surface/95 backdrop-blur-xl`); aksi opsional "Urungkan"
+                   (ikon `undo`, 44px) + tombol tutup ×; auto-tutup 2,5s (konfirmasi)
+                   atau 6s (undo)
+FormSheet        : bottom sheet "Tambah/Ubah" generik (fixed inset-x-0 bottom-0, max-w-lg center,
                    rounded-t-3xl, glass); field 48px (teks/angka/tanggal/jam/select/textarea),
                    baris centang 48px (checkbox "Tandai penting"),
-                   bintang wajib, error "Wajib diisi" + aria-invalid; footer Batal + Simpan (CTA)
+                   bintang wajib, error "Wajib diisi" + aria-invalid; footer Batal + Simpan (CTA);
+                   mode ubah = `initialValues` terisi + judul "Ubah …" + tombol "Perbarui"
 ```
 
 ## 6. Screen Hierarchy & Information Architecture
@@ -167,11 +180,11 @@ FormSheet        : bottom sheet "Tambah" generik (fixed inset-x-0 bottom-0, max-
 2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Ibadah/Kesehatan/Rumah Tangga/Kendaraan, badge jumlah) + chip filter sinkron di dalam section; sub-tampilan **Jadwal | Tugas | Kalender** (default Jadwal) — **Jadwal** = grid `ScheduleItem`; **Tugas** = chip filter status/prioritas (Semua Tugas/Belum Selesai/Sudah Selesai/Prioritas Tinggi/Sedang/Rendah) + `TaskList` (toggle selesai + badge prioritas); **Kalender** = kalender gabungan anggota (`Calendar.jsx`): view **Minggu/Bulan/Tahun** (default Bulan), **warna per member + legenda** (Rezki YT cyan, Hilda AK violet, RAGASUCI emerald, RAJABRANA amber, Keluarga sky), dot member di sel + bar bawah = ada tugas jatuh tempo, klik tanggal → daftar agenda hari itu, nav prev/next + "Hari Ini", filter kategori ikut memfilter kalender
 3. **Keuangan**: dropdown kategori di tab Keuangan (Semua/Belanja/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah) + chip sinkron; grid `ExpenseCard` berikon kategori + total terfilter di header
 4. **Keluarga**: dropdown bagian di tab Keluarga (Semua/Anggota/Kesehatan/Pendidikan Anak/Kontak & Darurat, badge jumlah) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk (grid `FamilyMemberCard` + daftar `FamilyList` tiap sub-bagian)
-5. **Catatan**: dropdown filter di tab Catatan (Semua Catatan/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info, badge jumlah) + chip sinkron; grid `NoteList` (kartu catatan + badge kategori + pin "penting")
+5. **Catatan**: dropdown filter di tab Catatan (Semua Catatan/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info, badge jumlah) + chip sinkron; **kotak cari** (judul + isi, `type="search"`, tombol bersihkan) + grid `NoteList` (kartu catatan + badge kategori + pin "penting" + `ItemActions`)
 
 ### Screens Khusus
 - **Layar Gerbang (WelcomeGate)**: muncul **setiap app dibuka** (keputusan Kakang) — pilih pengguna (Kakang/Istri, tersimpan `localStorage`) + tombol **"Muat ulang data contoh"** (hapus snapshot → kembali `mockData`) → nanti menjadi layar login saat backend siap
-- **Bottom sheet "Tambah" (FormSheet)**: dibuka dari tombol `SectionHeader` "Tambah" di Agenda (Jadwal & Tugas)/Keuangan/Keluarga/Catatan; `role="dialog"` + `aria-modal`, label terhubung `htmlFor/id`, fokus otomatis ke field pertama, tutup via tombol ×/Batal/klik backdrop/Escape, scroll body dikunci selama terbuka
+- **Bottom sheet "Tambah/Ubah" (FormSheet)**: dibuka dari tombol `SectionHeader` "Tambah" (mode tambah) atau `ItemActions` "Ubah" di kartu item (mode ubah, `initialValues` terisi, judul "Ubah …", tombol "Perbarui") di Agenda (Jadwal & Tugas)/Keuangan/Keluarga/Catatan; `role="dialog"` + `aria-modal`, label terhubung `htmlFor/id`, fokus otomatis ke field pertama, tutup via tombol ×/Batal/klik backdrop/Escape, scroll body dikunci selama terbuka
 
 ## 7. Touch Targets & Interaction Patterns
 
@@ -182,9 +195,12 @@ FormSheet        : bottom sheet "Tambah" generik (fixed inset-x-0 bottom-0, max-
 - **Chip filter** (di section Agenda — kategori jadwal & filter tugas, Keuangan, Keluarga & Catatan): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`; filter tugas = status (semua/belum/selesai) + prioritas (high/medium/low — `id` = nilai `priority` di data)
 - **Sub-toggle Agenda (Jadwal | Tugas | Kalender)**: di HP `grid grid-cols-3` selebar penuh dengan ikon di atas label (teks 11px) → muat di 320px (label terlebar ~53px vs sel ~91px); beralih ke `inline-flex` satu baris (`sm:text-sm sm:px-4`) di `sm+`
 - **Kalender keluarga** (mode Kalender di tab Agenda): sel hari = button `aria-pressed` + `aria-label` deskriptif (tanggal + judul item + anggota + "ada tugas"); grid `role="grid"` + baris `role="row"` + header kolom `role="columnheader"`; tombol skala view (Minggu/Bulan/Tahun) `aria-pressed`; nav prev/next `aria-label` "Periode sebelumnya/berikutnya"; warna member hanya pelengkap — nama anggota selalu tampil (dot + teks, bukan warna saja); grid full-bleed `-mx-4 md:-mx-0` di layar kecil supaya sel ≥ 44px (320px → 7×44 + 6 garis = 314 ≤ 320)
-- **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka + bottom sheet Tambah (390/768/1280 px) → **0 overflow, 0 elemen < 44px** (termasuk sel kalender di 320px)
+- **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka + bottom sheet Tambah (390/768/1280 px) → **0 overflow, 0 elemen < 44px** (termasuk sel kalender di 320px); kartu ber-`ItemActions` dijaga lewat `min-w-0` + `truncate` (footer kartu: meta kiri boleh menyusut, aksi `shrink-0` ~90px)
 - **Feedback**: hover border/glow, `active:scale` pada CTA; `prefers-reduced-motion` mematikan animasi
-- **Bottom sheet Tambah** (FormSheet): backdrop fade 250ms + panel naik 300ms `cubic-bezier(0.22,1,0.36,1)`; field 48px, tombol Batal/Simpan 48px (≥44px); `prefers-reduced-motion` → tampil langsung
+- **Ubah/Hapus item**: `ItemActions` di footer tiap kartu data (agenda/pengeluaran/tugas/catatan) — dua tombol ikon 44px. **Hapus tanpa dialog**: item langsung dibuang + `Toast` "«judul» dihapus" dengan tombol **"Urungkan"** (6s) yang memulihkan item ke posisi semula; jaring aman pengganti dialog konfirmasi (satu langkah, tetap aman)
+- **Toast**: konfirmasi tambah/ubah (2,5s) & undo hapus (6s) tampil di atas tab bar; `role="status"` `aria-live="polite"` → pembaca layar mengumumkan; ada tombol tutup manual
+- **Kotak cari catatan**: `type="search"` 48px, ikon kaca di kiri, tombol bersihkan 44px di kanan; kosong tanpa hasil → `EmptyState` berbeda ("Catatan tidak ditemukan") + kutip kata kunci
+- **Bottom sheet Tambah/Ubah** (FormSheet): backdrop fade 250ms + panel naik 300ms `cubic-bezier(0.22,1,0.36,1)`; field 48px, tombol Batal/Simpan 48px (≥44px); `prefers-reduced-motion` → tampil langsung
 
 ## 8. PWA-Specific Implementation
 
@@ -242,7 +258,7 @@ Ikon (dibuat via `npm run icons`):
 ## 12. Animation & Motion
 
 - **Durasi**: 0.2–0.4s; easing `cubic-bezier(0.22,1,0.36,1)` untuk gerbang
-- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `softPulse` (denyut node ilustrasi), `dropMenuIn/Out` + `dropItemIn/Out` (dropdown), `sheetBackdropIn` + `sheetPanelIn` (bottom sheet Tambah)
+- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `softPulse` (denyut node ilustrasi), `dropMenuIn/Out` + `dropItemIn/Out` (dropdown), `sheetBackdropIn` + `sheetPanelIn` (bottom sheet Tambah/Ubah), `toastIn` (toast naik + fade)
 - **Reduced motion**: `prefers-reduced-motion` mematikan semua animasi/transisi (App.css)
 - **Glow**: boleh berdenyut pelan (`soft-pulse` 3.2s) hanya pada elemen dekoratif, jangan pada teks
 
@@ -254,7 +270,7 @@ Ikon (dibuat via `npm run icons`):
 
 ## 14. Performance Optimization
 
-- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS ~217 kB (gzip ~66 kB), CSS ~32 kB (gzip ~7 kB)
+- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS ~230 kB (gzip ~69 kB), CSS ~33 kB (gzip ~7 kB)
 - **Reduce Repaints**: animasi via transform/opacity; `transition-[width]` pada progressbar
 - **Blur hemat**: backdrop-filter hanya di header/tab bar/hero/gerbang
 - **Chart**: `vectorEffect="non-scaling-stroke"` + label HTML → tidak ada teks yang melar saat responsive
