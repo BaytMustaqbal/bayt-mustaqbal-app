@@ -28,7 +28,7 @@ export function NoteList({ notes = [], onEdit, onDelete }) {
                 <h3 className="min-w-0 flex-1 pt-1 font-semibold leading-snug text-ink">{note.title}</h3>
                 {note.pinned && (
                   <span
-                    className="shrink-0 rounded-full bg-amber-400/15 p-1.5 text-amber-200"
+                    className="shrink-0 rounded-full bg-toneamber/15 p-1.5 text-toneamberfg"
                     title="Penting"
                     aria-label="Ditandai penting"
                   >

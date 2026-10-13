@@ -1,5 +1,18 @@
 /** @type {import('tailwindcss').Config} */
-// Token desain "High-Tech Blue" — dark navy + electric cyan (lihat DESIGN-SYSTEM.md)
+// Token desain "High-Tech Blue" — dua tema: gelap (default) & terang.
+//
+// PENTING: nilai warna TIDAK ditulis di sini, melainkan di App.css sebagai
+// KANAL RGB (`:root` = gelap, `[data-theme='light']` = terang). Format kanal
+// dipakai supaya pengubah opasitas Tailwind tetap bekerja, mis.
+// `border-brand/20` → `rgb(var(--brand) / 0.2)`.
+const tone = (name) => ({
+  [`tone${name}`]: `rgb(var(--tone-${name}) / <alpha-value>)`,
+  [`tone${name}fg`]: `rgb(var(--tone-${name}-fg) / <alpha-value>)`,
+});
+
+// Nada badge & tile ikon (satu pasangan latar + teks per nada).
+const TONES = ['cyan', 'blue', 'violet', 'emerald', 'amber', 'rose'];
+
 module.exports = {
   content: [
     './index.html',
@@ -10,50 +23,58 @@ module.exports = {
     extend: {
       colors: {
         // ---------- Permukaan ----------
-        canvas: '#0A192F',   // latar app (deep navy)
-        surface: '#0F1E38',  // kartu & panel
-        muted: '#16283F',    // latar hover / elevated
-        line: '#1E3A5F',     // border & pemisah
+        canvas: 'rgb(var(--canvas) / <alpha-value>)',    // latar app
+        surface: 'rgb(var(--surface) / <alpha-value>)',  // kartu & panel
+        muted: 'rgb(var(--muted) / <alpha-value>)',      // latar hover / elevated
+        line: 'rgb(var(--line) / <alpha-value>)',        // border & pemisah
 
         // ---------- Teks ----------
-        ink: '#E8F1FF',      // teks utama (kontras 15:1 di atas canvas)
-        mutedfg: '#93A7C4',  // teks sekunder (kontras 6,5:1 di atas surface)
+        ink: 'rgb(var(--ink) / <alpha-value>)',          // teks utama
+        mutedfg: 'rgb(var(--muted-fg) / <alpha-value>)', // teks sekunder
 
         // ---------- Aksen ----------
-        brand: '#22D3EE',    // electric cyan: garis, status aktif, glow
-        brandfg: '#7DD3FC',  // cyan terang untuk teks/ikon di atas tint
-        brandtint: 'rgb(34 211 238 / 0.14)',
-        cta: '#2563EB',      // cobalt untuk tombol utama (teks putih, kontras 5,2:1)
-        ctahover: '#1D4ED8',
-        accent: '#F59E0B',   // penanda hangat
-        success: '#22C55E',
-        danger: '#F43F5E',
+        brand: 'rgb(var(--brand) / <alpha-value>)',      // garis, status aktif
+        brandfg: 'rgb(var(--brand-fg) / <alpha-value>)', // teks/ikon di atas tint
+        brandtint: 'rgb(var(--brand) / 0.14)',           // latar tint aksen
+        cta: 'rgb(var(--cta) / <alpha-value>)',          // tombol utama
+        ctahover: 'rgb(var(--cta-hover) / <alpha-value>)',
+        accent: 'rgb(var(--accent) / <alpha-value>)',    // penanda hangat
+        success: 'rgb(var(--success) / <alpha-value>)',
+        danger: 'rgb(var(--danger) / <alpha-value>)',
 
         // ---------- Seri chart ----------
-        chart1: '#22D3EE',
-        chart2: '#3B82F6',
-        chart3: '#8B5CF6',
-        chart4: '#F59E0B',
-        chart5: '#10B981',
+        chart1: 'rgb(var(--chart1) / <alpha-value>)',
+        chart2: 'rgb(var(--chart2) / <alpha-value>)',
+        chart3: 'rgb(var(--chart3) / <alpha-value>)',
+        chart4: 'rgb(var(--chart4) / <alpha-value>)',
+        chart5: 'rgb(var(--chart5) / <alpha-value>)',
+
+        // ---------- Warna anggota (titik di kalender) ----------
+        member1: 'rgb(var(--member1) / <alpha-value>)',
+        member2: 'rgb(var(--member2) / <alpha-value>)',
+        member3: 'rgb(var(--member3) / <alpha-value>)',
+        member4: 'rgb(var(--member4) / <alpha-value>)',
+        member5: 'rgb(var(--member5) / <alpha-value>)',
+
+        // ---------- Nada badge/tile: bg-tonecyan/15 text-tonecyanfg ----------
+        ...TONES.reduce((acc, name) => Object.assign(acc, tone(name)), {}),
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
         mono: ['"Fira Code"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       boxShadow: {
-        // Glow cyan lembut — dipakai hemat, hanya pada elemen fokus/aksen
-        glow: '0 10px 30px -18px rgba(0, 240, 255, 0.55)',
+        // Semua bayangan ikut tema (nilainya di App.css) karena di mode terang
+        // bayangan navy pekat + garis cahaya putih tidak masuk akal.
+        glow: 'var(--shadow-glow)', // halo aksen — hemat, hanya elemen fokus/aksen
 
         /* ---------- Skala elevasi (dimensional layering) ----------
-           Bayangan bernuansa navy (bukan hitam pekat) supaya kedalaman
-           terbaca di atas permukaan navy, masing-masing ditemani garis
-           cahaya 1px di tepi atas (kesan panel instrumen).
-             e1  = kartu diam        e2 = kartu hover / terangkat
-             pop = panel melayang    nav = bilah bawah (bayangan ke atas)   */
-        e1: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 1px 2px 0 rgba(2, 8, 20, 0.40)',
-        e2: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 6px 14px -6px rgba(2, 8, 20, 0.60)',
-        pop: '0 10px 30px -18px rgba(0, 240, 255, 0.35), 0 16px 34px -12px rgba(2, 8, 20, 0.74)',
-        nav: '0 -6px 20px -10px rgba(2, 8, 20, 0.70)',
+           e1  = kartu diam        e2 = kartu hover / terangkat
+           pop = panel melayang    nav = bilah bawah (bayangan ke atas)   */
+        e1: 'var(--shadow-e1)',
+        e2: 'var(--shadow-e2)',
+        pop: 'var(--shadow-pop)',
+        nav: 'var(--shadow-nav)',
       },
       /* ---------- Token gerak (durasi + easing) ----------
          fast = umpan balik tekan · base = transisi umum · slow = panel/overlay */

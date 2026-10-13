@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Bayt Mustaqbal — aplikasi manajemen keluarga: keuangan, agenda, absensi, dan service.">
-  <meta name="theme-color" content="#0A192F">
+  <meta name="theme-color" id="theme-color-meta" content="#0A192F">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" id="apple-status-style" content="black">
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
@@ -25,6 +25,38 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
   <title>Bayt Mustaqbal — Manajemen Keluarga</title>
+
+  <!-- Warna latar paling awal: mencegah kedipan putih sebelum bundel CSS/JS
+       selesai dimuat. Nilainya kembar dengan token di App.css. -->
+  <style>
+    html { background-color: #0A192F; }
+    html[data-theme='light'] { background-color: #F2FAFD; }
+  </style>
+
+  <!-- Tema sebelum render ("anti-kedip"): atribut `data-theme` disetel SEBELUM
+       React jalan, jadi tidak ada kilatan tema salah saat app dibuka.
+       Sumber kebenaran nilai yang sama ada di App.jsx (localStorage 'bm-theme').
+       Pilihan: 'light' | 'dark' | 'system' (tanpa isi/rusak = 'system'). -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('bm-theme');
+        var pilihan = stored === 'light' || stored === 'dark' ? stored : 'system';
+        var sistemTerang = window.matchMedia('(prefers-color-scheme: light)').matches;
+        var tema = pilihan === 'system' ? (sistemTerang ? 'light' : 'dark') : pilihan;
+        var akar = document.documentElement;
+        akar.setAttribute('data-theme', tema);
+        akar.style.colorScheme = tema;
+        var meta = document.getElementById('theme-color-meta');
+        if (meta) meta.setAttribute('content', tema === 'light' ? '#F2FAFD' : '#0A192F');
+        var statusBar = document.getElementById('apple-status-style');
+        if (statusBar) statusBar.setAttribute('content', tema === 'light' ? 'default' : 'black');
+        window.__bmTheme = tema; // penanda agar bisa diperiksa (mis. saat verifikasi)
+      } catch (e) {
+        /* localStorage dilarang / matchMedia tak ada → biarkan default gelap */
+      }
+    })();
+  </script>
 </head>
 <body class="bg-canvas font-sans text-ink antialiased">
   <!-- Skip link (aksesibilitas keyboard) -->

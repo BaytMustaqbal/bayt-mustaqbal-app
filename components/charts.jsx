@@ -112,7 +112,7 @@ function ChartTapLayer({ label, handlers }) {
 
 /* ---------------- Batang (perbandingan antar kategori/hari) ---------------- */
 
-export function BarChart({ data, height = 160, color = '#22D3EE', formatValue = (v) => v }) {
+export function BarChart({ data, height = 160, color = 'rgb(var(--chart1))', formatValue = (v) => v }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   const maxIdx = data.reduce((best, d, i) => (d.value > data[best].value ? i : best), 0);
   const summary = summaryOf(data, formatValue);
@@ -144,11 +144,11 @@ export function BarChart({ data, height = 160, color = '#22D3EE', formatValue = 
                   className="w-full max-w-[22px] rounded-t-md transition-[height,opacity] duration-300"
                   style={{
                     height: `${h}%`,
-                    background: isActive
-                      ? `linear-gradient(180deg, ${color}, rgba(34,211,238,0.35))`
-                      : `linear-gradient(180deg, ${color}, rgba(34,211,238,0.08))`,
-                    opacity: isActive ? 1 : 0.7,
-                    boxShadow: isActive ? `0 0 14px ${color}66` : undefined,
+                    // Fade ke `transparent` (bukan ke cyan hardcode) supaya
+                    // gradasi ikut tema lewat `color` yang diarahkan ke token.
+                    background: `linear-gradient(180deg, ${color}, transparent)`,
+                    opacity: isActive ? 1 : 0.6,
+                    boxShadow: isActive ? `0 0 14px ${color}` : undefined,
                   }}
                 />
                 {isActive && <ValueTag className="-top-6 left-1/2 -translate-x-1/2">{formatValue(d.value)}</ValueTag>}
@@ -209,7 +209,15 @@ export function DonutChart({
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
           <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1E3A5F" strokeWidth={thickness} opacity="0.55" />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="none"
+              style={{ stroke: 'rgb(var(--donut-track))' }}
+              strokeWidth={thickness}
+              opacity="0.55"
+            />
             {data.map((d) => {
               const len = (d.value / total) * c;
               const el = (
@@ -219,7 +227,9 @@ export function DonutChart({
                   cy={size / 2}
                   r={r}
                   fill="none"
-                  stroke={d.color}
+                  // `style` (bukan atribut `stroke`): atribut SVG tidak
+                  // menyelesaikan `var()`, sedangkan inline CSS iya.
+                  style={{ stroke: d.color }}
                   strokeWidth={thickness}
                   strokeDasharray={`${len} ${c - len}`}
                   strokeDashoffset={-offset}
@@ -258,7 +268,7 @@ export function DonutChart({
 
 /* ---------------- Garis (tren) ---------------- */
 
-export function LineChart({ data, height = 170, color = '#22D3EE', formatValue = (v) => v }) {
+export function LineChart({ data, height = 170, color = 'rgb(var(--chart1))', formatValue = (v) => v }) {
   const W = 600;
   const H = 200;
   const padX = 12;
@@ -302,14 +312,23 @@ export function LineChart({ data, height = 170, color = '#22D3EE', formatValue =
         >
           <defs>
             <linearGradient id={`area-${gid}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.38" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
+              <stop offset="0%" style={{ stopColor: color }} stopOpacity="0.38" />
+              <stop offset="100%" style={{ stopColor: color }} stopOpacity="0" />
             </linearGradient>
           </defs>
           <path d={area} fill={`url(#area-${gid})`} />
-          <path d={line} fill="none" stroke={color} strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+          <path d={line} fill="none" style={{ stroke: color }} strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
           {/* Penanda titik tertinggi */}
-          <line x1="0" x2={W} y1={pts[values.indexOf(max)][1]} y2={pts[values.indexOf(max)][1]} stroke={color} strokeOpacity="0.35" strokeDasharray="4 5" vectorEffect="non-scaling-stroke" />
+          <line
+            x1="0"
+            x2={W}
+            y1={pts[values.indexOf(max)][1]}
+            y2={pts[values.indexOf(max)][1]}
+            style={{ stroke: color }}
+            strokeOpacity="0.35"
+            strokeDasharray="4 5"
+            vectorEffect="non-scaling-stroke"
+          />
         </svg>
 
         {/* Titik aktif + nilainya (HTML → tetap tajam) */}
@@ -318,7 +337,7 @@ export function LineChart({ data, height = 170, color = '#22D3EE', formatValue =
           style={{
             left: `${(active[0] / W) * 100}%`,
             top: `${(active[1] / H) * 100}%`,
-            boxShadow: '0 0 12px rgba(34, 211, 238, 0.9)',
+            boxShadow: '0 0 12px rgb(var(--brand) / 0.9)',
           }}
           aria-hidden="true"
         />
@@ -362,7 +381,7 @@ export function LineChart({ data, height = 170, color = '#22D3EE', formatValue =
 
 /* ---------------- Sparkline (garis mini untuk kartu KPI) ---------------- */
 
-export function Sparkline({ data, color = '#22D3EE' }) {
+export function Sparkline({ data, color = 'rgb(var(--chart1))' }) {
   const values = data.map((d) => (typeof d === 'number' ? d : d.value));
   if (values.length < 2) return null;
 
@@ -379,7 +398,7 @@ export function Sparkline({ data, color = '#22D3EE' }) {
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-8 w-24" aria-hidden="true">
-      <path d={smoothPath(pts)} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.9" />
+      <path d={smoothPath(pts)} fill="none" style={{ stroke: color }} strokeWidth="2" strokeLinecap="round" opacity="0.9" />
     </svg>
   );
 }

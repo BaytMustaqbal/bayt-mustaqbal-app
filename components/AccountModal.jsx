@@ -68,7 +68,23 @@ const toAvatarDataUrl = (file) =>
 
 const FIELD_ORDER = ['name', 'username', 'password', 'password2'];
 
-export function AccountModal({ open, user, users = [], onClose, onSwitchUser, onSave }) {
+/* Pilihan tampilan. `system` = ikut pengaturan terang/gelap perangkat. */
+const THEME_OPTIONS = [
+  { value: 'system', label: 'Sistem', icon: 'monitor' },
+  { value: 'light', label: 'Terang', icon: 'sun' },
+  { value: 'dark', label: 'Gelap', icon: 'moon' },
+];
+
+export function AccountModal({
+  open,
+  user,
+  users = [],
+  onClose,
+  onSwitchUser,
+  onSave,
+  theme = 'system',
+  onThemeChange,
+}) {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -441,6 +457,36 @@ export function AccountModal({ open, user, users = [], onClose, onSwitchUser, on
             </span>
           </p>
         </div>
+
+        {/* ---------- Tampilan (tema) ----------
+            Bukan bagian dari <form> yang menunggu "Simpan": pilihannya langsung
+            berlaku (dan disimpan App), karena menunggu tombol simpan untuk
+            sekadar mengubah warna terasa aneh. */}
+        <fieldset className="mt-3.5 rounded-2xl border border-line bg-canvas p-3.5">
+          <legend className="px-1 text-xs font-semibold text-mutedfg">Tampilan</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {THEME_OPTIONS.map((opt) => (
+              <label key={opt.value} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="bm-theme"
+                  value={opt.value}
+                  checked={theme === opt.value}
+                  onChange={() => onThemeChange?.(opt.value)}
+                  className="peer sr-only"
+                />
+                <span className="flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl border border-line bg-surface px-2 text-[11px] font-medium text-mutedfg transition-colors hover:bg-muted peer-checked:border-brand/50 peer-checked:bg-brandtint peer-checked:text-brandfg peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-canvas">
+                  <Icon name={opt.icon} size={17} />
+                  {opt.label}
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-mutedfg">
+            Pilihan langsung berlaku dan disimpan di perangkat ini. <strong className="font-semibold text-ink">Sistem</strong> mengikuti
+            pengaturan terang/gelap HP.
+          </p>
+        </fieldset>
 
         {/* ---------- Aksi ---------- */}
         <div className="mt-5 flex gap-2.5">

@@ -89,7 +89,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
             <p className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-mutedfg">
               <span
                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
-                  isDown ? 'bg-emerald-400/15 text-emerald-200' : 'bg-rose-500/15 text-rose-200'
+                  isDown ? 'bg-toneemerald/15 text-toneemeraldfg' : 'bg-tonerose/15 text-tonerosefg'
                 }`}
               >
                 <Icon name={isDown ? 'arrowDownRight' : 'arrowUpRight'} size={12} />

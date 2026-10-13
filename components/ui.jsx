@@ -66,7 +66,7 @@ export function GlassCard({ className = '', children, ...rest }) {
 export function SectionHeader({ icon, title, subtitle, actionLabel, onAction, actionTone = 'brand' }) {
   const tones = {
     brand: 'hover:bg-brandtint hover:text-brandfg',
-    accent: 'hover:bg-amber-400/15 hover:text-amber-200',
+    accent: 'hover:bg-toneamber/15 hover:text-toneamberfg',
   };
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-5">
@@ -96,12 +96,12 @@ export function SectionHeader({ icon, title, subtitle, actionLabel, onAction, ac
 /* Kartu statistik (KPI). `spark` = deret angka untuk grafik mini. */
 export function StatCard({ icon, label, value, hint, valueTitle, tone = 'cyan', spark, className = '' }) {
   const tones = {
-    cyan: 'bg-cyan-400/15 text-cyan-200',
-    blue: 'bg-blue-500/15 text-blue-200',
-    violet: 'bg-violet-500/15 text-violet-200',
-    emerald: 'bg-emerald-400/15 text-emerald-200',
-    amber: 'bg-amber-400/15 text-amber-200',
-    rose: 'bg-rose-500/15 text-rose-200',
+    cyan: 'bg-tonecyan/15 text-tonecyanfg',
+    blue: 'bg-toneblue/15 text-tonebluefg',
+    violet: 'bg-toneviolet/15 text-tonevioletfg',
+    emerald: 'bg-toneemerald/15 text-toneemeraldfg',
+    amber: 'bg-toneamber/15 text-toneamberfg',
+    rose: 'bg-tonerose/15 text-tonerosefg',
   };
   return (
     <Card className={`p-4 sm:p-5 ${className}`}>
@@ -149,11 +149,11 @@ export function ProgressBar({ value, max, className = '' }) {
 /* Ikon aksi cepat di dashboard (kotak sentuh ≥ 76px). */
 export function QuickAction({ icon, label, onClick, tone = 'cyan' }) {
   const tones = {
-    cyan: 'bg-cyan-400/15 text-cyan-200',
-    blue: 'bg-blue-500/15 text-blue-200',
-    violet: 'bg-violet-500/15 text-violet-200',
-    emerald: 'bg-emerald-400/15 text-emerald-200',
-    amber: 'bg-amber-400/15 text-amber-200',
+    cyan: 'bg-tonecyan/15 text-tonecyanfg',
+    blue: 'bg-toneblue/15 text-tonebluefg',
+    violet: 'bg-toneviolet/15 text-tonevioletfg',
+    emerald: 'bg-toneemerald/15 text-toneemeraldfg',
+    amber: 'bg-toneamber/15 text-toneamberfg',
   };
   return (
     <button
@@ -203,7 +203,7 @@ export function ItemActions({ onEdit, onDelete, label = 'item' }) {
         type="button"
         onClick={onDelete}
         aria-label={`Hapus ${label}`}
-        className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-rose-500/15 hover:text-rose-200"
+        className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg"
       >
         <Icon name="trash" size={17} />
       </button>
@@ -246,10 +246,10 @@ export function ExpenseCard({ item, formatCurrency, onEdit, onDelete }) {
 export function Badge({ children, tone = 'brand' }) {
   const tones = {
     brand: 'bg-brandtint text-brandfg',
-    green: 'bg-emerald-400/15 text-emerald-200',
-    amber: 'bg-amber-400/15 text-amber-200',
+    green: 'bg-toneemerald/15 text-toneemeraldfg',
+    amber: 'bg-toneamber/15 text-toneamberfg',
     gray: 'bg-muted text-mutedfg',
-    red: 'bg-rose-500/15 text-rose-200',
+    red: 'bg-tonerose/15 text-tonerosefg',
   };
   return (
     <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium ${tones[tone]}`}>

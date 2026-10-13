@@ -9,13 +9,14 @@ import { Badge } from './ui';
 // warna hanya pelengkap — nama anggota selalu tampil (bukan warna saja).
 // ============================================================================
 
-// Warna per member (hanya aksen; kontras cukup di latar navy).
+// Warna per member — token tema (--member1..5), jadi versi gelap & terang
+// sudah disiapkan di App.css dan titik tetap terbaca di latar putih.
 const MEMBER_COLORS = {
-  'Rezki YT': 'bg-cyan-400',
-  'Hilda AK': 'bg-violet-400',
-  'RAGASUCI': 'bg-emerald-400',
-  'RAJABRANA': 'bg-amber-400',
-  'Keluarga': 'bg-sky-400',
+  'Rezki YT': 'bg-member1',
+  'Hilda AK': 'bg-member2',
+  'RAGASUCI': 'bg-member3',
+  'RAJABRANA': 'bg-member4',
+  'Keluarga': 'bg-member5',
 };
 
 const DAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']; // index 0 = Senin
@@ -268,14 +269,21 @@ function DayCell({ date, today, selected, dayMap, taskKeys, onPickDay }) {
   const isSelected = isSameDay(date, selected);
 
   return (
+    /* Satu kelas latar untuk tiap keadaan — bukan "latar dasar + tambahan".
+       Kalau ditumpuk, urutan aturan CSS Tailwind (yang menang: bg-surface)
+       membuat sorotan "hari ini"/"terpilih" tidak pernah terlihat. */
     <button
       type="button"
       onClick={() => onPickDay(date)}
       aria-label={desc}
       aria-pressed={isSelected}
-      className={`relative flex aspect-square w-full min-w-0 flex-col items-center justify-center gap-[3px] rounded-md bg-surface text-sm transition-colors hover:border-brand/40 ${
-        isToday ? 'bg-brandtint text-brandfg' : 'text-mutedfg'
-      } ${isSelected ? 'text-white ring-2 ring-inset ring-cta bg-cta/25' : ''}`}
+      className={`relative flex aspect-square w-full min-w-0 flex-col items-center justify-center gap-[3px] rounded-md text-sm transition-colors hover:border-brand/40 ${
+        isSelected
+          ? 'bg-cta/25 text-ink ring-2 ring-inset ring-cta'
+          : isToday
+            ? 'bg-brandtint text-brandfg'
+            : 'bg-surface text-mutedfg'
+      }`}
     >
       <span className="font-mono leading-none">{date.getDate()}</span>
       <span className="flex items-center gap-[3px]">
@@ -284,7 +292,7 @@ function DayCell({ date, today, selected, dayMap, taskKeys, onPickDay }) {
         ))}
       </span>
       {hasTask && (
-        <span className="absolute bottom-1 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-full bg-white/60" aria-hidden="true" />
+        <span className="absolute bottom-1 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-full bg-mutedfg/60" aria-hidden="true" />
       )}
     </button>
   );
@@ -364,7 +372,11 @@ function YearGrid({ cursor, today, dayMap, taskKeys, onPickMonth }) {
             onClick={() => onPickMonth(m)}
             aria-label={`${name} ${year}: ${monthItems} jadwal, ${monthTasks} tugas`}
             className={`min-h-[92px] rounded-2xl border p-3 text-left transition-colors ${
-              isCurrent ? 'border-brand/40 bg-brandtint/40' : 'border-line bg-surface hover:border-brand/40'
+              /* Tint 14% (pola sama dengan penanda aktif lain). Tint 40% terbaca
+                 pekat sehingga nama bulan & jumlah di atasnya gagal kontras
+                 (gelap 3,9:1 / 2,6:1 · terang 4,0:1 / 3,5:1). Border 40% yang
+                 lebih tegas tetap jadi penandanya. */
+              isCurrent ? 'border-brand/40 bg-brandtint' : 'border-line bg-surface hover:border-brand/40'
             }`}
           >
             <p className={`text-sm font-bold ${isCurrent ? 'text-brandfg' : 'text-ink'}`}>{name}</p>
@@ -467,7 +479,7 @@ function Legend() {
         </span>
       ))}
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full bg-white/60" aria-hidden="true" />
+        <span className="h-2 w-2 rounded-full bg-mutedfg/60" aria-hidden="true" />
         Tugas
       </span>
     </div>

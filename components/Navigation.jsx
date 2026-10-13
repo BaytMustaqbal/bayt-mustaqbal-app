@@ -73,11 +73,11 @@ function CategoryMenu({ items, data, activeId, closing, menuId, onSelect, ariaLa
 
 /* Warna tile ikon notifikasi — sama dengan peta tone di ui.jsx (StatCard). */
 const NOTIF_TONES = {
-  rose: 'bg-rose-500/15 text-rose-200',
-  amber: 'bg-amber-400/15 text-amber-200',
-  violet: 'bg-violet-500/15 text-violet-200',
-  blue: 'bg-blue-500/15 text-blue-200',
-  cyan: 'bg-cyan-400/15 text-cyan-200',
+  rose: 'bg-tonerose/15 text-tonerosefg',
+  amber: 'bg-toneamber/15 text-toneamberfg',
+  violet: 'bg-toneviolet/15 text-tonevioletfg',
+  blue: 'bg-toneblue/15 text-tonebluefg',
+  cyan: 'bg-tonecyan/15 text-tonecyanfg',
 };
 
 /* Panel notifikasi (lonceng pojok kanan atas). Isinya turunan data —
@@ -167,6 +167,9 @@ export function Navigation({
   onSectionChange,
   user,
   onOpenAccount,
+  theme = 'system',
+  resolvedTheme = 'dark',
+  onToggleTheme,
   schedule,
   expenses,
   family,
@@ -376,6 +379,20 @@ export function Navigation({
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
+            {/* Ganti tema cepat (Terang ⇄ Gelap). Pilihan lengkap
+                (Sistem / Terang / Gelap) ada di modal "Akun saya". */}
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              aria-label={`${resolvedTheme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}${
+                theme === 'system' ? ' (sekarang mengikuti pengaturan perangkat)' : ''
+              }`}
+              title={resolvedTheme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+              className="grid h-11 w-11 place-items-center rounded-full border border-line text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+            >
+              <Icon name={resolvedTheme === 'dark' ? 'sun' : 'moon'} size={19} />
+            </button>
+
             {/* Notifikasi (lonceng) — panel dibuka di bawah header, rata kanan.
                 Badge TIDAK dibacakan sebagai angka telanjang: hitungannya
                 masuk ke aria-label tombol + live region di bawah. */}

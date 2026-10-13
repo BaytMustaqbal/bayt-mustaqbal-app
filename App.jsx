@@ -196,10 +196,12 @@ const mockData = {
     { label: 'Min', value: 150000 },
   ],
   categories: [
-    { label: 'Belanja Bulanan', value: 1250000, color: '#22D3EE' },
-    { label: 'Pendidikan', value: 750000, color: '#3B82F6' },
-    { label: 'Listrik & Air', value: 480000, color: '#8B5CF6' },
-    { label: 'Transportasi', value: 300000, color: '#F59E0B' },
+    // Warna seri = token tema (bukan hex) supaya donut tetap terbaca di
+    // mode terang maupun gelap. Diselesaikan CSS lewat inline `style`.
+    { label: 'Belanja Bulanan', value: 1250000, color: 'rgb(var(--chart1))' },
+    { label: 'Pendidikan', value: 750000, color: 'rgb(var(--chart2))' },
+    { label: 'Listrik & Air', value: 480000, color: 'rgb(var(--chart3))' },
+    { label: 'Transportasi', value: 300000, color: 'rgb(var(--chart4))' },
   ],
 };
 
@@ -403,6 +405,32 @@ const storeNotifRead = (ids) => {
   }
 };
 
+/* ---------- Tema terang/gelap ----------
+   Pilihan pengguna: 'system' | 'light' | 'dark' (kunci terpisah dari snapshot
+   data karena ini preferensi tampilan). Skrip "anti-kedip" di index.html
+   membaca kunci yang sama SEBELUM React jalan. */
+const THEME_STORAGE_KEY = 'bm-theme';
+const THEMES = ['system', 'light', 'dark'];
+const LIGHT_MEDIA = '(prefers-color-scheme: light)';
+
+const readStoredTheme = () => {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    return THEMES.includes(stored) ? stored : 'system';
+  } catch {
+    return 'system';
+  }
+};
+
+/* Perangkat sedang memakai tema terang? (kalau API tak ada → anggap gelap) */
+const systemPrefersLight = () => {
+  try {
+    return window.matchMedia(LIGHT_MEDIA).matches;
+  } catch {
+    return false;
+  }
+};
+
 export default function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -430,6 +458,11 @@ export default function App() {
   const [notifRead, setNotifRead] = useState(readNotifRead);
   // Modal "Akun saya" (nama, username, avatar, password) — dibuka dari chip pengguna
   const [accountOpen, setAccountOpen] = useState(false);
+  // Tema: pilihan pengguna ('system' | 'light' | 'dark') + preferensi perangkat.
+  // Tema yang benar-benar dipakai = hasil resolusi keduanya.
+  const [theme, setTheme] = useState(readStoredTheme);
+  const [systemLight, setSystemLight] = useState(systemPrefersLight);
+  const resolvedTheme = theme === 'system' ? (systemLight ? 'light' : 'dark') : theme;
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
   // Seed = mockData; setiap perubahan disimpan ke localStorage (snapshot),
@@ -454,6 +487,43 @@ export default function App() {
     setData(next);
     persist(next);
   };
+
+  /* ---------- Tema ----------
+     1) Terapkan tema yang sudah diresolusi ke elemen akar + meta warna browser.
+        Atribut `data-theme` yang dipasang skrip di index.html ditimpa dengan
+        nilai yang sama (idempoten), jadi tidak ada kedipan saat React mount.
+     2) Simpan pilihan pengguna.
+     3) Ikuti perubahan pengaturan perangkat selama pilihan = 'system'. */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', resolvedTheme);
+    root.style.colorScheme = resolvedTheme;
+    const meta = document.getElementById('theme-color-meta');
+    if (meta) meta.setAttribute('content', resolvedTheme === 'light' ? '#F2FAFD' : '#0A192F');
+    const statusBar = document.getElementById('apple-status-style');
+    if (statusBar) statusBar.setAttribute('content', resolvedTheme === 'light' ? 'default' : 'black');
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (e) {
+      /* localStorage dilarang → tema tetap jalan untuk sesi ini */
+    }
+  }, [theme, resolvedTheme]);
+
+  useEffect(() => {
+    let mq;
+    try {
+      mq = window.matchMedia(LIGHT_MEDIA);
+    } catch (e) {
+      return undefined;
+    }
+    const onChange = (e) => setSystemLight(e.matches);
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, []);
+
+  // Tombol tema di header: lompat ke kebalikan tema yang sedang terlihat
+  // (dari 'system' pun jadi pilihan tegas light/dark — tidak membingungkan).
+  const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
 
   // Toast: tambah/ubah = konfirmasi singkat; hapus = tawarkan "Urungkan".
   const pushToast = (t) => setToast({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...t });
@@ -1173,6 +1243,9 @@ export default function App() {
         onSectionChange={setActiveSection}
         user={currentUser}
         onOpenAccount={() => setAccountOpen(true)}
+        theme={theme}
+        resolvedTheme={resolvedTheme}
+        onToggleTheme={toggleTheme}
         schedule={data.schedule}
         expenses={data.expenses}
         family={familyAll}
@@ -1198,7 +1271,7 @@ export default function App() {
         {!isOnline && (
           <div
             role="status"
-            className="mb-4 flex items-center gap-2.5 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-rose-200"
+            className="mb-4 flex items-center gap-2.5 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-tonerosefg"
           >
             <Icon name="wifiOff" size={16} />
             <span>Mode offline — perubahan akan disinkronkan saat online.</span>
@@ -1236,6 +1309,8 @@ export default function App() {
           setEntered(false);
         }}
         onSave={saveAccount}
+        theme={theme}
+        onThemeChange={setTheme}
       />
 
       {/* Toast: konfirmasi ringkas + "Urungkan" untuk hapus */}
