@@ -1,8 +1,38 @@
 import React from 'react';
 import { Card, Badge, CARD_INTERACTIVE } from './ui';
 
+/* Usia dari tanggal lahir (YYYY-MM-DD) per hari ini. Dihitung saat render
+   supaya tidak pernah basi (tidak disimpan sebagai angka). */
+const ageOf = (birthDate) => {
+  if (!birthDate) return null;
+  const b = new Date(`${birthDate}T00:00:00`);
+  if (Number.isNaN(b.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age -= 1;
+  return age;
+};
+
+/* "12 Mei 1990" — tanggal lahir dibaca lengkap, bukan angka mentah. */
+const longDate = (dateStr) => {
+  if (!dateStr) return '—';
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+};
+
+/* Kartu profil anggota: data diri yang stabil (bukan jadwal/biaya — itu modul
+   lain). Tiap baris `<p>` bertumpuk, jadi tetap terbaca di kartu sempit 320px. */
 export function FamilyMemberCard({ member }) {
   const isActive = member.status === 'active';
+  const age = ageOf(member.birthDate);
+  const rows = [
+    ['Lahir', `${longDate(member.birthDate)}${age !== null ? ` · ${age} th` : ''}`],
+    ['Gol. darah', member.blood || '—'],
+    ['Alergi', member.allergy || '—'],
+    ['WA', member.phone || '—'],
+  ];
 
   return (
     <Card className={`p-4 text-center ${CARD_INTERACTIVE} hover:border-brand sm:p-5`}>
@@ -19,6 +49,14 @@ export function FamilyMemberCard({ member }) {
           {isActive ? 'Aktif' : 'Tidak aktif'}
         </Badge>
       </div>
+      <dl className="mt-3.5 space-y-1 border-t border-line pt-3 text-left text-xs sm:mt-4">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-baseline justify-between gap-2">
+            <dt className="shrink-0 text-mutedfg">{label}</dt>
+            <dd className="min-w-0 truncate text-right font-medium text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
     </Card>
   );
 }

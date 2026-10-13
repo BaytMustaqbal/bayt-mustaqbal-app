@@ -23,12 +23,16 @@ export const FINANCE_CATEGORIES = [
   { id: 'ibadah', label: 'Ibadah & Sosial', icon: 'handCoins' },
 ];
 
+// Bagian modul "Keluarga". Modul ini = **papan profil anggota** (data diri,
+// info medis ringkas, kontak darurat, dokumen penting). Jadwal & biaya anak
+// (SPP, les, imunisasi) BUKAN di sini — sudah punya rumah di Agenda & Keuangan.
+// Lihat docs/04-KEPUTUSAN-TERKUNCI.md D17.
 export const FAMILY_CATEGORIES = [
   { id: 'semua', label: 'Semua Keluarga', icon: 'users' },
   { id: 'anggota', label: 'Anggota', icon: 'userCheck' },
-  { id: 'kesehatan', label: 'Kesehatan', icon: 'activity' },
-  { id: 'pendidikan', label: 'Pendidikan Anak', icon: 'book' },
+  { id: 'medis', label: 'Info Medis', icon: 'activity' },
   { id: 'kontak', label: 'Kontak & Darurat', icon: 'phone' },
+  { id: 'dokumen', label: 'Dokumen Penting', icon: 'file' },
 ];
 
 // Filter tugas — status & prioritas jadi satu daftar pilihan (dropdown & chip).

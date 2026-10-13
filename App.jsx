@@ -32,11 +32,14 @@ const mockData = {
     { id: 'kakang', name: 'Rezki YT', role: 'Admin', initials: 'RY' },
     { id: 'istri', name: 'Hilda AK', role: 'Anggota', initials: 'HA' },
   ],
+  // Profil anggota keluarga — inti modul "Keluarga" (papan profil, bukan jadwal).
+  // Jadwal kontrol/imunisasi ada di Agenda (kategori Kesehatan), biaya sekolah di
+  // Keuangan — jangan diduplikasi di sini. Lihat docs/04-KEPUTUSAN-TERKUNCI.md D17.
   family: [
-    { id: 1, name: 'Rezki YT', role: 'Admin', initials: 'RY', status: 'active' },
-    { id: 2, name: 'Hilda AK', role: 'Anggota', initials: 'HA', status: 'active' },
-    { id: 3, name: 'RAGASUCI', role: 'Anggota', initials: 'RS', status: 'active' },
-    { id: 4, name: 'RAJABRANA', role: 'Anggota', initials: 'RB', status: 'active' },
+    { id: 1, name: 'Rezki YT', role: 'Admin', initials: 'RY', status: 'active', birthDate: '1990-05-12', blood: 'O', allergy: '—', phone: '0812-1000-0001' },
+    { id: 2, name: 'Hilda AK', role: 'Anggota', initials: 'HA', status: 'active', birthDate: '1992-08-03', blood: 'A', allergy: 'Seafood', phone: '0812-1000-0002' },
+    { id: 3, name: 'RAGASUCI', role: 'Anggota', initials: 'RS', status: 'active', birthDate: '2016-02-20', blood: 'B', allergy: 'Debu', phone: '—' },
+    { id: 4, name: 'RAJABRANA', role: 'Anggota', initials: 'RB', status: 'active', birthDate: '2019-11-07', blood: 'B', allergy: '—', phone: '—' },
   ],
   schedule: [
     // Keluarga — kegiatan bersama
@@ -59,17 +62,20 @@ const mockData = {
     { id: 12, title: 'Service Motor', time: '09:00', date: '2026-10-17', member: 'Rezki YT', category: 'kendaraan' },
     { id: 13, title: 'Servis Rutin (ganti oli & filter)', time: '10:30', date: '2026-10-20', member: 'Rezki YT', category: 'kendaraan' },
   ],
-  familyHealth: [
-    { id: 1, title: 'Imunisasi lanjutan', meta: 'RAGASUCI · Puskesmas · 2026-11-02', badge: 'Jadwal', tone: 'brand' },
-    { id: 2, title: 'Cek tinggi & berat badan', meta: 'RAGASUCI & RAJABRANA · 2026-10-20', badge: 'Jadwal', tone: 'brand' },
-    { id: 3, title: 'Kontrol gigi', meta: 'Hilda AK · 2026-10-25', badge: 'Jadwal', tone: 'brand' },
-    { id: 4, title: 'Vitamin & suplemen', meta: 'Semua anggota · rutin', badge: 'Rutin', tone: 'green' },
+  // Info medis ringkas & STATIS (dokter langganan, asuransi, obat rutin).
+  // Jadwal kontrol/imunisasi ada di Agenda — bukan di sini.
+  familyMedical: [
+    { id: 1, title: 'Dokter keluarga', meta: 'dr. Ayu Prasetyo · Klinik Sehat Sentosa · 021-555-0123', badge: 'Langganan', tone: 'brand' },
+    { id: 2, title: 'BPJS Kesehatan', meta: 'Kelas 2 · seluruh anggota · kartu digital di HP', badge: 'Asuransi', tone: 'brand' },
+    { id: 3, title: 'Riwayat imunisasi anak', meta: 'RAGASUCI & RAJABRANA · lengkap sampai usia 5 tahun', badge: 'Lengkap', tone: 'green' },
+    { id: 4, title: 'Obat & vitamin rutin', meta: 'Vitamin D seluruh anggota · diminum pagi setelah makan', badge: 'Rutin', tone: 'green' },
   ],
-  familyEducation: [
-    { id: 1, title: 'SPP & uang sekolah', meta: 'RAGASUCI · sudah dibayar', badge: 'Selesai', tone: 'green' },
-    { id: 2, title: 'Les musik', meta: 'RAJABRANA · Sabtu 15:00', badge: 'Rutin', tone: 'green' },
-    { id: 3, title: 'Rapat wali murid', meta: 'Hilda AK · 2026-10-16', badge: 'Jadwal', tone: 'brand' },
-    { id: 4, title: 'Buku bacaan & PR', meta: 'RAGASUCI · Jumat sore', badge: 'Rutin', tone: 'green' },
+  // Dokumen penting + masa berlaku — dokumen kedaluwarsa paling mudah terlupakan.
+  familyDocuments: [
+    { id: 1, title: 'Kartu Keluarga (KK)', meta: 'No. 3212…007 · asli di lemari berkas', badge: 'Ada', tone: 'green' },
+    { id: 2, title: 'KTP Rezki YT', meta: 'Berlaku sampai 12 Mei 2030', badge: '2030', tone: 'brand' },
+    { id: 3, title: 'Akta Kelahiran anak', meta: 'RAGASUCI & RAJABRANA · asli di lemari berkas', badge: 'Ada', tone: 'green' },
+    { id: 4, title: 'Buku KIA (Ibu & Anak)', meta: 'RAGASUCI · catatan tumbuh kembang & imunisasi', badge: 'Ada', tone: 'green' },
   ],
   familyContacts: [
     { id: 1, title: 'Puskesmas', meta: '0812-3456-7890', badge: 'Darurat', tone: 'red' },
@@ -283,13 +289,13 @@ const SHEET_CONFIG = {
         defaultValue: 'anggota',
         options: [
           { value: 'anggota', label: 'Anggota keluarga' },
-          { value: 'kesehatan', label: 'Kesehatan' },
-          { value: 'pendidikan', label: 'Pendidikan Anak' },
+          { value: 'medis', label: 'Info Medis' },
           { value: 'kontak', label: 'Kontak & Darurat' },
+          { value: 'dokumen', label: 'Dokumen Penting' },
         ],
       },
-      { key: 'title', label: 'Nama / Judul', type: 'text', required: true, placeholder: 'nama anggota, jadwal, atau kontak' },
-      { key: 'meta', label: 'Info singkat (opsional)', type: 'text', placeholder: 'contoh: Puskesmas · 0812-3456-7890' },
+      { key: 'title', label: 'Nama / Judul', type: 'text', required: true, placeholder: 'nama anggota, dokter, kontak, atau dokumen' },
+      { key: 'meta', label: 'Info singkat (opsional)', type: 'text', placeholder: 'contoh: 0812-3456-7890 atau Berlaku s/d 2030-05-12' },
     ],
   },
 };
@@ -338,6 +344,20 @@ const loadInitialData = () => {
         // kunci baru otomatis terisi dari data contoh.
         const merged = { ...mockData, ...parsed };
         if (!Array.isArray(merged.notes)) merged.notes = mockData.notes;
+        // Migrasi modul Keluarga (snapshot lama → "papan profil anggota", D17):
+        // kunci lama dibuang, kunci baru diisi contoh, dan field profil anggota
+        // dilengkapi dari seed tanpa menimpa nama/peran yang sudah diubah.
+        delete merged.familyHealth;
+        delete merged.familyEducation;
+        if (!Array.isArray(merged.familyMedical)) merged.familyMedical = mockData.familyMedical;
+        if (!Array.isArray(merged.familyDocuments)) merged.familyDocuments = mockData.familyDocuments;
+        if (!Array.isArray(merged.familyContacts)) merged.familyContacts = mockData.familyContacts;
+        if (Array.isArray(merged.family)) {
+          merged.family = merged.family.map((m) => {
+            const seed = mockData.family.find((s) => String(s.id) === String(m.id) || s.name === m.name);
+            return seed ? { ...seed, ...m } : m;
+          });
+        }
         return merged;
       }
     }
@@ -624,13 +644,21 @@ export default function App() {
             .slice(0, 2)
             .join('')
             .toUpperCase() || '?';
-        next = { ...current, family: [...current.family, { id, name: values.title, role: 'Anggota', initials, status: 'active' }] };
+        next = {
+          ...current,
+          // Profil baru: hanya nama + (opsional) nomor WA dari "info singkat".
+          // Tanggal lahir/gol. darah/alergi diisi lewat penyuntingan data nanti.
+          family: [
+            ...current.family,
+            { id, name: values.title, role: 'Anggota', initials, status: 'active', birthDate: '', blood: '—', allergy: '—', phone: values.meta || '—' },
+          ],
+        };
       } else {
         const entry = { id, title: values.title, meta: values.meta || '' };
-        if (values.bagian === 'kesehatan') {
-          next = { ...current, familyHealth: [...current.familyHealth, { ...entry, badge: 'Catatan', tone: 'gray' }] };
-        } else if (values.bagian === 'pendidikan') {
-          next = { ...current, familyEducation: [...current.familyEducation, { ...entry, badge: 'Catatan', tone: 'gray' }] };
+        if (values.bagian === 'medis') {
+          next = { ...current, familyMedical: [...current.familyMedical, { ...entry, badge: 'Catatan', tone: 'gray' }] };
+        } else if (values.bagian === 'dokumen') {
+          next = { ...current, familyDocuments: [...current.familyDocuments, { ...entry, badge: 'Catatan', tone: 'gray' }] };
         } else {
           next = { ...current, familyContacts: [...current.familyContacts, entry] };
         }
@@ -724,14 +752,14 @@ export default function App() {
     };
   }, []);
 
-  // Gabungan semua catatan keluarga (tiap item diberi `category` = bagian).
-  // Dipakai untuk badge jumlah di dropdown & chip filter bagan keluarga.
+  // Gabungan semua data keluarga (tiap item diberi `category` = bagian).
+  // Dipakai untuk badge jumlah di dropdown bagian keluarga.
   const familyAll = useMemo(
     () => [
       ...data.family.map((m) => ({ ...m, category: 'anggota' })),
-      ...data.familyHealth.map((h) => ({ ...h, category: 'kesehatan' })),
-      ...data.familyEducation.map((e) => ({ ...e, category: 'pendidikan' })),
+      ...data.familyMedical.map((h) => ({ ...h, category: 'medis' })),
       ...data.familyContacts.map((c) => ({ ...c, category: 'kontak' })),
+      ...data.familyDocuments.map((d) => ({ ...d, category: 'dokumen' })),
     ],
     [data]
   );
@@ -1023,16 +1051,16 @@ export default function App() {
       case 'family': {
         const activeMeta = FAMILY_CATEGORIES.find((c) => c.id === familyFilter) || FAMILY_CATEGORIES[0];
         const showAnggota = familyFilter === 'semua' || familyFilter === 'anggota';
-        const showKesehatan = familyFilter === 'semua' || familyFilter === 'kesehatan';
-        const showPendidikan = familyFilter === 'semua' || familyFilter === 'pendidikan';
+        const showMedis = familyFilter === 'semua' || familyFilter === 'medis';
         const showKontak = familyFilter === 'semua' || familyFilter === 'kontak';
+        const showDokumen = familyFilter === 'semua' || familyFilter === 'dokumen';
         const bagianCount = familyFilter === 'semua' ? familyAll.length : countByCategory(familyAll, familyFilter);
         return (
           <section className="app-fade-in">
             <SectionHeader
               icon="users"
               title={activeMeta.label}
-              subtitle={`${bagianCount} catatan keluarga`}
+              subtitle={`${bagianCount} data keluarga`}
               actionLabel="Tambah"
               onAction={() => openAdd('family')}
             />
@@ -1048,7 +1076,9 @@ export default function App() {
                   {data.family.length === 0 ? (
                     <EmptyState icon="users" title="Belum ada anggota" message="Tambahkan anggota keluarga untuk mulai berkolaborasi." />
                   ) : (
-                    <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                    // Kartu profil memuat detail (lahir/gol.darah/alergi/WA) — butuh
+                    // lebar. 1 kolom di HP, baru berjejer dari sm+.
+                    <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
                       {data.family.map((member) => (
                         <FamilyMemberCard key={member.id} member={member} />
                       ))}
@@ -1056,9 +1086,9 @@ export default function App() {
                   )}
                 </div>
               )}
-              {showKesehatan && <FamilyList title="Kesehatan" icon="activity" items={data.familyHealth} />}
-              {showPendidikan && <FamilyList title="Pendidikan Anak" icon="book" items={data.familyEducation} />}
+              {showMedis && <FamilyList title="Info Medis" icon="activity" items={data.familyMedical} />}
               {showKontak && <FamilyList title="Kontak & Darurat" icon="phone" items={data.familyContacts} />}
+              {showDokumen && <FamilyList title="Dokumen Penting" icon="file" items={data.familyDocuments} />}
             </div>
           </section>
         );

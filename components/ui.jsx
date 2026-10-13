@@ -258,7 +258,7 @@ export function Badge({ children, tone = 'brand' }) {
   );
 }
 
-/* Daftar baris untuk sub-bagian keluarga (Kesehatan / Pendidikan / Kontak) */
+/* Daftar baris untuk sub-bagian keluarga (Info Medis / Kontak & Darurat / Dokumen) */
 export function FamilyList({ title, icon, items }) {
   return (
     <div>

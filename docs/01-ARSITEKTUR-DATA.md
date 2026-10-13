@@ -2,7 +2,7 @@
 
 > **STATUS — 12 Okt 2026:** Dokumen ini bagian dari rencana **FAMILY OS versi Google Sheets + Apps Script** (11 Okt 2026). **Bagian stack sudah tidak berlaku** — acuan teknis sekarang **Cloudflare Pages (React + Vite di root repo) + Cloudflare Worker + D1**; lihat `README.md` dan `AGENT.md`. **Keputusan produknya tetap berlaku** (D1 admin/user, D5 satu tabel agenda, D6 `recurring` ≠ `bills`, D9 edit 24 jam, D11 rekening aktif, D13 estimasi tagihan, D15 WA via Fonnte, D16 iuran sampah). Disimpan sebagai riwayat: jangan dipakai sebagai acuan teknis sebelum dipetakan ulang ke D1.
 >
-> **Khusus berkas ini:** istilah "sheet/tab" → "tabel D1"; skema 15 tab dipetakan ke migrasi D1. Yang tetap dipakai: kolom `rev` (deteksi konflik) dan soft delete (`void`) — data keuangan tidak boleh hilang fisik.
+> **Khusus berkas ini:** istilah "sheet/tab" → "tabel D1"; skema 15 tab asli dipetakan ke migrasi D1, **ditambah 2 tabel dari D17** (`family_members`, `family_notes`) → total 17 tabel. Yang tetap dipakai: kolom `rev` (deteksi konflik) dan soft delete (`void`) — data keuangan tidak boleh hilang fisik.
 
 Sumber kebenaran: satu Google Spreadsheet bernama `FAMILY_OS_DATA`.
 Semua modul membaca & menulis ke sini. Tidak ada database lain.
@@ -452,6 +452,55 @@ Dihitung on-the-fly, **tidak disimpan** — supaya interval yang diubah otomatis
 
 ---
 
+## 16. `family_members` — Profil Anggota Keluarga (D17)
+
+Modul "Keluarga" = **papan profil orang**. Isinya data yang stabil tentang anggota,
+bukan jadwal (→ `calendar_events`) dan bukan biaya (→ `transactions`).
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `member_id` | text | UUID |
+| `nama` | text | Nama tampilan (`Rezki YT`) |
+| `peran` | text | `admin` \| `anggota` \| `anak` \| `lainnya` (bebas untuk kakek/nenek dll) |
+| `inisial` | text | 1–2 huruf untuk avatar (`RY`) |
+| `tanggal_lahir` | date | `YYYY-MM-DD` — dasar ulang tahun & umur |
+| `golongan_darah` | text | `A` \| `B` \| `AB` \| `O` \| kosong |
+| `alergi` | text | Bebas (`Seafood`, `Debu`, kosong) |
+| `nomor_wa` | text | Format tampil `0812-1000-0001` |
+| `user_id` | text | FK opsional → `users.user_id` (akun login, **bukan** syarat) |
+| `aktif` | YA/TIDAK | Anggota pindah/keluar tetap tersimpan, ditandai tidak aktif |
+| `void`, `dibuat_*`, `diubah_*`, `rev` | | Standar |
+
+> **Akun ≠ anggota.** `users` = yang bisa login; `family_members` = yang ingin
+> dicatat profilnya (termasuk anak yang belum punya akun). Digabung hanya kalau
+> nanti terbukti perlu.
+
+---
+
+## 17. `family_notes` — Catatan Keluarga (D17)
+
+Satu tabel untuk **info medis ringkas, kontak darurat, dan dokumen penting** —
+dibedakan kolom `bagian`. Sengaja **bukan** tiga tabel terpisah (pola sama seperti
+D5): makin banyak tabel, makin besar peluang item masuk ke tabel yang salah.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `note_id` | text | UUID |
+| `bagian` | enum | `medis` \| `kontak` \| `dokumen` |
+| `judul` | text | `Dokter keluarga`, `Kartu Keluarga (KK)` |
+| `isi` | text | Info singkat (satu baris tampil di kartu) |
+| `badge` | text | Label kanan kartu: `Langganan`, `Asuransi`, `Darurat`, `Ada`, `2030` |
+| `tone` | enum | `brand` \| `green` \| `amber` \| `red` \| `gray` — warna badge |
+| `berlaku_sampai` | date | **Khusus `bagian=dokumen`** (`YYYY-MM-DD`, opsional) → dasar pengingat dokumen kedaluwarsa |
+| `anggota_id` | text | FK opsional → `family_members.member_id` (kalau catatan menempel ke satu orang) |
+| `void`, `dibuat_*`, `diubah_*`, `rev` | | Standar |
+
+> **Info medis di sini harus STATIS** (dokter langganan, BPJS, obat rutin). Jadwal
+> kontrol/imunisasi adalah **acara** → `calendar_events` kategori `kesehatan`.
+> Kalau jadwal disalin ke sini, dua tempat bisa saling bertentangan.
+
+---
+
 ## Relasi (ERD Ringkas)
 
 ```
@@ -468,6 +517,9 @@ recurring ──< bills        recurring ──< calendar_events
 accounts ──< transactions
 
 service_asset ──< service_log
+
+family_members ──< family_notes (anggota_id, opsional)
+family_members ──(user_id, opsional)── users
 
 attendance ──(tanggal, nama)── attendance_quota (tahun, nama)
 calendar_events ── kategori filter (bukan tab terpisah)

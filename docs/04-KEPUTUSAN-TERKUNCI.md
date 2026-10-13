@@ -267,6 +267,41 @@ spreadsheet dev. Naikkan ke prod hanya setelah lewat.
 
 ---
 
+## D17 — Modul "Keluarga" = Papan Profil Anggota (bukan modul serba-ada)
+
+**Tanggal:** 13 Oktober 2026
+
+Sebelum ini tab **Keluarga** satu-satunya modul **tanpa definisi** — isinya karangan
+mock (Anggota / Kesehatan / Pendidikan Anak / Kontak), dan sebagian menampilkan hal
+yang sudah punya rumah sendiri (jadwal imunisasi = Agenda; SPP & les = Keuangan).
+
+| Opsi | Bentuk | Alasan/Konsekuensi |
+|---|---|---|
+| **A. Papan profil anggota (dipilih)** | Tab Keluarga = **data tentang orang**: profil anggota (tgl lahir, gol. darah, alergi, WA) + info medis ringkas (dokter, asuransi, obat rutin) + kontak darurat + dokumen penting (masa berlaku). Jadwal/biaya **tidak** diduplikasi. | Satu data satu tempat. Modul jadi jelas batasnya, kecil, dan tidak bersaing dengan Agenda/Keuangan. Butuh tabel anggota + tabel catatan keluarga |
+| B. Rapikan 4 bagian lama | Pertahankan Kesehatan/Pendidikan Anak, sekadar sambungkan ke modul lain | Duplikasi tetap ada (jadwal & biaya tampil dua tempat) → data gampang beda |
+| C. Bangun penuh | + riwayat kesehatan/tumbuh kembang + nilai sekolah + semua | Melanggar prinsip "jangan bangun modul yang belum dipakai 2 minggu"; jadi mock besar tanpa backend |
+| D. Tunda | Catat saja, kerjakan setelah Fase 1 | Tab Keluarga tetap tidak jelas |
+
+**Konsekuensi teknis:**
+- Tabel baru (lihat `01-ARSITEKTUR-DATA.md`): **`family_members`** (profil orang) dan
+  **`family_notes`** (satu tabel untuk medis/kontak/dokumen, dibedakan kolom `bagian`
+  — pola sama seperti D5 "satu tabel agenda", supaya tidak ada tab salah-pilih).
+- Kategori bagian: `anggota` · `medis` · `kontak` · `dokumen` (dulu `kesehatan` &
+  `pendidikan` **dihapus** dari modul ini).
+- **Pendidikan anak tidak punya bagian di sini.** Yang bersifat jadwal/acara → Agenda
+  (kategori `anak`); yang bersifat biaya → Keuangan (kategori `pendidikan`).
+  Yang benar-benar profil (mis. nama sekolah & kelas) boleh ditaruh sebagai catatan
+  `medis`/`lainnya` **atau** ditambahkan sebagai kolom `family_members` kalau nanti terbukti dipakai.
+- Info medis yang disimpan = hal **statis** (dokter langganan, BPJS, obat rutin,
+  alergi). Jadwal kontrol & imunisasi tetap di Agenda — jangan dipindah ke sini.
+- `family_notes.berlaku_sampai` (date, opsional) khusus dokumen — pengingat dokumen
+  kedaluwarsa (KTP/paspor/STNK) dikirim lewat jalur notifikasi yang sudah ada (D15).
+- **Relasi:** `family_members.user_id` (opsional) → `users.user_id`. Dua entitas
+  tetap terpisah (akun login ≠ anggota keluarga) sampai ada kebutuhan nyata
+  menyatukannya.
+
+---
+
 ## Pertanyaan yang MASIH Terbuka
 
 Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
@@ -286,3 +321,4 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 |---|---|---|---|
 | 11 Okt 2026 | D1–D10 | Seluruh keputusan awal | Sesi perencanaan bersama Kakang |
 | 11 Okt 2026 | D11–D14 | Rekening aktif, tanpa foto, variabel estimasi, libur hardcode | Grill 4 pertanyaan terbuka |
+| 13 Okt 2026 | D17 | Modul "Keluarga" = papan profil anggota (kategori: anggota/medis/kontak/dokumen) | Tab Keluarga belum pernah didefinisikan; isinya menduplikasi Agenda & Keuangan |

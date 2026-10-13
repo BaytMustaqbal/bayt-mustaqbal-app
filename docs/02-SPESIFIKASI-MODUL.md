@@ -52,6 +52,7 @@ google.script.run
 | `cal.` | `list`, `create`, `update`, `delete`, `toggle_done` |
 | `svc.` | `list`, `create`, `update`, `delete`, `due`, `asset.*` |
 | `note.` | `list`, `create`, `update`, `delete` |
+| `fam.` | `members.list`, `members.create`, `members.update`, `members.delete`, `notes.*` |
 | `cfg.` | `get`, `set`, `categories.*`, `users.*` |
 
 ---
@@ -370,6 +371,49 @@ paling mendesak.
   Mustache `{{x}}` jadi lebih mudah dibaca langsung di sheet)
 - Search sederhana: client-side filter judul + isi (data catatan kecil)
 - Pin ke atas
+
+---
+
+## MODUL 8B — Keluarga (Papan Profil Anggota) — lihat D17
+
+**Tujuan:** Satu tempat untuk **data tentang orang**, bukan jadwal dan bukan biaya.
+Keluarga butuh tahu: siapa anggota, golongan darah/alergi, dokternya siapa,
+nomor darurat, dan di mana dokumen pentingnya. Jadwal → Kalender; biaya → Keuangan.
+
+**Data:** `family_members` (profil) + `family_notes` (satu tabel, kolom `bagian`).
+
+| Aksi | Deskripsi |
+|---|---|
+| `fam.members.list` | Daftar anggota (aktif & non-aktif), urut `peran` lalu `nama` |
+| `fam.members.create/update/delete` | CRUD profil anggota. `delete` = soft delete (`void`) |
+| `fam.notes.list` | Catatan keluarga, filter opsional `bagian` (`medis`\|`kontak`\|`dokumen`) |
+| `fam.notes.create/update/delete` | CRUD catatan keluarga. `bagian` wajib |
+
+**Validasi:**
+- `nama` wajib; `inisial` dihitung dari nama kalau kosong (maks 2 huruf, uppercase)
+- `tanggal_lahir` format `YYYY-MM-DD`, tidak boleh di masa depan
+- `golongan_darah` hanya `A`/`B`/`AB`/`O` (atau kosong)
+- `nomor_wa` hanya digit, `-`, `+`, spasi (dinormalisasi saat tampil)
+- `berlaku_sampai` **hanya** diizinkan untuk `bagian=dokumen`; kalau diisi di
+  bagian lain → `VALIDATION`
+- `bagian` tidak boleh `anggota` (anggota lewat `fam.members.*`, bukan `fam.notes.*`)
+
+**Hak akses:** lihat + tambah = semua user; **ubah/hapus profil** = admin
+(menyentuh data orang lain). Mengikuti D1.
+
+**UI:**
+- Dropdown bagian di tab Keluarga: `Semua Keluarga` · `Anggota` · `Info Medis` ·
+  `Kontak & Darurat` · `Dokumen Penting` (badge jumlah) — satu-satunya filter
+- **Anggota** = grid kartu profil: avatar inisial, nama, peran, umur (dihitung
+  dari `tanggal_lahir`, tidak disimpan), golongan darah, alergi, nomor WA.
+  Kartu lebih lebar dari kartu item biasa (1 kolom di HP) karena memuat detail
+- **Info Medis / Kontak & Darurat / Dokumen Penting** = daftar kartu
+  (judul + info singkat + badge). Dokumen menampilkan masa berlaku
+- Form "Tambah ke Keluarga": pilih bagian → judul → info singkat
+
+> **Jangan taruh di sini:** jadwal imunisasi/kontrol (→ Kalender, kategori
+> `kesehatan`), SPP/les/biaya sekolah (→ Keuangan, kategori `pendidikan`),
+> acara anak (→ Kalender, kategori `anak`).
 
 ---
 
