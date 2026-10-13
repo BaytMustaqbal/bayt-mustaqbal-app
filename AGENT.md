@@ -53,7 +53,7 @@ bayt-mustaqbal-app/
 │   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: logo besar + tagline (iman–teknologi–keluarga) + kartu pengguna (avatar foto/inisial + nama + @username/peran) + tombol "Muat ulang data contoh" → nanti jadi login
 │   ├── FormSheet.jsx       # Bottom sheet "Tambah/Ubah" generik (field teks/angka/tanggal/jam/select/textarea/checkbox, validasi wajib, mode ubah via initialValues, role=dialog, Escape/klik luar)
 │   ├── Toast.jsx           # Notifikasi ringkas di atas tab bar: konfirmasi tambah/ubah + tombol "Urungkan" (undo hapus), role=status
-│   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
+│   ├── Dashboard.jsx       # Dashboard baru: hero glass (tombol mata sembunyikan jumlah uang, default tersembunyi), aksi cepat, KPI, chart, daftar terbaru
 │   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline — batang & garis bisa diketuk (satu area sentuh besar, keyboard: panah/Home/End/Escape)
 │   ├── FamilyCard.jsx      # Card anggota (baris horizontal)
 │   ├── FamilyMemberCard.jsx# Card anggota versi besar (centered)
@@ -92,7 +92,7 @@ bayt-mustaqbal-app/
 
 | Section | Isi | Sumber Data |
 |---------|-----|-------------|
-| Dashboard | Sapaan + hero glass (pengeluaran & anggaran) + aksi cepat + 4 KPI + chart (tren/bar/donut) + 2 panel ringkasan | `mockData` di `App.jsx` |
+| Dashboard | Sapaan + hero glass (pengeluaran & anggaran — nilai uang **tersembunyi secara default**, ada tombol mata 44px untuk tampilkan/sembunyikan) + aksi cepat + 4 KPI + chart (tren/bar/donut) + 2 panel ringkasan | `mockData` di `App.jsx` |
 | Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; sub-tampilan **Jadwal | Tugas | Kalender | Timeline** (default Jadwal); **Jadwal** = grid `ScheduleItem` (tombol Ubah/Hapus) + chip kategori; **Tugas** = chip filter status/prioritas + `TaskList` (toggle selesai + tombol Ubah/Hapus); **Kalender** = `Calendar.jsx` (Minggu/Bulan/Tahun, warna per member + legenda, daftar agenda hari terpilih, bar tugas jatuh tempo); **Timeline** = `Timeline.jsx` (alur kronologis gabungan 4 modul, rel + titik per hari, chip filter jenis, klik baris → sheet Ubah) | `mockData` di `App.jsx` |
 | Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → filter; grid `ExpenseCard` (ikon kategori + nominal IDR + tombol Ubah/Hapus) + chip sinkron + total terfilter di header | `mockData` di `App.jsx` |
 | Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
@@ -159,6 +159,8 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 - **Luber & target sentuh**: 0 overflow horizontal di 320/360/768 (5 section + modal Akun); tab nav 56px, chip 44px.
 - **Konsol**: 0 error / 0 warning (hanya info React DevTools). Build hijau: CSS 42,20 kB / JS 260,64 kB.
 - **Batas jujur**: karena tab browser sesi ini melaporkan `visibilityState === "hidden"`, transisi CSS membeku di nilai awal sehingga nilai terhitung setelah *klik* bisa "tergeser"; pengukuran karena itu dilakukan **setelah muat ulang** (mount bersih) atau dengan transisi dimatikan sementara. Uji visual akhir (mata manusia) tetap disarankan Kakang lakukan sendiri.
+
+**Hasil verifikasi tombol mata jumlah uang (Dashboard)** (`browser.evaluate` + iframe 320px, tema gelap & terang): tombol 44×44 dengan `aria-pressed` (false = tersembunyi) + `aria-label` berganti ("Tampilkan/Sembunyikan jumlah pengeluaran") + ikon `eye`/`eyeOff`; saat tersembunyi teks jadi "Rp ••••••" dan `title` **dikosongkan** (agar tak bocor lewat tooltip) dan ada teks `sr-only` "Jumlah pengeluaran disembunyikan"; nilai "Sisa dari" dan "Sisa" di kartu yang sama ikut tersembunyi; klik 1 → tampil ("Rp 4.710.000"), klik 2 → tersembunyi lagi; **0 overflow di 320px** baik tersembunyi maupun tampil; pilihan **tidak disimpan** (tiap app dibuka kembali tersembunyi).
 
 ---
 

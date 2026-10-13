@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
 import { Card, GlassCard, StatCard, QuickAction, ProgressBar, Badge, CTA_CLASS } from './ui';
 import { BarChart, DonutChart, LineChart } from './charts';
@@ -29,6 +29,12 @@ function Panel({ icon, title, action, children }) {
 }
 
 export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate }) {
+  // Jumlah uang di kartu hero disembunyikan secara default (privasi saat
+  // orang lain melirik layar). Tombol mata menampilkannya sementara —
+  // sengaja TIDAK disimpan, supaya tiap kali app dibuka kembali tersembunyi.
+  const [showMoney, setShowMoney] = useState(false);
+  const masked = 'Rp ••••••';
+
   const totals = useMemo(() => {
     const totalExpense = data.expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const tasksDone = data.tasks.filter((t) => t.completed).length;
@@ -80,12 +86,33 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
               <Icon name="wallet" size={14} />
               Pengeluaran {data.budget.month}
             </p>
-            <p
-              className="mt-2 font-mono text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl"
-              title={formatCurrency(totals.totalExpense)}
-            >
-              {formatCurrency(totals.totalExpense)}
-            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <p
+                className="font-mono text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl"
+                title={showMoney ? formatCurrency(totals.totalExpense) : undefined}
+              >
+                {showMoney ? (
+                  formatCurrency(totals.totalExpense)
+                ) : (
+                  <>
+                    <span aria-hidden="true">{masked}</span>
+                    <span className="sr-only">Jumlah pengeluaran disembunyikan</span>
+                  </>
+                )}
+              </p>
+              {/* Tombol mata — pola sama dengan "Lihat password" di modal Akun:
+                  aria-pressed = jumlah sedang tampil, ikon = aksi berikutnya. */}
+              <button
+                type="button"
+                onClick={() => setShowMoney((prev) => !prev)}
+                aria-label={showMoney ? 'Sembunyikan jumlah pengeluaran' : 'Tampilkan jumlah pengeluaran'}
+                aria-pressed={showMoney}
+                title={showMoney ? 'Sembunyikan jumlah' : 'Tampilkan jumlah'}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+              >
+                <Icon name={showMoney ? 'eyeOff' : 'eye'} size={19} />
+              </button>
+            </div>
             <p className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-mutedfg">
               <span
                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${
@@ -107,9 +134,11 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
             <ProgressBar value={totals.totalExpense} max={data.budget.total} className="mt-2" />
             <div className="mt-2 flex items-baseline justify-between gap-3 text-xs">
               <span className="text-mutedfg">
-                Sisa dari {formatCurrencyShort(data.budget.total)}
+                Sisa dari {showMoney ? formatCurrencyShort(data.budget.total) : 'Rp ••••'}
               </span>
-              <span className="font-mono font-semibold text-brandfg">{formatCurrency(totals.budgetLeft)}</span>
+              <span className="font-mono font-semibold text-brandfg">
+                {showMoney ? formatCurrency(totals.budgetLeft) : masked}
+              </span>
             </div>
             <button type="button" onClick={() => onNavigate('expenses')} className={`${CTA_CLASS} mt-4 w-full`}>
               <Icon name="wallet" size={16} />

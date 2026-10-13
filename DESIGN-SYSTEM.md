@@ -192,8 +192,10 @@ Status    : Badge bertinta translucent (cyan/emerald/amber/rose/gray) + teks
 
 ### Dashboard-Specific
 ```
-Hero (GlassCard) : label + nilai mono besar + badge delta naik/turun + ProgressBar
+Hero (GlassCard) : label + nilai mono besar + tombol mata (sembunyikan/tampilkan jumlah uang —
+                   default tersembunyi, "Rp ••••••") + badge delta naik/turun + ProgressBar
                    realisasi anggaran + CTA; latar grid-lines halus + glow
+                   (nilai uang di kartu ini: pengeluaran, "Sisa dari", dan "Sisa" — ikut tersembunyi)
 QuickAction      : tile 4-kolom, min-h 76px, ikon tile 40px ber-warna (cyan/blue/violet/amber)
 StatCard (KPI)   : ikon tile ber-warna + nilai mono + label + hint opsional (+ sparkline sm+)
 Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat components/charts.jsx
