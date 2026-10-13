@@ -23,7 +23,6 @@ import {
   NOTES_FILTERS,
   countByCategory,
   countByTaskFilter,
-  countByNoteFilter,
 } from './components/categories';
 import './App.css';
 
@@ -951,30 +950,6 @@ export default function App() {
               <Timeline data={data} onEdit={openEdit} formatCurrency={formatCurrency} />
             ) : (
               <>
-                {/* Filter kategori jadwal — sinkron dengan dropdown di navigasi */}
-                <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter kategori agenda">
-                  {AGENDA_CATEGORIES.map((cat) => {
-                    const active = agendaFilter === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setAgendaFilter(cat.id)}
-                        aria-pressed={active}
-                        className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
-                          active
-                            ? 'border-brand/50 bg-brandtint text-brandfg'
-                            : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
-                        }`}
-                      >
-                        <Icon name={cat.icon} size={16} />
-                        {cat.label}
-                        <span className="font-mono text-xs opacity-80">{countByCategory(data.schedule, cat.id)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
                 {agendaMode === 'jadwal' ? (
                   filtered.length === 0 ? (
                     <EmptyState
@@ -1022,30 +997,6 @@ export default function App() {
               onAction={() => openAdd('expenses')}
             />
 
-            {/* Filter kategori — sinkron dengan dropdown di navigasi */}
-            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter kategori pengeluaran">
-              {FINANCE_CATEGORIES.map((cat) => {
-                const active = financeFilter === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setFinanceFilter(cat.id)}
-                    aria-pressed={active}
-                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
-                      active
-                        ? 'border-brand/50 bg-brandtint text-brandfg'
-                        : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
-                    }`}
-                  >
-                    <Icon name={cat.icon} size={16} />
-                    {cat.label}
-                    <span className="font-mono text-xs opacity-80">{countByCategory(data.expenses, cat.id)}</span>
-                  </button>
-                );
-              })}
-            </div>
-
             {filtered.length === 0 ? (
               <EmptyState
                 icon="wallet"
@@ -1085,30 +1036,6 @@ export default function App() {
               actionLabel="Tambah"
               onAction={() => openAdd('family')}
             />
-
-            {/* Filter bagian — sinkron dengan dropdown di navigasi */}
-            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter bagian keluarga">
-              {FAMILY_CATEGORIES.map((cat) => {
-                const active = familyFilter === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setFamilyFilter(cat.id)}
-                    aria-pressed={active}
-                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
-                      active
-                        ? 'border-brand/50 bg-brandtint text-brandfg'
-                        : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
-                    }`}
-                  >
-                    <Icon name={cat.icon} size={16} />
-                    {cat.label}
-                    <span className="font-mono text-xs opacity-80">{countByCategory(familyAll, cat.id)}</span>
-                  </button>
-                );
-              })}
-            </div>
 
             <div className="space-y-8">
               {showAnggota && (
@@ -1175,29 +1102,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Filter catatan — sinkron dengan dropdown di navigasi */}
-            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter catatan">
-              {NOTES_FILTERS.map((cat) => {
-                const active = noteFilter === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setNoteFilter(cat.id)}
-                    aria-pressed={active}
-                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
-                      active
-                        ? 'border-brand/50 bg-brandtint text-brandfg'
-                        : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
-                    }`}
-                  >
-                    <Icon name={cat.icon} size={16} />
-                    {cat.label}
-                    <span className="font-mono text-xs opacity-80">{countByNoteFilter(data.notes, cat.id)}</span>
-                  </button>
-                );
-              })}
-            </div>
             {filteredNotes.length === 0 ? (
               <EmptyState
                 icon={searching ? 'search' : 'note'}
