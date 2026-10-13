@@ -99,7 +99,7 @@ export function FormSheet({
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-glow backdrop-blur-xl"
+        className="sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl"
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 id={titleId} className="flex items-center gap-2 text-base font-bold text-ink">

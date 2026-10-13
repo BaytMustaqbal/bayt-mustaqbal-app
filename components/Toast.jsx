@@ -31,7 +31,7 @@ export function Toast({ toast, onDismiss }) {
       <div
         role="status"
         aria-live="polite"
-        className="toast-in pointer-events-auto flex min-h-[52px] w-full max-w-md items-center gap-2 rounded-2xl border border-line bg-surface/95 py-1.5 pl-4 pr-1.5 shadow-glow backdrop-blur-xl"
+        className="toast-in pointer-events-auto flex min-h-[52px] w-full max-w-md items-center gap-2 rounded-2xl border border-line bg-surface/95 py-1.5 pl-4 pr-1.5 shadow-pop backdrop-blur-xl"
       >
         <span className="min-w-0 flex-1 truncate text-sm text-ink">{toast.message}</span>
 

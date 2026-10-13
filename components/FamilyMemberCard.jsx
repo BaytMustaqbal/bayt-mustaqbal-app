@@ -1,11 +1,11 @@
 import React from 'react';
-import { Card, Badge } from './ui';
+import { Card, Badge, CARD_INTERACTIVE } from './ui';
 
 export function FamilyMemberCard({ member }) {
   const isActive = member.status === 'active';
 
   return (
-    <Card className="p-4 text-center transition-colors hover:border-brand sm:p-5">
+    <Card className={`p-4 text-center ${CARD_INTERACTIVE} hover:border-brand sm:p-5`}>
       <span
         className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-brand/25 bg-brandtint text-base font-bold text-brandfg sm:h-16 sm:w-16 sm:text-lg"
         aria-hidden="true"

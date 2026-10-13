@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Badge } from './ui';
+import { Card, Badge, CARD_INTERACTIVE } from './ui';
 
 export function FamilyCard({ member, onClick }) {
   const isActive = member.status === 'active';
@@ -7,7 +7,7 @@ export function FamilyCard({ member, onClick }) {
   return (
     <Card
       as="button"
-      className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:border-brand sm:p-5"
+      className={`flex w-full items-center gap-4 p-4 text-left ${CARD_INTERACTIVE} hover:border-brand sm:p-5`}
       onClick={() => onClick && onClick(member)}
     >
       <span

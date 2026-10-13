@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from './Icon';
-import { Card, Badge, ItemActions } from './ui';
+import { Card, Badge, ItemActions, CARD_INTERACTIVE } from './ui';
 import { NOTE_CATEGORIES, getCategoryMeta } from './categories';
 
 /* ============================================================================
@@ -12,12 +12,12 @@ import { NOTE_CATEGORIES, getCategoryMeta } from './categories';
 
 export function NoteList({ notes = [], onEdit, onDelete }) {
   return (
-    <ul className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <ul className="stagger grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
       {notes.map((note) => {
         const meta = getCategoryMeta(NOTE_CATEGORIES, note.category);
         return (
           <li key={note.id}>
-            <Card className="flex h-full flex-col gap-2.5 p-4 transition-colors hover:border-brand/50 sm:p-5">
+            <Card className={`flex h-full flex-col gap-2.5 p-4 ${CARD_INTERACTIVE} hover:border-brand/50 sm:p-5`}>
               <div className="flex items-start gap-3">
                 <span
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg"

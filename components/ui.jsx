@@ -6,24 +6,32 @@ import { FINANCE_CATEGORIES, getCategoryMeta } from './categories';
 /* Tombol utama (CTA) — gradasi cobalt dengan teks putih (kontras 5,2:1).
    Ditulis sekali di sini supaya semua tombol utama konsisten. */
 export const CTA_CLASS =
-  'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-5 text-sm font-semibold text-white shadow-glow transition-transform hover:from-[#1E40AF] hover:to-[#1D4ED8] active:scale-[0.99] disabled:opacity-50';
+  'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-5 text-sm font-semibold text-white shadow-glow transition-transform duration-fast ease-crisp hover:from-[#1E40AF] hover:to-[#1D4ED8] active:scale-[0.98] disabled:opacity-50';
 
-/* Kartu dasar — permukaan navy + garis cahaya tipis di tepi atas.
+/* Kartu data yang interaktif (agenda/pengeluaran/tugas/catatan/keluarga):
+   saat hover → elevasi naik (e1→e2) + kartu terangkat 2px.
+   `transform` tidak menggeser layout tetangga, jadi grid tetap stabil.
+   Warna border hover tetap diatur masing-masing kartu. */
+export const CARD_INTERACTIVE =
+  'transition-[color,background-color,border-color,box-shadow,transform] duration-base ease-crisp hover:shadow-e2 hover:-translate-y-0.5';
+
+/* Kartu dasar — permukaan navy + elevasi e1 (garis cahaya atas + bayangan tipis).
    Sengaja TANPA blur: kartu muncul sangat banyak, backdrop-filter yang
    berulang bikin HP kelas bawah tersendat. Blur hanya di elemen kunci. */
 export function Card({ as: Tag = 'div', className = '', children, ...rest }) {
   return (
-    <Tag className={`min-w-0 rounded-2xl border border-line bg-surface shadow-card ${className}`} {...rest}>
+    <Tag className={`min-w-0 rounded-2xl border border-line bg-surface shadow-e1 ${className}`} {...rest}>
       {children}
     </Tag>
   );
 }
 
 /* Kartu kaca (glassmorphism) — dipakai hemat: kartu hero, panel menonjol.
+   Memakai `shadow-pop` (halo cyan tipis + bayangan navy) agar terasa melayang.
    Ada fallback ke kartu solid lewat @supports di App.css. */
 export function GlassCard({ className = '', children, ...rest }) {
   return (
-    <div className={`glass min-w-0 overflow-hidden rounded-2xl shadow-glow ${className}`} {...rest}>
+    <div className={`glass min-w-0 overflow-hidden rounded-2xl shadow-pop ${className}`} {...rest}>
       {children}
     </div>
   );
@@ -126,10 +134,10 @@ export function QuickAction({ icon, label, onClick, tone = 'cyan' }) {
     <button
       type="button"
       onClick={onClick}
-      className="group flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-2.5 text-center shadow-card transition-colors hover:border-brand/50 hover:bg-muted"
+      className={`group flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-2.5 text-center shadow-e1 transition-[color,background-color,border-color,box-shadow,transform] duration-base ease-crisp hover:-translate-y-0.5 hover:border-brand/50 hover:bg-muted hover:shadow-e2`}
     >
       <span
-        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${tones[tone]}`}
+        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-transform duration-base ease-crisp group-hover:scale-105 ${tones[tone]}`}
         aria-hidden="true"
       >
         <Icon name={icon} size={19} />
@@ -182,7 +190,7 @@ export function ItemActions({ onEdit, onDelete, label = 'item' }) {
 export function ExpenseCard({ item, formatCurrency, onEdit, onDelete }) {
   const meta = getCategoryMeta(FINANCE_CATEGORIES, item.category);
   return (
-    <Card className="flex h-full flex-col p-4 transition-colors hover:border-brand/50 sm:p-5">
+    <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-brand/50 sm:p-5`}>
       <div className="flex items-start justify-between gap-3 pb-4">
         <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
@@ -239,7 +247,7 @@ export function FamilyList({ title, icon, items }) {
           Belum ada catatan di bagian ini.
         </p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="stagger grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
             <li key={item.id}>
               <Card className="flex items-start justify-between gap-3 p-4 sm:p-5">

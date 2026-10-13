@@ -35,7 +35,7 @@ function CategoryMenu({ items, data, activeId, closing, menuId, onSelect, ariaLa
       role="menu"
       aria-label={ariaLabel}
       data-drop-menu
-      className={`drop-menu w-64 rounded-2xl border border-line bg-surface/95 p-1.5 shadow-glow backdrop-blur-xl ${
+      className={`drop-menu w-64 rounded-2xl border border-line bg-surface/95 p-1.5 shadow-pop backdrop-blur-xl ${
         closing ? 'drop-menu--closing' : ''
       }`}
     >
@@ -148,6 +148,19 @@ export function Navigation({
 
   useEffect(() => () => clearTimeout(closeTimerRef.current), []);
 
+  // Kepala naik elevasi begitu konten mulai bergulir di bawahnya
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 6);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Indeks tab yang sedang "menyala" (dropdown yang terbuka dihitung sebagai aktif)
+  const activeId = openKey || activeSection;
+  const activeIndex = Math.max(0, NAV_ITEMS.findIndex((item) => item.id === activeId));
+
   const handleDropdownSelect = (key, categoryId) => {
     closeMenu();
     if (key === 'agenda') onAgendaSelect(categoryId);
@@ -176,7 +189,11 @@ export function Navigation({
   return (
     <>
       {/* Bar atas (sticky, bukan fixed → tidak goyang saat address bar HP menyusut) */}
-      <header className="sticky top-0 z-40 border-b border-line bg-canvas/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+      <header
+        className={`sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-base ease-crisp ${
+          scrolled ? 'border-line bg-canvas/90 shadow-e2' : 'border-transparent bg-canvas/80'
+        }`}
+      >
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-4 sm:h-16 sm:gap-3 sm:px-6">
           <button
             type="button"
@@ -283,10 +300,20 @@ export function Navigation({
       {/* Bar bawah: mobile & tablet (dirapikan max-w-md agar tidak melar) */}
       <nav
         aria-label="Navigasi utama"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/85 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-xl lg:hidden"
       >
         {/* Tinggi dikunci 56px agar banner install bisa diposisikan tepat di atasnya */}
-        <ul className="mx-auto flex h-[56px] max-w-md items-stretch px-1.5 lg:max-w-6xl">
+        <ul className="relative mx-auto flex h-[56px] max-w-md items-stretch px-1.5 lg:max-w-6xl">
+          {/* Indikator geser: satu elemen, bergerak via transform saat tab berubah */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute top-0 h-0.5 rounded-full bg-brand shadow-glow transition-transform duration-slow ease-smooth"
+            style={{
+              left: '0.375rem',
+              width: 'calc((100% - 0.75rem) / 5)',
+              transform: `translateX(${activeIndex * 100}%)`,
+            }}
+          />
           {NAV_ITEMS.map((item) => {
             const isDropdown = !!DROPDOWNS[item.id];
             const active = activeSection === item.id || (isDropdown && openKey === item.id);
@@ -304,11 +331,8 @@ export function Navigation({
                     active ? 'text-brandfg' : 'text-mutedfg'
                   }`}
                 >
-                  {active && (
-                    <span className="absolute top-0 h-0.5 w-8 rounded-full bg-brand shadow-glow" aria-hidden="true" />
-                  )}
                   <span
-                    className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors ${
+                    className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${
                       active ? 'bg-brandtint' : ''
                     }`}
                   >

@@ -4,6 +4,8 @@
 > Gaya: **High-Tech Blue** — dark navy + electric cyan, glassmorphism terukur, glow tipis, font mono untuk angka.
 >
 > **Riwayat:** versi lama = Flat Design teal (`#0D9488`) tanpa shadow/gradasi — **diganti total** pada iterasi tema (keputusan Kakang: *biru nuansa high-tech*). Mode terang direncanakan nanti; token warna sudah dipisah di `:root` supaya mode terang bisa ditambah tanpa membongkar ulang.
+>
+> **Iterasi "kedalaman + gerak"** (keputusan Kakang pada sesi review UI/UX): ditambahkan **skala elevasi** (`e1`/`e2`/`pop`/`nav`), **indikator tab bawah yang menggeser**, **header yang naik elevasi saat digulir**, **token durasi/easing** yang seragam, dan **item daftar masuk berundak** (`cardIn`). Semua CSS-only — tanpa dependensi baru.
 
 ## 1. Visual Identity
 
@@ -56,7 +58,8 @@ chart4 #F59E0B (amber) · chart5 #10B981 (emerald)
 - **Brand (cyan)**: ikon dekoratif, titik status, garis — jangan untuk teks kecil di atas cyan (kontras putih di cyan hanya ~2:1)
 - **Brand FG**: teks/ikon aksen di atas tint atau surface (kontras ≥ 8:1)
 - **Teks putih di atas cobalt CTA**: aman 5.2:1 (tombol "Masuk", "Pasang", "Lihat Keuangan")
-- **Glow** (`shadow-glow`): hanya untuk elemen yang perlu menonjol (hero, fokus, ikon aktif); jangan ditumpuk
+- **Glow** (`shadow-glow`): hanya untuk elemen yang perlu menonjol (fokus, tab/ikon aktif, bilah indikator); jangan ditumpuk
+- **Elevasi** (lihat §5): bayangan bernuansa navy (bukan hitam pekat) supaya kedalaman terbaca di atas permukaan navy — `e1` kartu diam, `e2` kartu hover, `pop` panel melayang (dropdown/sheet/toast/hero), `nav` bilah bawah
 
 ## 3. Typography System
 
@@ -92,7 +95,7 @@ Safe area : env(safe-area-inset-top) pada header, env(safe-area-inset-bottom) pa
 
 ### Layout Patterns (aktual)
 - **Dashboard**: sapaan → kartu hero glass (keuangan bulan ini + realisasi anggaran) → aksi cepat 4 tile → KPI 2→4 kolom (`lg`) → tren (line, full width) → bar+donat (1→2 kolom `lg`) → 2 panel daftar terbaru
-- **Layar gerbang**: kartu sentral max-w-md, konten vertikal: identitas → ilustrasi → pilih pengguna → tombol masuk
+- **Layar gerbang**: kartu sentral max-w-md, konten vertikal: identitas → **logo besar** (mark merek, tanpa ilustrasi terpisah) → pilih pengguna → tombol masuk
 - **Daftar kartu** (agenda/keuangan/keluarga/tugas): grid 1 → 2 (`md`) → 3/4 kolom (`lg`)
 - **Form / isi konten**: satu kolom, label di atas input
 
@@ -117,18 +120,25 @@ Padding bawah konten: pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]
 
 #### Card Components
 ```
-Base Card : rounded-2xl, bg-surface, border 1px line, inset highlight 1px putih 5%
-            (shadow-card) — TANPA backdrop-blur (kartu banyak → hemat performa)
+Elevasi   : skala `boxShadow` di tailwind.config.js — bayangan navy-tinted (bukan hitam):
+              e1  = kartu diam            (inset highlight 1px putih 5% + bayangan 1px)
+              e2  = kartu hover/terangkat (inset 7% + bayangan 6/14px)
+              pop = panel melayang        (halo cyan tipis + bayangan navy 16/34px)
+              nav = bilah bawah           (bayangan ke atas 6/20px)
+Base Card : rounded-2xl, bg-surface, border 1px line, `shadow-e1`
+            — TANPA backdrop-blur (kartu banyak → hemat performa)
 Glass Card: .glass — gradient putih 6%→2%, border cyan 16%, backdrop blur 14px,
-            hanya untuk: hero dashboard, layar gerbang, header, tab bar.
+            `shadow-pop`; hanya untuk: hero dashboard, layar gerbang, header, tab bar.
             Fallback solid via @supports (HP tanpa backdrop-filter).
-Hover     : border → brand/50 (+ glow tipis pada hero)
+Hover     : konstanta `CARD_INTERACTIVE` (ui.jsx) — kartu data naik 2px (`-translate-y-0.5`)
+            + elevasi e1→e2 + border → brand; `transform` tidak menggeser layout (aman di grid);
+            dipakai kartu agenda/pengeluaran/tugas/catatan/keluarga + QuickAction
 Status    : Badge bertinta translucent (cyan/emerald/amber/rose/gray) + teks
 ```
 
 #### Navigation System
-- **Bar atas (sticky)**: glass `bg-canvas/80 backdrop-blur-xl`; logo tile tint; chip pengguna (kembali ke gerbang); nav desktop pill di `lg`; tombol Pasang (CTA, `sm`+)
-- **Bottom Tab Bar (< `lg`)**: glass, tinggi **tetap 56px** (`h-[56px]`), 5 tab, label 11px; tab aktif = teks `brandfg` + pill tint + **garis indikator cyan** di tepi atas; isi `max-w-md`
+- **Bar atas (sticky)**: glass `bg-canvas/80 backdrop-blur-xl`; **naik elevasi saat digulir** (`window.scrollY > 6` → `border-line bg-canvas/90 shadow-e2`, transisi 200ms; saat di puncak border transparan); logo tile tint; chip pengguna (kembali ke gerbang); nav desktop pill di `lg`; tombol Pasang (CTA, `sm`+)
+- **Bottom Tab Bar (< `lg`)**: glass + `shadow-nav` (bayangan halus ke atas, memisahkan bilah dari konten yang lewat di bawahnya), tinggi **tetap 56px** (`h-[56px]`), 5 tab, label 11px; tab aktif = teks `brandfg` + pill tint; **indikator cyan = satu elemen yang menggeser** di tepi atas (lebar = 1/5 slot, `translateX(activeIndex × 100%)`, transisi 320ms `ease-smooth`) — posisi dihitung dari tab aktif/section (dropdown yang terbuka ikut dihitung aktif); isi `max-w-md`
 - **Aktif**: `aria-current="page"` + cyan, bukan warna saja
 - **Banner install**: `bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]` = tepat di atas tab bar
 
@@ -198,7 +208,7 @@ FormSheet        : bottom sheet "Tambah/Ubah" generik (fixed inset-x-0 bottom-0,
 - **Sub-toggle Agenda (Jadwal | Tugas | Kalender)**: di HP `grid grid-cols-3` selebar penuh dengan ikon di atas label (teks 11px) → muat di 320px (label terlebar ~53px vs sel ~91px); beralih ke `inline-flex` satu baris (`sm:text-sm sm:px-4`) di `sm+`
 - **Kalender keluarga** (mode Kalender di tab Agenda): sel hari = button `aria-pressed` + `aria-label` deskriptif (tanggal + judul item + anggota + "ada tugas"); grid `role="grid"` + baris `role="row"` + header kolom `role="columnheader"`; tombol skala view (Minggu/Bulan/Tahun) `aria-pressed`; nav prev/next `aria-label` "Periode sebelumnya/berikutnya"; warna member hanya pelengkap — nama anggota selalu tampil (dot + teks, bukan warna saja); grid full-bleed `-mx-4 md:-mx-0` di layar kecil supaya sel ≥ 44px (320px → 7×44 + 6 garis = 314 ≤ 320)
 - **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka + bottom sheet Tambah (390/768/1280 px) → **0 overflow, 0 elemen < 44px** (termasuk sel kalender di 320px); kartu ber-`ItemActions` dijaga lewat `min-w-0` + `truncate` (footer kartu: meta kiri boleh menyusut, aksi `shrink-0` ~90px)
-- **Feedback**: hover border/glow, `active:scale` pada CTA; `prefers-reduced-motion` mematikan animasi
+- **Feedback**: hover = border menyala + kartu data terangkat 2px + elevasi naik (e1→e2); CTA `active:scale-[0.98]` (120ms); `prefers-reduced-motion` mematikan animasi
 - **Ubah/Hapus item**: `ItemActions` di footer tiap kartu data (agenda/pengeluaran/tugas/catatan) — dua tombol ikon 44px. **Hapus tanpa dialog**: item langsung dibuang + `Toast` "«judul» dihapus" dengan tombol **"Urungkan"** (6s) yang memulihkan item ke posisi semula; jaring aman pengganti dialog konfirmasi (satu langkah, tetap aman)
 - **Toast**: konfirmasi tambah/ubah (2,5s) & undo hapus (6s) tampil di atas tab bar; `role="status"` `aria-live="polite"` → pembaca layar mengumumkan; ada tombol tutup manual
 - **Kotak cari catatan**: `type="search"` 48px, ikon kaca di kiri, tombol bersihkan 44px di kanan; kosong tanpa hasil → `EmptyState` berbeda ("Catatan tidak ditemukan") + kutip kata kunci
@@ -225,7 +235,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 
 ### Aset statis & build (PENTING)
 - Vite **hanya** menyalin folder `public/` ke `dist/`. Jadi `manifest.json`, `service-worker.js`, dan `icons/` wajib berada di `public/` — kalau ditaruh di root, semuanya 404 di produksi (install PWA & mode offline mati, ikon tidak muncul)
-- `service-worker.js`: naikkan nomor versi cache (`family-*-v3`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
+- `service-worker.js`: naikkan nomor versi cache (`family-*-v4`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
 
 ## 9. Offline Capabilities
 
@@ -261,10 +271,11 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 
 ## 12. Animation & Motion
 
-- **Durasi**: 0.2–0.4s; easing `cubic-bezier(0.22,1,0.36,1)` untuk gerbang
-- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `dropMenuIn/Out` + `dropItemIn/Out` (dropdown), `sheetBackdropIn` + `sheetPanelIn` (bottom sheet Tambah/Ubah), `toastIn` (toast naik + fade)
+- **Token gerak** (tailwind.config.js): durasi `fast 120ms` · `base 200ms` · `slow 320ms`; easing `ease-smooth` = `cubic-bezier(0.22,1,0.36,1)` (masuk/decelerate) & `ease-crisp` = `cubic-bezier(0.4,0,0.2,1)` (umum). Pakai token ini, jangan angka/`cubic-bezier` lepas di komponen
+- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `dropMenuIn/Out` + `dropItemIn/Out` (dropdown), `sheetBackdropIn` + `sheetPanelIn` (bottom sheet Tambah/Ubah), `toastIn` (toast naik + fade), **`cardIn`** = item daftar masuk berundak (`.stagger > *`, opacity + 6px, delay 26ms untuk 6 item pertama)
+- **Gerak berbasis transform (bukan layout)**: indikator tab menggeser (`translateX`), kartu hover terangkat (`-translate-y-0.5`), header bertransisi warna/bayangan saat digulir
 - **Reduced motion**: `prefers-reduced-motion` mematikan semua animasi/transisi (App.css)
-- **Glow**: statis (`shadow-glow`) pada elemen dekoratif/kartu kunci; tidak ada animasi denyut — `soft-pulse` dihapus bersama ilustrasi gerbang
+- **Glow**: statis (`shadow-glow`) pada elemen fokus/aksen (tab aktif, bilah indikator); tidak ada animasi denyut — `soft-pulse` dihapus bersama ilustrasi gerbang
 
 ## 13. Device-Specific Considerations
 
@@ -274,7 +285,8 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 
 ## 14. Performance Optimization
 
-- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS ~230 kB (gzip ~69 kB), CSS ~33 kB (gzip ~7 kB)
+- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS ~230 kB (gzip ~69 kB), CSS ~36 kB (gzip ~7 kB)
+- **Animasi murah**: elevasi = `box-shadow` statis (bukan `backdrop-filter` berulang); masuknya item daftar hanya opacity/transform (GPU) → aman untuk HP kelas bawah
 - **Reduce Repaints**: animasi via transform/opacity; `transition-[width]` pada progressbar
 - **Blur hemat**: backdrop-filter hanya di header/tab bar/hero/gerbang
 - **Chart**: `vectorEffect="non-scaling-stroke"` + label HTML → tidak ada teks yang melar saat responsive

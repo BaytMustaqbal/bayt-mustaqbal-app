@@ -14,7 +14,7 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 ## Stack Aktual (Saat Ini)
 
 - **Frontend:** React 18 (JSX, bukan TS) + Vite 4
-- **Styling:** Tailwind CSS via **PostCSS** (`tailwind.config.js` + `postcss.config.js`) + `App.css` custom — design system **High-Tech Blue**: dark navy `#0A192F` + electric cyan `#22D3EE`, glassmorphism terukur, glow tipis (lihat `DESIGN-SYSTEM.md`)
+- **Styling:** Tailwind CSS via **PostCSS** (`tailwind.config.js` + `postcss.config.js`) + `App.css` custom — design system **High-Tech Blue**: dark navy `#0A192F` + electric cyan `#22D3EE`, glassmorphism terukur, glow tipis. **Skala elevasi** (`e1`/`e2`/`pop`/`nav`), token durasi/easing (`duration-fast/base/slow`, `ease-smooth/crisp`), dan konstanta hover kartu (`CARD_INTERACTIVE`) ada di `tailwind.config.js` + `components/ui.jsx` (lihat `DESIGN-SYSTEM.md` §5 & §12)
 - **Icons:** SVG inline custom (`components/Icon.jsx`, gaya Lucide) — Font Awesome **sudah dihapus**. **Logo/merek** = `assets/logo.png` (Kakang): dipakai sebagai mark di header + layar gerbang (`public/brand/logo.png`, transparan) dan sebagai **ikon PWA** (`public/icons/*`, latar navy) lewat `npm run icons`.
 - **Font:** Plus Jakarta Sans (teks) + **Fira Code** (angka/KPI/label chart) — Google Fonts
 - **PWA:** `public/manifest.json` + `public/service-worker.js` (cache-first, background sync) — SW diregistrasi **hanya di build production** (`main.jsx`). Aset statis **wajib** di `public/`, karena Vite hanya menyalin folder itu ke `dist/`
@@ -32,7 +32,7 @@ bayt-mustaqbal-app/
 ├── main.jsx                # React entry: createRoot → render <App /> ke #root + registrasi SW (production)
 ├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + data dummy (seed) + persist localStorage + bottom sheet Tambah/Ubah + toast (undo hapus) + banner offline
 ├── App.css                 # Tailwind (@tailwind base/components/utilities) + design token, focus-visible, scrollbar, animasi
-├── tailwind.config.js      # Theme tokens (navy/cyan high-tech, font sans+mono) + content paths
+├── tailwind.config.js      # Theme tokens: warna, skala elevasi (e1/e2/pop/nav), durasi+easing gerak + content paths
 ├── postcss.config.js       # Plugin: tailwindcss + autoprefixer
 ├── vite.config.js          # Vite config: react plugin, port 3000
 ├── package.json            # Deps: react, react-dom, vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer

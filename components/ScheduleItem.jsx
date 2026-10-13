@@ -1,12 +1,12 @@
 import React from 'react';
 import { Icon } from './Icon';
-import { Card, Badge, ItemActions } from './ui';
+import { Card, Badge, ItemActions, CARD_INTERACTIVE } from './ui';
 import { AGENDA_CATEGORIES, getCategoryMeta } from './categories';
 
 export function ScheduleItem({ item, onEdit, onDelete }) {
   const meta = getCategoryMeta(AGENDA_CATEGORIES, item.category);
   return (
-    <Card className="flex h-full flex-col p-4 transition-colors hover:border-brand sm:p-5">
+    <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-brand sm:p-5`}>
       <div className="flex items-start gap-3 pb-4">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
           <Icon name={meta?.icon || 'calendar'} size={19} />

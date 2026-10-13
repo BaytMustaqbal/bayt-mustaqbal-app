@@ -815,7 +815,7 @@ export default function App() {
                       message="Pilih kategori lain, atau tambahkan agenda baru."
                     />
                   ) : (
-                    <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="stagger grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {filtered.map((item) => (
                         <ScheduleItem
                           key={item.id}
@@ -885,7 +885,7 @@ export default function App() {
                 message="Pilih kategori lain, atau catat pengeluaran baru."
               />
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="stagger grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filtered.map((item) => (
                   <ExpenseCard
                     key={item.id}
@@ -953,7 +953,7 @@ export default function App() {
                   {data.family.length === 0 ? (
                     <EmptyState icon="users" title="Belum ada anggota" message="Tambahkan anggota keluarga untuk mulai berkolaborasi." />
                   ) : (
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                    <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
                       {data.family.map((member) => (
                         <FamilyMemberCard key={member.id} member={member} />
                       ))}

@@ -41,10 +41,30 @@ module.exports = {
         mono: ['"Fira Code"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       boxShadow: {
-        // Glow cyan lembut — dipakai hemat, hanya pada elemen fokus
+        // Glow cyan lembut — dipakai hemat, hanya pada elemen fokus/aksen
         glow: '0 10px 30px -18px rgba(0, 240, 255, 0.55)',
-        // Garis cahaya tipis di tepi atas kartu (kesan instrumen, tanpa blur)
-        card: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
+
+        /* ---------- Skala elevasi (dimensional layering) ----------
+           Bayangan bernuansa navy (bukan hitam pekat) supaya kedalaman
+           terbaca di atas permukaan navy, masing-masing ditemani garis
+           cahaya 1px di tepi atas (kesan panel instrumen).
+             e1  = kartu diam        e2 = kartu hover / terangkat
+             pop = panel melayang    nav = bilah bawah (bayangan ke atas)   */
+        e1: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 1px 2px 0 rgba(2, 8, 20, 0.40)',
+        e2: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 6px 14px -6px rgba(2, 8, 20, 0.60)',
+        pop: '0 10px 30px -18px rgba(0, 240, 255, 0.35), 0 16px 34px -12px rgba(2, 8, 20, 0.74)',
+        nav: '0 -6px 20px -10px rgba(2, 8, 20, 0.70)',
+      },
+      /* ---------- Token gerak (durasi + easing) ----------
+         fast = umpan balik tekan · base = transisi umum · slow = panel/overlay */
+      transitionDuration: {
+        fast: '120ms',
+        base: '200ms',
+        slow: '320ms',
+      },
+      transitionTimingFunction: {
+        smooth: 'cubic-bezier(0.22, 1, 0.36, 1)', // masuk (decelerate)
+        crisp: 'cubic-bezier(0.4, 0, 0.2, 1)',    // umum
       },
     },
   },

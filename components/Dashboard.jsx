@@ -56,7 +56,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
   const isDown = totals.delta <= 0;
 
   return (
-    <section className="app-fade-in space-y-5 sm:space-y-6">
+    <section className="app-fade-in stagger space-y-5 sm:space-y-6">
       {/* ---------- Sapaan ---------- */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">

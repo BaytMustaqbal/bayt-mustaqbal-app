@@ -65,7 +65,7 @@ bayt-mustaqbal-app/
 - **Mobile-first:** bottom tab bar 56 px (< 1024 px) dengan safe-area iOS, header sticky, desktop nav muncul di `lg`
 - **PWA:** manifest + service worker + 12 ikon dari **logo Kakang**; service worker hanya didaftarkan di produksi
 - **Banner install** muncul setelah event `beforeinstallprompt`; toast status jaringan hanya saat online/offline berubah
-- **Tema High-Tech Blue:** dark navy `#0A192F` + aksen cyan `#22D3EE`, glass pada elemen kunci, glow tipis, angka dengan Fira Code (lihat `DESIGN-SYSTEM.md`)
+- **Tema High-Tech Blue:** dark navy `#0A192F` + aksen cyan `#22D3EE`, glass pada elemen kunci, glow tipis, **skala elevasi + gerak** (indikator tab menggeser, header naik elevasi saat digulir, item daftar masuk berundak), angka dengan Fira Code (lihat `DESIGN-SYSTEM.md`)
 - **Layar gerbang** muncul tiap app dibuka: pilih Kakang/Istri (tersimpan di `localStorage`) — nanti menjadi layar login
 - **Tambah / Ubah / Hapus item** di Agenda (Jadwal & Tugas), Keuangan, dan Catatan: form bottom sheet (mode ubah berisi nilai lama) + tombol Ubah/Hapus di tiap kartu. Hapus = langsung + **toast "Urungkan"** (6 detik, tanpa dialog)
 - **Pencarian catatan** (judul + isi) di tab Catatan, di atas filter kategori

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from './Icon';
-import { Card, Badge, ItemActions } from './ui';
+import { Card, Badge, ItemActions, CARD_INTERACTIVE } from './ui';
 
 const PRIORITY_TONE = { high: 'red', medium: 'amber', low: 'green' };
 const PRIORITY_LABEL = { high: 'Tinggi', medium: 'Sedang', low: 'Rendah' };
@@ -9,10 +9,10 @@ const PRIORITY_LABEL = { high: 'Tinggi', medium: 'Sedang', low: 'Rendah' };
 // localStorage — tidak hilang saat reload.
 export function TaskList({ tasks = [], onToggle, onEdit, onDelete }) {
   return (
-    <ul className="space-y-3">
+    <ul className="stagger space-y-3">
       {tasks.map((task) => (
         <li key={task.id}>
-          <Card className={`p-3.5 transition-colors hover:border-brand sm:p-4 ${task.completed ? 'opacity-70' : ''}`}>
+          <Card className={`p-3.5 ${CARD_INTERACTIVE} hover:border-brand sm:p-4 ${task.completed ? 'opacity-70' : ''}`}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3.5">
                 {/* Kotak 28px, tapi area sentuh 44px (standar jari) */}
