@@ -15,6 +15,31 @@ export const CTA_CLASS =
 export const CARD_INTERACTIVE =
   'transition-[color,background-color,border-color,box-shadow,transform] duration-base ease-crisp hover:shadow-e2 hover:-translate-y-0.5';
 
+/* Inisial dari nama akun: 2 kata → huruf awal kata pertama & terakhir ("Rezki YT" → "RY"),
+   1 kata → 2 huruf pertama ("Hilda" → "HI"). Dipakai sebagai cadangan saat belum ada foto. */
+export const initialsOf = (name) => {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+};
+
+/* Avatar akun: foto (kalau ada) atau inisial. Ukuran, radius, dan warna
+   diatur lewat `className` supaya chip header, kartu gerbang, dan modal akun
+   bisa memakai komponen yang sama. Dekoratif → selalu `aria-hidden`
+   (nama pengguna sudah dibacakan oleh teks di sebelahnya). */
+export function Avatar({ user, className = '' }) {
+  return (
+    <span className={`grid shrink-0 place-items-center overflow-hidden ${className}`} aria-hidden="true">
+      {user?.avatar ? (
+        <img src={user.avatar} alt="" className="h-full w-full object-cover" />
+      ) : (
+        user?.initials || initialsOf(user?.name)
+      )}
+    </span>
+  );
+}
+
 /* Kartu dasar — permukaan navy + elevasi e1 (garis cahaya atas + bayangan tipis).
    Sengaja TANPA blur: kartu muncul sangat banyak, backdrop-filter yang
    berulang bikin HP kelas bawah tersendat. Blur hanya di elemen kunci. */

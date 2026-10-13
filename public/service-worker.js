@@ -1,9 +1,9 @@
 // service-worker.js
 // Naikkan nomor versi setiap kali ada perubahan tampilan/aset,
 // supaya HP yang sudah memasang PWA mengambil berkas baru (bukan cache lama).
-const CACHE_NAME = 'family-manager-v6';
-const API_CACHE = 'family-api-v6';
-const STATIC_CACHE = 'family-static-v6';
+const CACHE_NAME = 'family-manager-v7';
+const API_CACHE = 'family-api-v7';
+const STATIC_CACHE = 'family-static-v7';
 
 // Install event - cache critical resources
 self.addEventListener('install', (event) => {

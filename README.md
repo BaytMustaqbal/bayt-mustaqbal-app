@@ -39,8 +39,8 @@ bayt-mustaqbal-app/
 ├── main.jsx                    # Mount React + registrasi service worker (produksi saja)
 ├── App.jsx                     # Root: state 5 section + mockData + formatter rupiah
 ├── App.css                     # Token & utilitas dasar (entry Tailwind)
-├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/ItemActions/...),
-│                               # TaskList, NoteList, Toast, FormSheet, FamilyCard, FamilyMemberCard,
+├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/Avatar/ItemActions/...),
+│                               # TaskList, NoteList, Toast, FormSheet, AccountModal, FamilyCard, FamilyMemberCard,
 │                               # ScheduleItem, Calendar, Icon, charts.jsx, notifications.js
 ├── assets/logo.png             # Logo asli (sumber brand & ikon)
 ├── public/                     # Disalin apa adanya ke dist/ — WAJIB ditaruh di sini
@@ -67,6 +67,7 @@ bayt-mustaqbal-app/
 - **Banner install** muncul setelah event `beforeinstallprompt`; toast status jaringan hanya saat online/offline berubah
 - **Tema High-Tech Blue:** dark navy `#0A192F` + aksen cyan `#22D3EE`, glass pada elemen kunci, glow tipis, **skala elevasi + gerak** (indikator tab menggeser, header naik elevasi saat digulir, item daftar masuk berundak), angka dengan Fira Code (lihat `DESIGN-SYSTEM.md`)
 - **Layar gerbang** muncul tiap app dibuka: pilih Kakang/Istri (tersimpan di `localStorage`) — nanti menjadi layar login
+- **Akun saya (chip pengguna di pojok kanan atas):** modal di tengah layar untuk ganti **foto profil** (dikecilkan otomatis ke 256 px, disimpan di perangkat), **nama**, **username** (dicek unik, tampil `@username` di gerbang), dan **password** — plus tombol "Ganti pengguna". Catatan jujur: belum ada server, jadi password **hanya disimpan di perangkat dan belum diverifikasi** (dinyatakan terang di dalam modal)
 - **Tambah / Ubah / Hapus item** di Agenda (Jadwal & Tugas), Keuangan, dan Catatan: form bottom sheet (mode ubah berisi nilai lama) + tombol Ubah/Hapus di tiap kartu. Hapus = langsung + **toast "Urungkan"** (6 detik, tanpa dialog)
 - **Pencarian catatan** (judul + isi) di tab Catatan, di atas filter kategori
 - **Dashboard baru:** kartu hero glass (pengeluaran + realisasi anggaran), aksi cepat, KPI, dan 3 chart tulis sendiri (tren 6 bulan, 7 hari, komposisi) — **batang & garis bisa diketuk** untuk melihat nilai tiap hari/bulan (nilai total donat sudah tampil di tengah)
@@ -78,7 +79,7 @@ bayt-mustaqbal-app/
 | Item | Catatan |
 |---|---|
 | Backend & database | Rencana: Cloudflare Worker + D1 → lihat `PROJECT_SUMMARY.md` |
-| Login & role | Kakang = admin, Istri = user (keputusan D1) |
+| Login & role | Kakang = admin, Istri = user (keputusan D1). Profil akun (nama/username/avatar/password) sudah bisa diubah, tetapi **password belum diverifikasi** — menunggu auth sungguhan |
 | Notifikasi WA | Kirim ke WhatsApp — rencana via Fonnte (keputusan D15). Notifikasi **di dalam app** (lonceng) sudah jalan, isinya turunan data |
 | Data nyata | Sekarang dummy; `fetch` belum ditambahkan sama sekali |
 

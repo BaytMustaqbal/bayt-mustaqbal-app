@@ -7,7 +7,8 @@ import { TaskList } from './components/TaskList';
 import { NoteList } from './components/NoteList';
 import { Dashboard } from './components/Dashboard';
 import { WelcomeGate } from './components/WelcomeGate';
-import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList } from './components/ui';
+import { AccountModal } from './components/AccountModal';
+import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList, initialsOf } from './components/ui';
 import { FamilyCalendar } from './components/Calendar';
 import { FormSheet } from './components/FormSheet';
 import { Toast } from './components/Toast';
@@ -426,6 +427,8 @@ export default function App() {
   const [toast, setToast] = useState(null);
   // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
   const [notifRead, setNotifRead] = useState(readNotifRead);
+  // Modal "Akun saya" (nama, username, avatar, password) — dibuka dari chip pengguna
+  const [accountOpen, setAccountOpen] = useState(false);
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
   // Seed = mockData; setiap perubahan disimpan ke localStorage (snapshot),
@@ -472,6 +475,29 @@ export default function App() {
     }
     dataRef.current = mockData;
     setData(mockData);
+  };
+
+  /* Simpan perubahan profil akun yang sedang aktif (nama, username, avatar,
+     password). Inisial dihitung ulang dari nama supaya avatar cadangan ikut
+     berubah. `password`: undefined = tidak diubah, '' = dihapus, string = baru. */
+  const saveAccount = (patch) => {
+    const current = dataRef.current;
+    saveData({
+      ...current,
+      users: current.users.map((u) => {
+        if (u.id !== activeUserId) return u;
+        const next = {
+          ...u,
+          name: patch.name,
+          username: patch.username,
+          avatar: patch.avatar,
+          initials: initialsOf(patch.name),
+        };
+        if (patch.password !== undefined) next.password = patch.password;
+        return next;
+      }),
+    });
+    pushToast({ message: 'Profil akun diperbarui', duration: 2500 });
   };
 
   // Tambah item sesuai section (dipanggil FormSheet)
@@ -1126,7 +1152,7 @@ export default function App() {
         activeSection={activeSection}
         onSectionChange={setActiveSection}
         user={currentUser}
-        onSwitchUser={() => setEntered(false)}
+        onOpenAccount={() => setAccountOpen(true)}
         schedule={data.schedule}
         expenses={data.expenses}
         family={familyAll}
@@ -1177,6 +1203,19 @@ export default function App() {
         submitLabel={editing ? 'Perbarui' : 'Simpan'}
         onClose={closeSheet}
         onSubmit={(values) => submitSheet(sheetOpen, values)}
+      />
+
+      {/* Modal "Akun saya" — dibuka dari chip pengguna di header */}
+      <AccountModal
+        open={accountOpen}
+        user={currentUser}
+        users={data.users}
+        onClose={() => setAccountOpen(false)}
+        onSwitchUser={() => {
+          setAccountOpen(false);
+          setEntered(false);
+        }}
+        onSave={saveAccount}
       />
 
       {/* Toast: konfirmasi ringkas + "Urungkan" untuk hapus */}

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
-import { CTA_CLASS } from './ui';
+import { Avatar, CTA_CLASS } from './ui';
 
 /* =========================================================
    Layar gerbang (welcome).
@@ -62,17 +62,17 @@ export function WelcomeGate({ users, defaultUserId, onEnter, onReset }) {
                     active ? 'border-brand/60 bg-brandtint' : 'border-line bg-surface hover:bg-muted'
                   }`}
                 >
-                  <span
-                    className={`grid h-10 w-10 place-items-center rounded-xl text-sm font-bold ${
+                  <Avatar
+                    user={user}
+                    className={`h-10 w-10 rounded-xl text-sm font-bold ${
                       active ? 'bg-brand text-canvas' : 'bg-muted text-mutedfg'
                     }`}
-                    aria-hidden="true"
-                  >
-                    {user.initials}
-                  </span>
+                  />
                   <span className="min-w-0 text-center">
                     <span className="block truncate text-sm font-semibold text-ink">{user.name}</span>
-                    <span className="block truncate text-[11px] text-mutedfg">{user.role}</span>
+                    <span className="block truncate text-[11px] text-mutedfg">
+                      {user.username ? `@${user.username}` : user.role}
+                    </span>
                   </span>
                 </button>
               );

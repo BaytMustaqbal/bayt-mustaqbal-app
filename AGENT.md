@@ -30,7 +30,7 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 bayt-mustaqbal-app/
 ├── index.html              # Entry PWA: Plus Jakarta Sans, manifest, install prompt, network monitor
 ├── main.jsx                # React entry: createRoot → render <App /> ke #root + registrasi SW (production)
-├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + data dummy (seed) + persist localStorage + bottom sheet Tambah/Ubah + toast (undo hapus) + banner offline
+├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + data dummy (seed) + persist localStorage + bottom sheet Tambah/Ubah + modal Akun + toast (undo hapus) + banner offline
 ├── App.css                 # Tailwind (@tailwind base/components/utilities) + design token, focus-visible, scrollbar, animasi
 ├── tailwind.config.js      # Theme tokens: warna, skala elevasi (e1/e2/pop/nav), durasi+easing gerak + content paths
 ├── postcss.config.js       # Plugin: tailwindcss + autoprefixer
@@ -38,15 +38,19 @@ bayt-mustaqbal-app/
 ├── package.json            # Deps: react, react-dom, vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer
 ├── DESIGN-SYSTEM.md        # Design system: High-Tech Blue, tipografi, layout, komponen, PWA, a11y
 ├── components/
-│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, note, pin, utensils, edit, trash, search, undo, barChart, target, chevron dll.)
+│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, note, pin, utensils, edit, trash, search, undo, barChart, target, chevron, lock, eye/eyeOff, camera dll.)
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
-│   │                       #   QuickAction, EmptyState, ExpenseCard, ItemActions, Badge, FamilyList, CTA_CLASS
+│   │                       #   QuickAction, EmptyState, ExpenseCard, ItemActions, Badge, FamilyList, CTA_CLASS,
+│   │                       #   Avatar (foto/inisial) + initialsOf(nama)
 │   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + lonceng notifikasi + chip pengguna) + bottom tab bar 56px glass;
 │   │                       #   tab Agenda, Keuangan, Keluarga & Catatan = dropdown filter (animasi, badge jumlah, a11y menu);
-│   │                       #   lonceng = panel notifikasi turunan data (badge belum dibaca, "tandai semua dibaca")
+│   │                       #   lonceng = panel notifikasi turunan data (badge belum dibaca, "tandai semua dibaca");
+│   │                       #   chip pengguna = pembuka modal "Akun saya"
+│   ├── AccountModal.jsx    # Modal "Akun saya" (tengah layar): foto profil (kecilkan 256px di canvas), Nama, Username,
+│   │                       #   Password (kolom profil, belum diverifikasi), "Ganti pengguna"; role=dialog, error per-field
 │   ├── notifications.js    # Notifikasi turunan data (tanpa backend): anggaran, tugas, agenda terdekat, pengeluaran besar → id stabil + target navigasi
 │   ├── categories.js       # Kategori agenda, keuangan, keluarga, catatan + filter tugas & penghitung per item + meta ikon
-│   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) + tombol "Muat ulang data contoh" → nanti jadi login
+│   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: kartu pengguna (avatar foto/inisial + nama + @username/peran) + tombol "Muat ulang data contoh" → nanti jadi login
 │   ├── FormSheet.jsx       # Bottom sheet "Tambah/Ubah" generik (field teks/angka/tanggal/jam/select/textarea/checkbox, validasi wajib, mode ubah via initialValues, role=dialog, Escape/klik luar)
 │   ├── Toast.jsx           # Notifikasi ringkas di atas tab bar: konfirmasi tambah/ubah + tombol "Urungkan" (undo hapus), role=status
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
@@ -89,6 +93,7 @@ bayt-mustaqbal-app/
 | Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
 | Catatan | Dropdown filter catatan (nav HP+desktop): Semua/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info (badge jumlah) + chip sinkron; **kotak cari** (judul + isi) + grid `NoteList` (kartu + badge kategori + pin "penting" + tombol Ubah/Hapus) | `mockData` di `App.jsx` |
 | Notifikasi (lonceng) | Tombol di pojok kanan atas header (sebelum chip pengguna) → panel turun rata kanan berisi **notifikasi turunan data** (anggaran hampir/terlewati, tugas dekat/lewat tenggat, agenda terdekat, pengeluaran terbesar) + badge jumlah belum dibaca + "Tandai semua dibaca"; ketuk item → pindah section + filter disetel | `components/notifications.js` (dihitung dari `mockData`) |
+| Akun saya (modal) | **Chip pengguna di header** membuka modal di tengah layar: **foto profil** (pilih/ganti/hapus; foto dikecilkan otomatis ke 256px di canvas → disimpan data URL), **Nama** (inisial dihitung ulang otomatis), **Username** (3–20 huruf kecil/angka/._-; dicek unik antar akun; tampil sebagai `@username` di kartu gerbang), **Password** (kolom profil — bisa diisi/ganti/hapus, **belum diverifikasi siapa pun**), + pintasan **"Ganti pengguna"** (kembali ke gerbang) | `data.users` di snapshot `bayt-mustaqbal-data-v1` (state di `App.jsx`, modal di `components/AccountModal.jsx`) |
 
 > **Tambah / Ubah / Hapus berfungsi di 4 tab data** (Agenda — Jadwal & Tugas, Keuangan, Catatan; Keluarga baru **tambah**): `SectionHeader` "Tambah" membuka `FormSheet` mode tambah; tombol **Ubah** di kartu membuka `FormSheet` mode ubah (`initialValues` terisi, judul "Ubah …", tombol "Perbarui"); tombol **Hapus** langsung membuang item + `Toast` dengan **"Urungkan"** (6 detik, pulihkan ke posisi semula) — jaring aman pengganti dialog konfirmasi. Item baru/berubah langsung ikut grid, chip, kalender, dan KPI Dashboard.
 >
@@ -97,6 +102,10 @@ bayt-mustaqbal-app/
 > **Persistensi (`localStorage` key `bayt-mustaqbal-data-v1`):** seed awal = `mockData`; setiap perubahan (tambah/ubah/hapus, toggle tugas) disimpan sebagai snapshot, jadi tidak hilang saat reload. Saat dimuat, snapshot **digabung dengan `mockData`** (kunci baru seperti `notes` otomatis terisi walau snapshot lama); snapshot rusak/parsial ditolak (app kembali ke data contoh, tidak blank). Tombol **"Muat ulang data contoh"** di layar gerbang menghapus snapshot dan kembali ke `mockData`.
 >
 > **Status notifikasi sudah dibaca** disimpan di kunci **terpisah** (`bayt-mustaqbal-notif-read-v1`) karena ini keadaan tampilan, bukan data keluarga — jadi "Muat ulang data contoh" tidak mengembalikan badge belum-dibaca. Id notifikasi diikat ke keadaan (bulan/tanggal/id item) dan id yang sudah tidak ada dibuang saat menyimpan.
+>
+> **Profil akun** (nama, username, avatar foto, password) tersimpan **di dalam snapshot data keluarga** (`data.users` pada `bayt-mustaqbal-data-v1`) — bukan kunci terpisah, karena ini memang data akun. Konsekuensi yang disengaja: **"Muat ulang data contoh" ikut mengembalikan profil ke contoh**. Foto avatar = data URL JPEG 256×256 (≤ 150 kB, di luar itu ditolak dengan pesan jelas); foto 6,4 MB → ± 25 kB. Password **belum diverifikasi siapa pun** (belum ada backend) — di modal dinyatakan terang "hanya disimpan di perangkat ini, jangan pakai password asli"; memindahkan verifikasi ke Worker + D1 adalah langkah berikutnya saat backend dibuat.
+>
+> **Akun (`data.users`) terpisah dari daftar anggota keluarga (`data.family`)**: mengganti nama/foto akun **tidak** mengubah kartu di section Keluarga (nama yang sama muncul sebagai dua entri). Menyatukan keduanya sengaja belum dilakukan supaya tidak ada pencocokan nama yang rapuh — bisa dikerjakan saat anggota keluarga ikut bisa diubah.
 
 > **Tidak ada panggilan jaringan.** Data sepenuhnya dummy sesuai permintaan Kakang — fokus ke frontend dulu.
 
@@ -110,7 +119,7 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 |-------|--------|
 | Navigasi < `lg` | **Bottom tab bar** 56px (dikunci `h-[56px]`), 5 tab, area sentuh 60×56px di HP 320px |
 | Navigasi ≥ `lg` | Nav atas (pill) + tombol Pasang; tab bar bawah disembunyikan |
-| Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]`; klaster kanan (semua ukuran): **lonceng notifikasi → chip pengguna → tombol Pasang** |
+| Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]`; klaster kanan (semua ukuran): **lonceng notifikasi → chip pengguna (buka modal Akun) → tombol Pasang** |
 | Safe area bawah | Tab bar `pb-[env(safe-area-inset-bottom)]`; `<main>` `pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]` |
 | Banner install | Diposisikan tepat di atas tab bar (`bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]`, `lg:bottom-0`) |
 | Kartu KPI | Nilai uang diringkas di HP (`Rp 2,8 jt`) via `formatCurrencyShort`; nilai penuh di `title` + section Keuangan |
@@ -121,6 +130,8 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 **Hasil verifikasi** (iframe 320/360/390/414/768 px; 5 section + gerbang): **0 overflow horizontal**, **0 elemen interaktif < 44px**; konsol 0 error/0 warning; toggle tugas berfungsi (`aria-pressed` false→true + coret); tambah/ubah/hapus + undo toast + pencarian catatan terverifikasi di browser (data persist lintas reload). (Pernah meluber 44px di 320px pada legenda donut — sudah diperbaiki jadi kolom di HP.)
 
 **Hasil verifikasi notifikasi** (iframe 320px & 1280px): lonceng 44×44, panel 288px muat di 320px (tepi kiri tetap 16px) & rata kanan konten di desktop; badge "4" + `aria-label` "Notifikasi, 4 belum dibaca" + `role="status"` sr-only; "Tandai semua dibaca" menghapus badge + menyimpan 4 id ke `localStorage`; setelah reload status baca tetap; ketuk notifikasi tugas → Agenda › Tugas + filter "Belum Selesai" (5 dari 8); Escape menutup + fokus balik ke lonceng; klik luar & toggle menutup; membuka menu kategori menutup panel; indikator tab tidak bergeser saat panel notifikasi terbuka.
+
+**Hasil verifikasi modal Akun** (browser: langsung 800px + iframe 320×640; diuji lewat `browser.evaluate` + `browser.press`): chip membuka modal `role="dialog"` + `aria-modal` + `aria-labelledby` "Akun saya", fokus otomatis ke field Nama; Escape/klik backdrop/Batal/× menutup **dan** fokus balik ke chip; scroll body terkunci saat terbuka lalu pulih; **fokus terlihat** di semua kontrol (Tab sungguhan → `:focus-visible` + outline cyan 2px, termasuk tombol lihat password & Simpan). Validasi: nama kosong/1 karakter, username 2 karakter & format salah, **username duplikat antar akun** → error per-field + fokus pindah ke field bermasalah; password < 6 karakter & "ulangi password tidak sama"; field "Ulangi password" muncul hanya saat password diisi. Unggah foto: PNG 1200×800 → di-crop tengah & dikecilkan ke 256×256 (dibuktikan dengan probe piksel: sudut cyan, tengah merah) → JPEG data URL; foto noise 6,4 MB → 25 kB; berkas non-gambar → "Berkas ini bukan gambar…", HEIC tak terbaca → pesan jelas (foto lama tetap aman); "Hapus foto" → kembali inisial. Simpan → nama/username/avatar/password masuk snapshot + inisial dihitung ulang (nama 3 kata → "RT") + toast "Profil akun diperbarui"; **bertahan setelah reload** (kartu gerbang menampilkan foto). Modal di 320×640: panel 288px (tepi 16px), tidak meluber, isi 779px → scroll internal panel, tombol lihat password 44×44. Regresi: panel notifikasi & dropdown kategori tetap jalan, FormSheet tetap terbuka/tutup, konsol 0 error setelah reload bersih.
 
 ---
 
@@ -194,6 +205,8 @@ npx vite preview
 | Data dummy hardcode | Bukan data real | Bangun Worker + D1, ganti seed `mockData` + persist `localStorage` dengan state + fetch |
 | Belum ada `wrangler.toml` | Backend belum jalan | Buat Worker + D1 binding |
 | ~~Belum ada edit/hapus item~~ | ~~Hanya bisa tambah + toggle selesai~~ | **SELESAI:** `ItemActions` (Ubah/Hapus) di kartu agenda/pengeluaran/tugas/catatan; ubah lewat `FormSheet` mode edit; hapus cepat + `Toast` "Urungkan" (undo). Keluarga baru **tambah** (belum ubah/hapus anggota & sub-bagian) |
+| Password akun hanya kolom profil | Belum ada verifikasi sungguhan (siapa pun yang memegang perangkat bisa masuk) | Sudah dinyatakan terang di modal ("disimpan di perangkat ini, jangan pakai password asli"). Tutup dengan auth Worker + D1 (bcrypt/JWT) saat backend dibuat — **jangan** dipakai sebagai pengaman nyata sebelum itu |
+| Profil akun ≠ data anggota keluarga | Ganti nama/foto akun tidak mengubah kartu section Keluarga (nama bisa tampak ganda) | Sengaja dibiarkan (hindari pencocokan nama yang rapuh). Kerjakan saat anggota keluarga bisa diubah/hapus |
 
 ---
 
@@ -206,7 +219,7 @@ npx vite preview
 - Notifikasi: Fonnte WhatsApp API
 
 **Frontend (evolusi):**
-- Login + role admin/user, data nyata (bukan `mockData`), form input & validasi (bottom sheet "Tambah/Ubah" **sudah ada** beserta hapus + undo — tinggal sinkron ke server)
+- Login + role admin/user, data nyata (bukan `mockData`), form input & validasi (bottom sheet "Tambah/Ubah" **sudah ada** beserta hapus + undo — tinggal sinkron ke server); profil akun (nama/username/avatar/password) **sudah ada** di modal "Akun saya" — tinggal pindah ke auth sungguhan (username + password jadi kredensial nyata, avatar disimpan sebagai berkas/URL)
 - Tetap React 18 + Vite + Tailwind, mobile-first. **Tanpa TypeScript & tanpa router** — 5 section yang sudah ada diperdalam, bukan ditambah jadi 11 halaman
 
 **Deploy:**

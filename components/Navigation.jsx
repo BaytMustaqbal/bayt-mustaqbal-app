@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
-import { CTA_CLASS } from './ui';
+import { Avatar, CTA_CLASS } from './ui';
 import {
   AGENDA_CATEGORIES,
   FINANCE_CATEGORIES,
@@ -166,7 +166,7 @@ export function Navigation({
   activeSection,
   onSectionChange,
   user,
-  onSwitchUser,
+  onOpenAccount,
   schedule,
   expenses,
   family,
@@ -406,19 +406,15 @@ export function Navigation({
               {notifUnread > 0 ? `${notifUnread} notifikasi belum dibaca` : 'Semua notifikasi sudah dibaca'}
             </span>
 
-            {/* Kembali ke layar gerbang (ganti pengguna) */}
+            {/* Buka modal "Akun saya" (nama, username, avatar, password) */}
             <button
               type="button"
-              onClick={onSwitchUser}
-              aria-label={`Ganti pengguna (sekarang ${user.name})`}
+              id="account-trigger"
+              onClick={onOpenAccount}
+              aria-label={`Pengaturan akun (sekarang ${user.name})`}
               className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line px-1.5 text-sm transition-colors hover:bg-muted sm:px-3"
             >
-              <span
-                className="grid h-8 w-8 place-items-center rounded-lg bg-brandtint text-xs font-bold text-brandfg"
-                aria-hidden="true"
-              >
-                {user.initials}
-              </span>
+              <Avatar user={user} className="h-8 w-8 rounded-lg bg-brandtint text-xs font-bold text-brandfg" />
               <span className="hidden max-w-[7rem] truncate text-mutedfg sm:inline">{user.name}</span>
             </button>
 
