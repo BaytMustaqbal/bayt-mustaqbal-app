@@ -48,7 +48,7 @@ bayt-mustaqbal-app/
 │   ├── FormSheet.jsx       # Bottom sheet "Tambah/Ubah" generik (field teks/angka/tanggal/jam/select/textarea/checkbox, validasi wajib, mode ubah via initialValues, role=dialog, Escape/klik luar)
 │   ├── Toast.jsx           # Notifikasi ringkas di atas tab bar: konfirmasi tambah/ubah + tombol "Urungkan" (undo hapus), role=status
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
-│   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline
+│   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline — batang & garis bisa diketuk (satu area sentuh besar, keyboard: panah/Home/End/Escape)
 │   ├── FamilyCard.jsx      # Card anggota (baris horizontal)
 │   ├── FamilyMemberCard.jsx# Card anggota versi besar (centered)
 │   ├── NoteList.jsx        # Daftar kartu catatan keluarga (ikon kategori, isi 3 baris, badge, pin, tombol Ubah/Hapus)

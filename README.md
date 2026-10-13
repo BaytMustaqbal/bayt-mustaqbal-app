@@ -69,7 +69,7 @@ bayt-mustaqbal-app/
 - **Layar gerbang** muncul tiap app dibuka: pilih Kakang/Istri (tersimpan di `localStorage`) — nanti menjadi layar login
 - **Tambah / Ubah / Hapus item** di Agenda (Jadwal & Tugas), Keuangan, dan Catatan: form bottom sheet (mode ubah berisi nilai lama) + tombol Ubah/Hapus di tiap kartu. Hapus = langsung + **toast "Urungkan"** (6 detik, tanpa dialog)
 - **Pencarian catatan** (judul + isi) di tab Catatan, di atas filter kategori
-- **Dashboard baru:** kartu hero glass (pengeluaran + realisasi anggaran), aksi cepat, KPI, dan 3 chart tulis sendiri (tren 6 bulan, 7 hari, komposisi)
+- **Dashboard baru:** kartu hero glass (pengeluaran + realisasi anggaran), aksi cepat, KPI, dan 3 chart tulis sendiri (tren 6 bulan, 7 hari, komposisi) — **batang & garis bisa diketuk** untuk melihat nilai tiap hari/bulan (nilai total donat sudah tampil di tengah)
 - **Terverifikasi** di 320 / 360 / 390 / 414 / 768 px: 0 overflow horizontal, 0 elemen interaktif di bawah 44 px
 
 ## Belum ada

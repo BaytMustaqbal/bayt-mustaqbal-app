@@ -150,7 +150,13 @@ QuickAction      : tile 4-kolom, min-h 76px, ikon tile 40px ber-warna (cyan/blue
 StatCard (KPI)   : ikon tile ber-warna + nilai mono + label + hint opsional (+ sparkline sm+)
 Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat components/charts.jsx
                    SEMUA label di HTML (bukan di SVG) agar tajam di semua lebar;
-                   tiap chart punya aria-label + <figcaption class="sr-only">
+                   aria-label + <figcaption class="sr-only"> = ringkasan lengkap semua nilai
+                   Batang & garis = bisa diketuk/klik: SELURUH area grafik jadi satu sasaran
+                   sentuh (320px: 245×160px — jauh di atas 44px; tombol per batang cuma
+                   ~28px jadi TIDAK dipakai). Ketuk = pilih, ketuk lagi = lepas
+                   (kembali ke default: batang tertinggi / titik terakhir), panah kiri-kanan
+                   + Home/End/Escape untuk keyboard, nilai dibacakan lewat `aria-live`.
+                   Donat: nilai total sudah tampil di tengah + tiap irisan punya nilai & % di legenda.
 ```
 
 ### Family-Specific Components
@@ -235,7 +241,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 
 ### Aset statis & build (PENTING)
 - Vite **hanya** menyalin folder `public/` ke `dist/`. Jadi `manifest.json`, `service-worker.js`, dan `icons/` wajib berada di `public/` — kalau ditaruh di root, semuanya 404 di produksi (install PWA & mode offline mati, ikon tidak muncul)
-- `service-worker.js`: naikkan nomor versi cache (`family-*-v4`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
+- `service-worker.js`: naikkan nomor versi cache (`family-*-v5`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
 
 ## 9. Offline Capabilities
 
@@ -264,7 +270,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 ## 11. Accessibility Guidelines
 
 - **Kontras**: ≥ 4.5:1 teks normal (ink 15:1, mutedfg 6.5:1, CTA putih 5.2:1); 3:1 untuk dekorasi besar
-- **Ukuran**: body 16px min; chart punya `role="img"` + `aria-label` + `figcaption` sr-only (tabel data alternatif)
+- **Ukuran**: body 16px min; chart punya `aria-label` + `figcaption` sr-only (tabel data alternatif), donat tetap `role="img"`; batang & garis interaktif lewat tombol overlay satu-area yang bisa dijangkau keyboard (panah/Home/End/Escape) dengan pengumuman `aria-live`
 - **Target sentuh**: 44px minimum (terverifikasi otomatis)
 - **Fokus**: `:focus-visible` ring cyan 2px; gerbang meng-fokus tombol masuk saat dibuka
 - **Screen reader**: HTML semantik, `aria-current="page"`, `aria-pressed`, `role="radio"` di pemilih pengguna

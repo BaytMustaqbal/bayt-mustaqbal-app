@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React, { useId, useState } from 'react';
 
 /* =========================================================
    Chart tulis sendiri (tanpa dependensi chart library).
@@ -9,8 +9,10 @@ import React, { useId } from 'react';
    - SEMUA TEKS ditaruh di HTML, bukan di dalam SVG. Kalau teks ada di
      dalam SVG dengan viewBox, ukurannya ikut menskalakan: di HP jadi
      ~6 px (tak terbaca) dan di desktop jadi ~40 px (kebablasan).
-   - Tiap chart punya penjelasan teks untuk pembaca layar
-     (role="img" + aria-label + <figcaption class="sr-only">).
+   - Grafik batang & garis bisa diketuk: seluruh area grafik jadi SATU sasaran
+     sentuh besar (bukan tombol per batang yang cuma ~28px di layar 320px).
+     Nilainya juga tersedia tanpa interaksi: aria-label + <figcaption
+     class="sr-only"> berisi ringkasan lengkap semua titik.
    ========================================================= */
 
 /* Kurva halus (Catmull-Rom → Bezier) */
@@ -35,56 +37,147 @@ function summaryOf(data, formatValue) {
   return data.map((d) => `${d.label}: ${formatValue(d.value)}`).join('; ');
 }
 
+/* ---------------- Interaksi grafik: ketuk untuk lihat nilai ----------------
+
+   Kenapa satu area sentuh besar, bukan tombol per batang:
+   di layar 320px satu slot batang hanya ~28px — di bawah aturan target sentuh
+   ≥44px. Jadi SELURUH area grafik yang jadi sasaran (jauh di atas 44px), lalu
+   indeks terdekat dihitung dari posisi X. Tombolnya transparan (overlay), jadi
+   isi grafik tetap boleh berupa <div> (isi <button> harus phrasing content).
+
+   Cara pakai: klik/ketuk untuk memilih · ketuk lagi untuk melepas ·
+   panah kiri/kanan/Home/End untuk keyboard · Escape untuk melepas.
+   Default (belum dipilih) = `defaultIdx` (batang tertinggi / titik terakhir).
+   ------------------------------------------------------------------------- */
+const clampIdx = (i, count) => Math.max(0, Math.min(count - 1, i));
+
+function useChartPick(count, defaultIdx, mode = 'slot') {
+  const [picked, setPicked] = useState(null);
+
+  // mode 'slot'  : lebar dibagi rata (batang)   → indeks = floor(rel × count)
+  // mode 'point' : titik di ujung rentang (garis) → indeks = round(rel × (count−1))
+  const idxAt = (clientX, el) => {
+    const rect = el.getBoundingClientRect();
+    const rel = rect.width ? Math.min(1, Math.max(0, (clientX - rect.left) / rect.width)) : 0;
+    return mode === 'slot' ? clampIdx(Math.floor(rel * count), count) : clampIdx(Math.round(rel * (count - 1)), count);
+  };
+
+  const onClick = (e) => {
+    const idx = idxAt(e.clientX, e.currentTarget);
+    setPicked((prev) => (prev === idx ? null : idx));
+  };
+
+  const onKeyDown = (e) => {
+    const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (step) {
+      e.preventDefault();
+      setPicked(clampIdx((picked ?? defaultIdx) + step, count));
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setPicked(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setPicked(count - 1);
+    } else if (e.key === 'Escape') {
+      setPicked(null);
+    }
+  };
+
+  return { activeIdx: picked ?? defaultIdx, handlers: { onClick, onKeyDown } };
+}
+
+/* Label nilai mengambang (HTML, bukan SVG → tetap tajam dan tidak ikut skala) */
+function ValueTag({ children, className = '', ...rest }) {
+  return (
+    <span
+      className={`pointer-events-none absolute whitespace-nowrap rounded-md border border-line/70 bg-canvas/95 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-ink ${className}`}
+      {...rest}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* Lapisan tak terlihat di atas grafik: seluruh area grafik jadi satu sasaran sentuh */
+function ChartTapLayer({ label, handlers }) {
+  return (
+    <button
+      type="button"
+      {...handlers}
+      aria-label={label}
+      className="absolute inset-0 z-10 cursor-pointer rounded-xl"
+    />
+  );
+}
+
 /* ---------------- Batang (perbandingan antar kategori/hari) ---------------- */
 
 export function BarChart({ data, height = 160, color = '#22D3EE', formatValue = (v) => v }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   const maxIdx = data.reduce((best, d, i) => (d.value > data[best].value ? i : best), 0);
   const summary = summaryOf(data, formatValue);
+  const { activeIdx, handlers } = useChartPick(data.length, maxIdx);
+  const active = data[activeIdx];
 
   return (
-    <figure className="m-0" role="img" aria-label={`Grafik batang. ${summary}`}>
-      <div className="grid-lines relative overflow-hidden rounded-xl border border-line/70 px-3 pt-8" style={{ height }}>
-        {/* Garis bantu */}
-        {[0, 25, 50, 75].map((t) => (
-          <span key={t} aria-hidden="true" className="absolute inset-x-0 border-t border-line/60" style={{ top: `${t}%` }} />
-        ))}
+    <figure className="m-0" aria-label="Grafik pengeluaran harian">
+      <div className="relative" style={{ height }}>
+        {/* Lapisan dekoratif dipisah dari batang: `overflow-hidden` di sini hanya
+            memotong garis bantu/grid, sehingga label nilai yang menjulang di atas
+            batang paling kiri/kanan tidak ikut terpotong. */}
+        <div
+          className="grid-lines pointer-events-none absolute inset-0 overflow-hidden rounded-xl border border-line/70"
+          aria-hidden="true"
+        >
+          {[0, 25, 50, 75].map((t) => (
+            <span key={t} className="absolute inset-x-0 border-t border-line/60" style={{ top: `${t}%` }} />
+          ))}
+        </div>
 
-        <div className="relative flex h-full items-end gap-1.5">
+        <div className="absolute inset-0 flex items-end gap-1.5 px-3 pt-8" aria-hidden="true">
           {data.map((d, i) => {
             const h = Math.max(4, (d.value / max) * 84);
-            const isMax = i === maxIdx;
+            const isActive = i === activeIdx;
             return (
               <div key={d.label} className="relative flex h-full flex-1 items-end justify-center">
                 <div
-                  className="w-full max-w-[22px] rounded-t-md transition-[height] duration-300"
+                  className="w-full max-w-[22px] rounded-t-md transition-[height,opacity] duration-300"
                   style={{
                     height: `${h}%`,
-                    background: isMax
+                    background: isActive
                       ? `linear-gradient(180deg, ${color}, rgba(34,211,238,0.35))`
                       : `linear-gradient(180deg, ${color}, rgba(34,211,238,0.08))`,
-                    opacity: isMax ? 1 : 0.7,
-                    boxShadow: isMax ? `0 0 14px ${color}66` : undefined,
+                    opacity: isActive ? 1 : 0.7,
+                    boxShadow: isActive ? `0 0 14px ${color}66` : undefined,
                   }}
                 />
-                {isMax && (
-                  <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border border-line/70 bg-canvas/85 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-ink">
-                    {formatValue(d.value)}
-                  </span>
-                )}
+                {isActive && <ValueTag className="-top-6 left-1/2 -translate-x-1/2">{formatValue(d.value)}</ValueTag>}
               </div>
             );
           })}
         </div>
+
+        <ChartTapLayer
+          label="Ketuk batang, atau pakai tombol panah kiri/kanan, untuk melihat nilai tiap hari."
+          handlers={handlers}
+        />
       </div>
 
       <div className="mt-1.5 flex gap-1.5 text-[11px] text-mutedfg" aria-hidden="true">
-        {data.map((d) => (
-          <span key={d.label} className="flex-1 truncate text-center">
+        {data.map((d, i) => (
+          <span
+            key={d.label}
+            className={`flex-1 truncate text-center ${i === activeIdx ? 'font-semibold text-brandfg' : ''}`}
+          >
             {d.label}
           </span>
         ))}
       </div>
+
+      {/* Nilai yang sedang dipilih dibacakan (untuk pengguna pembaca layar) */}
+      <p className="sr-only" aria-live="polite">
+        {active ? `${active.label}: ${formatValue(active.value)}` : ''}
+      </p>
 
       <figcaption className="sr-only">{summary}</figcaption>
     </figure>
@@ -188,11 +281,15 @@ export function LineChart({ data, height = 170, color = '#22D3EE', formatValue =
   const line = smoothPath(pts);
   const area = `${line} L ${pts[n - 1][0].toFixed(2)} ${H} L ${pts[0][0].toFixed(2)} ${H} Z`;
   const gid = useId().replace(/[:]/g, '');
-  const last = pts[n - 1];
   const summary = summaryOf(data, formatValue);
+  const { activeIdx, handlers } = useChartPick(n, n - 1, 'point');
+  const active = pts[activeIdx];
+  // Label diletakkan di sisi yang lapang: titik di paruh kiri → label ke kanan
+  // (dan sebaliknya) supaya label tidak menjulur keluar tepi grafik/kartu.
+  const labelRight = activeIdx < n / 2;
 
   return (
-    <figure className="m-0" role="img" aria-label={`Grafik tren. ${summary}`}>
+    <figure className="m-0" aria-label="Grafik tren pengeluaran bulanan">
       <div className="relative">
         <div className="grid-lines absolute inset-0 rounded-xl border border-line/70" aria-hidden="true" />
 
@@ -215,32 +312,48 @@ export function LineChart({ data, height = 170, color = '#22D3EE', formatValue =
           <line x1="0" x2={W} y1={pts[values.indexOf(max)][1]} y2={pts[values.indexOf(max)][1]} stroke={color} strokeOpacity="0.35" strokeDasharray="4 5" vectorEffect="non-scaling-stroke" />
         </svg>
 
-        {/* Titik terakhir + nilainya (HTML) */}
+        {/* Titik aktif + nilainya (HTML → tetap tajam) */}
         <span
           className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-canvas bg-brand"
           style={{
-            left: `${(last[0] / W) * 100}%`,
-            top: `${(last[1] / H) * 100}%`,
+            left: `${(active[0] / W) * 100}%`,
+            top: `${(active[1] / H) * 100}%`,
             boxShadow: '0 0 12px rgba(34, 211, 238, 0.9)',
           }}
           aria-hidden="true"
         />
-        <span
-          className="absolute -translate-x-full -translate-y-1/2 whitespace-nowrap rounded-md border border-line/70 bg-canvas/85 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-ink"
-          style={{ left: `calc(${(last[0] / W) * 100}% - 10px)`, top: `${(last[1] / H) * 100}%` }}
+        <ValueTag
+          className={labelRight ? '-translate-y-1/2' : '-translate-x-full -translate-y-1/2'}
+          style={{
+            left: `calc(${(active[0] / W) * 100}% ${labelRight ? '+' : '-'} 10px)`,
+            top: `${(active[1] / H) * 100}%`,
+          }}
           aria-hidden="true"
         >
-          {formatValue(values[n - 1])}
-        </span>
+          {formatValue(values[activeIdx])}
+        </ValueTag>
+
+        <ChartTapLayer
+          label="Ketuk grafik, atau pakai tombol panah kiri/kanan, untuk melihat nilai tiap bulan."
+          handlers={handlers}
+        />
       </div>
 
       <div className="mt-1.5 flex text-[11px] text-mutedfg" aria-hidden="true">
-        {data.map((d) => (
-          <span key={d.label} className="flex-1 truncate text-center">
+        {data.map((d, i) => (
+          <span
+            key={d.label}
+            className={`flex-1 truncate text-center ${i === activeIdx ? 'font-semibold text-brandfg' : ''}`}
+          >
             {d.label}
           </span>
         ))}
       </div>
+
+      {/* Nilai yang sedang dipilih dibacakan (untuk pengguna pembaca layar) */}
+      <p className="sr-only" aria-live="polite">
+        {data[activeIdx] ? `${data[activeIdx].label}: ${formatValue(data[activeIdx].value)}` : ''}
+      </p>
 
       <figcaption className="sr-only">{summary}</figcaption>
     </figure>
