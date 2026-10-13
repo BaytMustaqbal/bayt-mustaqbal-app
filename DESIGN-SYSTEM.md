@@ -241,7 +241,9 @@ Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat compon
 
 ### Family-Specific Components
 ```
-FamilyMemberCard : kartu profil anggota — avatar `bg-brandtint border brand/25` + inisial `brandfg`,
+FamilyMemberCard : kartu profil anggota — avatar **foto** (`object-cover`, `bg-muted`, border `line`)
+                   bila `member.avatar` ada (mis. Rezki), kalau tidak avatar
+                   `bg-brandtint border brand/25` + inisial `brandfg`;
                    nama + peran + badge status, lalu **daftar data diri** (Lahir + umur ·
                    Gol. darah · Alergi · WA) sebagai `<dl>` `text-xs` yang bertumpuk
                    kanan-kiri (`justify-between`, nilai `truncate`); 1 kolom di HP,
@@ -280,9 +282,11 @@ AccountModal     : modal akun **di tengah layar** (grid place-items-center, pane
                    tombol lihat/sembunyikan, tombol "Hapus password"), catatan purwarupa,
                    footer Batal + Simpan (CTA) + pintasan "Ganti pengguna";
                    dibuka dari chip pengguna (fokus kembali ke chip saat ditutup)
-Avatar           : komponen bersama (ui.jsx) — foto (`object-cover`, dari data URL 256px)
+Avatar           : komponen bersama (ui.jsx) — foto (`object-cover`: data URL 256px dari upload,
+                   atau berkas statis seperti seed `/avatars/profile-rezki.jpg`)
                    atau inisial dari nama (`initialsOf`); dipakai chip header, kartu gerbang,
-                   dan modal akun dengan ukuran/radius berbeda lewat `className`
+                   kartu anggota Keluarga (`FamilyMemberCard`), dan modal akun dengan
+                   ukuran/radius berbeda lewat `className`
 ```
 
 ## 6. Screen Hierarchy & Information Architecture
@@ -291,7 +295,7 @@ Avatar           : komponen bersama (ui.jsx) — foto (`object-cover`, dari data
 1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, daftar terbaru. **Tombol mata** jumlah uang = **hanya memengaruhi kartu hero** (keputusan Kakang); nilai di KPI/chart/daftar tetap tampil
 2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Ibadah/Kesehatan/Rumah Tangga/Kendaraan, badge jumlah) — **satu-satunya filter kategori** (deretan chip filter di dalam section dihapus; nama filter aktif sudah tampil sebagai judul `SectionHeader`, jumlah di sub-judul); sub-tampilan **Jadwal | Tugas | Kalender | Timeline** (default Jadwal) — **Jadwal** = grid `ScheduleItem`; **Tugas** = chip filter status/prioritas (Semua Tugas/Belum Selesai/Sudah Selesai/Prioritas Tinggi/Sedang/Rendah) + `TaskList` (toggle selesai + badge prioritas); **Kalender** = kalender gabungan anggota (`Calendar.jsx`): view **Minggu/Bulan/Tahun** (default Bulan), **warna per member + legenda** (Rezki YT cyan, Hilda AK violet, RAGASUCI emerald, RAJABRANA amber, Keluarga sky), dot member di sel + bar bawah = ada tugas jatuh tempo, klik tanggal → daftar agenda hari itu, nav prev/next + "Hari Ini", filter kategori ikut memfilter kalender; **Timeline** = alur kronologis gabungan 4 modul (`Timeline.jsx`): rel vertikal + titik per hari + cabang ke tiap baris, kelompok **hari ini ke depan** lalu blok **Riwayat**, chip filter jenis (Semua/Agenda/Tugas/Keuangan/Catatan)
 3. **Keuangan**: dropdown kategori di tab Keuangan (Semua/Belanja/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah) — satu-satunya filter; grid `ExpenseCard` berikon kategori + total terfilter di header
-4. **Keluarga** (**papan profil anggota** — D17): dropdown bagian di tab Keluarga (Semua/Anggota/**Info Medis**/**Kontak & Darurat**/**Dokumen Penting**, badge jumlah) — satu-satunya filter; "Semua Keluarga" = semua bagian bertumpuk. **Anggota** = grid `FamilyMemberCard` berisi data diri (avatar inisial, nama, peran, umur dari tanggal lahir, golongan darah, alergi, WA) — **1 kolom di HP** (kartu memuat detail, butuh lebar), `sm`+ berjejer; sisanya `FamilyList`. Kesehatan→Informasi medis ringkas (dokter/asuransi/obat, **statis**), Pendidikan Anak→dihapus dari modul ini (jadwal & biaya milik Agenda/Keuangan)
+4. **Keluarga** (**papan profil anggota** — D17): dropdown bagian di tab Keluarga (Semua/Anggota/**Info Medis**/**Kontak & Darurat**/**Dokumen Penting**, badge jumlah) — satu-satunya filter; "Semua Keluarga" = semua bagian bertumpuk. **Anggota** = grid `FamilyMemberCard` berisi data diri (avatar foto bila ada — mis. Rezki dari seed `/avatars/profile-rezki.jpg` — atau inisial, nama, peran, umur dari tanggal lahir, golongan darah, alergi, WA) — **1 kolom di HP** (kartu memuat detail, butuh lebar), `sm`+ berjejer; sisanya `FamilyList`. Kesehatan→Informasi medis ringkas (dokter/asuransi/obat, **statis**), Pendidikan Anak→dihapus dari modul ini (jadwal & biaya milik Agenda/Keuangan)
 5. **Catatan**: dropdown filter di tab Catatan (Semua Catatan/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info, badge jumlah) — satu-satunya filter kategori; **kotak cari** (judul + isi, `type="search"`, tombol bersihkan) + grid `NoteList` (kartu catatan + badge kategori + pin "penting" + `ItemActions`)
 
 > **Kenapa deretan chip filter kategori dihapus** (keputusan Kakang, sesi review UI): chip di dalam section (Agenda/Keuangan/Keluarga/Catatan) menampilkan **isi, jumlah, dan state yang sama persis** dengan dropdown kategori di tab — dua UI untuk satu pekerjaan. Nama filter aktif sudah terbaca di `SectionHeader` (judul = nama kategori, sub-judul = "N dari M …"), dan tab yang punya dropdown sudah bertanda **chevron** + `aria-haspopup="menu"`, jadi tidak ada informasi yang hilang. Yang **tetap ada** (tidak punya padanan di dropdown): chip sub-tampilan **Jadwal | Tugas | Kalender | Timeline**, chip filter status/prioritas **Tugas**, chip jenis **Timeline**, chip skala kalender **Minggu/Bulan/Tahun**, dan **kotak cari Catatan**.

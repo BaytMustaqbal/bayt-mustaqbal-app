@@ -436,6 +436,53 @@ di HP/browser nyata bahwa popup muncul-hilang dengan lembut.
 
 ---
 
+## D20 — Foto Profil Contoh (Seed) Disajikan dari `public/avatars/`
+
+**Tanggal:** 13 Oktober 2026
+
+Kakang ingin **foto profilnya terpasang** (`assets/profile-rezki.jpg`) supaya tampilan
+"Akun saya" dan avatar terlihat nyata — bukan sekadar inisial "RY".
+
+Masalahnya pola proyek: **`assets/` = berkas sumber asli** (tidak disalin ke `dist/`),
+sedangkan **`public/` = aset yang benar-benar disajikan app** (Vite hanya menyalin `public/`).
+Contoh yang sudah ada: `assets/logo.png` (sumber) → `public/brand/logo.png` (yang dipakai).
+Kalau seed menunjuk langsung ke `assets/`, foto **tampil di dev tapi 404 di produksi/HP**.
+
+| Opsi | Bentuk | Alasan/Konsekuensi |
+|---|---|---|
+| **A. Salin ke `public/avatars/` (dipilih)** | Foto asli tetap di `assets/`; versi 256px disajikan app di `public/avatars/profile-rezki.jpg`; seed avatar = `/avatars/profile-rezki.jpg` (path stabil) | Mengikuti pola logo; **tampil di dev & produksi**; URL stabil → tidak rusak saat rebuild. Konsekuensi: dua berkas (sumber + tersaji) |
+| B. Pindahkan saja (tanpa duplikat) | Hapus `assets/profile-rezki.jpg`, hanya ada versi `public/` | Repo lebih ramping, tapi berkas sumber Kakang hilang dari `assets/` |
+| C. Import dari `assets/` di JS | `import avatar from './assets/profile-rezki.jpg'` (Vite membundel + memberi hash) | Satu sumber, tapi URL ber-hash → begitu snapshot tersimpan ke `localStorage` lalu app di-rebuild, avatar bisa **404 sampai "Muat ulang data contoh"** |
+
+Kakang memilih **A**, dan memilih foto ini tampil **di akun _dan_ kartu anggota Keluarga**.
+
+**Konsekuensi teknis:**
+- `public/avatars/profile-rezki.jpg` = **256×256, ± 10 kB** (crop tengah, JPEG q82) — dibuat
+  sekali dengan `System.Drawing`. Ini **bukan** bagian `npm run icons` (tanpa langkah build baru).
+  `assets/profile-rezki.jpg` (500×500, 120 kB) tetap jadi sumber.
+- Seed avatar (`/avatars/profile-rezki.jpg`) dipasang di **`users[0]`** (`id: 'kakang'`) dan
+  **`family[0]`** (anggota "Rezki YT"). Tiga pengguna/kartu lain tetap inisial.
+- `FamilyMemberCard` kini memakai komponen bersama **`Avatar`** (foto bila `member.avatar` ada,
+  kalau tidak inisial) — sebelumnya inisial di-hardcode, jadi kartu Keluarga tak bisa berfoto.
+  Kotak avatar tetap **56px (HP) / 64px (`sm`+)** — ukuran tidak berubah, hanya isinya.
+- **Snapshot lama tetap dapat foto:** `loadInitialData` melengkapi field `avatar` dari seed untuk
+  user dengan `id` yang cocok, **tanpa menimpa** avatar yang sudah diganti/dihapus
+  (`avatar: ''` dipertahankan) — pola sama seperti migrasi modul `family` (D17).
+- Service worker: `/avatars/profile-rezki.jpg` ditambahkan ke precache + versi cache
+  dinaikkan `v8` → **`v9`** (agar app-shell lama, termasuk `index.html`, tidak menyajikan versi basi).
+
+**Bukti (DOM/computed style):**
+- Chip header (`#account-trigger`) & kartu gerbang: `<img src="/avatars/profile-rezki.jpg">`
+  `naturalWidth 256`, `object-fit: cover`, chip 32×32 / gerbang 40×40; inisial "RY" **tidak** lagi tampil.
+- Kartu Keluarga "Rezki YT": foto 62×62 (800px) dan **56×56 di 320px** (`border-radius: 16px`);
+  Hilda/RAGASUCI/RAJABRANA tetap inisial "HA"/"RS"/"RB" pada kotak berukuran sama.
+- Modal "Akun saya": pratinjau foto termuat; tombol berubah jadi **"Ganti foto" + "Hapus foto"**;
+  uji "Hapus foto" → pratinjau balik ke inisial "RY" + tombol kembali "Pilih foto" (Batal tidak menyimpan).
+- **0 luber** (lebar 800px & iframe 320px) dan **0 error konsol**; `npm run build` hijau,
+  `dist/avatars/profile-rezki.jpg` (10.406 byte) ikut tersalin & path-nya ada di bundle.
+
+---
+
 ## Pertanyaan yang MASIH Terbuka
 
 Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
@@ -458,3 +505,4 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | 13 Okt 2026 | D17 | Modul "Keluarga" = papan profil anggota (kategori: anggota/medis/kontak/dokumen) | Tab Keluarga belum pernah didefinisikan; isinya menduplikasi Agenda & Keuangan |
 | 13 Okt 2026 | D18 | Latar = "blueprint teknik": grid 28px seluruh kanvas + pendaran atas & bawah + vignette + grain (statis, murni CSS) | Kanvas terasa plain — pendaran lama berhenti di bagian atas & latar tidak berlapis sehingga kartu kaca ikut datar |
 | 13 Okt 2026 | D19 | Titik masuk "Pasang app" = satu popup 5 detik tiap app dibuka; tombol "Pasang" di header & tile "Pasang App" dihapus (tile jadi pintasan Keluarga) | Tombol Pasang selalu tampil walau app belum bisa dipasang (sering tak bereaksi) & jadi penyebab luber header 1024–1109px; banner lama tak pernah hilang sendiri |
+| 13 Okt 2026 | D20 | Foto profil contoh disajikan dari `public/avatars/profile-rezki.jpg` (bukan `assets/`) & dipakai sebagai seed avatar Kakang **dan** kartu anggota "Rezki YT"; `FamilyMemberCard` pakai `Avatar` | Kakang minta foto profilnya terpasang agar tampilan "Akun saya" & avatar terlihat nyata; `assets/` tidak ikut ke `dist/` sehingga foto akan 404 di produksi |

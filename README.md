@@ -43,10 +43,12 @@ bayt-mustaqbal-app/
 │                               # TaskList, NoteList, Toast, FormSheet, AccountModal, FamilyCard, FamilyMemberCard,
 │                               # ScheduleItem, Calendar, Icon, charts.jsx, notifications.js
 ├── assets/logo.png             # Logo asli (sumber brand & ikon)
+├── assets/profile-rezki.jpg    # Foto asli Kakang (500×500) — sumber foto profil contoh
 ├── public/                     # Disalin apa adanya ke dist/ — WAJIB ditaruh di sini
 │   ├── manifest.json           # 8 ikon "any" + 2 "maskable"
 │   ├── service-worker.js       # cache-first untuk aset, network-first untuk /api/*
 │   ├── brand/logo.png          # Logo ter-trim (transparan) untuk mark di app
+│   ├── avatars/profile-rezki.jpg  # Foto profil contoh 256px (seed avatar Kakang)
 │   └── icons/                  # 12 berkas: icon-72…512, maskable-192/512, apple-touch-icon, favicon.ico
 ├── scripts/generate-icons.ps1  # Generator ikon DARI logo (dipanggil npm run icons)
 ├── docs/                       # Riwayat: spesifikasi FAMILY OS versi Sheets/Apps Script
@@ -67,6 +69,7 @@ bayt-mustaqbal-app/
 - **Popup "Pasang app"**: satu-satunya titik masuk pasang — muncul setelah event `beforeinstallprompt` **dan** setelah pengguna melewati gerbang, tampil 5 detik lalu hilang sendiri (muncul lagi tiap app dibuka, berhenti permanen setelah terpasang); toast status jaringan hanya saat online/offline berubah
 - **Tema High-Tech Blue — gelap & terang:** navy `#0A192F` + aksen cyan `#22D3EE` (gelap, default) atau keluarga cyan versi lebih dalam di atas latar terang `#F2FAFD`. Pilihan **Sistem / Terang / Gelap** (ikut pengaturan perangkat atau dipilih manual), tersimpan di perangkat, tombol cepat di header + pengaturan lengkap di modal "Akun saya". Ganti tema **tanpa kedip** (disetel sebelum app tampil) dan **tanpa memuat ulang**. Glass pada elemen kunci, glow tipis di gelap, **skala elevasi + gerak** (indikator tab menggeser, header naik elevasi saat digulir, item daftar masuk berundak), angka dengan Fira Code (lihat `DESIGN-SYSTEM.md` §2). Catatan jujur: **ikon & splash PWA tetap navy** karena manifest hanya punya satu warna
 - **Layar gerbang** muncul tiap app dibuka: pilih Kakang/Istri (tersimpan di `localStorage`) — nanti menjadi layar login
+- **Foto profil contoh:** user Kakang sudah punya foto (seed `/avatars/profile-rezki.jpg`) — tampil di chip header, kartu pengguna layar gerbang, kartu anggota Keluarga "Rezki YT", dan pratinjau modal "Akun saya"; berkas aslinya ada di `assets/profile-rezki.jpg`. Ganti/hapus foto lewat modal Akun (kembali ke inisial bila dihapus)
 - **Akun saya (chip pengguna di pojok kanan atas):** modal di tengah layar untuk ganti **foto profil** (dikecilkan otomatis ke 256 px, disimpan di perangkat), **nama**, **username** (dicek unik, tampil `@username` di gerbang), **password**, dan **tampilan** (Sistem/Terang/Gelap) — plus tombol "Ganti pengguna". Catatan jujur: belum ada server, jadi password **hanya disimpan di perangkat dan belum diverifikasi** (dinyatakan terang di dalam modal)
 - **Tambah / Ubah / Hapus item** di Agenda (Jadwal & Tugas), Keuangan, dan Catatan: form bottom sheet (mode ubah berisi nilai lama) + tombol Ubah/Hapus di tiap kartu. Hapus = langsung + **toast "Urungkan"** (6 detik, tanpa dialog)
 - **Pencarian catatan** (judul + isi) di tab Catatan

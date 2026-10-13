@@ -56,7 +56,7 @@ bayt-mustaqbal-app/
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass (tombol mata sembunyikan jumlah uang, default tersembunyi), aksi cepat, KPI, chart, daftar terbaru
 │   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline — batang & garis bisa diketuk (satu area sentuh besar, keyboard: panah/Home/End/Escape)
 │   ├── FamilyCard.jsx      # Card anggota (baris horizontal)
-│   ├── FamilyMemberCard.jsx# Card anggota versi besar (centered)
+│   ├── FamilyMemberCard.jsx# Card anggota versi besar (centered) — avatar foto/inisial + data diri
 │   ├── NoteList.jsx        # Daftar kartu catatan keluarga (ikon kategori, isi 3 baris, badge, pin, tombol Ubah/Hapus)
 │   ├── ScheduleItem.jsx    # Item agenda (ikon, judul, jam, tanggal, badge anggota) + tombol Ubah/Hapus
 │   ├── Calendar.jsx        # Kalender keluarga (mode Kalender di tab Agenda): view Minggu/Bulan/Tahun,
@@ -68,12 +68,15 @@ bayt-mustaqbal-app/
 │   │                       #   per hari + cabang ke tiap item), chip filter jenis, klik item → sheet Ubah
 │   └── TaskList.jsx        # Daftar tugas (controlled: toggle selesai diteruskan ke App, badge prioritas) + tombol Ubah/Hapus
 ├── assets/
-│   └── logo.png            # LOGO ASLI Kakang (986×844, latar transparan) — sumber tunggal brand & ikon
+│   ├── logo.png            # LOGO ASLI Kakang (986×844, latar transparan) — sumber tunggal brand & ikon
+│   └── profile-rezki.jpg   # FOTO ASLI Kakang (500×500) — sumber foto profil contoh (seed), lihat D20
 ├── public/                 # Aset statis → disalin apa adanya ke dist/ oleh Vite
 │   ├── manifest.json       # PWA manifest (theme/background #0A192F — **tetap navy di tema apa pun**; ikon dari logo; 8 "any" + 2 maskable)
 │   ├── service-worker.js   # Cache strategy: static cache-first, API network-first, bg sync, push
 │   ├── brand/
 │   │   └── logo.png        # Logo ter-trim + transparan (256px) untuk mark di app (header & gerbang)
+│   ├── avatars/
+│   │   └── profile-rezki.jpg  # Foto profil contoh (256px, ~10 kB) — disajikan app di `/avatars/`
 │   └── icons/              # 12 berkas ikon PWA dari logo (lihat bagian Ikon PWA)
 ├── scripts/
 │   └── generate-icons.ps1  # Generator ikon PWA DARI assets/logo.png (`npm run icons`) — System.Drawing, tanpa dependensi Node
@@ -95,7 +98,7 @@ bayt-mustaqbal-app/
 | Dashboard | Sapaan + hero glass (pengeluaran & anggaran — nilai uang **tersembunyi secara default**, ada tombol mata 44px untuk tampilkan/sembunyikan **hanya di kartu hero**; nilai uang di KPI/chart/panel "Pengeluaran Terbaru" sengaja dibiarkan tampil) + aksi cepat + 4 KPI + chart (tren/bar/donut) + 2 panel ringkasan | `mockData` di `App.jsx` |
 | Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → **satu-satunya filter kategori** (chip kategori di dalam section dihapus — nama filter aktif tampil di judul `SectionHeader`); sub-tampilan **Jadwal | Tugas | Kalender | Timeline** (default Jadwal); **Jadwal** = grid `ScheduleItem` (tombol Ubah/Hapus); **Tugas** = chip filter status/prioritas + `TaskList` (toggle selesai + tombol Ubah/Hapus); **Kalender** = `Calendar.jsx` (Minggu/Bulan/Tahun, warna per member + legenda, daftar agenda hari terpilih, bar tugas jatuh tempo); **Timeline** = `Timeline.jsx` (alur kronologis gabungan 4 modul, rel + titik per hari, chip filter jenis, klik baris → sheet Ubah) | `mockData` di `App.jsx` |
 | Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → **satu-satunya filter** (chip sinkron dihapus); grid `ExpenseCard` (ikon kategori + nominal IDR + tombol Ubah/Hapus) + total terfilter di header | `mockData` di `App.jsx` |
-| Keluarga | **Papan profil anggota** (lihat `docs/04-KEPUTUSAN-TERKUNCI.md` D17) — sengaja **bukan** modul serba-ada. Dropdown bagian (nav HP+desktop) → **satu-satunya filter**: Semua Keluarga / **Anggota** / **Info Medis** / **Kontak & Darurat** / **Dokumen Penting**. **Anggota** = grid `FamilyMemberCard` yang memuat **data diri** (avatar inisial, nama, peran, umur dihitung dari tanggal lahir, golongan darah, alergi, nomor WA) — 1 kolom di HP, berjejer dari `sm`+; sisanya daftar `FamilyList`. Jadwal imunisasi/kontrol → Agenda; SPP/les/biaya sekolah → Keuangan; keduanya **tidak** diduplikasi di sini | `mockData` di `App.jsx` (`family` / `familyMedical` / `familyContacts` / `familyDocuments`) |
+| Keluarga | **Papan profil anggota** (lihat `docs/04-KEPUTUSAN-TERKUNCI.md` D17) — sengaja **bukan** modul serba-ada. Dropdown bagian (nav HP+desktop) → **satu-satunya filter**: Semua Keluarga / **Anggota** / **Info Medis** / **Kontak & Darurat** / **Dokumen Penting**. **Anggota** = grid `FamilyMemberCard` yang memuat **data diri** (avatar foto bila ada — contoh: Rezki — atau inisial, nama, peran, umur dihitung dari tanggal lahir, golongan darah, alergi, nomor WA) — 1 kolom di HP, berjejer dari `sm`+; sisanya daftar `FamilyList`. Jadwal imunisasi/kontrol → Agenda; SPP/les/biaya sekolah → Keuangan; keduanya **tidak** diduplikasi di sini | `mockData` di `App.jsx` (`family` / `familyMedical` / `familyContacts` / `familyDocuments`) |
 | Catatan | Dropdown filter catatan (nav HP+desktop): Semua/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info (badge jumlah) → **satu-satunya filter kategori** (chip sinkron dihapus); **kotak cari** (judul + isi) + grid `NoteList` (kartu + badge kategori + pin "penting" + tombol Ubah/Hapus) | `mockData` di `App.jsx` |
 | Notifikasi (lonceng) | Tombol di pojok kanan atas header (sebelum chip pengguna) → panel turun rata kanan berisi **notifikasi turunan data** (anggaran hampir/terlewati, tugas dekat/lewat tenggat, agenda terdekat, pengeluaran terbesar) + badge jumlah belum dibaca + "Tandai semua dibaca"; ketuk item → pindah section + filter disetel | `components/notifications.js` (dihitung dari `mockData`) |
 | Akun saya (modal) | **Chip pengguna di header** membuka modal di tengah layar: **foto profil** (pilih/ganti/hapus; foto dikecilkan otomatis ke 256px di canvas → disimpan data URL), **Nama** (inisial dihitung ulang otomatis), **Username** (3–20 huruf kecil/angka/._-; dicek unik antar akun; tampil sebagai `@username` di kartu gerbang), **Password** (kolom profil — bisa diisi/ganti/hapus, **belum diverifikasi siapa pun**), **bagian Tampilan** (radio **Sistem / Terang / Gelap** — langsung berlaku & tersimpan), + pintasan **"Ganti pengguna"** (kembali ke gerbang) | `data.users` di snapshot `bayt-mustaqbal-data-v1` (state di `App.jsx`, modal di `components/AccountModal.jsx`) |
@@ -113,7 +116,7 @@ bayt-mustaqbal-app/
 >
 > **Pilihan tema** disimpan di kunci **terpisah** juga (`bm-theme` = `'system'` | `'light'` | `'dark'`), di luar snapshot data keluarga — karena preferensi tampilan perangkat, bukan data keluarga: "Muat ulang data contoh" **tidak** mengubah tema. Skrip kecil di `<head>` `index.html` membaca kunci ini dan menyetel `data-theme` + `color-scheme` + `<meta theme-color>` **sebelum** React jalan, jadi tidak ada kedipan tema salah saat app dibuka. Pilihan `'system'` mengikuti `prefers-color-scheme` dan berubah otomatis saat pengaturan perangkat berganti (didengar lewat `matchMedia` di `App.jsx`).
 >
-> **Profil akun** (nama, username, avatar foto, password) tersimpan **di dalam snapshot data keluarga** (`data.users` pada `bayt-mustaqbal-data-v1`) — bukan kunci terpisah, karena ini memang data akun. Konsekuensi yang disengaja: **"Muat ulang data contoh" ikut mengembalikan profil ke contoh**. Foto avatar = data URL JPEG 256×256 (≤ 150 kB, di luar itu ditolak dengan pesan jelas); foto 6,4 MB → ± 25 kB. Password **belum diverifikasi siapa pun** (belum ada backend) — di modal dinyatakan terang "hanya disimpan di perangkat ini, jangan pakai password asli"; memindahkan verifikasi ke Worker + D1 adalah langkah berikutnya saat backend dibuat.
+> **Profil akun** (nama, username, avatar foto, password) tersimpan **di dalam snapshot data keluarga** (`data.users` pada `bayt-mustaqbal-data-v1`) — bukan kunci terpisah, karena ini memang data akun. Konsekuensi yang disengaja: **"Muat ulang data contoh" ikut mengembalikan profil ke contoh**. Foto avatar = data URL JPEG 256×256 (≤ 150 kB, di luar itu ditolak dengan pesan jelas); foto 6,4 MB → ± 25 kB. **Foto contoh (seed)** untuk user `kakang` berbeda: itu berkas statis `/avatars/profile-rezki.jpg` (mirip pola logo) — bukan data URL — supaya muat di produksi & tetap tampil sebelum Kakang menggantinya (D20). Password **belum diverifikasi siapa pun** (belum ada backend) — di modal dinyatakan terang "hanya disimpan di perangkat ini, jangan pakai password asli"; memindahkan verifikasi ke Worker + D1 adalah langkah berikutnya saat backend dibuat.
 >
 > **Akun (`data.users`) terpisah dari daftar anggota keluarga (`data.family`)**: mengganti nama/foto akun **tidak** mengubah kartu di section Keluarga (nama yang sama muncul sebagai dua entri). Menyatukan keduanya sengaja belum dilakukan supaya tidak ada pencocokan nama yang rapuh — bisa dikerjakan saat anggota keluarga ikut bisa diubah.
 
@@ -181,6 +184,8 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 **Latar ikon navy `#0A192F`** (bukan transparan/putih) dipilih karena artwork logo mayoritas terang (putih/abu/cyan, ~18% piksel >235) dengan sedikit area biru gelap → butuh latar gelap agar kontras; navy juga = warna tema app + `background_color` manifest (splash nyatu). Ubah `$IconBg` / `$Ratio*` di bagian KONFIGURASI skrip lalu jalankan ulang `npm run icons` bila ingin latar/himpit lain.
 
 **Dipakai di app:** mark `public/brand/logo.png` di header (`Navigation.jsx`, tile 36px) dan **logo besar** di layar gerbang (`WelcomeGate.jsx`, max 200–240px sebagai gambar utama — menggantikan ilustrasi SVG lama + judul teks `h1`; `soft-pulse` ikut dihapus, nama app dibawa `alt="Bayt Mustaqbal"`); ikon app di popup "Pasang app" (`index.html`, `icons/icon-192.png`). Ikon nav Dashboard tetap ikon SVG `home` — mark merek sudah diwakili logo.
+
+**Foto profil contoh:** `assets/profile-rezki.jpg` (500×500, milik Kakang) dikecilkan sekali ke **256×256** → `public/avatars/profile-rezki.jpg` (~10 kB, crop tengah, JPEG q82) dan dipakai sebagai avatar seed user `kakang` **dan** anggota keluarga "Rezki YT" (`/avatars/profile-rezki.jpg`). Ditambah ke precache service worker; versi cache dinaikkan ke `v9`. Foto ini **bukan** hasil `npm run icons` (tidak ada langkah build khusus) — satu kali pengecilan dengan `System.Drawing`.
 
 **Verifikasi:** ukuran & format tiap PNG dicek (kotak 72…512, `Format32bppArgb`), sudut ikon = navy opak (alpha 255), logo brand ter-trim 256×221 termuat di browser (`naturalWidth`>0) di gerbang & header, 0 error konsol, `npm run build` hijau + semua berkas tersalin ke `dist/`.
 
@@ -296,4 +301,4 @@ npx vite preview
 ---
 
 *Generated for AI agents working on Bayt Mustaqbal project.*
-*Last updated: 2026-10-13 — logo Kakang (`assets/logo.png`) jadi mark app + ikon PWA (script ikon pindah ke PowerShell); ilustrasi SVG gerbang diganti logo besar.*
+*Last updated: 2026-10-13 — foto profil contoh Kakang (`assets/profile-rezki.jpg` → `public/avatars/profile-rezki.jpg`, 256px) jadi avatar seed user `kakang` + kartu anggota "Rezki YT"; `FamilyMemberCard` kini pakai `Avatar` (foto/inisial) (D20).*

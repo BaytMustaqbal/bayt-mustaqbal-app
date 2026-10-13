@@ -29,14 +29,17 @@ import './App.css';
 // Data contoh (sementara, sampai backend Worker + D1 siap)
 const mockData = {
   users: [
-    { id: 'kakang', name: 'Rezki YT', role: 'Admin', initials: 'RY' },
+    // Foto profil contoh Kakang (seed) supaya tampilan "Akun saya" terlihat nyata
+    // (lihat docs/04-KEPUTUSAN-TERKUNCI.md D20). Berkas asli di assets/profile-rezki.jpg;
+    // versi 256px yang disajikan app ada di public/avatars/ (ikut ke dist saat build).
+    { id: 'kakang', name: 'Rezki YT', role: 'Admin', initials: 'RY', avatar: '/avatars/profile-rezki.jpg' },
     { id: 'istri', name: 'Hilda AK', role: 'Anggota', initials: 'HA' },
   ],
   // Profil anggota keluarga — inti modul "Keluarga" (papan profil, bukan jadwal).
   // Jadwal kontrol/imunisasi ada di Agenda (kategori Kesehatan), biaya sekolah di
   // Keuangan — jangan diduplikasi di sini. Lihat docs/04-KEPUTUSAN-TERKUNCI.md D17.
   family: [
-    { id: 1, name: 'Rezki YT', role: 'Admin', initials: 'RY', status: 'active', birthDate: '1990-05-12', blood: 'O', allergy: '—', phone: '0812-1000-0001' },
+    { id: 1, name: 'Rezki YT', role: 'Admin', initials: 'RY', avatar: '/avatars/profile-rezki.jpg', status: 'active', birthDate: '1990-05-12', blood: 'O', allergy: '—', phone: '0812-1000-0001' },
     { id: 2, name: 'Hilda AK', role: 'Anggota', initials: 'HA', status: 'active', birthDate: '1992-08-03', blood: 'A', allergy: 'Seafood', phone: '0812-1000-0002' },
     { id: 3, name: 'RAGASUCI', role: 'Anggota', initials: 'RS', status: 'active', birthDate: '2016-02-20', blood: 'B', allergy: 'Debu', phone: '—' },
     { id: 4, name: 'RAJABRANA', role: 'Anggota', initials: 'RB', status: 'active', birthDate: '2019-11-07', blood: 'B', allergy: '—', phone: '—' },
@@ -349,6 +352,14 @@ const loadInitialData = () => {
         // dilengkapi dari seed tanpa menimpa nama/peran yang sudah diubah.
         delete merged.familyHealth;
         delete merged.familyEducation;
+        // Foto profil seed (D20) dilengkapi ke snapshot lama tanpa menimpa foto
+        // yang sudah diganti/dihapus pengguna (avatar '' tetap kosong).
+        if (Array.isArray(merged.users)) {
+          merged.users = merged.users.map((u) => {
+            const seed = mockData.users.find((s) => s.id === u.id);
+            return seed ? { ...seed, ...u } : u;
+          });
+        }
         if (!Array.isArray(merged.familyMedical)) merged.familyMedical = mockData.familyMedical;
         if (!Array.isArray(merged.familyDocuments)) merged.familyDocuments = mockData.familyDocuments;
         if (!Array.isArray(merged.familyContacts)) merged.familyContacts = mockData.familyContacts;
