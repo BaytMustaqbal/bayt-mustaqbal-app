@@ -125,7 +125,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         <div className="grid grid-cols-4 gap-2.5 sm:gap-3">
           <QuickAction icon="wallet" label="Pengeluaran" tone="cyan" onClick={() => onNavigate('expenses')} />
           <QuickAction icon="calendar" label="Agenda" tone="blue" onClick={() => onNavigate('agenda')} />
-          <QuickAction icon="tasks" label="Tugas" tone="violet" onClick={() => onNavigate('tasks')} />
+          <QuickAction icon="note" label="Catatan" tone="violet" onClick={() => onNavigate('notes')} />
           <QuickAction
             icon="download"
             label="Pasang App"
@@ -144,7 +144,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           tone="violet"
           value={`${totals.tasksDone}/${data.tasks.length}`}
           label="Tugas"
-          hint="Selesai"
+          hint="Selesai · di Agenda"
         />
         <StatCard
           icon="target"

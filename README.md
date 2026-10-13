@@ -1,7 +1,7 @@
 # Bayt Mustaqbal — Manajemen Keluarga
 
 Web app keluarga untuk **2 pengguna**: Kakang (admin) + Istri.
-Isi sekarang: 5 section — Dashboard, Agenda, Keuangan, Keluarga, Tugas.
+Isi sekarang: 5 section — Dashboard, Agenda (Jadwal/Tugas/Kalender), Keuangan, Keluarga, Catatan.
 
 > **Status — 12 Okt 2026:** **frontend sudah jalan, backend belum dibuat.**
 > Semua angka masih **data dummy** (`const data = mockData` di `App.jsx`) — belum ada `fetch` ke mana pun.
@@ -39,7 +39,7 @@ bayt-mustaqbal-app/
 ├── main.jsx                    # Mount React + registrasi service worker (produksi saja)
 ├── App.jsx                     # Root: state 5 section + mockData + formatter rupiah
 ├── App.css                     # Token & utilitas dasar (entry Tailwind)
-├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/...), TaskList,
+├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/...), TaskList, NoteList,
 │                               # FamilyCard, FamilyMemberCard, ScheduleItem, Icon
 ├── public/                     # Disalin apa adanya ke dist/ — WAJIB ditaruh di sini
 │   ├── manifest.json           # 8 ikon "any" + 2 "maskable"

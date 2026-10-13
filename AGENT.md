@@ -38,12 +38,12 @@ bayt-mustaqbal-app/
 ├── package.json            # Deps: react, react-dom, vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer
 ├── DESIGN-SYSTEM.md        # Design system: High-Tech Blue, tipografi, layout, komponen, PWA, a11y
 ├── components/
-│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, barChart, target, chevron dll.)
+│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, note, pin, utensils, barChart, target, chevron dll.)
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
 │   │                       #   QuickAction, EmptyState, ExpenseCard, Badge, FamilyList, CTA_CLASS
 │   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass;
-│   │                       #   tab Agenda, Keuangan, Keluarga & Tugas = dropdown filter (animasi, badge jumlah, a11y menu)
-│   ├── categories.js       # Kategori agenda, keuangan, keluarga + filter tugas & penghitung per item + meta ikon
+│   │                       #   tab Agenda, Keuangan, Keluarga & Catatan = dropdown filter (animasi, badge jumlah, a11y menu)
+│   ├── categories.js       # Kategori agenda, keuangan, keluarga, catatan + filter tugas & penghitung per item + meta ikon
 │   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) + tombol "Muat ulang data contoh" → nanti jadi login
 │   ├── FormSheet.jsx      # Bottom sheet "Tambah" generik (field teks/angka/tanggal/jam/select, validasi wajib, role=dialog, Escape/klik luar)
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
@@ -76,14 +76,14 @@ bayt-mustaqbal-app/
 | Section | Isi | Sumber Data |
 |---------|-----|-------------|
 | Dashboard | Sapaan + hero glass (pengeluaran & anggaran) + aksi cepat + 4 KPI + chart (tren/bar/donut) + 2 panel ringkasan | `mockData` di `App.jsx` |
-| Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; toggle **Daftar | Kalender** (default Daftar); mode Kalender = `Calendar.jsx` (Minggu/Bulan/Tahun, warna per member + legenda, daftar agenda hari terpilih, tugas jatuh tempo); grid `ScheduleItem` + chip filter sinkron | `mockData` di `App.jsx` |
+| Agenda | Dropdown kategori di tab Agenda (nav HP+desktop) → filter; sub-tampilan **Jadwal | Tugas | Kalender** (default Jadwal); **Jadwal** = grid `ScheduleItem` + chip kategori; **Tugas** = chip filter status/prioritas + `TaskList` (toggle selesai); **Kalender** = `Calendar.jsx` (Minggu/Bulan/Tahun, warna per member + legenda, daftar agenda hari terpilih, bar tugas jatuh tempo) | `mockData` di `App.jsx` |
 | Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → filter; grid `ExpenseCard` (ikon kategori + nominal IDR) + chip sinkron + total terfilter di header | `mockData` di `App.jsx` |
 | Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
-| Tugas | Dropdown filter status & prioritas di tab Tugas (nav HP+desktop) → filter; chip sinkron; `TaskList` toggle selesai + badge prioritas (Tinggi/Sedang/Rendah) | `mockData` di `App.jsx` |
+| Catatan | Dropdown filter catatan (nav HP+desktop): Semua/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info (badge jumlah) + chip sinkron; grid `NoteList` (kartu + badge kategori + pin "penting") | `mockData` di `App.jsx` |
 
-> **Tombol "Tambah" kini berfungsi di 4 tab** (Agenda, Keuangan, Keluarga, Tugas): membuka `FormSheet` (bottom sheet) → item baru masuk ke section terkait (agenda muncul di grid + kalender + chip; pengeluaran ikut total; tugas ikut KPI & kalender; keluarga ikut grid/daftar).
+> **Tombol "Tambah" berfungsi di 4 tab** (Agenda — Jadwal & Tugas, Keuangan, Keluarga, Catatan): membuka `FormSheet` (bottom sheet) → item baru masuk ke section terkait (agenda muncul di grid + kalender + chip; pengeluaran ikut total; tugas ikut kalender + KPI Dashboard; keluarga ikut grid/daftar; catatan ikut grid + chip).
 >
-> **Persistensi (`localStorage` key `bayt-mustaqbal-data-v1`):** seed awal = `mockData`; setiap perubahan (tambah item, toggle tugas) disimpan sebagai snapshot, jadi tidak hilang saat reload. Snapshot yang rusak/parsial ditolak (app kembali ke data contoh, tidak blank). Tombol **"Muat ulang data contoh"** di layar gerbang menghapus snapshot dan kembali ke `mockData`.
+> **Persistensi (`localStorage` key `bayt-mustaqbal-data-v1`):** seed awal = `mockData`; setiap perubahan (tambah item, toggle tugas) disimpan sebagai snapshot, jadi tidak hilang saat reload. Saat dimuat, snapshot **digabung dengan `mockData`** (kunci baru seperti `notes` otomatis terisi walau snapshot lama); snapshot rusak/parsial ditolak (app kembali ke data contoh, tidak blank). Tombol **"Muat ulang data contoh"** di layar gerbang menghapus snapshot dan kembali ke `mockData`.
 
 > **Tidak ada panggilan jaringan.** Data sepenuhnya dummy sesuai permintaan Kakang — fokus ke frontend dulu.
 

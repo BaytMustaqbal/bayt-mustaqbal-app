@@ -4,6 +4,7 @@ import { Navigation } from './components/Navigation';
 import { ScheduleItem } from './components/ScheduleItem';
 import { FamilyMemberCard } from './components/FamilyMemberCard';
 import { TaskList } from './components/TaskList';
+import { NoteList } from './components/NoteList';
 import { Dashboard } from './components/Dashboard';
 import { WelcomeGate } from './components/WelcomeGate';
 import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList } from './components/ui';
@@ -14,8 +15,11 @@ import {
   FINANCE_CATEGORIES,
   FAMILY_CATEGORIES,
   TASK_FILTERS,
+  NOTE_CATEGORIES,
+  NOTES_FILTERS,
   countByCategory,
   countByTaskFilter,
+  countByNoteFilter,
 } from './components/categories';
 import './App.css';
 
@@ -91,6 +95,81 @@ const mockData = {
     { id: 6, title: 'Strika seragam sekolah', completed: false, assignedTo: 'Hilda AK', dueDate: '2026-10-19', priority: 'low' },
     { id: 7, title: 'Potong rumput halaman', completed: false, assignedTo: 'RAJABRANA', dueDate: '2026-10-21', priority: 'medium' },
     { id: 8, title: 'Periksa tagihan listrik', completed: true, assignedTo: 'Rezki YT', dueDate: '2026-10-20', priority: 'high' },
+  ],
+  // Catatan keluarga — pin (pinned) menandai catatan penting.
+  notes: [
+    {
+      id: 1,
+      title: 'Kode & ukuran penting',
+      body: 'WiFi rumah: BaytMustaqbal2026 · Kunci cadangan di laci meja kerja · Filter air ukuran 10 inci.',
+      category: 'rumah',
+      pinned: true,
+      author: 'Rezki YT',
+      updatedAt: '2026-10-10',
+    },
+    {
+      id: 2,
+      title: 'Daftar belanja mingguan',
+      body: 'Beras 5 kg, minyak goreng 2 L, telur 1 kg, sabun cuci, sampo anak.',
+      category: 'belanja',
+      pinned: false,
+      author: 'Hilda AK',
+      updatedAt: '2026-10-11',
+    },
+    {
+      id: 3,
+      title: 'Resep sambal andalan',
+      body: 'Cabai merah 250 g, bawang merah 6, terasi 1 sdt, gula & garam. Tumis ±5 menit.',
+      category: 'dapur',
+      pinned: true,
+      author: 'Hilda AK',
+      updatedAt: '2026-10-08',
+    },
+    {
+      id: 4,
+      title: 'Jadwal servis alat rumah',
+      body: 'Cuci AC: Des & Jun · Ganti filter air: tiap 3 bulan · Servis motor: 2 bulan sekali.',
+      category: 'rumah',
+      pinned: false,
+      author: 'Rezki YT',
+      updatedAt: '2026-10-07',
+    },
+    {
+      id: 5,
+      title: 'Ide liburan akhir tahun',
+      body: 'Candi Borobudur + kebun teh, atau pantai Anyer. Cek promo tiket bulan depan.',
+      category: 'info',
+      pinned: false,
+      author: 'Rezki YT',
+      updatedAt: '2026-10-06',
+    },
+    {
+      id: 6,
+      title: 'Obat & vitamin rutin',
+      body: 'Vitamin D anak tiap pagi; paracetamol cadangan di kotak P3K dapur.',
+      category: 'info',
+      pinned: false,
+      author: 'Hilda AK',
+      updatedAt: '2026-10-05',
+    },
+    {
+      id: 7,
+      title: 'Bahan kue lebaran',
+      body: 'Tepung 2 kg, mentega 500 g, keju, kismis, susu bubuk.',
+      category: 'dapur',
+      pinned: false,
+      author: 'Hilda AK',
+      updatedAt: '2026-10-04',
+    },
+    {
+      id: 8,
+      title: 'Kontak penting rumah',
+      body: 'Tukang AC Pak Andi 0812-xxxx · PLN 123 · PDAM 0813-xxxx.',
+      category: 'rumah',
+      pinned: true,
+      author: 'Rezki YT',
+      updatedAt: '2026-10-03',
+    },
   ],
   // --- Data analitik (dummy) ---
   // Anggaran & tren masih contoh: di D1 nanti ini dari tabel budget + expenses.
@@ -177,6 +256,16 @@ const SHEET_CONFIG = {
       { key: 'assignedTo', label: 'Penanggung jawab', type: 'select', required: true, options: memberOptions(MEMBER_PEOPLE) },
     ],
   },
+  notes: {
+    title: 'Tambah Catatan',
+    icon: 'note',
+    fields: [
+      { key: 'title', label: 'Judul catatan', type: 'text', required: true, placeholder: 'contoh: Daftar belanja mingguan' },
+      { key: 'body', label: 'Isi catatan', type: 'textarea', rows: 3, placeholder: 'tulis detail catatan di sini…' },
+      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'info', options: catOptions(NOTE_CATEGORIES) },
+      { key: 'pinned', label: 'Tandai penting', type: 'checkbox', help: 'Muncul di filter "Penting"' },
+    ],
+  },
   family: {
     title: 'Tambah ke Keluarga',
     icon: 'users',
@@ -215,7 +304,13 @@ const loadInitialData = () => {
         Array.isArray(parsed.tasks) &&
         Array.isArray(parsed.expenses) &&
         Array.isArray(parsed.family);
-      if (valid) return parsed;
+      if (valid) {
+        // Gabung dengan seed: snapshot lama (tanpa `notes`) tetap jalan,
+        // kunci baru otomatis terisi dari data contoh.
+        const merged = { ...mockData, ...parsed };
+        if (!Array.isArray(merged.notes)) merged.notes = mockData.notes;
+        return merged;
+      }
     }
   } catch (e) {
     /* storage rusak/unavailable → pakai data contoh */
@@ -268,14 +363,16 @@ export default function App() {
   const [entered, setEntered] = useState(false);
   // Filter kategori agenda (default: semua) — sinkron antara dropdown nav & chip di section
   const [agendaFilter, setAgendaFilter] = useState('semua');
-  // Mode tampilan section Agenda: daftar grid atau kalender keluarga
-  const [agendaMode, setAgendaMode] = useState('daftar');
+  // Sub-tampilan Agenda: jadwal (daftar) | tugas | kalender keluarga
+  const [agendaMode, setAgendaMode] = useState('jadwal');
   // Filter kategori pengeluaran (default: semua) — pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
   // Filter bagian keluarga (default: semua) — pola sama dengan agenda & keuangan
   const [familyFilter, setFamilyFilter] = useState('semua');
   // Filter tugas: status (semua/belum/selesai) & prioritas (tinggi/sedang/rendah)
   const [taskFilter, setTaskFilter] = useState('semua');
+  // Filter catatan: semua | penting (disematkan) | kategori
+  const [noteFilter, setNoteFilter] = useState('semua');
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
   // Seed = mockData; setiap perubahan disimpan ke localStorage (snapshot),
@@ -338,6 +435,22 @@ export default function App() {
           { id, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo, completed: false },
         ],
       };
+    } else if (section === 'notes') {
+      next = {
+        ...data,
+        notes: [
+          ...data.notes,
+          {
+            id,
+            title: values.title,
+            body: values.body || '',
+            category: values.category,
+            pinned: !!values.pinned,
+            author: currentUser.name,
+            updatedAt: todayKey(),
+          },
+        ],
+      };
     } else if (section === 'family') {
       if (values.bagian === 'anggota') {
         const initials =
@@ -379,12 +492,6 @@ export default function App() {
     };
   }, []);
 
-  const totals = useMemo(() => {
-    const totalExpense = data.expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-    const tasksDone = data.tasks.filter((t) => t.completed).length;
-    return { totalExpense, tasksDone };
-  }, [data]);
-
   // Gabungan semua catatan keluarga (tiap item diberi `category` = bagian).
   // Dipakai untuk badge jumlah di dropdown & chip filter bagan keluarga.
   const familyAll = useMemo(
@@ -404,6 +511,13 @@ export default function App() {
     if (taskFilter === 'selesai') return data.tasks.filter((t) => t.completed);
     return data.tasks.filter((t) => t.priority === taskFilter);
   }, [data, taskFilter]);
+
+  // Catatan sesuai filter aktif (semua | penting | kategori).
+  const filteredNotes = useMemo(() => {
+    if (noteFilter === 'semua') return data.notes;
+    if (noteFilter === 'penting') return data.notes.filter((n) => n.pinned);
+    return data.notes.filter((n) => n.category === noteFilter);
+  }, [data, noteFilter]);
 
   const handleEnter = (userId) => {
     storeUser(userId);
@@ -430,10 +544,10 @@ export default function App() {
     setActiveSection('family');
   };
 
-  // Dipanggil dropdown tugas di navigasi → buka section + set filter
-  const handleTaskSelect = (filterId) => {
-    setTaskFilter(filterId);
-    setActiveSection('tasks');
+  // Dipanggil dropdown catatan di navigasi → buka section + set filter
+  const handleNoteSelect = (filterId) => {
+    setNoteFilter(filterId);
+    setActiveSection('notes');
   };
 
   const renderSection = () => {
@@ -448,31 +562,59 @@ export default function App() {
         return (
           <section className="app-fade-in">
             <SectionHeader
-              icon="calendar"
-              title={activeMeta.label}
-              subtitle={`${filtered.length} dari ${data.schedule.length} jadwal`}
-              actionLabel="Tambah"
-              onAction={() => setSheetOpen('agenda')}
+              {...(agendaMode === 'tugas'
+                ? (() => {
+                    const taskMeta = TASK_FILTERS.find((c) => c.id === taskFilter) || TASK_FILTERS[0];
+                    return {
+                      icon: taskMeta.icon,
+                      title: taskMeta.label,
+                      subtitle: `${filteredTasks.length} dari ${data.tasks.length} tugas`,
+                      actionLabel: 'Tambah',
+                      onAction: () => setSheetOpen('tasks'),
+                    };
+                  })()
+                : {
+                    icon: 'calendar',
+                    title: activeMeta.label,
+                    subtitle: `${filtered.length} dari ${data.schedule.length} jadwal`,
+                    actionLabel: 'Tambah',
+                    onAction: () => setSheetOpen('agenda'),
+                  })}
             />
 
-            {/* Pilih tampilan: daftar grid atau kalender gabungan member */}
-            <div className="mb-5 inline-flex rounded-xl border border-line bg-surface p-1" role="group" aria-label="Mode tampilan agenda">
+            {/* Sub-tampilan Agenda: Jadwal | Tugas | Kalender */}
+            <div
+              className="mb-5 grid grid-cols-3 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
+              role="group"
+              aria-label="Mode tampilan agenda"
+            >
               <button
                 type="button"
-                onClick={() => setAgendaMode('daftar')}
-                aria-pressed={agendaMode === 'daftar'}
-                className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${
-                  agendaMode === 'daftar' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                onClick={() => setAgendaMode('jadwal')}
+                aria-pressed={agendaMode === 'jadwal'}
+                className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
+                  agendaMode === 'jadwal' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                }`}
+              >
+                <Icon name="clock" size={16} />
+                Jadwal
+              </button>
+              <button
+                type="button"
+                onClick={() => setAgendaMode('tugas')}
+                aria-pressed={agendaMode === 'tugas'}
+                className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
+                  agendaMode === 'tugas' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
                 }`}
               >
                 <Icon name="tasks" size={16} />
-                Daftar
+                Tugas
               </button>
               <button
                 type="button"
                 onClick={() => setAgendaMode('kalender')}
                 aria-pressed={agendaMode === 'kalender'}
-                className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors ${
+                className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
                   agendaMode === 'kalender' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
                 }`}
               >
@@ -481,46 +623,85 @@ export default function App() {
               </button>
             </div>
 
-            {/* Filter kategori — sinkron dengan dropdown di navigasi */}
-            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter kategori agenda">
-              {AGENDA_CATEGORIES.map((cat) => {
-                const active = agendaFilter === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setAgendaFilter(cat.id)}
-                    aria-pressed={active}
-                    className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
-                      active
-                        ? 'border-brand/50 bg-brandtint text-brandfg'
-                        : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
-                    }`}
-                  >
-                    <Icon name={cat.icon} size={16} />
-                    {cat.label}
-                    <span className="font-mono text-xs opacity-80">{countByCategory(data.schedule, cat.id)}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {agendaMode === 'daftar' ? (
-              filtered.length === 0 ? (
-                <EmptyState
-                  icon="calendar"
-                  title="Tidak ada agenda di kategori ini"
-                  message="Pilih kategori lain, atau tambahkan agenda baru."
-                />
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {filtered.map((item) => (
-                    <ScheduleItem key={item.id} item={item} />
-                  ))}
+            {agendaMode === 'tugas' ? (
+              <>
+                {/* Filter tugas — status & prioritas (chip di dalam sub-tampilan Tugas) */}
+                <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter tugas">
+                  {TASK_FILTERS.map((cat) => {
+                    const active = taskFilter === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setTaskFilter(cat.id)}
+                        aria-pressed={active}
+                        className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
+                          active
+                            ? 'border-brand/50 bg-brandtint text-brandfg'
+                            : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
+                        }`}
+                      >
+                        <Icon name={cat.icon} size={16} />
+                        {cat.label}
+                        <span className="font-mono text-xs opacity-80">{countByTaskFilter(data.tasks, cat.id)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              )
+                {filteredTasks.length === 0 ? (
+                  <EmptyState
+                    icon="tasks"
+                    title="Tidak ada tugas di filter ini"
+                    message="Ubah filter (status/prioritas) atau tambahkan tugas baru."
+                  />
+                ) : (
+                  <TaskList tasks={filteredTasks} onToggle={toggleTask} />
+                )}
+              </>
             ) : (
-              <FamilyCalendar items={filtered} tasks={data.tasks} />
+              <>
+                {/* Filter kategori jadwal — sinkron dengan dropdown di navigasi */}
+                <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter kategori agenda">
+                  {AGENDA_CATEGORIES.map((cat) => {
+                    const active = agendaFilter === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setAgendaFilter(cat.id)}
+                        aria-pressed={active}
+                        className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
+                          active
+                            ? 'border-brand/50 bg-brandtint text-brandfg'
+                            : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
+                        }`}
+                      >
+                        <Icon name={cat.icon} size={16} />
+                        {cat.label}
+                        <span className="font-mono text-xs opacity-80">{countByCategory(data.schedule, cat.id)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {agendaMode === 'jadwal' ? (
+                  filtered.length === 0 ? (
+                    <EmptyState
+                      icon="calendar"
+                      title="Tidak ada agenda di kategori ini"
+                      message="Pilih kategori lain, atau tambahkan agenda baru."
+                    />
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {filtered.map((item) => (
+                        <ScheduleItem key={item.id} item={item} />
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  <FamilyCalendar items={filtered} tasks={data.tasks} />
+                )}
+              </>
             )}
           </section>
         );
@@ -654,26 +835,26 @@ export default function App() {
         );
       }
 
-      case 'tasks': {
-        const activeMeta = TASK_FILTERS.find((c) => c.id === taskFilter) || TASK_FILTERS[0];
+      case 'notes': {
+        const activeMeta = NOTES_FILTERS.find((c) => c.id === noteFilter) || NOTES_FILTERS[0];
         return (
           <section className="app-fade-in">
             <SectionHeader
               icon={activeMeta.icon}
               title={activeMeta.label}
-              subtitle={`${filteredTasks.length} dari ${data.tasks.length} tugas`}
+              subtitle={`${filteredNotes.length} dari ${data.notes.length} catatan`}
               actionLabel="Tambah"
-              onAction={() => setSheetOpen('tasks')}
+              onAction={() => setSheetOpen('notes')}
             />
-            {/* Filter tugas — sinkron dengan dropdown di navigasi */}
-            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter tugas">
-              {TASK_FILTERS.map((cat) => {
-                const active = taskFilter === cat.id;
+            {/* Filter catatan — sinkron dengan dropdown di navigasi */}
+            <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter catatan">
+              {NOTES_FILTERS.map((cat) => {
+                const active = noteFilter === cat.id;
                 return (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => setTaskFilter(cat.id)}
+                    onClick={() => setNoteFilter(cat.id)}
                     aria-pressed={active}
                     className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
                       active
@@ -683,19 +864,19 @@ export default function App() {
                   >
                     <Icon name={cat.icon} size={16} />
                     {cat.label}
-                    <span className="font-mono text-xs opacity-80">{countByTaskFilter(data.tasks, cat.id)}</span>
+                    <span className="font-mono text-xs opacity-80">{countByNoteFilter(data.notes, cat.id)}</span>
                   </button>
                 );
               })}
             </div>
-            {filteredTasks.length === 0 ? (
+            {filteredNotes.length === 0 ? (
               <EmptyState
-                icon="tasks"
-                title="Tidak ada tugas di filter ini"
-                message="Ubah filter (status/prioritas) atau tambahkan tugas baru."
+                icon="note"
+                title="Tidak ada catatan di filter ini"
+                message="Ubah filter, atau tambahkan catatan baru."
               />
             ) : (
-              <TaskList tasks={filteredTasks} onToggle={toggleTask} />
+              <NoteList notes={filteredNotes} />
             )}
           </section>
         );
@@ -728,15 +909,15 @@ export default function App() {
         schedule={data.schedule}
         expenses={data.expenses}
         family={familyAll}
-        tasks={data.tasks}
+        notes={data.notes}
         agendaFilter={agendaFilter}
         onAgendaSelect={handleAgendaSelect}
         financeFilter={financeFilter}
         onFinanceSelect={handleFinanceSelect}
         familyFilter={familyFilter}
         onFamilySelect={handleFamilySelect}
-        taskFilter={taskFilter}
-        onTaskSelect={handleTaskSelect}
+        noteFilter={noteFilter}
+        onNoteSelect={handleNoteSelect}
       />
 
       <main

@@ -5,9 +5,9 @@ import {
   AGENDA_CATEGORIES,
   FINANCE_CATEGORIES,
   FAMILY_CATEGORIES,
-  TASK_FILTERS,
+  NOTES_FILTERS,
   countByCategory,
-  countByTaskFilter,
+  countByNoteFilter,
 } from './categories';
 
 const NAV_ITEMS = [
@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { id: 'agenda', label: 'Agenda', icon: 'calendar' },
   { id: 'expenses', label: 'Keuangan', icon: 'wallet' },
   { id: 'family', label: 'Keluarga', icon: 'users' },
-  { id: 'tasks', label: 'Tugas', icon: 'tasks' },
+  { id: 'notes', label: 'Catatan', icon: 'note' },
 ];
 
 // Tab yang membuka dropdown kategori + sumber jumlah itemnya.
@@ -23,7 +23,7 @@ const DROPDOWNS = {
   agenda: { items: AGENDA_CATEGORIES, ariaLabel: 'Kategori agenda' },
   expenses: { items: FINANCE_CATEGORIES, ariaLabel: 'Kategori pengeluaran' },
   family: { items: FAMILY_CATEGORIES, ariaLabel: 'Bagian keluarga' },
-  tasks: { items: TASK_FILTERS, ariaLabel: 'Filter tugas' },
+  notes: { items: NOTES_FILTERS, ariaLabel: 'Filter catatan' },
 };
 
 /* Panel dropdown kategori (dipakai 2x per tab: bawah HP + atas desktop).
@@ -79,15 +79,15 @@ export function Navigation({
   schedule,
   expenses,
   family,
-  tasks,
+  notes,
   agendaFilter,
   onAgendaSelect,
   financeFilter,
   onFinanceSelect,
   familyFilter,
   onFamilySelect,
-  taskFilter,
-  onTaskSelect,
+  noteFilter,
+  onNoteSelect,
 }) {
   // Hanya satu dropdown terbuka pada satu waktu (openKey = 'agenda' | 'expenses' | null)
   const [openKey, setOpenKey] = useState(null);
@@ -152,7 +152,7 @@ export function Navigation({
     closeMenu();
     if (key === 'agenda') onAgendaSelect(categoryId);
     else if (key === 'expenses') onFinanceSelect(categoryId);
-    else if (key === 'tasks') onTaskSelect(categoryId);
+    else if (key === 'notes') onNoteSelect(categoryId);
     else onFamilySelect(categoryId);
   };
 
@@ -162,8 +162,8 @@ export function Navigation({
     onSectionChange(id);
   };
 
-  const dropdownData = { agenda: schedule, expenses, family, tasks };
-  const dropdownCount = { agenda: countByCategory, expenses: countByCategory, family: countByCategory, tasks: countByTaskFilter };
+  const dropdownData = { agenda: schedule, expenses, family, notes };
+  const dropdownCount = { agenda: countByCategory, expenses: countByCategory, family: countByCategory, notes: countByNoteFilter };
   const activeFilter = (key) =>
     key === 'agenda'
       ? agendaFilter
@@ -171,7 +171,7 @@ export function Navigation({
         ? financeFilter
         : key === 'family'
           ? familyFilter
-          : taskFilter;
+          : noteFilter;
 
   return (
     <>

@@ -267,8 +267,15 @@ summary,
   }
 }
 
-/* Hormati preferensi reduced-motion */
-@media (prefers-reduced-motion: reduce) {
+/* Batas baris teks catatan (Tailwind 3.2 belum punya utilitas line-clamp) */
+.clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Hormati preferensi reduced-motion */@media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {

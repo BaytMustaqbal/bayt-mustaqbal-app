@@ -88,7 +88,7 @@ export function WelcomeGate({ users, defaultUserId, onEnter, onReset }) {
           </span>
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Bayt Mustaqbal</h1>
           <p className="mt-1.5 text-sm text-mutedfg">
-            Rumah Masa Depan — agenda, keuangan, dan tugas keluarga dalam satu tempat.
+            Rumah Masa Depan — agenda, keuangan, tugas, dan catatan keluarga dalam satu tempat.
           </p>
         </div>
 

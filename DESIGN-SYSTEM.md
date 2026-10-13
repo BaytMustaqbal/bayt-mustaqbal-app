@@ -151,8 +151,12 @@ FamilyList       : baris kartu sub-bagian (judul + meta + badge opsional); heade
 TaskList         : checkbox visual 28px dengan area sentuh 44px;
                    selesai = border-cta bg-cta text-white (ikon check);
                    controlled — toggle diteruskan ke App lalu disimpan (localStorage)
+NoteList         : kartu catatan (grid 1/2/3 kolom): tile ikon kategori, judul, isi
+                   dibatasi 3 baris (`.clamp-3`), badge kategori; pin amber bila "penting";
+                   baris meta penulis + tanggal (font-mono)
 FormSheet        : bottom sheet "Tambah" generik (fixed inset-x-0 bottom-0, max-w-lg center,
-                   rounded-t-3xl, glass); field 48px (teks/angka/tanggal/jam/select),
+                   rounded-t-3xl, glass); field 48px (teks/angka/tanggal/jam/select/textarea),
+                   baris centang 48px (checkbox "Tandai penting"),
                    bintang wajib, error "Wajib diisi" + aria-invalid; footer Batal + Simpan (CTA)
 ```
 
@@ -160,22 +164,23 @@ FormSheet        : bottom sheet "Tambah" generik (fixed inset-x-0 bottom-0, max-
 
 ### Primary Screens (5 section, in-file switch, tanpa router)
 1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, daftar terbaru
-2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Ibadah/Kesehatan/Rumah Tangga/Kendaraan, badge jumlah) + chip filter sinkron di dalam section; toggle **Daftar | Kalender** (default Daftar); mode Kalender = kalender gabungan anggota (`Calendar.jsx`): view **Minggu/Bulan/Tahun** (default Bulan), **warna per member + legenda** (Rezki YT cyan, Hilda AK violet, RAGASUCI emerald, RAJABRANA amber, Keluarga sky), dot member di sel + bar bawah = ada tugas jatuh tempo, klik tanggal → daftar agenda hari itu, nav prev/next + "Hari Ini", filter kategori ikut memfilter kalender; grid `ScheduleItem` untuk mode Daftar
+2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Ibadah/Kesehatan/Rumah Tangga/Kendaraan, badge jumlah) + chip filter sinkron di dalam section; sub-tampilan **Jadwal | Tugas | Kalender** (default Jadwal) — **Jadwal** = grid `ScheduleItem`; **Tugas** = chip filter status/prioritas (Semua Tugas/Belum Selesai/Sudah Selesai/Prioritas Tinggi/Sedang/Rendah) + `TaskList` (toggle selesai + badge prioritas); **Kalender** = kalender gabungan anggota (`Calendar.jsx`): view **Minggu/Bulan/Tahun** (default Bulan), **warna per member + legenda** (Rezki YT cyan, Hilda AK violet, RAGASUCI emerald, RAJABRANA amber, Keluarga sky), dot member di sel + bar bawah = ada tugas jatuh tempo, klik tanggal → daftar agenda hari itu, nav prev/next + "Hari Ini", filter kategori ikut memfilter kalender
 3. **Keuangan**: dropdown kategori di tab Keuangan (Semua/Belanja/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah) + chip sinkron; grid `ExpenseCard` berikon kategori + total terfilter di header
 4. **Keluarga**: dropdown bagian di tab Keluarga (Semua/Anggota/Kesehatan/Pendidikan Anak/Kontak & Darurat, badge jumlah) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk (grid `FamilyMemberCard` + daftar `FamilyList` tiap sub-bagian)
-5. **Tugas**: dropdown filter status & prioritas di tab Tugas (Semua Tugas/Belum Selesai/Sudah Selesai/Prioritas Tinggi/Sedang/Rendah, badge jumlah) + chip sinkron; `TaskList` (toggle selesai + badge prioritas)
+5. **Catatan**: dropdown filter di tab Catatan (Semua Catatan/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info, badge jumlah) + chip sinkron; grid `NoteList` (kartu catatan + badge kategori + pin "penting")
 
 ### Screens Khusus
 - **Layar Gerbang (WelcomeGate)**: muncul **setiap app dibuka** (keputusan Kakang) — pilih pengguna (Kakang/Istri, tersimpan `localStorage`) + tombol **"Muat ulang data contoh"** (hapus snapshot → kembali `mockData`) → nanti menjadi layar login saat backend siap
-- **Bottom sheet "Tambah" (FormSheet)**: dibuka dari tombol `SectionHeader` "Tambah" di Agenda/Keuangan/Keluarga/Tugas; `role="dialog"` + `aria-modal`, label terhubung `htmlFor/id`, fokus otomatis ke field pertama, tutup via tombol ×/Batal/klik backdrop/Escape, scroll body dikunci selama terbuka
+- **Bottom sheet "Tambah" (FormSheet)**: dibuka dari tombol `SectionHeader` "Tambah" di Agenda (Jadwal & Tugas)/Keuangan/Keluarga/Catatan; `role="dialog"` + `aria-modal`, label terhubung `htmlFor/id`, fokus otomatis ke field pertama, tutup via tombol ×/Batal/klik backdrop/Escape, scroll body dikunci selama terbuka
 
 ## 7. Touch Targets & Interaction Patterns
 
 - **Minimum**: 44×44 px semua elemen interaktif; QuickAction 76px; tab bar 56px
 - **Spacing**: 12px antar target (`gap-3`); area sentuh boleh lebih besar dari visual (checkbox 28px + `-m-2 h-11 w-11`)
 - **Thumb zone**: aksi utama di bottom tab bar
-- **Dropdown kategori (Agenda, Keuangan, Keluarga & Tugas)** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; hanya satu dropdown terbuka pada satu waktu; `prefers-reduced-motion` → muncul langsung tanpa animasi
-- **Chip filter** (di section Agenda, Keuangan, Keluarga & Tugas): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`; filter tugas = status (semua/belum/selesai) + prioritas (high/medium/low — `id` = nilai `priority` di data)
+- **Dropdown kategori (Agenda, Keuangan, Keluarga & Catatan)** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; hanya satu dropdown terbuka pada satu waktu; `prefers-reduced-motion` → muncul langsung tanpa animasi
+- **Chip filter** (di section Agenda — kategori jadwal & filter tugas, Keuangan, Keluarga & Catatan): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`; filter tugas = status (semua/belum/selesai) + prioritas (high/medium/low — `id` = nilai `priority` di data)
+- **Sub-toggle Agenda (Jadwal | Tugas | Kalender)**: di HP `grid grid-cols-3` selebar penuh dengan ikon di atas label (teks 11px) → muat di 320px (label terlebar ~53px vs sel ~91px); beralih ke `inline-flex` satu baris (`sm:text-sm sm:px-4`) di `sm+`
 - **Kalender keluarga** (mode Kalender di tab Agenda): sel hari = button `aria-pressed` + `aria-label` deskriptif (tanggal + judul item + anggota + "ada tugas"); grid `role="grid"` + baris `role="row"` + header kolom `role="columnheader"`; tombol skala view (Minggu/Bulan/Tahun) `aria-pressed`; nav prev/next `aria-label` "Periode sebelumnya/berikutnya"; warna member hanya pelengkap — nama anggota selalu tampil (dot + teks, bukan warna saja); grid full-bleed `-mx-4 md:-mx-0` di layar kecil supaya sel ≥ 44px (320px → 7×44 + 6 garis = 314 ≤ 320)
 - **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka + bottom sheet Tambah (390/768/1280 px) → **0 overflow, 0 elemen < 44px** (termasuk sel kalender di 320px)
 - **Feedback**: hover border/glow, `active:scale` pada CTA; `prefers-reduced-motion` mematikan animasi

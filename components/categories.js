@@ -44,11 +44,35 @@ export const TASK_FILTERS = [
 
 export const getCategoryMeta = (categories, id) => categories.find((c) => c.id === id);
 
+// Catatan keluarga — kategori yang bisa disimpan (tanpa "semua"/"penting").
+export const NOTE_CATEGORIES = [
+  { id: 'belanja', label: 'Daftar Belanja', icon: 'shoppingBag' },
+  { id: 'rumah', label: 'Rumah & Alat', icon: 'wrench' },
+  { id: 'dapur', label: 'Dapur & Resep', icon: 'utensils' },
+  { id: 'info', label: 'Ide & Info', icon: 'sparkles' },
+];
+
+// Filter catatan untuk dropdown & chip. `penting` = catatan yang disematkan
+// (flag `pinned`), sisanya kategori biasa.
+export const NOTES_FILTERS = [
+  { id: 'semua', label: 'Semua Catatan', icon: 'note' },
+  { id: 'penting', label: 'Penting', icon: 'pin' },
+  ...NOTE_CATEGORIES,
+];
+
 // Jumlah item per kategori. `semua` = total.
 export const countByCategory = (items, id) => {
   if (!Array.isArray(items)) return 0;
   if (id === 'semua') return items.length;
   return items.filter((item) => item.category === id).length;
+};
+
+// Jumlah catatan per filter. `semua` = total; `penting` = disematkan; lainnya = kategori.
+export const countByNoteFilter = (items, id) => {
+  if (!Array.isArray(items)) return 0;
+  if (id === 'semua') return items.length;
+  if (id === 'penting') return items.filter((n) => n.pinned).length;
+  return items.filter((n) => n.category === id).length;
 };
 
 // Jumlah tugas per filter. `semua` = total; belum/selesai = status; lainnya = prioritas.

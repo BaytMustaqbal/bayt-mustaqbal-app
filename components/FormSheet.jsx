@@ -115,55 +115,90 @@ export function FormSheet({ open, title, icon, fields, onClose, onSubmit }) {
             const err = errors[f.key];
             return (
               <div key={f.key}>
-                <label htmlFor={fieldId} className="mb-1 block text-xs font-semibold text-mutedfg">
-                  {f.label}
-                  {f.required && (
-                    <span className="text-brand" aria-hidden="true">
-                      {' '}
-                      *
-                    </span>
-                  )}
-                </label>
-
-                {f.type === 'select' ? (
-                  <div className="relative">
-                    <select
+                {f.type === 'checkbox' ? (
+                  /* Baris centang (mis. "Tandai penting") — label sudah di dalam kotak */
+                  <label
+                    htmlFor={fieldId}
+                    className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-canvas px-3.5 transition-colors hover:border-brand/50"
+                  >
+                    <input
                       id={fieldId}
                       ref={index === 0 ? firstFieldRef : null}
-                      value={values[f.key] || ''}
-                      onChange={(e) => setVal(f.key, e.target.value)}
-                      aria-invalid={!!err}
-                      aria-describedby={err ? `${fieldId}-err` : undefined}
-                      className={`${inputCls} appearance-none pr-10`}
-                    >
-                      {f.placeholder && <option value="">{f.placeholder}</option>}
-                      {f.options.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span
-                      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-mutedfg"
-                      aria-hidden="true"
-                    >
-                      <Icon name="chevronDown" size={16} />
+                      type="checkbox"
+                      checked={!!values[f.key]}
+                      onChange={(e) => setVal(f.key, e.target.checked)}
+                      className="h-5 w-5 shrink-0 rounded accent-[#2563EB]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-ink">{f.label}</span>
+                      {f.help && <span className="block text-xs text-mutedfg">{f.help}</span>}
                     </span>
-                  </div>
+                  </label>
                 ) : (
-                  <input
-                    id={fieldId}
-                    ref={index === 0 ? firstFieldRef : null}
-                    type={f.type}
-                    inputMode={f.type === 'number' ? 'decimal' : undefined}
-                    min={f.min}
-                    placeholder={f.placeholder}
-                    value={values[f.key] || ''}
-                    onChange={(e) => setVal(f.key, e.target.value)}
-                    aria-invalid={!!err}
-                    aria-describedby={err ? `${fieldId}-err` : undefined}
-                    className={inputCls}
-                  />
+                  <>
+                    <label htmlFor={fieldId} className="mb-1 block text-xs font-semibold text-mutedfg">
+                      {f.label}
+                      {f.required && (
+                        <span className="text-brand" aria-hidden="true">
+                          {' '}
+                          *
+                        </span>
+                      )}
+                    </label>
+
+                    {f.type === 'select' ? (
+                      <div className="relative">
+                        <select
+                          id={fieldId}
+                          ref={index === 0 ? firstFieldRef : null}
+                          value={values[f.key] || ''}
+                          onChange={(e) => setVal(f.key, e.target.value)}
+                          aria-invalid={!!err}
+                          aria-describedby={err ? `${fieldId}-err` : undefined}
+                          className={`${inputCls} appearance-none pr-10`}
+                        >
+                          {f.placeholder && <option value="">{f.placeholder}</option>}
+                          {f.options.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                        <span
+                          className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-mutedfg"
+                          aria-hidden="true"
+                        >
+                          <Icon name="chevronDown" size={16} />
+                        </span>
+                      </div>
+                    ) : f.type === 'textarea' ? (
+                      <textarea
+                        id={fieldId}
+                        ref={index === 0 ? firstFieldRef : null}
+                        rows={f.rows || 3}
+                        placeholder={f.placeholder}
+                        value={values[f.key] || ''}
+                        onChange={(e) => setVal(f.key, e.target.value)}
+                        aria-invalid={!!err}
+                        aria-describedby={err ? `${fieldId}-err` : undefined}
+                        className={`${inputCls} resize-y py-2.5 leading-relaxed`}
+                      />
+                    ) : (
+                      <input
+                        id={fieldId}
+                        ref={index === 0 ? firstFieldRef : null}
+                        type={f.type}
+                        inputMode={f.type === 'number' ? 'decimal' : undefined}
+                        min={f.min}
+                        placeholder={f.placeholder}
+                        value={values[f.key] || ''}
+                        onChange={(e) => setVal(f.key, e.target.value)}
+                        aria-invalid={!!err}
+                        aria-describedby={err ? `${fieldId}-err` : undefined}
+                        className={inputCls}
+                      />
+                    )}
+                  </>
                 )}
 
                 {err && (
