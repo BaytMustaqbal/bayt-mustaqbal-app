@@ -196,6 +196,11 @@ Hero (GlassCard) : label + nilai mono besar + tombol mata (sembunyikan/tampilkan
                    default tersembunyi, "Rp ••••••") + badge delta naik/turun + ProgressBar
                    realisasi anggaran + CTA; latar grid-lines halus + glow
                    (nilai uang di kartu ini: pengeluaran, "Sisa dari", dan "Sisa" — ikut tersembunyi)
+                   **CAKUPAN (keputusan Kakang, 13 Okt 2026): HANYA kartu hero ini.**
+                   Nilai uang di luar hero — KPI "Sisa anggaran" (+ hint "dari …"),
+                   ringkasan "rata-rata" tren, label chart/tooltip, dan nominal di
+                   panel "Pengeluaran Terbaru" — sengaja DIBIARKAN tampil. Terukur:
+                   22 simpul teks ber-"Rp" di #main, hanya 3 yang berubah saat tombol ditekan.
 QuickAction      : tile 4-kolom, min-h 76px, ikon tile 40px ber-warna (cyan/blue/violet/amber)
 StatCard (KPI)   : ikon tile ber-warna + nilai mono + label + hint opsional (+ sparkline sm+)
 Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat components/charts.jsx
@@ -258,7 +263,7 @@ Avatar           : komponen bersama (ui.jsx) — foto (`object-cover`, dari data
 ## 6. Screen Hierarchy & Information Architecture
 
 ### Primary Screens (5 section, in-file switch, tanpa router)
-1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, daftar terbaru
+1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, daftar terbaru. **Tombol mata** jumlah uang = **hanya memengaruhi kartu hero** (keputusan Kakang); nilai di KPI/chart/daftar tetap tampil
 2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Ibadah/Kesehatan/Rumah Tangga/Kendaraan, badge jumlah) — **satu-satunya filter kategori** (deretan chip filter di dalam section dihapus; nama filter aktif sudah tampil sebagai judul `SectionHeader`, jumlah di sub-judul); sub-tampilan **Jadwal | Tugas | Kalender | Timeline** (default Jadwal) — **Jadwal** = grid `ScheduleItem`; **Tugas** = chip filter status/prioritas (Semua Tugas/Belum Selesai/Sudah Selesai/Prioritas Tinggi/Sedang/Rendah) + `TaskList` (toggle selesai + badge prioritas); **Kalender** = kalender gabungan anggota (`Calendar.jsx`): view **Minggu/Bulan/Tahun** (default Bulan), **warna per member + legenda** (Rezki YT cyan, Hilda AK violet, RAGASUCI emerald, RAJABRANA amber, Keluarga sky), dot member di sel + bar bawah = ada tugas jatuh tempo, klik tanggal → daftar agenda hari itu, nav prev/next + "Hari Ini", filter kategori ikut memfilter kalender; **Timeline** = alur kronologis gabungan 4 modul (`Timeline.jsx`): rel vertikal + titik per hari + cabang ke tiap baris, kelompok **hari ini ke depan** lalu blok **Riwayat**, chip filter jenis (Semua/Agenda/Tugas/Keuangan/Catatan)
 3. **Keuangan**: dropdown kategori di tab Keuangan (Semua/Belanja/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah) — satu-satunya filter; grid `ExpenseCard` berikon kategori + total terfilter di header
 4. **Keluarga** (**papan profil anggota** — D17): dropdown bagian di tab Keluarga (Semua/Anggota/**Info Medis**/**Kontak & Darurat**/**Dokumen Penting**, badge jumlah) — satu-satunya filter; "Semua Keluarga" = semua bagian bertumpuk. **Anggota** = grid `FamilyMemberCard` berisi data diri (avatar inisial, nama, peran, umur dari tanggal lahir, golongan darah, alergi, WA) — **1 kolom di HP** (kartu memuat detail, butuh lebar), `sm`+ berjejer; sisanya `FamilyList`. Kesehatan→Informasi medis ringkas (dokter/asuransi/obat, **statis**), Pendidikan Anak→dihapus dari modul ini (jadwal & biaya milik Agenda/Keuangan)
