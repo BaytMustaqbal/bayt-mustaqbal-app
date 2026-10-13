@@ -184,10 +184,10 @@ export function Navigation({
             className="flex min-w-0 items-center gap-2.5 rounded-xl p-1 text-left transition-colors hover:bg-muted"
           >
             <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/25 bg-brandtint text-brand shadow-glow"
+              className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-brand/25 bg-brandtint p-1 shadow-glow sm:h-10 sm:w-10"
               aria-hidden="true"
             >
-              <Icon name="home" size={18} />
+              <img src="/brand/logo.png" alt="" className="h-full w-full object-contain" />
             </span>
             <span className="min-w-0 leading-tight">
               <span className="block truncate text-sm font-bold tracking-tight text-ink">Bayt Mustaqbal</span>

@@ -83,8 +83,8 @@ export function WelcomeGate({ users, defaultUserId, onEnter, onReset }) {
       <div className="gate-in relative mx-auto flex min-h-full w-full max-w-md flex-col justify-center gap-7 px-6 py-10">
         {/* Identitas app */}
         <div className="text-center">
-          <span className="glass mx-auto grid h-16 w-16 place-items-center rounded-2xl text-brand shadow-glow">
-            <Icon name="home" size={30} />
+          <span className="glass mx-auto grid h-16 w-16 place-items-center overflow-hidden rounded-2xl p-2 shadow-glow sm:h-20 sm:w-20">
+            <img src="/brand/logo.png" alt="" className="h-full w-full object-contain" />
           </span>
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Bayt Mustaqbal</h1>
           <p className="mt-1.5 text-sm text-mutedfg">

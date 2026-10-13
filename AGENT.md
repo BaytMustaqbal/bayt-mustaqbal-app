@@ -15,7 +15,7 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 
 - **Frontend:** React 18 (JSX, bukan TS) + Vite 4
 - **Styling:** Tailwind CSS via **PostCSS** (`tailwind.config.js` + `postcss.config.js`) + `App.css` custom — design system **High-Tech Blue**: dark navy `#0A192F` + electric cyan `#22D3EE`, glassmorphism terukur, glow tipis (lihat `DESIGN-SYSTEM.md`)
-- **Icons:** SVG inline custom (`components/Icon.jsx`, gaya Lucide) — Font Awesome **sudah dihapus**
+- **Icons:** SVG inline custom (`components/Icon.jsx`, gaya Lucide) — Font Awesome **sudah dihapus**. **Logo/merek** = `assets/logo.png` (Kakang): dipakai sebagai mark di header + layar gerbang (`public/brand/logo.png`, transparan) dan sebagai **ikon PWA** (`public/icons/*`, latar navy) lewat `npm run icons`.
 - **Font:** Plus Jakarta Sans (teks) + **Fira Code** (angka/KPI/label chart) — Google Fonts
 - **PWA:** `public/manifest.json` + `public/service-worker.js` (cache-first, background sync) — SW diregistrasi **hanya di build production** (`main.jsx`). Aset statis **wajib** di `public/`, karena Vite hanya menyalin folder itu ke `dist/`
 - **State:** React `useState`/`useEffect` (no Zustand/React Query)
@@ -56,12 +56,16 @@ bayt-mustaqbal-app/
 │   ├── Calendar.jsx        # Kalender keluarga (mode Kalender di tab Agenda): view Minggu/Bulan/Tahun,
 │   │                       #   warna per member + legenda, agenda hari terpilih, tugas jatuh tempo
 │   └── TaskList.jsx        # Daftar tugas (controlled: toggle selesai diteruskan ke App, badge prioritas) + tombol Ubah/Hapus
+├── assets/
+│   └── logo.png            # LOGO ASLI Kakang (986×844, latar transparan) — sumber tunggal brand & ikon
 ├── public/                 # Aset statis → disalin apa adanya ke dist/ oleh Vite
-│   ├── manifest.json       # PWA manifest (theme #0A192F; ikon cyan #22D3EE; 8 "any" + 2 maskable)
+│   ├── manifest.json       # PWA manifest (theme #0A192F; ikon dari logo; 8 "any" + 2 maskable)
 │   ├── service-worker.js   # Cache strategy: static cache-first, API network-first, bg sync, push
-│   └── icons/              # 12 berkas ikon (lihat bagian Ikon PWA)
+│   ├── brand/
+│   │   └── logo.png        # Logo ter-trim + transparan (256px) untuk mark di app (header & gerbang)
+│   └── icons/              # 12 berkas ikon PWA dari logo (lihat bagian Ikon PWA)
 ├── scripts/
-│   └── generate-icons.mjs  # Generator ikon PWA (`npm run icons`) — tanpa dependensi
+│   └── generate-icons.ps1  # Generator ikon PWA DARI assets/logo.png (`npm run icons`) — System.Drawing, tanpa dependensi Node
 ├── README.md               # Pintu masuk: cara menjalankan, struktur, apa yang sudah/belum ada
 ├── PROJECT_SUMMARY.md      # Rencana backend Worker + D1 (belum dibuat)
 └── AGENT.md                # File ini
@@ -113,20 +117,23 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 
 ---
 
-## Ikon PWA
+## Logo & Ikon PWA
 
-Dibuat dengan `npm run icons` → `scripts/generate-icons.mjs`. Skripnya **tanpa dependensi** (hanya modul bawaan Node: `zlib` untuk PNG, `fs`) — bentuk rumah digambar manual, lalu di-encode sendiri jadi PNG dan ICO.
+**Sumber tunggal:** `assets/logo.png` (logo Kakang, 986×844, latar transparan). Skrip `scripts/generate-icons.ps1` (`npm run icons`) memotong pinggiran transparan (trim ke kotak konten), lalu menurunkan ukuran dengan `System.Drawing` (PowerShell, **tanpa dependensi Node/npm**).
 
 | Berkas | Kegunaan |
 |--------|----------|
-| `public/icons/icon-{72,96,128,144,152,192,384,512}.png` | `purpose: any` — sudut membulat, glyph 60% |
-| `public/icons/maskable-{192,512}.png` | `purpose: maskable` — penuh tanpa sudut, glyph 52% (aman di safe zone 80% Android) |
-| `public/icons/apple-touch-icon.png` | 180px, tanpa sudut (iOS membulatkan sendiri) |
-| `public/icons/favicon.ico` | 16/32/48 px, PNG di dalam ICO |
+| `public/icons/icon-{72,96,128,144,152,192,384,512}.png` | `purpose: any` — logo di atas latar navy, konten 86% |
+| `public/icons/maskable-{192,512}.png` | `purpose: maskable` — latar navy, konten 68% (aman di safe zone 80% Android) |
+| `public/icons/apple-touch-icon.png` | 180px, latar navy, konten 86% |
+| `public/icons/favicon.ico` | 16/32/48 px (PNG di dalam ICO), latar navy, konten 92% |
+| `public/brand/logo.png` | 256px, **transparan** (hasil trim) — untuk mark di header & layar gerbang |
 
-Desain (High-Tech Blue): latar cyan `#22D3EE`, glyph rumah navy `#0A192F`, pintu tembus ke warna latar. Alasan ikon bukan navy: `background_color` splash PWA = navy → ikon navy akan tenggelam; ikon cyan kontras kuat di atasnya.
+**Latar ikon navy `#0A192F`** (bukan transparan/putih) dipilih karena artwork logo mayoritas terang (putih/abu/cyan, ~18% piksel >235) dengan sedikit area biru gelap → butuh latar gelap agar kontras; navy juga = warna tema app + `background_color` manifest (splash nyatu). Ubah `$IconBg` / `$Ratio*` di bagian KONFIGURASI skrip lalu jalankan ulang `npm run icons` bila ingin latar/himpit lain.
 
-**Verifikasi:** setiap PNG dibuka di canvas dan pikselnya dicek — sudut transparan untuk `any`, sudut berwarna untuk `maskable`/apple, glyph navy di tengah, pintu & area luar cyan; ICO di-parse (3 entri, semuanya PNG, ter-decode 32×32); 12 URL ikon + manifest + service worker dibalas **HTTP 200** di dev, dan `npm run build` menaruh semuanya di `dist/`.
+**Dipakai di app:** mark `public/brand/logo.png` di header (`Navigation.jsx`, tile 36px) dan layar gerbang (`WelcomeGate.jsx`, tile 64px, `object-contain` di atas tile `brandtint`); ikon app di banner "Pasang" (`index.html`, `icons/icon-192.png`). Ikon nav Dashboard tetap ikon SVG `home` — mark merek sudah diwakili logo.
+
+**Verifikasi:** ukuran & format tiap PNG dicek (kotak 72…512, `Format32bppArgb`), sudut ikon = navy opak (alpha 255), logo brand ter-trim 256×221 termuat di browser (`naturalWidth`>0) di gerbang & header, 0 error konsol, `npm run build` hijau + semua berkas tersalin ke `dist/`.
 
 ---
 
@@ -144,6 +151,9 @@ npm run dev          # Vite → http://localhost:3000 (3001 kalau 3000 dipakai)
 
 # Build
 npm run build        # Output: ./dist (untuk Cloudflare Pages)
+
+# Ikon PWA (dari assets/logo.png → public/icons + public/brand)
+npm run icons        # PowerShell + System.Drawing, tanpa dependensi npm
 
 # Preview build
 npx vite preview
@@ -170,7 +180,7 @@ npx vite preview
 | Issue | Dampak | Solusi |
 |-------|--------|--------|
 | ~~`cdn.tailwindcss.com should not be used in production`~~ | ~~Warning, bundle besar~~ | **SELESAI:** Tailwind dipindah ke PostCSS (`tailwind.config.js` + `postcss.config.js`); CSS ter-generate 19 kB (gzip 4,6 kB) |
-| ~~`icon-144.png 404`~~ | ~~Install prompt tidak ada ikon~~ | **SELESAI:** 12 ikon dibuat via `npm run icons` → `public/icons/`; manifest dipecah `any` + `maskable` |
+| ~~`icon-144.png 404`~~ | ~~Install prompt tidak ada ikon~~ | **SELESAI:** 12 ikon dibuat dari logo via `npm run icons` → `public/icons/`; manifest dipecah `any` + `maskable` |
 | ~~`favicon.ico` kosong (0 byte)~~ | ~~Ikon tab browser default~~ | **SELESAI:** `favicon.ico` asli (16/32/48, PNG di dalam ICO) + `apple-touch-icon.png` 180px |
 | ~~Aset statis tidak ikut ke `dist/`~~ | ~~`manifest.json`, `service-worker.js`, `icons/*` 404 di produksi → install PWA & mode offline mati~~ | **SELESAI:** ketiganya dipindah ke `public/` (Vite menyalin `public/` apa adanya ke `dist/`) |
 | ~~`service-worker.js` reference path component~~ | ~~SW cache `addAll` mungkin gagal~~ | **SELESAI:** cache list dirampingkan + 3 ikon; berkas kini di `public/` |
@@ -226,10 +236,10 @@ npx vite preview
 | Blank white di browser | Cache lama / file:// | `npm run dev`, buka `http://localhost:3000`, **Hard Reload (Ctrl+F5)** |
 | CORS error di console | Buka via `file://` | Harus lewat `http://localhost`, bukan klik langsung `index.html` |
 | `Port 3000 in use` | Server lain | Vite otomatis ke 3001, atau matikan proses lama |
-| Ikon 404 / manifest & SW tidak ikut build | Aset statis ditaruh di root project, bukan di `public/` | Taruh `manifest.json`, `service-worker.js`, `icons/` di `public/`; buat ulang ikon dengan `npm run icons` (lihat bagian **Ikon PWA**) |
+| Ikon 404 / manifest & SW tidak ikut build | Aset statis ditaruh di root project, bukan di `public/` | Taruh `manifest.json`, `service-worker.js`, `icons/` di `public/`; buat ulang ikon dengan `npm run icons` (lihat bagian **Logo & Ikon PWA**) |
 | Kelas Tailwind tidak berefek | File tak tercakup `content` | Tambahkan path di `tailwind.config.js` → `content` |
 
 ---
 
 *Generated for AI agents working on Bayt Mustaqbal project.*
-*Last updated: 2026-10-13 — edit/hapus item (+ toast undo) di 4 tab data, pencarian catatan, dropdown form ber-default.*
+*Last updated: 2026-10-13 — logo Kakang (`assets/logo.png`) jadi mark app + ikon PWA; script ikon pindah ke PowerShell (`npm run icons`).*

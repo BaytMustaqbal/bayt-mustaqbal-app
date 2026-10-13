@@ -25,7 +25,7 @@ npm run dev        # http://localhost:3000 (buka browser otomatis)
 |---|---|
 | `npm run dev` | Dev server Vite (port 3000) |
 | `npm run build` | Build produksi → `dist/` |
-| `npm run icons` | Buat ulang 12 ikon PWA di `public/icons/` |
+| `npm run icons` | Buat ulang ikon PWA dari `assets/logo.png` → `public/icons/` + `public/brand/` |
 
 Tidak ada langkah build tambahan: Tailwind diproses lewat PostCSS.
 
@@ -42,11 +42,13 @@ bayt-mustaqbal-app/
 ├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/ItemActions/...),
 │                               # TaskList, NoteList, Toast, FormSheet, FamilyCard, FamilyMemberCard,
 │                               # ScheduleItem, Calendar, Icon
+├── assets/logo.png             # Logo asli (sumber brand & ikon)
 ├── public/                     # Disalin apa adanya ke dist/ — WAJIB ditaruh di sini
 │   ├── manifest.json           # 8 ikon "any" + 2 "maskable"
 │   ├── service-worker.js       # cache-first untuk aset, network-first untuk /api/*
+│   ├── brand/logo.png          # Logo ter-trim (transparan) untuk mark di app
 │   └── icons/                  # 12 berkas: icon-72…512, maskable-192/512, apple-touch-icon, favicon.ico
-├── scripts/generate-icons.mjs  # Generator ikon tanpa dependensi (dipanggil npm run icons)
+├── scripts/generate-icons.ps1  # Generator ikon DARI logo (dipanggil npm run icons)
 ├── docs/                       # Riwayat: spesifikasi FAMILY OS versi Sheets/Apps Script
 ├── AGENT.md                    # Aturan wajib untuk agent + kondisi nyata
 ├── DESIGN-SYSTEM.md            # Warna, tipografi, navigasi, target sentuh
@@ -61,7 +63,7 @@ bayt-mustaqbal-app/
 
 - 5 section dalam satu halaman, **tanpa router** — perpindahan section lewat state
 - **Mobile-first:** bottom tab bar 56 px (< 1024 px) dengan safe-area iOS, header sticky, desktop nav muncul di `lg`
-- **PWA:** manifest + service worker + 12 ikon; service worker hanya didaftarkan di produksi
+- **PWA:** manifest + service worker + 12 ikon dari **logo Kakang**; service worker hanya didaftarkan di produksi
 - **Banner install** muncul setelah event `beforeinstallprompt`; toast status jaringan hanya saat online/offline berubah
 - **Tema High-Tech Blue:** dark navy `#0A192F` + aksen cyan `#22D3EE`, glass pada elemen kunci, glow tipis, angka dengan Fira Code (lihat `DESIGN-SYSTEM.md`)
 - **Layar gerbang** muncul tiap app dibuka: pilih Kakang/Istri (tersimpan di `localStorage`) — nanti menjadi layar login

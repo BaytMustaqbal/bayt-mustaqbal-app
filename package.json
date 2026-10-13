@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite serve",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-icons.ps1"
   },
   "keywords": [
     "family",

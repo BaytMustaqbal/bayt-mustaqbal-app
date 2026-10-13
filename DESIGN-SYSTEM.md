@@ -13,9 +13,11 @@
 - **Family-Oriented**: target sentuh ≥ 44px, bahasa sederhana, kontras teks ≥ 4.5:1 tetap dijaga
 
 ### Logo & Icon System
-- App mark: rumah (house) sederhana — glyph **navy `#0A192F`** di atas kotak **cyan `#22D3EE`** (ikon PWA; lihat §8)
+- App mark: **logo Kakang** (`assets/logo.png`) — mark transparan `public/brand/logo.png` di tile `bg-brandtint` header (36px) & layar gerbang (64px); versi ter-trim, `object-contain`
+- Ikon PWA: logo di atas **latar navy `#0A192F`** (artwork mayoritas terang → butuh latar gelap; navy juga = tema app) — lihat §8
 - Ikon UI: **SVG inline** (gaya Lucide, stroke 24×24, stroke-width 1.75) — lihat `components/Icon.jsx`
 - Ikon di dalam UI: tile `bg-brandtint` + ikon `text-brandfg` (bukan kotak solid terang)
+- Ikon nav Dashboard tetap `home` (SVG) — mark merek sudah diwakili logo
 - ❌ Tidak pakai emoji sebagai ikon; ❌ tidak pakai font ikon
 
 ## 2. Color System
@@ -211,17 +213,19 @@ display           : standalone              orientation: portrait-primary
 theme_color       : #0A192F                 background_color: #0A192F
 start_url / scope : /
 
-Ikon (dibuat via `npm run icons`):
-  any      : icons/icon-{72,96,128,144,152,192,384,512}.png  — sudut membulat, glyph 60%
-  maskable : icons/maskable-{192,512}.png                    — penuh, glyph 52% (safe zone 80%)
-  favicon  : icons/favicon.ico (16/32/48) · icons/apple-touch-icon.png (180)
-  warna    : latar #22D3EE (cyan), glyph rumah #0A192F (navy)
+Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim otomatis):
+  any      : icons/icon-{72,96,128,144,152,192,384,512}.png  — latar navy, konten 86%
+  maskable : icons/maskable-{192,512}.png                    — latar navy, konten 68% (safe zone 80%)
+  favicon  : icons/favicon.ico (16/32/48) · icons/apple-touch-icon.png (180, navy)
+  brand    : brand/logo.png (256px, transparan) — mark di app
+  warna    : latar navy #0A192F, artwork logo di tengah
 ```
-> Kenapa ikon **cyan**, bukan navy? `background_color` manifest = navy → ikon navy akan tenggelam di splash screen; ikon cyan kontras kuat di atasnya dan tetap terlihat di wallpaper gelap maupun terang.
+> Kenapa latar ikon **navy**? Artwork logo mayoritas terang (putih/abu/cyan) → butuh latar gelap agar kontras; navy juga menyatu dengan `background_color` splash. (Versi lama memakai latar cyan + glyph rumah; sekarang diganti logo asli.)
+> Ubah `$IconBg`/`$Ratio*` di bagian KONFIGURASI `scripts/generate-icons.ps1` lalu `npm run icons` bila ingin variasi.
 
 ### Aset statis & build (PENTING)
 - Vite **hanya** menyalin folder `public/` ke `dist/`. Jadi `manifest.json`, `service-worker.js`, dan `icons/` wajib berada di `public/` — kalau ditaruh di root, semuanya 404 di produksi (install PWA & mode offline mati, ikon tidak muncul)
-- `service-worker.js`: naikkan nomor versi cache (`family-*-v2`) setiap ada perubahan tampilan agar HP yang sudah memasang PWA mengambil berkas baru
+- `service-worker.js`: naikkan nomor versi cache (`family-*-v3`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
 
 ## 9. Offline Capabilities
 
