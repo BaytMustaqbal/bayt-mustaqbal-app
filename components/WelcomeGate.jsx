@@ -39,7 +39,8 @@ export function WelcomeGate({ users, defaultUserId, onEnter, onReset }) {
             className="mx-auto h-auto w-full max-w-[200px] object-contain drop-shadow-[0_0_30px_rgba(34,211,238,0.20)] sm:max-w-[240px]"
           />
           <p className="mt-5 text-sm text-mutedfg">
-            Rumah Masa Depan — agenda, keuangan, tugas, dan catatan keluarga dalam satu tempat.
+            Mari jelajahi masa depan yang berakar pada nilai iman, berdaya dengan teknologi, dan hangat bersama
+            keluarga.
           </p>
         </div>
 

@@ -10,6 +10,7 @@
 ## 1. Visual Identity
 
 ### Brand Personality
+- **Tagline** (teks di bawah logo pada layar gerbang): *"Mari jelajahi masa depan yang berakar pada nilai iman, berdaya dengan teknologi, dan hangat bersama keluarga."* — tiga pilar app: iman, teknologi, keluarga
 - **High-Tech & Terpercaya**: navy gelap seperti panel instrumen, aksen cyan listrik yang "hidup" hanya di atas latar gelap
 - **Menggunakan efek dengan disiplin**: kaca (glassmorphism) hanya di elemen kunci; glow tipis hanya saat hover/fokus; grid teknis hanya di belakang gerbang & chart
 - **Family-Oriented**: target sentuh ≥ 44px, bahasa sederhana, kontras teks ≥ 4.5:1 tetap dijaga

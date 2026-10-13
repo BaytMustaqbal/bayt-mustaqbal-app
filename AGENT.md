@@ -50,7 +50,7 @@ bayt-mustaqbal-app/
 │   │                       #   Password (kolom profil, belum diverifikasi), "Ganti pengguna"; role=dialog, error per-field
 │   ├── notifications.js    # Notifikasi turunan data (tanpa backend): anggaran, tugas, agenda terdekat, pengeluaran besar → id stabil + target navigasi
 │   ├── categories.js       # Kategori agenda, keuangan, keluarga, catatan + filter tugas & penghitung per item + meta ikon
-│   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: kartu pengguna (avatar foto/inisial + nama + @username/peran) + tombol "Muat ulang data contoh" → nanti jadi login
+│   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: logo besar + tagline (iman–teknologi–keluarga) + kartu pengguna (avatar foto/inisial + nama + @username/peran) + tombol "Muat ulang data contoh" → nanti jadi login
 │   ├── FormSheet.jsx       # Bottom sheet "Tambah/Ubah" generik (field teks/angka/tanggal/jam/select/textarea/checkbox, validasi wajib, mode ubah via initialValues, role=dialog, Escape/klik luar)
 │   ├── Toast.jsx           # Notifikasi ringkas di atas tab bar: konfirmasi tambah/ubah + tombol "Urungkan" (undo hapus), role=status
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
