@@ -13,7 +13,7 @@
 - **Family-Oriented**: target sentuh ≥ 44px, bahasa sederhana, kontras teks ≥ 4.5:1 tetap dijaga
 
 ### Logo & Icon System
-- App mark: **logo Kakang** (`assets/logo.png`) — mark transparan `public/brand/logo.png`; di header = tile `bg-brandtint` 36px, di layar gerbang = **logo besar** sebagai gambar utama (max 240–280px, `object-contain`)
+- App mark: **logo Kakang** (`assets/logo.png`) — mark transparan `public/brand/logo.png`; di header = tile `bg-brandtint` 36px, di layar gerbang = **logo besar** sebagai gambar utama (max 200–240px, `object-contain`) — tanpa judul teks terpisah (nama app dibawa `alt` logo)
 - Ikon PWA: logo di atas **latar navy `#0A192F`** (artwork mayoritas terang → butuh latar gelap; navy juga = tema app) — lihat §8
 - Ikon UI: **SVG inline** (gaya Lucide, stroke 24×24, stroke-width 1.75) — lihat `components/Icon.jsx`
 - Ikon di dalam UI: tile `bg-brandtint` + ikon `text-brandfg` (bukan kotak solid terang)

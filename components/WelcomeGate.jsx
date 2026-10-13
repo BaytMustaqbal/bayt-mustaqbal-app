@@ -33,13 +33,12 @@ export function WelcomeGate({ users, defaultUserId, onEnter, onReset }) {
         <div className="text-center">
           <img
             src="/brand/logo.png"
-            alt="Logo Bayt Mustaqbal"
+            alt="Bayt Mustaqbal"
             width="256"
             height="221"
-            className="mx-auto h-auto w-full max-w-[240px] object-contain drop-shadow-[0_0_30px_rgba(34,211,238,0.20)] sm:max-w-[280px]"
+            className="mx-auto h-auto w-full max-w-[200px] object-contain drop-shadow-[0_0_30px_rgba(34,211,238,0.20)] sm:max-w-[240px]"
           />
-          <h1 className="mt-6 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Bayt Mustaqbal</h1>
-          <p className="mt-1.5 text-sm text-mutedfg">
+          <p className="mt-5 text-sm text-mutedfg">
             Rumah Masa Depan — agenda, keuangan, tugas, dan catatan keluarga dalam satu tempat.
           </p>
         </div>

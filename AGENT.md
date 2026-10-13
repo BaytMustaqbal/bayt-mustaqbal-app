@@ -131,7 +131,7 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 
 **Latar ikon navy `#0A192F`** (bukan transparan/putih) dipilih karena artwork logo mayoritas terang (putih/abu/cyan, ~18% piksel >235) dengan sedikit area biru gelap → butuh latar gelap agar kontras; navy juga = warna tema app + `background_color` manifest (splash nyatu). Ubah `$IconBg` / `$Ratio*` di bagian KONFIGURASI skrip lalu jalankan ulang `npm run icons` bila ingin latar/himpit lain.
 
-**Dipakai di app:** mark `public/brand/logo.png` di header (`Navigation.jsx`, tile 36px) dan **logo besar** di layar gerbang (`WelcomeGate.jsx`, max 240–280px sebagai gambar utama — menggantikan ilustrasi SVG lama, termasuk `soft-pulse` yang ikut dihapus); ikon app di banner "Pasang" (`index.html`, `icons/icon-192.png`). Ikon nav Dashboard tetap ikon SVG `home` — mark merek sudah diwakili logo.
+**Dipakai di app:** mark `public/brand/logo.png` di header (`Navigation.jsx`, tile 36px) dan **logo besar** di layar gerbang (`WelcomeGate.jsx`, max 200–240px sebagai gambar utama — menggantikan ilustrasi SVG lama + judul teks `h1`; `soft-pulse` ikut dihapus, nama app dibawa `alt="Bayt Mustaqbal"`); ikon app di banner "Pasang" (`index.html`, `icons/icon-192.png`). Ikon nav Dashboard tetap ikon SVG `home` — mark merek sudah diwakili logo.
 
 **Verifikasi:** ukuran & format tiap PNG dicek (kotak 72…512, `Format32bppArgb`), sudut ikon = navy opak (alpha 255), logo brand ter-trim 256×221 termuat di browser (`naturalWidth`>0) di gerbang & header, 0 error konsol, `npm run build` hijau + semua berkas tersalin ke `dist/`.
 
