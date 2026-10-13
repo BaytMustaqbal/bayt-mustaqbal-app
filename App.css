@@ -44,6 +44,7 @@
   --chart3: 139 92 246;
   --chart4: 245 158 11;
   --chart5: 16 185 129;
+  --chart6: 244 63 94;
 
   /* Nada badge & tile ikon (latar, teks) — teks aman di atas tint 15% */
   --tone-cyan: 34 211 238;
@@ -120,6 +121,7 @@
   --chart3: 124 58 237;
   --chart4: 180 83 9;
   --chart5: 5 150 105;
+  --chart6: 190 18 60;
 
   /* Nada badge & tile ikon — semua teks ≥4,7:1 di atas tintnya */
   --tone-cyan: 8 145 178;

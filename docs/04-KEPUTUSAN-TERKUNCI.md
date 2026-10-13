@@ -483,6 +483,47 @@ Kakang memilih **A**, dan memilih foto ini tampil **di akun _dan_ kartu anggota 
 
 ---
 
+## D21 — Angka Pengeluaran Contoh Disamakan (Hero = Donat = Tren) jadi Rp 6,3 jt & Anggaran Naik
+
+**Tanggal:** 13 Oktober 2026
+
+Kakang minta **total pengeluaran contoh jadi Rp 6,3 jt**. Saat memeriksa, ditemukan
+**ketidakcocokan data** yang sudah ada sejak lama: "total pengeluaran" muncul sebagai
+turunan di **tiga** tempat dan nilainya tidak sama — kartu hero (jumlah 10 item
+`expenses`) = **Rp 4,71 jt**, sedangkan tengah donat (jumlah `categories`) dan tren bulan
+berjalan (Okt di `monthlyTrend`) = **Rp 2,78 jt**.
+
+| Opsi | Bentuk | Alasan/Konsekuensi |
+|---|---|---|
+| **A. Samakan semua ke 6,3 jt (dipilih)** | Ubah item `expenses` agar berjumlah 6,3 jt, `categories` jadi 6,3 jt, `monthlyTrend` Okt = 6,3 jt | Menutup ketidakcocokan sekaligus; hero, donat, dan tren bercerita sama |
+| B. Hanya donat | `categories` saja yang jadi 6,3 jt | Hero tetap 4,71 jt & tren 2,78 jt → makin tidak sinkron |
+| C. Hanya hero | Item `expenses` saja yang jadi 6,3 jt | Donat & tren tetap 2,78 jt → tetap tidak sinkron |
+
+Kakang memilih **A**, dan memilih **anggaran naik ke Rp 8 jt** (kalau dibiarkan 4,5 jt,
+6,3 jt melewati anggaran → realisasi mentok 100% + sisa Rp 0 + notifikasi "anggaran terlewati").
+
+**Konsekuensi teknis:**
+- Donat harus memuat **6 kategori** (bukan 4): dengan 4 kategori nilai alaminya hanya
+  **5,3 jt**, jadi totalnya tak bisa 6,3 jt tanpa angka karangan. Enam kategori =
+  jumlah per-kategori `expenses` yang sesungguhnya (belanja 2,2 jt / pendidikan 1,45 jt /
+  utilitas 1,0 jt / ibadah & sosial 750 rb / transportasi 650 rb / kesehatan 250 rb).
+- Token warna baru **`--chart6`** di `App.css` (gelap `244 63 94`, terang `190 18 60`) +
+  padanannya di `tailwind.config.js` (paritas; donat tetap memakai inline `style`).
+- Anggaran `budget.total` = **Rp 8 jt** ⇒ realisasi **79%**, sisa **Rp 1,7 jt** — sengaja di
+  bawah ambang peringatan **80%** di `notifications.js` supaya contoh tak memunculkan
+  "anggaran hampir terlewati".
+- **Invarian baru:** hero = donat = tren Okt harus selalu sama. Dicatat di `AGENT.md`
+  supaya suntingan data contoh berikutnya tidak memecahkannya lagi.
+
+**Bukti (DOM):** hero `Rp 6.300.000` (74% vs bulan lalu), realisasi **79%** + "Sisa dari
+Rp 8 jt" = `Rp 1.700.000`; donat tengah `Rp 6,3 jt` dengan **6 baris legenda** berjumlah
+100% (35/23/16/12/10/4%) dan **7 lingkaran svg** (1 alur + 6 busur); tren Okt `Rp 6,3 jt`
+(rata-rata `Rp 3,7 jt`); header Keuangan "Total: Rp 6.300.000 · anggaran Rp 8 jt";
+tombol mata tetap mengubah **tepat 3** dari **24** simpul "Rp" (hanya kartu hero);
+**0 luber**, **0 error konsol**; `npm run build` hijau.
+
+---
+
 ## Pertanyaan yang MASIH Terbuka
 
 Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
@@ -506,3 +547,4 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | 13 Okt 2026 | D18 | Latar = "blueprint teknik": grid 28px seluruh kanvas + pendaran atas & bawah + vignette + grain (statis, murni CSS) | Kanvas terasa plain — pendaran lama berhenti di bagian atas & latar tidak berlapis sehingga kartu kaca ikut datar |
 | 13 Okt 2026 | D19 | Titik masuk "Pasang app" = satu popup 5 detik tiap app dibuka; tombol "Pasang" di header & tile "Pasang App" dihapus (tile jadi pintasan Keluarga) | Tombol Pasang selalu tampil walau app belum bisa dipasang (sering tak bereaksi) & jadi penyebab luber header 1024–1109px; banner lama tak pernah hilang sendiri |
 | 13 Okt 2026 | D20 | Foto profil contoh disajikan dari `public/avatars/profile-rezki.jpg` (bukan `assets/`) & dipakai sebagai seed avatar Kakang **dan** kartu anggota "Rezki YT"; `FamilyMemberCard` pakai `Avatar` | Kakang minta foto profilnya terpasang agar tampilan "Akun saya" & avatar terlihat nyata; `assets/` tidak ikut ke `dist/` sehingga foto akan 404 di produksi |
+| 13 Okt 2026 | D21 | Angka pengeluaran contoh disamakan jadi **Rp 6,3 jt** di hero, donat (kini 6 kategori + token `--chart6`), & tren Okt; anggaran contoh naik ke **Rp 8 jt** | Kakang minta total 6,3 jt; sekaligus ditemukan hero (4,71 jt) ≠ donat/tren (2,78 jt) — data dummy tidak sinkron |

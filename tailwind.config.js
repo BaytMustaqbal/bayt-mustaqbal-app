@@ -48,6 +48,7 @@ module.exports = {
         chart3: 'rgb(var(--chart3) / <alpha-value>)',
         chart4: 'rgb(var(--chart4) / <alpha-value>)',
         chart5: 'rgb(var(--chart5) / <alpha-value>)',
+        chart6: 'rgb(var(--chart6) / <alpha-value>)',
 
         // ---------- Warna anggota (titik di kalender) ----------
         member1: 'rgb(var(--member1) / <alpha-value>)',

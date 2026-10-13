@@ -87,16 +87,16 @@ const mockData = {
     { id: 4, title: 'Golongan darah', meta: 'Rezki YT: O · Hilda AK: A · Anak: B', badge: 'Catatan', tone: 'brand' },
   ],
   expenses: [
-    { id: 1, category: 'belanja', description: 'Belanja kebutuhan dapur', amount: 1250000, date: '2026-10-14' },
-    { id: 2, category: 'utilitas', description: 'Tagihan listrik & air', amount: 480000, date: '2026-10-13' },
-    { id: 3, category: 'pendidikan', description: 'SPP sekolah', amount: 750000, date: '2026-10-12' },
-    { id: 4, category: 'transportasi', description: 'Bensin & tol', amount: 300000, date: '2026-10-11' },
-    { id: 5, category: 'utilitas', description: 'Internet & pulsa', amount: 280000, date: '2026-10-10' },
-    { id: 6, category: 'ibadah', description: 'Zakat & infak', amount: 500000, date: '2026-10-09' },
-    { id: 7, category: 'kesehatan', description: 'Obat & vitamin keluarga', amount: 150000, date: '2026-10-08' },
+    { id: 1, category: 'belanja', description: 'Belanja kebutuhan dapur', amount: 1850000, date: '2026-10-14' },
+    { id: 2, category: 'utilitas', description: 'Tagihan listrik & air', amount: 620000, date: '2026-10-13' },
+    { id: 3, category: 'pendidikan', description: 'SPP sekolah', amount: 1250000, date: '2026-10-12' },
+    { id: 4, category: 'transportasi', description: 'Bensin & tol', amount: 450000, date: '2026-10-11' },
+    { id: 5, category: 'utilitas', description: 'Internet & pulsa', amount: 380000, date: '2026-10-10' },
+    { id: 6, category: 'ibadah', description: 'Zakat & infak', amount: 750000, date: '2026-10-09' },
+    { id: 7, category: 'kesehatan', description: 'Obat & vitamin keluarga', amount: 250000, date: '2026-10-08' },
     { id: 8, category: 'belanja', description: 'Makan siang keluarga', amount: 350000, date: '2026-10-07' },
     { id: 9, category: 'pendidikan', description: 'Perlengkapan sekolah', amount: 200000, date: '2026-10-06' },
-    { id: 10, category: 'transportasi', description: 'Servis motor', amount: 450000, date: '2026-10-05' },
+    { id: 10, category: 'transportasi', description: 'Servis motor', amount: 200000, date: '2026-10-05' },
   ],
   tasks: [
     { id: 1, title: 'Bersihkan dapur', completed: false, assignedTo: 'RAGASUCI', dueDate: '2026-10-15', priority: 'high' },
@@ -185,14 +185,14 @@ const mockData = {
   ],
   // --- Data analitik (dummy) ---
   // Anggaran & tren masih contoh: di D1 nanti ini dari tabel budget + expenses.
-  budget: { total: 4500000, month: 'Oktober 2026' },
+  budget: { total: 8000000, month: 'Oktober 2026' },
   monthlyTrend: [
     { label: 'Mei', value: 3120000 },
     { label: 'Jun', value: 2875000 },
     { label: 'Jul', value: 3410000 },
     { label: 'Agu', value: 2960000 },
     { label: 'Sep', value: 3620000 },
-    { label: 'Okt', value: 2780000 },
+    { label: 'Okt', value: 6300000 },
   ],
   weekly: [
     { label: 'Sen', value: 95000 },
@@ -206,10 +206,15 @@ const mockData = {
   categories: [
     // Warna seri = token tema (bukan hex) supaya donut tetap terbaca di
     // mode terang maupun gelap. Diselesaikan CSS lewat inline `style`.
-    { label: 'Belanja Bulanan', value: 1250000, color: 'rgb(var(--chart1))' },
-    { label: 'Pendidikan', value: 750000, color: 'rgb(var(--chart2))' },
-    { label: 'Listrik & Air', value: 480000, color: 'rgb(var(--chart3))' },
-    { label: 'Transportasi', value: 300000, color: 'rgb(var(--chart4))' },
+    // Jumlah semua nilai = total pengeluaran bulan ini (6,3 jt) — sama dengan
+    // hasil jumlah `expenses` & nilai Okt di `monthlyTrend`, agar ketiga angka
+    // (hero · donat · tren) selalu cocok.
+    { label: 'Belanja Bulanan', value: 2200000, color: 'rgb(var(--chart1))' },
+    { label: 'Pendidikan', value: 1450000, color: 'rgb(var(--chart2))' },
+    { label: 'Utilitas', value: 1000000, color: 'rgb(var(--chart3))' },
+    { label: 'Ibadah & Sosial', value: 750000, color: 'rgb(var(--chart4))' },
+    { label: 'Transportasi', value: 650000, color: 'rgb(var(--chart5))' },
+    { label: 'Kesehatan', value: 250000, color: 'rgb(var(--chart6))' },
   ],
 };
 

@@ -120,6 +120,8 @@ bayt-mustaqbal-app/
 >
 > **Akun (`data.users`) terpisah dari daftar anggota keluarga (`data.family`)**: mengganti nama/foto akun **tidak** mengubah kartu di section Keluarga (nama yang sama muncul sebagai dua entri). Menyatukan keduanya sengaja belum dilakukan supaya tidak ada pencocokan nama yang rapuh — bisa dikerjakan saat anggota keluarga ikut bisa diubah.
 
+> **Angka pengeluaran contoh harus konsisten di tiga tempat (dijaga sejak 13 Okt 2026).** "Total pengeluaran" muncul sebagai **turunan**, bukan angka tersimpan: (1) kartu hero = jumlah semua item `expenses`, (2) tengah donat = jumlah array `categories`, (3) tren bulan berjalan (Okt) = nilai terakhir `monthlyTrend`. Ketiganya **wajib sama** (kini **Rp 6,3 jt**). Donat memuat **6 kategori** (bukan 4) supaya totalnya benar-benar sama dengan `expenses` — butuh token warna `--chart6`. Anggaran contoh `budget.total` = **Rp 8 jt** (6,3 jt ⇒ realisasi 79%, sisa Rp 1,7 jt — di bawah ambang peringatan 80% di `notifications.js`). Kalau salah satu diubah, ubah ketiganya sekaligus.
+
 > **Tidak ada panggilan jaringan.** Data sepenuhnya dummy sesuai permintaan Kakang — fokus ke frontend dulu.
 
 ---
@@ -135,7 +137,7 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 | Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]`; klaster kanan (semua ukuran): **tombol tema → lonceng notifikasi → chip pengguna (buka modal Akun)** |
 | Safe area bawah | Tab bar `pb-[env(safe-area-inset-bottom)]`; `<main>` `pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]` |
 | Popup install | Kartu kecil di atas tab bar (`bottom-[calc(3.5rem_+_env(safe-area-inset-bottom)_+_0.75rem)]`), pojok kanan bawah di `lg` (`lg:right-6 lg:bottom-6`); lihat D19 |
-| Kartu KPI | Nilai uang diringkas di HP (`Rp 2,8 jt`) via `formatCurrencyShort`; nilai penuh di `title` + section Keuangan |
+| Kartu KPI | Nilai uang diringkas di HP (`Rp 6,3 jt`) via `formatCurrencyShort`; nilai penuh di `title` + section Keuangan |
 | Anti-overflow | Semua `Card` punya `min-w-0` agar boleh menyusut di grid/flex |
 | Sentuh | `-webkit-tap-highlight-color: transparent` + `touch-action: manipulation`; checkbox 28px dengan area sentuh 44px |
 | Teks | `-webkit-text-size-adjust: 100%` |
@@ -156,16 +158,16 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 - **Mode terang**: kanvas `#F2FAFD`, permukaan `#FFFFFF`, `color-scheme: light`, `<meta theme-color>` `#F2FAFD`, status bar iOS `default`, kaca putih 88%/72%, glows/grid/bayangan/nada semua ter-swap; **27/27 pasangan teks lolos** (terendah nada rose 4,95:1), **5/5 titik anggota ≥3:1**; pemisah `line` 1,39:1 (dekoratif — setara gelap 1,45:1).
 - **Pindai sisa warna gelap** di mode terang (`browser.evaluate` menelusuri `color`/`background-color`/`border-*`/`outline`/`stroke`/`fill` seluruh DOM, dicocokkan ke daftar nilai khas gelap): **0 temuan** di Beranda, Agenda (Jadwal/Tugas/Kalender/Timeline), Keuangan, Keluarga, Catatan, panel notifikasi, modal Akun, FormSheet, dan gerbang.
 - **Tombol tema header**: sekali klik membalik tema + menyimpan `bm-theme` + memperbarui meta; klik lagi kembali. **Modal Akun › Tampilan**: 3 radio asli (`system`/`light`/`dark`), klik Gelap → `data-theme='dark'` + meta `#0A192F` + tersimpan; klik Terang → kembali; legend "Tampilan".
-- **Chart**: busur donat terang memakai `rgb(var(--chart1..4))` (8 145 178 / 37 99 235 / 124 58 237 / 180 83 9) + alur `rgb(var(--donut-track))` 201 222 233; gradasi batang berakhir transparan; titik anggota legenda 5 warna + bar tugas `mutedfg/60` (dulu `white/60` → tak terlihat di terang).
+- **Chart**: busur donat terang memakai `rgb(var(--chart1..6))` (8 145 178 / 37 99 235 / 124 58 237 / 180 83 9 / 5 150 105 / 190 18 60) + alur `rgb(var(--donut-track))` 201 222 233; gradasi batang berakhir transparan; titik anggota legenda 5 warna + bar tugas `mutedfg/60` (dulu `white/60` → tak terlihat di terang).
 - **Kalender**: pada viewport **benar** 320px (clientWidth 321) sel hari = **44,74px ≥ 44**; sorotan hari ini tint 14% (kontras 5,9:1 terang / 7,42:1 gelap) & hari terpilih tint cta 25% + ring (8,6:1 / 11,33:1) — keduanya kini benar-benar terlihat (dulu tertimpa `bg-surface` karena urutan aturan Tailwind; diperbaiki jadi satu kelas latar per keadaan, berlaku di **kedua** tema).
 - **Sel "bulan ini" (view Tahun)** diperbaiki dari tint 40% ke 14%: kontras nama/jumlah 5,9/5,17 (terang) & 7,42/5,04 (gelap) — sebelumnya 3,96/3,47 & 3,85/2,62 (gagal ≥4,5).
 - **Luber & target sentuh**: 0 overflow horizontal di 320/360/768 (5 section + modal Akun); tab nav 56px, chip 44px.
 - **Konsol**: 0 error / 0 warning (hanya info React DevTools). Build hijau: CSS 42,20 kB / JS 260,64 kB.
 - **Batas jujur**: karena tab browser sesi ini melaporkan `visibilityState === "hidden"`, transisi CSS membeku di nilai awal sehingga nilai terhitung setelah *klik* bisa "tergeser"; pengukuran karena itu dilakukan **setelah muat ulang** (mount bersih) atau dengan transisi dimatikan sementara. Uji visual akhir (mata manusia) tetap disarankan Kakang lakukan sendiri.
 
-**Hasil verifikasi tombol mata jumlah uang (Dashboard)** (`browser.evaluate` + iframe 320px, tema gelap & terang): tombol 44×44 dengan `aria-pressed` (false = tersembunyi) + `aria-label` berganti ("Tampilkan/Sembunyikan jumlah pengeluaran") + ikon `eye`/`eyeOff`; saat tersembunyi teks jadi "Rp ••••••" dan `title` **dikosongkan** (agar tak bocor lewat tooltip) dan ada teks `sr-only` "Jumlah pengeluaran disembunyikan"; nilai "Sisa dari" dan "Sisa" di kartu yang sama ikut tersembunyi; klik 1 → tampil ("Rp 4.710.000"), klik 2 → tersembunyi lagi; **0 overflow di 320px** baik tersembunyi maupun tampil; pilihan **tidak disimpan** (tiap app dibuka kembali tersembunyi).
+**Hasil verifikasi tombol mata jumlah uang (Dashboard)** (`browser.evaluate` + iframe 320px, tema gelap & terang): tombol 44×44 dengan `aria-pressed` (false = tersembunyi) + `aria-label` berganti ("Tampilkan/Sembunyikan jumlah pengeluaran") + ikon `eye`/`eyeOff`; saat tersembunyi teks jadi "Rp ••••••" dan `title` **dikosongkan** (agar tak bocor lewat tooltip) dan ada teks `sr-only` "Jumlah pengeluaran disembunyikan"; nilai "Sisa dari" dan "Sisa" di kartu yang sama ikut tersembunyi; klik 1 → tampil ("Rp 6.300.000"), klik 2 → tersembunyi lagi; **0 overflow di 320px** baik tersembunyi maupun tampil; pilihan **tidak disimpan** (tiap app dibuka kembali tersembunyi).
 >
-> **Cakupan mask = hanya kartu hero (keputusan Kakang, 13 Okt 2026).** Diukur di DOM: dari **22 simpul teks ber-"Rp"** di `#main`, hanya **3** yang berubah saat tombol ditekan — semuanya di dalam kartu hero (total pengeluaran, "Sisa dari", dan nilai "Sisa"). Tetap tampil: KPI "Sisa anggaran" (`Rp 0` + hint `dari Rp 4,5 jt`), ringkasan `rata-rata` tren, label chart (`Okt: Rp 2,8 jt`, `Sab: Rp 420 rb`), dan donat (`Rp 750 rb`). Tidak ada rencana memperluas ke seluruh app.
+> **Cakupan mask = hanya kartu hero (keputusan Kakang, 13 Okt 2026).** Diukur di DOM: dari **24 simpul teks ber-"Rp"** di `#main`, hanya **3** yang berubah saat tombol ditekan — semuanya di dalam kartu hero (total pengeluaran, "Sisa dari", dan nilai "Sisa"). Tetap tampil: KPI "Sisa anggaran" (`Rp 1,7 jt` + hint `dari Rp 8 jt`), ringkasan `rata-rata` tren, label chart (`Okt: Rp 6,3 jt`, `Sab: Rp 420 rb`), dan donat (`Rp 750 rb`). Tidak ada rencana memperluas ke seluruh app.
 
 ---
 
@@ -301,4 +303,4 @@ npx vite preview
 ---
 
 *Generated for AI agents working on Bayt Mustaqbal project.*
-*Last updated: 2026-10-13 — foto profil contoh Kakang (`assets/profile-rezki.jpg` → `public/avatars/profile-rezki.jpg`, 256px) jadi avatar seed user `kakang` + kartu anggota "Rezki YT"; `FamilyMemberCard` kini pakai `Avatar` (foto/inisial) (D20).*
+*Last updated: 2026-10-13 — angka pengeluaran contoh dibuat konsisten **Rp 6,3 jt** di hero, donat (kini 6 kategori + token `--chart6`), dan tren Okt; anggaran contoh naik ke **Rp 8 jt** (D21). Sebelumnya: foto profil contoh Kakang (`assets/profile-rezki.jpg` → `public/avatars/profile-rezki.jpg`, 256px) jadi avatar seed user `kakang` + kartu anggota "Rezki YT"; `FamilyMemberCard` kini pakai `Avatar` (foto/inisial) (D20).*

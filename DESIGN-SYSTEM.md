@@ -94,8 +94,8 @@ Danger           (#BE123C) - 6,3:1
 ### Chart Series
 
 ```
-Gelap : chart1 #22D3EE (cyan) · chart2 #3B82F6 (cobalt) · chart3 #8B5CF6 (violet) · chart4 #F59E0B (amber) · chart5 #10B981 (emerald)
-Terang: chart1 #0891B2        · chart2 #2563EB         · chart3 #7C3AED         · chart4 #B45309        · chart5 #059669
+Gelap : chart1 #22D3EE (cyan) · chart2 #3B82F6 (cobalt) · chart3 #8B5CF6 (violet) · chart4 #F59E0B (amber) · chart5 #10B981 (emerald) · chart6 #F43F5E (rose)
+Terang: chart1 #0891B2        · chart2 #2563EB         · chart3 #7C3AED         · chart4 #B45309        · chart5 #059669         · chart6 #BE123C
 ```
 
 ### Usage Guidelines
@@ -224,7 +224,7 @@ Hero (GlassCard) : label + nilai mono besar + tombol mata (sembunyikan/tampilkan
                    Nilai uang di luar hero — KPI "Sisa anggaran" (+ hint "dari …"),
                    ringkasan "rata-rata" tren, label chart/tooltip, dan nominal di
                    panel "Pengeluaran Terbaru" — sengaja DIBIARKAN tampil. Terukur:
-                   22 simpul teks ber-"Rp" di #main, hanya 3 yang berubah saat tombol ditekan.
+                   24 simpul teks ber-"Rp" di #main, hanya 3 yang berubah saat tombol ditekan.
 QuickAction      : tile 4-kolom, min-h 76px, ikon tile 40px ber-warna (Pengeluaran=cyan,
                    Agenda=blue, Catatan=violet, Keluarga=emerald) — lihat D19
 StatCard (KPI)   : ikon tile ber-warna + nilai mono + label + hint opsional (+ sparkline sm+)
@@ -363,7 +363,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 
 ```
 < 640px  (HP 320–414px) : 1 kolom, donat & legenda bertumpuk (donat di atas),
-                          KPI 2 kolom, nilai uang ringkas ("Rp 2,8 jt")
+                          KPI 2 kolom, nilai uang ringkas ("Rp 6,3 jt")
 >= 640px (sm)           : px-6, gap-4, hero 2 kolom (nilai | anggaran+CTA),
                           sparkline KPI muncul
 >= 768px (md)           : agenda & keuangan jadi 2 kolom
@@ -371,7 +371,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 ```
 
 ### Perilaku khas mobile
-- **Nilai uang**: diringkas di KPI & label chart (`Rp 2,8 jt`) via `formatCurrencyShort`; nilai penuh di atribut `title` dan section Keuangan
+- **Nilai uang**: diringkas di KPI & label chart (`Rp 6,3 jt`) via `formatCurrencyShort`; nilai penuh di atribut `title` dan section Keuangan
 - **Anti-overflow**: `Card` `min-w-0`; legenda donut `flex-col` di HP → `flex-row` di `sm` (pernah meluber di 320px — sudah diperbaiki)
 - **Tap**: `-webkit-tap-highlight-color: transparent` + `touch-action: manipulation`
 - **Teks**: `-webkit-text-size-adjust: 100%`; **Header sticky** (bukan fixed) agar tidak goyang saat address bar HP menyusut
