@@ -302,6 +302,56 @@ yang sudah punya rumah sendiri (jadwal imunisasi = Agenda; SPP & les = Keuangan)
 
 ---
 
+## D18 — Latar Belakang = "Blueprint Teknik" (bukan kanvas datar)
+
+**Tanggal:** 13 Oktober 2026
+
+Kanvas app terasa **plain**: pendaran hanya ada di dua sudut **atas** lalu berhenti,
+sehingga begitu digulir ke bawah halaman jadi rata navy. Akarnya bukan warna, tapi latar
+**tidak berlapis** — padahal gaya kaca (glassmorphism) yang dipakai kartu-kartu app
+mensyaratkan latar berlapis/bervibrasi supaya efek kaca punya kedalaman untuk "ditembus".
+Tanpa itu kaca ikut terasa datar.
+
+Pilihan diuji lewat halaman pratinjau (mock app di atas 5 varian latar, bisa berganti
+tema gelap/terang) sebelum satu baris pun diubah di app.
+
+| Opsi | Bentuk | Alasan/Konsekuensi |
+|---|---|---|
+| **A. Blueprint teknik (dipilih)** | Grid 28px — pola yang **sama** dengan `grid-lines` di belakang chart — dinaikkan ke seluruh kanvas dengan opasitas sangat tipis, ditambah pendaran atas **dan** bawah + vignette + grain halus. **Statis** | Nyambung dengan identitas "instrumen/teknik" app & dunia Tool Room. Tanpa animasi → nol biaya gerak/baterai (penting untuk PWA di HP). Grid jadi motif tingkat sistem, bukan hiasan satu panel. Kanvas tidak lagi "mati" setelah digulir |
+| B. Aurora mengalir | 4 gumpalan besar (biru/cyan/violet/hijau) mengalir 24 detik + grain | Paling hidup/atmosferik, tapi animasi berjalan terus (biaya GPU/baterai nyata di HP) dan memunculkan dua warna di luar palet (violet & hijau) |
+| C. Blueprint + Aurora | Grid **dan** gumpalan mengalir + grain | Paling berkarakter, tapi paling ramai — berisiko mengganggu bacaan saat dipakai harian |
+| D. Kedalaman tenang | Hanya pendaran berlapis (atas/samping/bawah) + vignette + grain, tanpa pola | Paling minim risiko, tapi paling kecil perubahan karakternya (hampir sekadar memperbanyak pendaran lama) |
+
+**Konsekuensi teknis:**
+- Murni CSS di `App.css` — **tanpa elemen DOM baru, tanpa berkas gambar, tanpa dependensi**
+  (aman untuk PWA offline). `.app-bg` tidak lagi memasang `background-image` sendiri
+  (kini hanya `background-color`); seluruh dekorasi pindah ke pseudo-elemennya:
+  `::before` = vignette + pendaran atas/kiri + pendaran atas/kanan + pendaran bawah +
+  2 garis grid (6 lapis `background-image`), `::after` = grain.
+- Semua lapisan: `position: fixed` + `inset: 0` + `z-index: -1` + `pointer-events: none`.
+  `fixed` dipakai agar pendaran & grid "diam" saat digulir — perilaku yang sama dengan
+  `background-attachment: fixed` milik versi lama — sekaligus menghindari repaint
+  berulang saat menggulir di HP.
+- **`isolation: isolate` pada `.app-bg` itu WAJIB**: tanpanya `z-index: -1` akan jatuh
+  **di belakang** warna kanvas dan seluruh lapisan tak terlihat. Dibuktikan tidak
+  mengubah tata letak (scrollWidth identik sebelum/sesudah) dan tidak memutus
+  `backdrop-filter` header/bilah (kaca masih menembus lapisan latar).
+- Token baru (kedua tema): `--app-glow-3` (pendaran bawah), `--app-vig` (warna vignette),
+  `--grain-op` (opasitas grain), `--grain-mix` (`overlay` di gelap, `multiply` di terang).
+- Grain = SVG `feTurbulence` inline (±300 byte) di dalam `url("data:image/svg+xml,…")` —
+  bukan berkas gambar, jadi tidak menambah bundel maupun permintaan jaringan.
+- **Intensitas bisa disetel satu angka per efek** tanpa menyentuh struktur:
+  `--grid-line` (kekuatan grid), `--app-glow-1/2/3` (pendaran), `--app-vig` (vignette),
+  `--grain-op` (grain). Nilai terang sengaja jauh lebih tipis daripada gelap.
+- **Bukti (DOM/computed style):** pada viewport 320px (clientWidth 310) `scrollWidth = 310`
+  → **nol luber**; **0** target sentuh <44px; `::before` = 6 gradien + grid `28px 28px`,
+  `position: fixed`, `z-index: -1`, `pointer-events: none`; `::after` grain (0,04 gelap /
+  0,05 terang, `overlay`/`multiply`); **0 error konsol**; struktur lapisan identik di
+  kedua tema. Mematikan kedua lapisan → `scrollWidth` tetap sama (lapisan menyumbang 0px
+  luber); melepas `isolation` → `scrollWidth` tetap sama.
+
+---
+
 ## Pertanyaan yang MASIH Terbuka
 
 Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
@@ -322,3 +372,4 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | 11 Okt 2026 | D1–D10 | Seluruh keputusan awal | Sesi perencanaan bersama Kakang |
 | 11 Okt 2026 | D11–D14 | Rekening aktif, tanpa foto, variabel estimasi, libur hardcode | Grill 4 pertanyaan terbuka |
 | 13 Okt 2026 | D17 | Modul "Keluarga" = papan profil anggota (kategori: anggota/medis/kontak/dokumen) | Tab Keluarga belum pernah didefinisikan; isinya menduplikasi Agenda & Keuangan |
+| 13 Okt 2026 | D18 | Latar = "blueprint teknik": grid 28px seluruh kanvas + pendaran atas & bawah + vignette + grain (statis, murni CSS) | Kanvas terasa plain — pendaran lama berhenti di bagian atas & latar tidak berlapis sehingga kartu kaca ikut datar |

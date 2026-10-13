@@ -37,7 +37,7 @@ Token dipakai sebagai Tailwind theme extension (lihat `tailwind.config.js`) dan 
 - `tailwind.config.js` hanya memetakan token → `rgb(var(--x) / <alpha-value>)`; jangan menulis warna langsung di sana.
 - **Pengecualian:** `brandtint` sengaja `rgb(var(--brand) / 0.14)` (tanpa `<alpha-value>`) sehingga `bg-brandtint` selalu tint 14%; pengubah seperti `bg-brandtint/40` tetap bekerja karena Tailwind mengganti angka alfa di dalam nilainya.
 - **Jangan pakai warna mentah** (`bg-white`, `text-slate-500`, `bg-[#fff]`) di komponen — pakai token (`surface`, `mutedfg`, ...) agar tidak pecah di salah satu tema.
-- **Nilai bergantung tema** (pendaran, grid, kaca, bayangan, alur donut) juga variabel: `--app-glow-1/2`, `--grid-line`, `--glass-bg/-border`, `--shadow-*`, `--donut-track`.
+- **Nilai bergantung tema** (pendaran, grid, kaca, bayangan, alur donut) juga variabel: `--app-glow-1/2/3`, `--app-vig`, `--grid-line`, `--grain-op`, `--grain-mix`, `--glass-bg/-border`, `--shadow-*`, `--donut-track`.
 - **Warna chart/ikon SVG lewat `style`, bukan atribut** — atribut presentasi SVG tidak menyelesaikan `var()`: pakai `style={{ stroke: 'rgb(var(--chart1))' }}`.
 - **Satu kelas latar per keadaan.** Jangan menumpuk "latar dasar + tambahan" (`bg-surface bg-cta/25`): urutan aturan Tailwind yang menang adalah alfabetis (`brandtint` → `cta` → `surface`), jadi `bg-surface` akan selalu menang dan sorotan tidak pernah terlihat. Pakai salah-satu (ternary), lihat `Calendar.jsx` (hari ini/terpilih).
 - **Titik masuk tema:** `App.jsx` (state `theme`/`resolvedTheme`, localStorage `bm-theme`, dengar `matchMedia`, `toggleTheme`) + skrip boot sinkron di `index.html` (mencegah kedip putih sebelum React jalan) + `AccountModal.jsx` (pilihan lengkap).
@@ -139,6 +139,30 @@ Breakpoint: sm 640px · md 768px · lg 1024px (default Tailwind)
 Nav       : header sticky (semua lebar) + bottom tab bar 56px (di bawah lg)
 Safe area : env(safe-area-inset-top) pada header, env(safe-area-inset-bottom) pada bottom nav + padding bawah <main>
 ```
+
+### Latar aplikasi — "blueprint teknik" (D18)
+
+Latar **bukan** kanvas datar; ia berlapis dan jadi dasar yang membuat kartu kaca (glassmorphism) punya kedalaman. Semua dipasang sebagai pseudo-elemen `.app-bg` (tanpa elemen DOM tambahan, tanpa berkas gambar):
+
+```
+.app-bg              hanya background-color + isolation: isolate
+.app-bg::before      fixed · inset 0 · z-index -1 · pointer-events none
+                     6 lapis background-image (urut atas→bawah):
+                       1. vignette        radial 125% 85% at 50% 38% → --app-vig
+                       2. pendaran kiri-atas   → --app-glow-1
+                       3. pendaran kanan-atas  → --app-glow-2
+                       4. pendaran bawah        → --app-glow-3
+                       5+6. grid teknik 28px (pola sama dengan .grid-lines)
+.app-bg::after       fixed · inset 0 · z-index -1 · pointer-events none
+                     grain SVG feTurbulence inline (±300 byte) ·
+                     opacity --grain-op · mix-blend-mode --grain-mix
+```
+
+- **`isolation: isolate` pada `.app-bg` wajib** — tanpanya `z-index: -1` jatuh di belakang warna kanvas dan seluruh lapisan tak terlihat. Terbukti tidak mengubah tata letak & tidak memutus `backdrop-filter`.
+- **`position: fixed`** membuat pendaran/grid "diam" saat digulir (perilaku setara `background-attachment: fixed` versi lama) tanpa repaint berulang.
+- **Intensitas = satu angka per efek:** `--grid-line` (grid), `--app-glow-1/2/3` (pendaran), `--app-vig` (vignette), `--grain-op` (grain). Nilai tema terang sengaja jauh lebih tipis; `--grain-mix` = `overlay` (gelap) / `multiply` (terang).
+- **Statis — tanpa animasi.** Tidak ada biaya gerak/baterai (penting untuk PWA di HP).
+- Grid yang sama masih dipakai ulang secara lokal di belakang chart & layar gerbang (`.grid-lines`).
 
 ### Layout Patterns (aktual)
 - **Dashboard**: sapaan → kartu hero glass (keuangan bulan ini + realisasi anggaran) → aksi cepat 4 tile → KPI 2→4 kolom (`lg`) → tren (line, full width) → bar+donat (1→2 kolom `lg`) → 2 panel daftar terbaru

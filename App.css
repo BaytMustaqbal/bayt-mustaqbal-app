@@ -69,7 +69,11 @@
   /* Efek latar & kaca */
   --app-glow-1: rgb(37 99 235 / 0.3);
   --app-glow-2: rgb(34 211 238 / 0.16);
+  --app-glow-3: rgb(34 211 238 / 0.1); /* pendaran bawah: kanvas tidak "mati" saat digulir */
+  --app-vig: rgb(3 8 18 / 0.5); /* vignette: tepi digelapkan agar fokus ke tengah */
   --grid-line: rgb(34 211 238 / 0.07);
+  --grain-op: 0.04; /* grain halus (SVG inline, bukan gambar) */
+  --grain-mix: overlay;
   --glass-bg: linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.02));
   --glass-border: rgb(34 211 238 / 0.16);
 
@@ -141,7 +145,11 @@
   /* Efek latar & kaca — pendaran jauh lebih tipis di latar terang */
   --app-glow-1: rgb(14 116 144 / 0.12);
   --app-glow-2: rgb(37 99 235 / 0.08);
+  --app-glow-3: rgb(37 99 235 / 0.07);
+  --app-vig: rgb(16 57 74 / 0.12);
   --grid-line: rgb(14 116 144 / 0.12);
+  --grain-op: 0.05;
+  --grain-mix: multiply;
   --glass-bg: linear-gradient(180deg, rgb(255 255 255 / 0.88), rgb(255 255 255 / 0.72));
   --glass-border: rgb(14 116 144 / 0.18);
 
@@ -187,17 +195,58 @@ summary,
   touch-action: manipulation;
 }
 
-/* ---------- Latar "instrumen": pendaran biru + grid halus ---------- */
+/* ---------- Latar "instrumen": blueprint teknik ----------
+   Empat lapis, urut dari paling atas:
+   1. vignette (gelapkan tepi)   3. pendaran cyan di bawah
+   2. pendaran biru/cyan di atas 4. grid teknik 28px di seluruh kanvas
+   Ditambah grain tipis sebagai lapisan kelima (::after).
+
+   Kenapa lewat ::before/::after, bukan elemen baru?
+   - Tidak menambah DOM, tidak menyentuh App.jsx.
+   - `position: fixed` → pendaran & grid "diam" saat digulir (perilaku sama
+     seperti `background-attachment: fixed` sebelumnya) tanpa biaya repaint.
+   - `isolation: isolate` + `z-index: -1` → lapisan tetap berada DI BELAKANG
+     konten namun DI ATAS warna kanvas. `pointer-events: none` memastikan
+     lapisan tidak pernah menangkap sentuhan.
+   Gaya ini menuntut latar berlapis supaya kartu kaca (glassmorphism) punya
+   kedalaman untuk "ditembus" — itulah yang dulu membuat halaman terasa datar. */
 
 .app-bg {
   background-color: rgb(var(--canvas));
-  background-image:
-    radial-gradient(70rem 38rem at 10% -12%, var(--app-glow-1), transparent 62%),
-    radial-gradient(52rem 30rem at 104% -4%, var(--app-glow-2), transparent 58%);
-  background-attachment: fixed;
+  isolation: isolate;
 }
 
-/* Grid teknis (dipakai hemat: di belakang chart & layar gerbang) */
+.app-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(125% 85% at 50% 38%, transparent 42%, var(--app-vig) 100%),
+    radial-gradient(70rem 38rem at 10% -12%, var(--app-glow-1), transparent 62%),
+    radial-gradient(52rem 30rem at 104% -4%, var(--app-glow-2), transparent 58%),
+    radial-gradient(64rem 34rem at 50% 108%, var(--app-glow-3), transparent 66%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, 28px 28px, 28px 28px;
+}
+
+/* Grain: SVG feTurbulence inline (±300 byte) — bukan berkas gambar,
+   jadi tetap aman untuk PWA offline dan tidak menambah dependensi. */
+.app-bg::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: var(--grain-op);
+  mix-blend-mode: var(--grain-mix);
+}
+
+/* Grid teknis yang sama — dipakai ulang di belakang chart & layar gerbang */
+
 .grid-lines {
   background-image:
     linear-gradient(var(--grid-line) 1px, transparent 1px),
