@@ -1,7 +1,7 @@
 # Bayt Mustaqbal — Manajemen Keluarga
 
 Web app keluarga untuk **2 pengguna**: Kakang (admin) + Istri.
-Isi sekarang: 5 section — Dashboard, Agenda (Jadwal/Tugas/Kalender), Keuangan, Keluarga, Catatan.
+Isi sekarang: 5 section — Dashboard, Agenda (Jadwal/Tugas/Kalender/Timeline), Keuangan, Keluarga, Catatan.
 
 > **Status — 13 Okt 2026:** **frontend sudah jalan, backend belum dibuat.**
 > Semua angka masih **data dummy** (`const data = mockData` di `App.jsx`) — belum ada `fetch` ke mana pun.
@@ -72,6 +72,7 @@ bayt-mustaqbal-app/
 - **Pencarian catatan** (judul + isi) di tab Catatan, di atas filter kategori
 - **Dashboard baru:** kartu hero glass (pengeluaran + realisasi anggaran), aksi cepat, KPI, dan 3 chart tulis sendiri (tren 6 bulan, 7 hari, komposisi) — **batang & garis bisa diketuk** untuk melihat nilai tiap hari/bulan (nilai total donat sudah tampil di tengah)
 - **Notifikasi dalam app (lonceng pojok kanan atas):** isinya **dihitung dari data** — anggaran hampir/terlewati, tugas mendekati atau melewati jatuh tempo, agenda terdekat, pengeluaran terbesar. Badge angka = yang belum dibaca, ada "Tandai semua dibaca" (status tersimpan di `localStorage`); ketuk item → lompat ke bagian terkait + filternya ikut disetel. Turunan data (bukan pesan statis) jadi tidak pernah basi dan tidak butuh backend
+- **Kalender keluarga & Timeline** (dua mode di tab Agenda): Kalender = grid Minggu/Bulan/Tahun dengan warna per anggota + daftar agenda hari terpilih; **Timeline** = satu alur kronologis gabungan **agenda + tugas + pengeluaran + catatan** (rel + titik per hari), dibaca dari hari ini ke depan lalu blok **Riwayat**, ada chip filter jenis. Ketuk baris mana pun → sheet "Ubah" modul asalnya. Catatan jujur: catatan diletakkan pada tanggal terakhir diubah (belum ada tanggal pembuatan) → berlabel **"Catatan diperbarui"**
 - **Terverifikasi** di 320 / 360 / 390 / 414 / 768 px: 0 overflow horizontal, 0 elemen interaktif di bawah 44 px
 
 ## Belum ada

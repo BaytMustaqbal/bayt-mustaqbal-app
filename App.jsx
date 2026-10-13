@@ -10,6 +10,7 @@ import { WelcomeGate } from './components/WelcomeGate';
 import { AccountModal } from './components/AccountModal';
 import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList, initialsOf } from './components/ui';
 import { FamilyCalendar } from './components/Calendar';
+import { Timeline } from './components/Timeline';
 import { FormSheet } from './components/FormSheet';
 import { Toast } from './components/Toast';
 import { buildNotifications } from './components/notifications';
@@ -769,18 +770,24 @@ export default function App() {
                       onAction: () => openAdd('tasks'),
                     };
                   })()
-                : {
-                    icon: 'calendar',
-                    title: activeMeta.label,
-                    subtitle: `${filtered.length} dari ${data.schedule.length} jadwal`,
-                    actionLabel: 'Tambah',
-                    onAction: () => openAdd('agenda'),
-                  })}
+                : agendaMode === 'timeline'
+                  ? {
+                      icon: 'activity',
+                      title: 'Timeline Keluarga',
+                      subtitle: 'Alur agenda, tugas, keuangan & catatan',
+                    }
+                  : {
+                      icon: 'calendar',
+                      title: activeMeta.label,
+                      subtitle: `${filtered.length} dari ${data.schedule.length} jadwal`,
+                      actionLabel: 'Tambah',
+                      onAction: () => openAdd('agenda'),
+                    })}
             />
 
-            {/* Sub-tampilan Agenda: Jadwal | Tugas | Kalender */}
+            {/* Sub-tampilan Agenda: Jadwal | Tugas | Kalender | Timeline */}
             <div
-              className="mb-5 grid grid-cols-3 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
+              className="mb-5 grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
               role="group"
               aria-label="Mode tampilan agenda"
             >
@@ -816,6 +823,17 @@ export default function App() {
               >
                 <Icon name="calendar" size={16} />
                 Kalender
+              </button>
+              <button
+                type="button"
+                onClick={() => setAgendaMode('timeline')}
+                aria-pressed={agendaMode === 'timeline'}
+                className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
+                  agendaMode === 'timeline' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                }`}
+              >
+                <Icon name="activity" size={16} />
+                Timeline
               </button>
             </div>
 
@@ -859,6 +877,8 @@ export default function App() {
                   />
                 )}
               </>
+            ) : agendaMode === 'timeline' ? (
+              <Timeline data={data} onEdit={openEdit} formatCurrency={formatCurrency} />
             ) : (
               <>
                 {/* Filter kategori jadwal — sinkron dengan dropdown di navigasi */}
