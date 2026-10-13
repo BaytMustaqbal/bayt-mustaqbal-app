@@ -71,6 +71,97 @@ function CategoryMenu({ items, data, activeId, closing, menuId, onSelect, ariaLa
   );
 }
 
+/* Warna tile ikon notifikasi — sama dengan peta tone di ui.jsx (StatCard). */
+const NOTIF_TONES = {
+  rose: 'bg-rose-500/15 text-rose-200',
+  amber: 'bg-amber-400/15 text-amber-200',
+  violet: 'bg-violet-500/15 text-violet-200',
+  blue: 'bg-blue-500/15 text-blue-200',
+  cyan: 'bg-cyan-400/15 text-cyan-200',
+};
+
+/* Panel notifikasi (lonceng pojok kanan atas). Isinya turunan data —
+   lihat components/notifications.js. Animasi memakai pola menu kategori;
+   item yang belum dibaca tampil penuh + titik cyan, yang sudah dibaca redup.
+   Sengaja TANPA role="menu": isinya bukan pilihan radio, tapi daftar tautan
+   aksi — cukup dijangkau Tab dari tombol lonceng. */
+function NotificationMenu({ items, readIds, closing, onSelect, onMarkAll }) {
+  const unreadCount = items.filter((n) => !readIds.includes(n.id)).length;
+
+  return (
+    <div
+      id="notif-menu"
+      aria-label="Notifikasi"
+      data-drop-menu
+      className={`drop-menu drop-menu--right w-80 max-w-[calc(100vw_-_2rem)] overflow-hidden rounded-2xl border border-line bg-surface/95 shadow-pop backdrop-blur-xl ${
+        closing ? 'drop-menu--closing' : ''
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-line px-3.5 py-2.5">
+        <p className="text-sm font-bold text-ink">Notifikasi</p>
+        <span className="shrink-0 font-mono text-xs text-mutedfg">
+          {unreadCount > 0 ? `${unreadCount} baru` : 'semua terbaca'}
+        </span>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-mutedfg">Belum ada yang perlu ditindak.</p>
+      ) : (
+        <ul className="max-h-[60vh] overflow-y-auto p-1.5">
+          {items.map((item, index) => {
+            const unread = !readIds.includes(item.id);
+            return (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  data-notif-item=""
+                  style={{ '--i': index }}
+                  onClick={() => onSelect(item)}
+                  className={`drop-menu__item flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition-colors hover:bg-muted ${
+                    unread ? '' : 'opacity-70'
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
+                      NOTIF_TONES[item.tone] || NOTIF_TONES.cyan
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <Icon name={item.icon} size={17} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold leading-snug text-ink">{item.title}</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-mutedfg">{item.message}</span>
+                  </span>
+                  {unread && (
+                    <span
+                      className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-brand shadow-glow"
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {unreadCount > 0 && (
+        <div className="border-t border-line p-1.5">
+          <button
+            type="button"
+            onClick={onMarkAll}
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-brandfg transition-colors hover:bg-brandtint"
+          >
+            <Icon name="circleCheck" size={16} />
+            Tandai semua dibaca
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Navigation({
   activeSection,
   onSectionChange,
@@ -88,6 +179,10 @@ export function Navigation({
   onFamilySelect,
   noteFilter,
   onNoteSelect,
+  notifications = [],
+  notifReadIds = [],
+  onNotificationOpen,
+  onMarkAllNotificationsRead,
 }) {
   // Hanya satu dropdown terbuka pada satu waktu (openKey = 'agenda' | 'expenses' | null)
   const [openKey, setOpenKey] = useState(null);
@@ -95,6 +190,7 @@ export function Navigation({
   const closeTimerRef = useRef(null);
   const lastTriggerRef = useRef(null);
   const desktopMenuRef = useRef(null);
+  const notifMenuRef = useRef(null);
 
   const closeMenu = () => {
     if (!openKey) return;
@@ -138,12 +234,13 @@ export function Navigation({
     };
   }, [openKey]);
 
-  // Fokus item pertama saat menu dibuka di desktop (bagi pengguna keyboard)
+  // Fokus item pertama saat menu dibuka di desktop (bagi pengguna keyboard).
+  // Panel notifikasi ikut pola ini supaya Enter → Tab/panah langsung terasa.
   useEffect(() => {
-    if (openKey && window.matchMedia('(min-width: 1024px)').matches) {
-      const first = desktopMenuRef.current?.querySelector('[role="menuitemradio"]');
-      first?.focus();
-    }
+    if (!openKey) return;
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
+    if (openKey === 'notif') notifMenuRef.current?.querySelector('[data-notif-item]')?.focus();
+    else desktopMenuRef.current?.querySelector('[role="menuitemradio"]')?.focus();
   }, [openKey]);
 
   useEffect(() => () => clearTimeout(closeTimerRef.current), []);
@@ -157,9 +254,19 @@ export function Navigation({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Indeks tab yang sedang "menyala" (dropdown yang terbuka dihitung sebagai aktif)
-  const activeId = openKey || activeSection;
+  // Indeks tab yang sedang "menyala". Hanya dropdown kategori yang dihitung
+  // sebagai aktif; panel notifikasi (openKey='notif') tidak menggeser indikator.
+  const activeId = openKey && DROPDOWNS[openKey] ? openKey : activeSection;
   const activeIndex = Math.max(0, NAV_ITEMS.findIndex((item) => item.id === activeId));
+
+  // Jumlah notifikasi yang belum dibaca (untuk badge + label pembaca layar).
+  const notifUnread = notifications.filter((n) => !notifReadIds.includes(n.id)).length;
+
+  // Klik item notifikasi → tutup panel, App yang mengurus navigasi + tandai baca.
+  const handleNotification = (item) => {
+    closeMenu();
+    onNotificationOpen?.(item);
+  };
 
   const handleDropdownSelect = (key, categoryId) => {
     closeMenu();
@@ -194,7 +301,7 @@ export function Navigation({
           scrolled ? 'border-line bg-canvas/90 shadow-e2' : 'border-transparent bg-canvas/80'
         }`}
       >
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-4 sm:h-16 sm:gap-3 sm:px-6">
+        <div className="relative mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-4 sm:h-16 sm:gap-3 sm:px-6">
           <button
             type="button"
             onClick={() => handleSection('dashboard')}
@@ -269,6 +376,36 @@ export function Navigation({
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
+            {/* Notifikasi (lonceng) — panel dibuka di bawah header, rata kanan.
+                Badge TIDAK dibacakan sebagai angka telanjang: hitungannya
+                masuk ke aria-label tombol + live region di bawah. */}
+            <button
+              type="button"
+              onClick={(e) => toggleMenu('notif', e)}
+              aria-expanded={openKey === 'notif'}
+              aria-controls="notif-menu"
+              aria-label={notifUnread > 0 ? `Notifikasi, ${notifUnread} belum dibaca` : 'Notifikasi'}
+              data-dropdown-trigger=""
+              className={`relative grid h-11 w-11 place-items-center rounded-full border transition-colors ${
+                openKey === 'notif'
+                  ? 'border-brand/30 bg-brandtint text-brandfg'
+                  : 'border-line text-mutedfg hover:bg-muted hover:text-ink'
+              }`}
+            >
+              <Icon name="bell" size={19} />
+              {notifUnread > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-0.5 -top-0.5 grid h-4 min-w-[1rem] place-items-center rounded-full bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-1 text-[10px] font-bold leading-none text-white shadow-glow"
+                >
+                  {notifUnread > 9 ? '9+' : notifUnread}
+                </span>
+              )}
+            </button>
+            <span role="status" aria-atomic="true" className="sr-only">
+              {notifUnread > 0 ? `${notifUnread} notifikasi belum dibaca` : 'Semua notifikasi sudah dibaca'}
+            </span>
+
             {/* Kembali ke layar gerbang (ganti pengguna) */}
             <button
               type="button"
@@ -294,6 +431,21 @@ export function Navigation({
               Pasang
             </button>
           </div>
+
+          {/* Panel notifikasi: menempel di bawah header, rata kanan konten
+              (anchor-nya baris header, bukan tombol — supaya di layar 320px
+              panel tidak menjulur keluar tepi kiri). */}
+          {openKey === 'notif' && (
+            <div ref={notifMenuRef} className="absolute right-4 top-full z-50 mt-2 sm:right-6">
+              <NotificationMenu
+                items={notifications}
+                readIds={notifReadIds}
+                closing={closingKey === 'notif'}
+                onSelect={handleNotification}
+                onMarkAll={onMarkAllNotificationsRead}
+              />
+            </div>
+          )}
         </div>
       </header>
 
@@ -354,8 +506,9 @@ export function Navigation({
           })}
         </ul>
 
-        {/* Menu kategori aktif: menggantung di atas tab bar (hanya satu terbuka) */}
-        {openKey && (
+        {/* Menu kategori aktif: menggantung di atas tab bar (hanya satu terbuka).
+            Panel notifikasi tidak di sini — ia menempel di header. */}
+        {DROPDOWNS[openKey] && (
           <div className="absolute bottom-full left-1/2 mb-3 -translate-x-1/2 lg:hidden">
             <CategoryMenu
               items={DROPDOWNS[openKey].items}

@@ -11,6 +11,7 @@ import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList } from './comp
 import { FamilyCalendar } from './components/Calendar';
 import { FormSheet } from './components/FormSheet';
 import { Toast } from './components/Toast';
+import { buildNotifications } from './components/notifications';
 import {
   AGENDA_CATEGORIES,
   FINANCE_CATEGORIES,
@@ -379,6 +380,27 @@ const storeUser = (userId) => {
   }
 };
 
+// Status "sudah dibaca" notifikasi — kunci terpisah dari snapshot data karena
+// ini keadaan tampilan, bukan data keluarga. Isinya daftar `id` notifikasi.
+const NOTIF_STORAGE_KEY = 'bayt-mustaqbal-notif-read-v1';
+
+const readNotifRead = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(NOTIF_STORAGE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const storeNotifRead = (ids) => {
+  try {
+    localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(ids));
+  } catch {
+    /* diabaikan */
+  }
+};
+
 export default function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -402,6 +424,8 @@ export default function App() {
   const [noteQuery, setNoteQuery] = useState('');
   // Notifikasi ringkas + tombol "Urungkan" (undo hapus)
   const [toast, setToast] = useState(null);
+  // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
+  const [notifRead, setNotifRead] = useState(readNotifRead);
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
   // Seed = mockData; setiap perubahan disimpan ke localStorage (snapshot),
@@ -636,6 +660,34 @@ export default function App() {
     if (!q) return base;
     return base.filter((n) => `${n.title} ${n.body || ''}`.toLowerCase().includes(q));
   }, [data, noteFilter, noteQuery]);
+
+  // Notifikasi turunan data (tanpa backend) — lihat components/notifications.js.
+  // Dihitung ulang tiap data berubah, jadi isinya ikut berubah, tidak basi.
+  const notifications = useMemo(() => buildNotifications(data, formatCurrencyShort), [data]);
+
+  // Simpan status "sudah dibaca" sekaligus buang id notifikasi yang sudah tidak
+  // ada — supaya daftarnya tidak menumpuk selamanya di localStorage.
+  const saveNotifRead = (ids) => {
+    const alive = new Set(notifications.map((n) => n.id));
+    const next = ids.filter((id) => alive.has(id));
+    setNotifRead(next);
+    storeNotifRead(next);
+  };
+
+  const markAllNotifRead = () => saveNotifRead(notifications.map((n) => n.id));
+
+  // Ketuk notifikasi → tandai terbaca + lompat ke bagian terkait, dengan filter
+  // ikut disetel supaya yang dimaksud langsung terlihat.
+  const openNotification = (notif) => {
+    saveNotifRead(notifRead.includes(notif.id) ? notifRead : [...notifRead, notif.id]);
+    const t = notif.target || {};
+    if (t.mode) setAgendaMode(t.mode);
+    if (t.agendaFilter) setAgendaFilter(t.agendaFilter);
+    if (t.taskFilter) setTaskFilter(t.taskFilter);
+    if (t.financeFilter) setFinanceFilter(t.financeFilter);
+    if (t.noteFilter) setNoteFilter(t.noteFilter);
+    if (t.section) setActiveSection(t.section);
+  };
 
   const handleEnter = (userId) => {
     storeUser(userId);
@@ -1087,6 +1139,10 @@ export default function App() {
         onFamilySelect={handleFamilySelect}
         noteFilter={noteFilter}
         onNoteSelect={handleNoteSelect}
+        notifications={notifications}
+        notifReadIds={notifRead}
+        onNotificationOpen={openNotification}
+        onMarkAllNotificationsRead={markAllNotifRead}
       />
 
       <main

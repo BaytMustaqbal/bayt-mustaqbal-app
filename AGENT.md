@@ -41,8 +41,10 @@ bayt-mustaqbal-app/
 │   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, note, pin, utensils, edit, trash, search, undo, barChart, target, chevron dll.)
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
 │   │                       #   QuickAction, EmptyState, ExpenseCard, ItemActions, Badge, FamilyList, CTA_CLASS
-│   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass;
-│   │                       #   tab Agenda, Keuangan, Keluarga & Catatan = dropdown filter (animasi, badge jumlah, a11y menu)
+│   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + lonceng notifikasi + chip pengguna) + bottom tab bar 56px glass;
+│   │                       #   tab Agenda, Keuangan, Keluarga & Catatan = dropdown filter (animasi, badge jumlah, a11y menu);
+│   │                       #   lonceng = panel notifikasi turunan data (badge belum dibaca, "tandai semua dibaca")
+│   ├── notifications.js    # Notifikasi turunan data (tanpa backend): anggaran, tugas, agenda terdekat, pengeluaran besar → id stabil + target navigasi
 │   ├── categories.js       # Kategori agenda, keuangan, keluarga, catatan + filter tugas & penghitung per item + meta ikon
 │   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) + tombol "Muat ulang data contoh" → nanti jadi login
 │   ├── FormSheet.jsx       # Bottom sheet "Tambah/Ubah" generik (field teks/angka/tanggal/jam/select/textarea/checkbox, validasi wajib, mode ubah via initialValues, role=dialog, Escape/klik luar)
@@ -86,12 +88,15 @@ bayt-mustaqbal-app/
 | Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → filter; grid `ExpenseCard` (ikon kategori + nominal IDR + tombol Ubah/Hapus) + chip sinkron + total terfilter di header | `mockData` di `App.jsx` |
 | Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
 | Catatan | Dropdown filter catatan (nav HP+desktop): Semua/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info (badge jumlah) + chip sinkron; **kotak cari** (judul + isi) + grid `NoteList` (kartu + badge kategori + pin "penting" + tombol Ubah/Hapus) | `mockData` di `App.jsx` |
+| Notifikasi (lonceng) | Tombol di pojok kanan atas header (sebelum chip pengguna) → panel turun rata kanan berisi **notifikasi turunan data** (anggaran hampir/terlewati, tugas dekat/lewat tenggat, agenda terdekat, pengeluaran terbesar) + badge jumlah belum dibaca + "Tandai semua dibaca"; ketuk item → pindah section + filter disetel | `components/notifications.js` (dihitung dari `mockData`) |
 
 > **Tambah / Ubah / Hapus berfungsi di 4 tab data** (Agenda — Jadwal & Tugas, Keuangan, Catatan; Keluarga baru **tambah**): `SectionHeader` "Tambah" membuka `FormSheet` mode tambah; tombol **Ubah** di kartu membuka `FormSheet` mode ubah (`initialValues` terisi, judul "Ubah …", tombol "Perbarui"); tombol **Hapus** langsung membuang item + `Toast` dengan **"Urungkan"** (6 detik, pulihkan ke posisi semula) — jaring aman pengganti dialog konfirmasi. Item baru/berubah langsung ikut grid, chip, kalender, dan KPI Dashboard.
 >
 > **Pencarian catatan**: kotak `type="search"` di tab Catatan menyaring judul + isi (real-time, case-insensitive) di atas filter kategori; tanpa hasil → `EmptyState` "Catatan tidak ditemukan".
 >
 > **Persistensi (`localStorage` key `bayt-mustaqbal-data-v1`):** seed awal = `mockData`; setiap perubahan (tambah/ubah/hapus, toggle tugas) disimpan sebagai snapshot, jadi tidak hilang saat reload. Saat dimuat, snapshot **digabung dengan `mockData`** (kunci baru seperti `notes` otomatis terisi walau snapshot lama); snapshot rusak/parsial ditolak (app kembali ke data contoh, tidak blank). Tombol **"Muat ulang data contoh"** di layar gerbang menghapus snapshot dan kembali ke `mockData`.
+>
+> **Status notifikasi sudah dibaca** disimpan di kunci **terpisah** (`bayt-mustaqbal-notif-read-v1`) karena ini keadaan tampilan, bukan data keluarga — jadi "Muat ulang data contoh" tidak mengembalikan badge belum-dibaca. Id notifikasi diikat ke keadaan (bulan/tanggal/id item) dan id yang sudah tidak ada dibuang saat menyimpan.
 
 > **Tidak ada panggilan jaringan.** Data sepenuhnya dummy sesuai permintaan Kakang — fokus ke frontend dulu.
 
@@ -105,7 +110,7 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 |-------|--------|
 | Navigasi < `lg` | **Bottom tab bar** 56px (dikunci `h-[56px]`), 5 tab, area sentuh 60×56px di HP 320px |
 | Navigasi ≥ `lg` | Nav atas (pill) + tombol Pasang; tab bar bawah disembunyikan |
-| Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]` |
+| Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]`; klaster kanan (semua ukuran): **lonceng notifikasi → chip pengguna → tombol Pasang** |
 | Safe area bawah | Tab bar `pb-[env(safe-area-inset-bottom)]`; `<main>` `pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]` |
 | Banner install | Diposisikan tepat di atas tab bar (`bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]`, `lg:bottom-0`) |
 | Kartu KPI | Nilai uang diringkas di HP (`Rp 2,8 jt`) via `formatCurrencyShort`; nilai penuh di `title` + section Keuangan |
@@ -114,6 +119,8 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 | Teks | `-webkit-text-size-adjust: 100%` |
 
 **Hasil verifikasi** (iframe 320/360/390/414/768 px; 5 section + gerbang): **0 overflow horizontal**, **0 elemen interaktif < 44px**; konsol 0 error/0 warning; toggle tugas berfungsi (`aria-pressed` false→true + coret); tambah/ubah/hapus + undo toast + pencarian catatan terverifikasi di browser (data persist lintas reload). (Pernah meluber 44px di 320px pada legenda donut — sudah diperbaiki jadi kolom di HP.)
+
+**Hasil verifikasi notifikasi** (iframe 320px & 1280px): lonceng 44×44, panel 288px muat di 320px (tepi kiri tetap 16px) & rata kanan konten di desktop; badge "4" + `aria-label` "Notifikasi, 4 belum dibaca" + `role="status"` sr-only; "Tandai semua dibaca" menghapus badge + menyimpan 4 id ke `localStorage`; setelah reload status baca tetap; ketuk notifikasi tugas → Agenda › Tugas + filter "Belum Selesai" (5 dari 8); Escape menutup + fokus balik ke lonceng; klik luar & toggle menutup; membuka menu kategori menutup panel; indikator tab tidak bergeser saat panel notifikasi terbuka.
 
 ---
 

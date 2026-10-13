@@ -41,7 +41,7 @@ bayt-mustaqbal-app/
 ├── App.css                     # Token & utilitas dasar (entry Tailwind)
 ├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/ItemActions/...),
 │                               # TaskList, NoteList, Toast, FormSheet, FamilyCard, FamilyMemberCard,
-│                               # ScheduleItem, Calendar, Icon
+│                               # ScheduleItem, Calendar, Icon, charts.jsx, notifications.js
 ├── assets/logo.png             # Logo asli (sumber brand & ikon)
 ├── public/                     # Disalin apa adanya ke dist/ — WAJIB ditaruh di sini
 │   ├── manifest.json           # 8 ikon "any" + 2 "maskable"
@@ -70,6 +70,7 @@ bayt-mustaqbal-app/
 - **Tambah / Ubah / Hapus item** di Agenda (Jadwal & Tugas), Keuangan, dan Catatan: form bottom sheet (mode ubah berisi nilai lama) + tombol Ubah/Hapus di tiap kartu. Hapus = langsung + **toast "Urungkan"** (6 detik, tanpa dialog)
 - **Pencarian catatan** (judul + isi) di tab Catatan, di atas filter kategori
 - **Dashboard baru:** kartu hero glass (pengeluaran + realisasi anggaran), aksi cepat, KPI, dan 3 chart tulis sendiri (tren 6 bulan, 7 hari, komposisi) — **batang & garis bisa diketuk** untuk melihat nilai tiap hari/bulan (nilai total donat sudah tampil di tengah)
+- **Notifikasi dalam app (lonceng pojok kanan atas):** isinya **dihitung dari data** — anggaran hampir/terlewati, tugas mendekati atau melewati jatuh tempo, agenda terdekat, pengeluaran terbesar. Badge angka = yang belum dibaca, ada "Tandai semua dibaca" (status tersimpan di `localStorage`); ketuk item → lompat ke bagian terkait + filternya ikut disetel. Turunan data (bukan pesan statis) jadi tidak pernah basi dan tidak butuh backend
 - **Terverifikasi** di 320 / 360 / 390 / 414 / 768 px: 0 overflow horizontal, 0 elemen interaktif di bawah 44 px
 
 ## Belum ada
@@ -78,7 +79,7 @@ bayt-mustaqbal-app/
 |---|---|
 | Backend & database | Rencana: Cloudflare Worker + D1 → lihat `PROJECT_SUMMARY.md` |
 | Login & role | Kakang = admin, Istri = user (keputusan D1) |
-| Notifikasi WA | Rencana via Fonnte (keputusan D15) |
+| Notifikasi WA | Kirim ke WhatsApp — rencana via Fonnte (keputusan D15). Notifikasi **di dalam app** (lonceng) sudah jalan, isinya turunan data |
 | Data nyata | Sekarang dummy; `fetch` belum ditambahkan sama sekali |
 
 Modul berikutnya dibangun **setelah** modul sebelumnya dipakai ± 2 minggu (prinsip di `docs/03-ROADMAP.md`) — supaya yang dibangun sesuai kebutuhan nyata, bukan asumsi.

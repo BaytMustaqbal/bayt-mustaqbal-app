@@ -177,6 +177,11 @@ summary,
   animation-delay: 0ms;
 }
 
+/* Panel yang menempel di kanan (notifikasi): tumbuh dari sudut kanan atas. */
+.drop-menu--right {
+  transform-origin: top right;
+}
+
 @keyframes dropMenuIn {
   from {
     opacity: 0;

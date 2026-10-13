@@ -137,7 +137,8 @@ Status    : Badge bertinta translucent (cyan/emerald/amber/rose/gray) + teks
 ```
 
 #### Navigation System
-- **Bar atas (sticky)**: glass `bg-canvas/80 backdrop-blur-xl`; **naik elevasi saat digulir** (`window.scrollY > 6` → `border-line bg-canvas/90 shadow-e2`, transisi 200ms; saat di puncak border transparan); logo tile tint; chip pengguna (kembali ke gerbang); nav desktop pill di `lg`; tombol Pasang (CTA, `sm`+)
+- **Bar atas (sticky)**: glass `bg-canvas/80 backdrop-blur-xl`; **naik elevasi saat digulir** (`window.scrollY > 6` → `border-line bg-canvas/90 shadow-e2`, transisi 200ms; saat di puncak border transparan); logo tile tint; **lonceng notifikasi**; chip pengguna (kembali ke gerbang); nav desktop pill di `lg`; tombol Pasang (CTA, `sm`+). Urutan klaster kanan: **lonceng → chip pengguna → Pasang**
+- **Notifikasi (lonceng)**: tombol bulat 44px di klaster kanan header; badge angka = jumlah belum dibaca (maks tampil "9+", gradasi cobalt + `shadow-glow`). Panel menempel di bawah header **rata kanan konten** (`right-4 sm:right-6`; `w-80`, dibatasi `max-w-[calc(100vw_-_2rem)]` di layar sempit — di 320px jadi 288px, tepi kiri tetap 16px dari layar). Isinya **turunan data** (`components/notifications.js`), bukan pesan statis
 - **Bottom Tab Bar (< `lg`)**: glass + `shadow-nav` (bayangan halus ke atas, memisahkan bilah dari konten yang lewat di bawahnya), tinggi **tetap 56px** (`h-[56px]`), 5 tab, label 11px; tab aktif = teks `brandfg` + pill tint; **indikator cyan = satu elemen yang menggeser** di tepi atas (lebar = 1/5 slot, `translateX(activeIndex × 100%)`, transisi 320ms `ease-smooth`) — posisi dihitung dari tab aktif/section (dropdown yang terbuka ikut dihitung aktif); isi `max-w-md`
 - **Aktif**: `aria-current="page"` + cyan, bukan warna saja
 - **Banner install**: `bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]` = tepat di atas tab bar
@@ -203,6 +204,11 @@ FormSheet        : bottom sheet "Tambah/Ubah" generik (fixed inset-x-0 bottom-0,
 ### Screens Khusus
 - **Layar Gerbang (WelcomeGate)**: muncul **setiap app dibuka** (keputusan Kakang) — pilih pengguna (Kakang/Istri, tersimpan `localStorage`) + tombol **"Muat ulang data contoh"** (hapus snapshot → kembali `mockData`) → nanti menjadi layar login saat backend siap
 - **Bottom sheet "Tambah/Ubah" (FormSheet)**: dibuka dari tombol `SectionHeader` "Tambah" (mode tambah) atau `ItemActions` "Ubah" di kartu item (mode ubah, `initialValues` terisi, judul "Ubah …", tombol "Perbarui") di Agenda (Jadwal & Tugas)/Keuangan/Keluarga/Catatan; `role="dialog"` + `aria-modal`, label terhubung `htmlFor/id`, fokus otomatis ke field pertama, tutup via tombol ×/Batal/klik backdrop/Escape, scroll body dikunci selama terbuka
+- **Panel Notifikasi (lonceng header)**: dibuka dari tombol lonceng; isinya **dihitung dari data** (`components/notifications.js`) — anggaran (≥ 80% "hampir habis", ≥ 100% "terlewati"), tugas (mendekati tenggat ≤ 3 hari, atau melewati tenggat; kalau tidak ada → ringkasan "belum selesai"), agenda terdekat (≤ 2 pekan; judul "hari ini"/"besok"/"terdekat"), pengeluaran terbesar (bila ≥ 20% anggaran). Urut dari yang paling perlu ditindak (anggaran → tugas → agenda → pengeluaran); maksimum 4–5 item, **bukan** tumpukan pesan
+  - **Ketuk item** = lompat ke section terkait + filter ikut disetel (mis. notifikasi tugas → Agenda › Tugas, filter "Belum Selesai"); notifikasi ikut ditandai terbaca
+  - **Tandai semua dibaca** = tombol 44px di kaki panel (muncul hanya kalau masih ada yang belum dibaca); status baca tersimpan di `localStorage` dengan kunci **terpisah** dari snapshot data (`bayt-mustaqbal-notif-read-v1`) karena ini keadaan tampilan, bukan data keluarga
+  - **Id notifikasi diikat ke keadaan** (bulan / tanggal / id item) → kalau keadaan berubah (bulan baru, tenggat bergeser, agenda terdekat berganti), lonceng menyala lagi secara wajar; id yang notifikasinya sudah tidak ada dibuang saat menyimpan agar daftar tidak menumpuk
+  - Hanya satu panel terbuka pada satu waktu (`openKey` yang sama dengan dropdown kategori) — membuka menu kategori otomatis menutup panel notifikasi, dan sebaliknya
 
 ## 7. Touch Targets & Interaction Patterns
 
@@ -241,7 +247,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 
 ### Aset statis & build (PENTING)
 - Vite **hanya** menyalin folder `public/` ke `dist/`. Jadi `manifest.json`, `service-worker.js`, dan `icons/` wajib berada di `public/` — kalau ditaruh di root, semuanya 404 di produksi (install PWA & mode offline mati, ikon tidak muncul)
-- `service-worker.js`: naikkan nomor versi cache (`family-*-v5`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
+- `service-worker.js`: naikkan nomor versi cache (`family-*-v6`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
 
 ## 9. Offline Capabilities
 
@@ -274,11 +280,13 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 - **Target sentuh**: 44px minimum (terverifikasi otomatis)
 - **Fokus**: `:focus-visible` ring cyan 2px; gerbang meng-fokus tombol masuk saat dibuka
 - **Screen reader**: HTML semantik, `aria-current="page"`, `aria-pressed`, `role="radio"` di pemilih pengguna
+- **Badge hitungan tidak dibacakan sebagai angka telanjang**: jumlah belum dibaca masuk `aria-label` tombol lonceng ("Notifikasi, 4 belum dibaca") + satu wilayah `role="status"` sr-only ("4 notifikasi belum dibaca" / "Semua notifikasi sudah dibaca") — bukan satu live region per badge
+- **Panel notifikasi**: daftar tombol biasa (tanpa `role="menu"`) karena isinya tautan aksi, bukan pilihan radio — dijangkau Tab dari tombol lonceng; di `lg` fokus otomatis ke item pertama; Escape menutup panel **dan** memulihkan fokus ke tombol lonceng; klik/ketuk di luar juga menutup
 
 ## 12. Animation & Motion
 
 - **Token gerak** (tailwind.config.js): durasi `fast 120ms` · `base 200ms` · `slow 320ms`; easing `ease-smooth` = `cubic-bezier(0.22,1,0.36,1)` (masuk/decelerate) & `ease-crisp` = `cubic-bezier(0.4,0,0.2,1)` (umum). Pakai token ini, jangan angka/`cubic-bezier` lepas di komponen
-- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `dropMenuIn/Out` + `dropItemIn/Out` (dropdown), `sheetBackdropIn` + `sheetPanelIn` (bottom sheet Tambah/Ubah), `toastIn` (toast naik + fade), **`cardIn`** = item daftar masuk berundak (`.stagger > *`, opacity + 6px, delay 26ms untuk 6 item pertama)
+- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `dropMenuIn/Out` + `dropItemIn/Out` (dropdown kategori **& panel notifikasi** — panel notifikasi memakai `.drop-menu--right` agar tumbuh dari sudut kanan atas), `sheetBackdropIn` + `sheetPanelIn` (bottom sheet Tambah/Ubah), `toastIn` (toast naik + fade), **`cardIn`** = item daftar masuk berundak (`.stagger > *`, opacity + 6px, delay 26ms untuk 6 item pertama)
 - **Gerak berbasis transform (bukan layout)**: indikator tab menggeser (`translateX`), kartu hover terangkat (`-translate-y-0.5`), header bertransisi warna/bayangan saat digulir
 - **Reduced motion**: `prefers-reduced-motion` mematikan semua animasi/transisi (App.css)
 - **Glow**: statis (`shadow-glow`) pada elemen fokus/aksen (tab aktif, bilah indikator); tidak ada animasi denyut — `soft-pulse` dihapus bersama ilustrasi gerbang
@@ -291,7 +299,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 
 ## 14. Performance Optimization
 
-- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS ~230 kB (gzip ~69 kB), CSS ~36 kB (gzip ~7 kB)
+- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS ~238 kB (gzip ~72 kB), CSS ~37 kB (gzip ~7,5 kB)
 - **Animasi murah**: elevasi = `box-shadow` statis (bukan `backdrop-filter` berulang); masuknya item daftar hanya opacity/transform (GPU) → aman untuk HP kelas bawah
 - **Reduce Repaints**: animasi via transform/opacity; `transition-[width]` pada progressbar
 - **Blur hemat**: backdrop-filter hanya di header/tab bar/hero/gerbang
