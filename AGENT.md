@@ -133,6 +133,11 @@ Desain (High-Tech Blue): latar cyan `#22D3EE`, glyph rumah navy `#0A192F`, pintu
 npm install
 npm run dev          # Vite → http://localhost:3000 (3001 kalau 3000 dipakai)
 
+# Live server cara cepat (Windows) - klik dua kali dev.bat
+#   dev.bat            # server lokal + buka browser (auto npm install bila perlu)
+#   dev.bat lan        # buka juga ke jaringan (akses dari HP / PWA)
+#   dev.bat noopen     # jalankan tanpa membuka browser
+
 # Build
 npm run build        # Output: ./dist (untuk Cloudflare Pages)
 
