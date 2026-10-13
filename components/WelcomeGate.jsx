@@ -65,7 +65,7 @@ function GateIllustration() {
   );
 }
 
-export function WelcomeGate({ users, defaultUserId, onEnter }) {
+export function WelcomeGate({ users, defaultUserId, onEnter, onReset }) {
   const [selectedId, setSelectedId] = useState(defaultUserId || users[0]?.id);
   const ctaRef = useRef(null);
 
@@ -137,8 +137,18 @@ export function WelcomeGate({ users, defaultUserId, onEnter }) {
             Masuk sebagai {selected.name}
           </button>
           <p className="text-center text-[11px] leading-relaxed text-mutedfg">
-            Purwarupa — data masih contoh. Layar ini nanti menjadi layar masuk.
+            Purwarupa — data tersimpan di perangkat ini. Layar ini nanti menjadi layar masuk.
           </p>
+          {onReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              className="mx-auto flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-mutedfg transition-colors hover:text-brandfg"
+            >
+              <Icon name="refresh" size={13} />
+              Muat ulang data contoh
+            </button>
+          )}
         </div>
       </div>
     </div>

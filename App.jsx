@@ -8,6 +8,7 @@ import { Dashboard } from './components/Dashboard';
 import { WelcomeGate } from './components/WelcomeGate';
 import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList } from './components/ui';
 import { FamilyCalendar } from './components/Calendar';
+import { FormSheet } from './components/FormSheet';
 import {
   AGENDA_CATEGORIES,
   FINANCE_CATEGORIES,
@@ -119,6 +120,109 @@ const mockData = {
   ],
 };
 
+// ---- Konfigurasi form "Tambah" per section (dipakai FormSheet) ----
+const MEMBER_PEOPLE = ['Rezki YT', 'Hilda AK', 'RAGASUCI', 'RAJABRANA'];
+const MEMBER_ALL = [...MEMBER_PEOPLE, 'Keluarga'];
+const memberOptions = (list) => list.map((m) => ({ value: m, label: m }));
+
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const catOptions = (cats) =>
+  cats
+    .filter((c) => c.id !== 'semua')
+    .map((c) => ({ value: c.id, label: c.label }));
+
+const SHEET_CONFIG = {
+  agenda: {
+    title: 'Tambah Agenda',
+    icon: 'calendar',
+    fields: [
+      { key: 'title', label: 'Judul agenda', type: 'text', required: true, placeholder: 'contoh: Piknik Keluarga' },
+      { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
+      { key: 'time', label: 'Jam', type: 'time', defaultValue: '08:00' },
+      { key: 'category', label: 'Kategori', type: 'select', required: true, options: catOptions(AGENDA_CATEGORIES) },
+      { key: 'member', label: 'Anggota', type: 'select', required: true, options: memberOptions(MEMBER_ALL) },
+    ],
+  },
+  expenses: {
+    title: 'Tambah Pengeluaran',
+    icon: 'wallet',
+    fields: [
+      { key: 'description', label: 'Deskripsi', type: 'text', required: true, placeholder: 'contoh: Bahan masakan mingguan' },
+      { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 150000' },
+      { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
+      { key: 'category', label: 'Kategori', type: 'select', required: true, options: catOptions(FINANCE_CATEGORIES) },
+    ],
+  },
+  tasks: {
+    title: 'Tambah Tugas',
+    icon: 'tasks',
+    fields: [
+      { key: 'title', label: 'Judul tugas', type: 'text', required: true, placeholder: 'contoh: Rapikan lemari' },
+      { key: 'dueDate', label: 'Jatuh tempo', type: 'date', required: true, defaultValue: todayKey() },
+      {
+        key: 'priority',
+        label: 'Prioritas',
+        type: 'select',
+        required: true,
+        defaultValue: 'medium',
+        options: [
+          { value: 'high', label: 'Tinggi' },
+          { value: 'medium', label: 'Sedang' },
+          { value: 'low', label: 'Rendah' },
+        ],
+      },
+      { key: 'assignedTo', label: 'Penanggung jawab', type: 'select', required: true, options: memberOptions(MEMBER_PEOPLE) },
+    ],
+  },
+  family: {
+    title: 'Tambah ke Keluarga',
+    icon: 'users',
+    fields: [
+      {
+        key: 'bagian',
+        label: 'Simpan ke bagian',
+        type: 'select',
+        required: true,
+        defaultValue: 'anggota',
+        options: [
+          { value: 'anggota', label: 'Anggota keluarga' },
+          { value: 'kesehatan', label: 'Kesehatan' },
+          { value: 'pendidikan', label: 'Pendidikan Anak' },
+          { value: 'kontak', label: 'Kontak & Darurat' },
+        ],
+      },
+      { key: 'title', label: 'Nama / Judul', type: 'text', required: true, placeholder: 'nama anggota, jadwal, atau kontak' },
+      { key: 'meta', label: 'Info singkat (opsional)', type: 'text', placeholder: 'contoh: Puskesmas · 0812-3456-7890' },
+    ],
+  },
+};
+
+// Kunci localStorage untuk snapshot data (seed awal = mockData).
+const STORAGE_KEY = 'bayt-mustaqbal-data-v1';
+const loadInitialData = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const valid =
+        parsed &&
+        Array.isArray(parsed.users) &&
+        parsed.users.length > 0 &&
+        Array.isArray(parsed.schedule) &&
+        Array.isArray(parsed.tasks) &&
+        Array.isArray(parsed.expenses) &&
+        Array.isArray(parsed.family);
+      if (valid) return parsed;
+    }
+  } catch (e) {
+    /* storage rusak/unavailable → pakai data contoh */
+  }
+  return mockData;
+};
+
 const formatCurrency = (value) =>
   new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -174,9 +278,93 @@ export default function App() {
   const [taskFilter, setTaskFilter] = useState('semua');
 
   // Data dummy murni — belum terhubung ke backend/API apa pun.
-  // Ganti dengan state + fetch saat Worker + D1 sudah siap.
-  const data = mockData;
+  // Seed = mockData; setiap perubahan disimpan ke localStorage (snapshot),
+  // jadi interaksi (tambah/toggle) tidak hilang saat reload.
+  const [data, setData] = useState(loadInitialData);
   const currentUser = data.users.find((u) => u.id === activeUserId) || data.users[0];
+
+  const saveData = (next) => {
+    setData(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch (e) {
+      /* kuota penuh / mode privat → abaikan, tetap jalan di memori */
+    }
+  };
+
+  // Toggle selesai tugas → disimpan (tidak hilang saat reload)
+  const toggleTask = (taskId) => {
+    saveData({
+      ...data,
+      tasks: data.tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)),
+    });
+  };
+
+  // Kembalikan data ke contoh awal (tombol di layar gerbang)
+  const resetData = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      /* abaikan */
+    }
+    setData(mockData);
+  };
+
+  // Tambah item sesuai section (dipanggil FormSheet)
+  const addItem = (section, values) => {
+    const id = Date.now();
+    let next = data;
+    if (section === 'agenda') {
+      next = {
+        ...data,
+        schedule: [
+          ...data.schedule,
+          { id, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member },
+        ],
+      };
+    } else if (section === 'expenses') {
+      next = {
+        ...data,
+        expenses: [
+          ...data.expenses,
+          { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category },
+        ],
+      };
+    } else if (section === 'tasks') {
+      next = {
+        ...data,
+        tasks: [
+          ...data.tasks,
+          { id, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo, completed: false },
+        ],
+      };
+    } else if (section === 'family') {
+      if (values.bagian === 'anggota') {
+        const initials =
+          values.title
+            .split(/\s+/)
+            .map((w) => w[0])
+            .slice(0, 2)
+            .join('')
+            .toUpperCase() || '?';
+        next = { ...data, family: [...data.family, { id, name: values.title, role: 'Anggota', initials, status: 'active' }] };
+      } else {
+        const entry = { id, title: values.title, meta: values.meta || '' };
+        if (values.bagian === 'kesehatan') {
+          next = { ...data, familyHealth: [...data.familyHealth, { ...entry, badge: 'Catatan', tone: 'gray' }] };
+        } else if (values.bagian === 'pendidikan') {
+          next = { ...data, familyEducation: [...data.familyEducation, { ...entry, badge: 'Catatan', tone: 'gray' }] };
+        } else {
+          next = { ...data, familyContacts: [...data.familyContacts, entry] };
+        }
+      }
+    }
+    saveData(next);
+  };
+
+  // Bottom sheet "Tambah" — null = tertutup, selain itu = kunci section
+  const [sheetOpen, setSheetOpen] = useState(null);
+  const closeSheet = () => setSheetOpen(null);
 
   // Pantau status online/offline
   useEffect(() => {
@@ -264,6 +452,7 @@ export default function App() {
               title={activeMeta.label}
               subtitle={`${filtered.length} dari ${data.schedule.length} jadwal`}
               actionLabel="Tambah"
+              onAction={() => setSheetOpen('agenda')}
             />
 
             {/* Pilih tampilan: daftar grid atau kalender gabungan member */}
@@ -353,6 +542,7 @@ export default function App() {
               subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(data.budget.total)}`}
               actionLabel="Tambah"
               actionTone="accent"
+              onAction={() => setSheetOpen('expenses')}
             />
 
             {/* Filter kategori — sinkron dengan dropdown di navigasi */}
@@ -410,6 +600,7 @@ export default function App() {
               title={activeMeta.label}
               subtitle={`${bagianCount} catatan keluarga`}
               actionLabel="Tambah"
+              onAction={() => setSheetOpen('family')}
             />
 
             {/* Filter bagian — sinkron dengan dropdown di navigasi */}
@@ -472,6 +663,7 @@ export default function App() {
               title={activeMeta.label}
               subtitle={`${filteredTasks.length} dari ${data.tasks.length} tugas`}
               actionLabel="Tambah"
+              onAction={() => setSheetOpen('tasks')}
             />
             {/* Filter tugas — sinkron dengan dropdown di navigasi */}
             <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter tugas">
@@ -503,7 +695,7 @@ export default function App() {
                 message="Ubah filter (status/prioritas) atau tambahkan tugas baru."
               />
             ) : (
-              <TaskList tasks={filteredTasks} />
+              <TaskList tasks={filteredTasks} onToggle={toggleTask} />
             )}
           </section>
         );
@@ -523,7 +715,7 @@ export default function App() {
   };
 
   if (!entered) {
-    return <WelcomeGate users={data.users} defaultUserId={activeUserId} onEnter={handleEnter} />;
+    return <WelcomeGate users={data.users} defaultUserId={activeUserId} onEnter={handleEnter} onReset={resetData} />;
   }
 
   return (
@@ -562,6 +754,16 @@ export default function App() {
         )}
         {renderSection()}
       </main>
+
+      {/* Bottom sheet "Tambah" — form per section */}
+      <FormSheet
+        open={!!sheetOpen}
+        title={sheetOpen ? SHEET_CONFIG[sheetOpen].title : ''}
+        icon={sheetOpen ? SHEET_CONFIG[sheetOpen].icon : 'calendar'}
+        fields={sheetOpen ? SHEET_CONFIG[sheetOpen].fields : []}
+        onClose={closeSheet}
+        onSubmit={(values) => addItem(sheetOpen, values)}
+      />
     </div>
   );
 }

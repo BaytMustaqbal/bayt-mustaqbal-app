@@ -1,34 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Icon } from './Icon';
 import { Card, Badge } from './ui';
 
 const PRIORITY_TONE = { high: 'red', medium: 'amber', low: 'green' };
 const PRIORITY_LABEL = { high: 'Tinggi', medium: 'Sedang', low: 'Rendah' };
 
-export function TaskList({ tasks }) {
-  const [taskList, setTaskList] = useState(tasks || []);
-
-  // Sinkronkan saat data dari induk berubah
-  useEffect(() => {
-    setTaskList(tasks || []);
-  }, [tasks]);
-
-  const toggleTask = (taskId) => {
-    setTaskList((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task))
-    );
-  };
-
+// Controlled: perubahan toggle diteruskan ke induk (App) agar tersimpan ke
+// localStorage — tidak hilang saat reload.
+export function TaskList({ tasks = [], onToggle }) {
   return (
     <ul className="space-y-3">
-      {taskList.map((task) => (
+      {tasks.map((task) => (
         <li key={task.id}>
           <Card className={`flex items-center justify-between gap-3 p-3.5 transition-colors hover:border-brand sm:gap-4 sm:p-4 ${task.completed ? 'opacity-70' : ''}`}>
             <div className="flex min-w-0 items-center gap-3.5">
               {/* Kotak 28px, tapi area sentuh 44px (standar jari) */}
               <button
                 type="button"
-                onClick={() => toggleTask(task.id)}
+                onClick={() => onToggle?.(task.id)}
                 aria-pressed={task.completed}
                 aria-label={`Tandai "${task.title}" ${task.completed ? 'belum selesai' : 'selesai'}`}
                 className="-m-2 grid h-11 w-11 shrink-0 place-items-center rounded-xl"

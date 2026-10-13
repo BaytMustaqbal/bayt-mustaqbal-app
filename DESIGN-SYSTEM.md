@@ -149,7 +149,11 @@ ExpenseCard      : tile ikon kategori + nominal `brandfg` mono; deskripsi & tang
 FamilyList       : baris kartu sub-bagian (judul + meta + badge opsional); header mini berikon + jumlah;
                    kosong = placeholder garis putus-putus "Belum ada catatan"
 TaskList         : checkbox visual 28px dengan area sentuh 44px;
-                   selesai = border-cta bg-cta text-white (ikon check)
+                   selesai = border-cta bg-cta text-white (ikon check);
+                   controlled — toggle diteruskan ke App lalu disimpan (localStorage)
+FormSheet        : bottom sheet "Tambah" generik (fixed inset-x-0 bottom-0, max-w-lg center,
+                   rounded-t-3xl, glass); field 48px (teks/angka/tanggal/jam/select),
+                   bintang wajib, error "Wajib diisi" + aria-invalid; footer Batal + Simpan (CTA)
 ```
 
 ## 6. Screen Hierarchy & Information Architecture
@@ -162,7 +166,8 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 5. **Tugas**: dropdown filter status & prioritas di tab Tugas (Semua Tugas/Belum Selesai/Sudah Selesai/Prioritas Tinggi/Sedang/Rendah, badge jumlah) + chip sinkron; `TaskList` (toggle selesai + badge prioritas)
 
 ### Screens Khusus
-- **Layar Gerbang (WelcomeGate)**: muncul **setiap app dibuka** (keputusan Kakang) — pilih pengguna (Kakang/Istri, tersimpan `localStorage`) → nanti menjadi layar login saat backend siap
+- **Layar Gerbang (WelcomeGate)**: muncul **setiap app dibuka** (keputusan Kakang) — pilih pengguna (Kakang/Istri, tersimpan `localStorage`) + tombol **"Muat ulang data contoh"** (hapus snapshot → kembali `mockData`) → nanti menjadi layar login saat backend siap
+- **Bottom sheet "Tambah" (FormSheet)**: dibuka dari tombol `SectionHeader` "Tambah" di Agenda/Keuangan/Keluarga/Tugas; `role="dialog"` + `aria-modal`, label terhubung `htmlFor/id`, fokus otomatis ke field pertama, tutup via tombol ×/Batal/klik backdrop/Escape, scroll body dikunci selama terbuka
 
 ## 7. Touch Targets & Interaction Patterns
 
@@ -172,8 +177,9 @@ TaskList         : checkbox visual 28px dengan area sentuh 44px;
 - **Dropdown kategori (Agenda, Keuangan, Keluarga & Tugas)** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; hanya satu dropdown terbuka pada satu waktu; `prefers-reduced-motion` → muncul langsung tanpa animasi
 - **Chip filter** (di section Agenda, Keuangan, Keluarga & Tugas): `aria-pressed`, `flex-wrap` (tidak boleh terpotong satu baris), badge jumlah `font-mono`, aktif `bg-brandtint text-brandfg`; filter tugas = status (semua/belum/selesai) + prioritas (high/medium/low — `id` = nilai `priority` di data)
 - **Kalender keluarga** (mode Kalender di tab Agenda): sel hari = button `aria-pressed` + `aria-label` deskriptif (tanggal + judul item + anggota + "ada tugas"); grid `role="grid"` + baris `role="row"` + header kolom `role="columnheader"`; tombol skala view (Minggu/Bulan/Tahun) `aria-pressed`; nav prev/next `aria-label` "Periode sebelumnya/berikutnya"; warna member hanya pelengkap — nama anggota selalu tampil (dot + teks, bukan warna saja); grid full-bleed `-mx-4 md:-mx-0` di layar kecil supaya sel ≥ 44px (320px → 7×44 + 6 garis = 314 ≤ 320)
-- **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka → **0 overflow, 0 elemen < 44px** (termasuk sel kalender di 320px)
+- **Verifikasi**: diuji 320/360/390/414/768 px × 5 section + gerbang + dropdown terbuka + bottom sheet Tambah (390/768/1280 px) → **0 overflow, 0 elemen < 44px** (termasuk sel kalender di 320px)
 - **Feedback**: hover border/glow, `active:scale` pada CTA; `prefers-reduced-motion` mematikan animasi
+- **Bottom sheet Tambah** (FormSheet): backdrop fade 250ms + panel naik 300ms `cubic-bezier(0.22,1,0.36,1)`; field 48px, tombol Batal/Simpan 48px (≥44px); `prefers-reduced-motion` → tampil langsung
 
 ## 8. PWA-Specific Implementation
 
@@ -231,7 +237,7 @@ Ikon (dibuat via `npm run icons`):
 ## 12. Animation & Motion
 
 - **Durasi**: 0.2–0.4s; easing `cubic-bezier(0.22,1,0.36,1)` untuk gerbang
-- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `softPulse` (denyut node ilustrasi)
+- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `softPulse` (denyut node ilustrasi), `dropMenuIn/Out` + `dropItemIn/Out` (dropdown), `sheetBackdropIn` + `sheetPanelIn` (bottom sheet Tambah)
 - **Reduced motion**: `prefers-reduced-motion` mematikan semua animasi/transisi (App.css)
 - **Glow**: boleh berdenyut pelan (`soft-pulse` 3.2s) hanya pada elemen dekoratif, jangan pada teks
 
@@ -243,7 +249,7 @@ Ikon (dibuat via `npm run icons`):
 
 ## 14. Performance Optimization
 
-- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS tetap ~182 kB, CSS ~25 kB
+- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS ~217 kB (gzip ~66 kB), CSS ~32 kB (gzip ~7 kB)
 - **Reduce Repaints**: animasi via transform/opacity; `transition-[width]` pada progressbar
 - **Blur hemat**: backdrop-filter hanya di header/tab bar/hero/gerbang
 - **Chart**: `vectorEffect="non-scaling-stroke"` + label HTML → tidak ada teks yang melar saat responsive

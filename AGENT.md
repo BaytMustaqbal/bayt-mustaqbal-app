@@ -30,7 +30,7 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 bayt-mustaqbal-app/
 ├── index.html              # Entry PWA: Plus Jakarta Sans, manifest, install prompt, network monitor
 ├── main.jsx                # React entry: createRoot → render <App /> ke #root + registrasi SW (production)
-├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + dummy data + banner offline
+├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + data dummy (seed) + persist localStorage + bottom sheet Tambah + banner offline
 ├── App.css                 # Tailwind (@tailwind base/components/utilities) + design token, focus-visible, scrollbar, animasi
 ├── tailwind.config.js      # Theme tokens (navy/cyan high-tech, font sans+mono) + content paths
 ├── postcss.config.js       # Plugin: tailwindcss + autoprefixer
@@ -44,7 +44,8 @@ bayt-mustaqbal-app/
 │   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + chip pengguna) + bottom tab bar 56px glass;
 │   │                       #   tab Agenda, Keuangan, Keluarga & Tugas = dropdown filter (animasi, badge jumlah, a11y menu)
 │   ├── categories.js       # Kategori agenda, keuangan, keluarga + filter tugas & penghitung per item + meta ikon
-│   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) → nanti jadi login
+│   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: pilih pengguna (localStorage) + tombol "Muat ulang data contoh" → nanti jadi login
+│   ├── FormSheet.jsx      # Bottom sheet "Tambah" generik (field teks/angka/tanggal/jam/select, validasi wajib, role=dialog, Escape/klik luar)
 │   ├── Dashboard.jsx       # Dashboard baru: hero glass, aksi cepat, KPI, chart, daftar terbaru
 │   ├── charts.jsx          # Chart tulis sendiri (tanpa library): BarChart, DonutChart, LineChart, Sparkline
 │   ├── FamilyCard.jsx      # Card anggota (baris horizontal)
@@ -52,7 +53,7 @@ bayt-mustaqbal-app/
 │   ├── ScheduleItem.jsx    # Item agenda (ikon, judul, jam, tanggal, badge anggota)
 │   ├── Calendar.jsx        # Kalender keluarga (mode Kalender di tab Agenda): view Minggu/Bulan/Tahun,
 │   │                       #   warna per member + legenda, agenda hari terpilih, tugas jatuh tempo
-│   └── TaskList.jsx        # Daftar tugas (toggle selesai, badge prioritas)
+│   └── TaskList.jsx        # Daftar tugas (controlled: toggle selesai diteruskan ke App, badge prioritas)
 ├── public/                 # Aset statis → disalin apa adanya ke dist/ oleh Vite
 │   ├── manifest.json       # PWA manifest (theme #0A192F; ikon cyan #22D3EE; 8 "any" + 2 maskable)
 │   ├── service-worker.js   # Cache strategy: static cache-first, API network-first, bg sync, push
@@ -79,6 +80,10 @@ bayt-mustaqbal-app/
 | Pengeluaran | Dropdown kategori di tab Keuangan (nav HP+desktop) → filter; grid `ExpenseCard` (ikon kategori + nominal IDR) + chip sinkron + total terfilter di header | `mockData` di `App.jsx` |
 | Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
 | Tugas | Dropdown filter status & prioritas di tab Tugas (nav HP+desktop) → filter; chip sinkron; `TaskList` toggle selesai + badge prioritas (Tinggi/Sedang/Rendah) | `mockData` di `App.jsx` |
+
+> **Tombol "Tambah" kini berfungsi di 4 tab** (Agenda, Keuangan, Keluarga, Tugas): membuka `FormSheet` (bottom sheet) → item baru masuk ke section terkait (agenda muncul di grid + kalender + chip; pengeluaran ikut total; tugas ikut KPI & kalender; keluarga ikut grid/daftar).
+>
+> **Persistensi (`localStorage` key `bayt-mustaqbal-data-v1`):** seed awal = `mockData`; setiap perubahan (tambah item, toggle tugas) disimpan sebagai snapshot, jadi tidak hilang saat reload. Snapshot yang rusak/parsial ditolak (app kembali ke data contoh, tidak blank). Tombol **"Muat ulang data contoh"** di layar gerbang menghapus snapshot dan kembali ke `mockData`.
 
 > **Tidak ada panggilan jaringan.** Data sepenuhnya dummy sesuai permintaan Kakang — fokus ke frontend dulu.
 
@@ -160,8 +165,9 @@ npx vite preview
 | ~~`favicon.ico` kosong (0 byte)~~ | ~~Ikon tab browser default~~ | **SELESAI:** `favicon.ico` asli (16/32/48, PNG di dalam ICO) + `apple-touch-icon.png` 180px |
 | ~~Aset statis tidak ikut ke `dist/`~~ | ~~`manifest.json`, `service-worker.js`, `icons/*` 404 di produksi → install PWA & mode offline mati~~ | **SELESAI:** ketiganya dipindah ke `public/` (Vite menyalin `public/` apa adanya ke `dist/`) |
 | ~~`service-worker.js` reference path component~~ | ~~SW cache `addAll` mungkin gagal~~ | **SELESAI:** cache list dirampingkan + 3 ikon; berkas kini di `public/` |
-| Data dummy hardcode | Bukan data real | Bangun Worker + D1, ganti `const data = mockData` dengan state + fetch |
+| Data dummy hardcode | Bukan data real | Bangun Worker + D1, ganti seed `mockData` + persist `localStorage` dengan state + fetch |
 | Belum ada `wrangler.toml` | Backend belum jalan | Buat Worker + D1 binding |
+| Belum ada edit/hapus item | Hanya bisa tambah + toggle selesai | Tambah aksi edit/hapus (aksi di kartu item) — sementara tanpa backend |
 
 ---
 
@@ -174,7 +180,7 @@ npx vite preview
 - Notifikasi: Fonnte WhatsApp API
 
 **Frontend (evolusi):**
-- Login + role admin/user, data nyata (bukan `mockData`), form input & validasi
+- Login + role admin/user, data nyata (bukan `mockData`), form input & validasi (bottom sheet "Tambah" **sudah ada** — tinggal edit/hapus + sinkron ke server)
 - Tetap React 18 + Vite + Tailwind, mobile-first. **Tanpa TypeScript & tanpa router** — 5 section yang sudah ada diperdalam, bukan ditambah jadi 11 halaman
 
 **Deploy:**
@@ -194,7 +200,7 @@ npx vite preview
 
 ## Aturan Wajib untuk Agent
 
-1. **Jangan** asumsikan API/DB sudah ada — data masih **dummy murni** (`const data = mockData`), jangan tambahkan `fetch` tanpa persetujuan Kakang.
+1. **Jangan** asumsikan API/DB sudah ada — data masih **dummy murni** (seed `mockData` + persist `localStorage`), jangan tambahkan `fetch` tanpa persetujuan Kakang.
 2. **Jangan** `git push` tanpa konfirmasi eksplisit Kakang (larangan keras).
 3. **Selalu** jalankan `npm run dev` + cek Console (F12) sebelum klaim "beres".
 4. **Tailwind sudah pakai PostCSS** (`tailwind.config.js`) — tambah kelas/utility di sana, bukan lewat CDN.
