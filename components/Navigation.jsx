@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
-import { Avatar, CTA_CLASS } from './ui';
+import { Avatar } from './ui';
 import {
   AGENDA_CATEGORIES,
   FINANCE_CATEGORIES,
@@ -433,15 +433,6 @@ export function Navigation({
             >
               <Avatar user={user} className="h-8 w-8 rounded-lg bg-brandtint text-xs font-bold text-brandfg" />
               <span className="hidden max-w-[7rem] truncate text-mutedfg sm:inline">{user.name}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => window.installApp && window.installApp()}
-              className={`${CTA_CLASS} hidden sm:inline-flex`}
-            >
-              <Icon name="download" size={16} />
-              Pasang
             </button>
           </div>
 

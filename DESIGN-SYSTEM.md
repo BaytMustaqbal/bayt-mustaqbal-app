@@ -42,7 +42,7 @@ Token dipakai sebagai Tailwind theme extension (lihat `tailwind.config.js`) dan 
 - **Satu kelas latar per keadaan.** Jangan menumpuk "latar dasar + tambahan" (`bg-surface bg-cta/25`): urutan aturan Tailwind yang menang adalah alfabetis (`brandtint` → `cta` → `surface`), jadi `bg-surface` akan selalu menang dan sorotan tidak pernah terlihat. Pakai salah-satu (ternary), lihat `Calendar.jsx` (hari ini/terpilih).
 - **Titik masuk tema:** `App.jsx` (state `theme`/`resolvedTheme`, localStorage `bm-theme`, dengar `matchMedia`, `toggleTheme`) + skrip boot sinkron di `index.html` (mencegah kedip putih sebelum React jalan) + `AccountModal.jsx` (pilihan lengkap).
 - **Batas jujur:** `public/manifest.json` hanya punya satu `background_color`/`theme_color` (navy `#0A192F`) dan ikon PWA berlatar navy → **splash & ikon tetap navy** di tema apa pun. Yang dinamis hanya `<meta name="theme-color">` dan warna status bar iOS (keduanya diperbarui saat tema berganti).
-- **Pengecualian warna mentah (disengaja):** `index.html` (di luar jangkauan token React) memakai hex tetap untuk tiga hal yang **memang harus identik di kedua tema**: latar anti-kedip (`html { background-color: #0A192F }` + `html[data-theme='light'] { #F2FAFD }` — kembar token), gradient CTA banner Pasang (`#1D4ED8 → #2563EB` = token cta/ctahover), dan toast status jaringan (`#155E75`/`#BE123C` + teks putih, kontras ≥5:1 di kedua tema). Kalau token berubah, tiga tempat ini harus ikut diperiksa.
+- **Pengecualian warna mentah (disengaja):** `index.html` (di luar jangkauan token React) memakai hex tetap untuk tiga hal yang **memang harus identik di kedua tema**: latar anti-kedip (`html { background-color: #0A192F }` + `html[data-theme='light'] { #F2FAFD }` — kembar token), gradient CTA popup "Pasang app" (`#1D4ED8 → #2563EB` = token cta/ctahover), dan toast status jaringan (`#155E75`/`#BE123C` + teks putih, kontras ≥5:1 di kedua tema). Kalau token berubah, tiga tempat ini harus ikut diperiksa.
 
 ### Primary Palette (dark — default)
 
@@ -208,11 +208,11 @@ Status    : Badge bertinta translucent (cyan/emerald/amber/rose/gray) + teks
 ```
 
 #### Navigation System
-- **Bar atas (sticky)**: glass `bg-canvas/80 backdrop-blur-xl`; **naik elevasi saat digulir** (`window.scrollY > 6` → `border-line bg-canvas/90 shadow-e2`, transisi 200ms; saat di puncak border transparan); logo tile tint; **tombol tema** (ikon matahari/bulan/monitor, 44px, label aksesibel "Ganti ke mode gelap/terang" — ganti tema langsung + simpan); **lonceng notifikasi**; chip pengguna (**buka modal "Akun saya"**, avatar foto/inisial + nama); nav desktop pill di `lg`; tombol Pasang (CTA, `sm`+). Urutan klaster kanan: **tema → lonceng → chip pengguna → Pasang**
+- **Bar atas (sticky)**: glass `bg-canvas/80 backdrop-blur-xl`; **naik elevasi saat digulir** (`window.scrollY > 6` → `border-line bg-canvas/90 shadow-e2`, transisi 200ms; saat di puncak border transparan); logo tile tint; **tombol tema** (ikon matahari/bulan/monitor, 44px, label aksesibel "Ganti ke mode gelap/terang" — ganti tema langsung + simpan); **lonceng notifikasi**; chip pengguna (**buka modal "Akun saya"**, avatar foto/inisial + nama); nav desktop pill di `lg`. Urutan klaster kanan: **tema → lonceng → chip pengguna** (tombol "Pasang" dihapus — lihat D19)
 - **Notifikasi (lonceng)**: tombol bulat 44px di klaster kanan header; badge angka = jumlah belum dibaca (maks tampil "9+", gradasi cobalt + `shadow-glow`). Panel menempel di bawah header **rata kanan konten** (`right-4 sm:right-6`; `w-80`, dibatasi `max-w-[calc(100vw_-_2rem)]` di layar sempit — di 320px jadi 288px, tepi kiri tetap 16px dari layar). Isinya **turunan data** (`components/notifications.js`), bukan pesan statis
 - **Bottom Tab Bar (< `lg`)**: glass + `shadow-nav` (bayangan halus ke atas, memisahkan bilah dari konten yang lewat di bawahnya), tinggi **tetap 56px** (`h-[56px]`), 5 tab, label 11px; tab aktif = teks `brandfg` + pill tint; **indikator cyan = satu elemen yang menggeser** di tepi atas (lebar = 1/5 slot, `translateX(activeIndex × 100%)`, transisi 320ms `ease-smooth`) — posisi dihitung dari tab aktif/section (dropdown yang terbuka ikut dihitung aktif); isi `max-w-md`
 - **Aktif**: `aria-current="page"` + cyan, bukan warna saja
-- **Banner install**: `bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]` = tepat di atas tab bar
+- **Popup "Pasang app" (D19)**: kartu kecil `max-w-sm` (`max-w-md` di `sm`+), kartu bertumpuk di bawah 640px & satu baris di atasnya; di atas tab bar di ponsel (`bottom-[calc(3.5rem_+_env(safe-area-inset-bottom)_+_0.75rem)]`), pojok kanan bawah di `lg` (`lg:right-6 lg:bottom-6`); `z-[60]`; tampil 5 detik lalu hilang sendiri (muncul lagi tiap app dibuka)
 
 ### Dashboard-Specific
 ```
@@ -225,7 +225,8 @@ Hero (GlassCard) : label + nilai mono besar + tombol mata (sembunyikan/tampilkan
                    ringkasan "rata-rata" tren, label chart/tooltip, dan nominal di
                    panel "Pengeluaran Terbaru" — sengaja DIBIARKAN tampil. Terukur:
                    22 simpul teks ber-"Rp" di #main, hanya 3 yang berubah saat tombol ditekan.
-QuickAction      : tile 4-kolom, min-h 76px, ikon tile 40px ber-warna (cyan/blue/violet/amber)
+QuickAction      : tile 4-kolom, min-h 76px, ikon tile 40px ber-warna (Pengeluaran=cyan,
+                   Agenda=blue, Catatan=violet, Keluarga=emerald) — lihat D19
 StatCard (KPI)   : ikon tile ber-warna + nilai mono + label + hint opsional (+ sparkline sm+)
 Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat components/charts.jsx
                    SEMUA label di HTML (bukan di SVG) agar tajam di semua lebar;
@@ -360,7 +361,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 < 640px  (HP 320–414px) : 1 kolom, donat & legenda bertumpuk (donat di atas),
                           KPI 2 kolom, nilai uang ringkas ("Rp 2,8 jt")
 >= 640px (sm)           : px-6, gap-4, hero 2 kolom (nilai | anggaran+CTA),
-                          tombol Pasang muncul, sparkline KPI muncul
+                          sparkline KPI muncul
 >= 768px (md)           : agenda & keuangan jadi 2 kolom
 >= 1024px (lg)          : nav atas muncul, tab bar bawah hilang, KPI 4 kolom, daftar 3 kolom
 ```

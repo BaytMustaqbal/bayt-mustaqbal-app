@@ -35,7 +35,7 @@ Tidak ada langkah build tambahan: Tailwind diproses lewat PostCSS.
 
 ```
 bayt-mustaqbal-app/
-├── index.html                  # Shell: meta PWA, banner install, skip link, toast jaringan, skrip boot tema (anti-kedip)
+├── index.html                  # Shell: meta PWA, popup "Pasang app", skip link, toast jaringan, skrip boot tema (anti-kedip)
 ├── main.jsx                    # Mount React + registrasi service worker (produksi saja)
 ├── App.jsx                     # Root: state 5 section + mockData + formatter rupiah + state tema (Sistem/Terang/Gelap)
 ├── App.css                     # Token DUA TEMA (gelap & terang) & utilitas dasar (entry Tailwind)
@@ -64,7 +64,7 @@ bayt-mustaqbal-app/
 - 5 section dalam satu halaman, **tanpa router** — perpindahan section lewat state
 - **Mobile-first:** bottom tab bar 56 px (< 1024 px) dengan safe-area iOS, header sticky, desktop nav muncul di `lg`
 - **PWA:** manifest + service worker + 12 ikon dari **logo Kakang**; service worker hanya didaftarkan di produksi
-- **Banner install** muncul setelah event `beforeinstallprompt`; toast status jaringan hanya saat online/offline berubah
+- **Popup "Pasang app"**: satu-satunya titik masuk pasang — muncul setelah event `beforeinstallprompt` **dan** setelah pengguna melewati gerbang, tampil 5 detik lalu hilang sendiri (muncul lagi tiap app dibuka, berhenti permanen setelah terpasang); toast status jaringan hanya saat online/offline berubah
 - **Tema High-Tech Blue — gelap & terang:** navy `#0A192F` + aksen cyan `#22D3EE` (gelap, default) atau keluarga cyan versi lebih dalam di atas latar terang `#F2FAFD`. Pilihan **Sistem / Terang / Gelap** (ikut pengaturan perangkat atau dipilih manual), tersimpan di perangkat, tombol cepat di header + pengaturan lengkap di modal "Akun saya". Ganti tema **tanpa kedip** (disetel sebelum app tampil) dan **tanpa memuat ulang**. Glass pada elemen kunci, glow tipis di gelap, **skala elevasi + gerak** (indikator tab menggeser, header naik elevasi saat digulir, item daftar masuk berundak), angka dengan Fira Code (lihat `DESIGN-SYSTEM.md` §2). Catatan jujur: **ikon & splash PWA tetap navy** karena manifest hanya punya satu warna
 - **Layar gerbang** muncul tiap app dibuka: pilih Kakang/Istri (tersimpan di `localStorage`) — nanti menjadi layar login
 - **Akun saya (chip pengguna di pojok kanan atas):** modal di tengah layar untuk ganti **foto profil** (dikecilkan otomatis ke 256 px, disimpan di perangkat), **nama**, **username** (dicek unik, tampil `@username` di gerbang), **password**, dan **tampilan** (Sistem/Terang/Gelap) — plus tombol "Ganti pengguna". Catatan jujur: belum ada server, jadi password **hanya disimpan di perangkat dan belum diverifikasi** (dinyatakan terang di dalam modal)

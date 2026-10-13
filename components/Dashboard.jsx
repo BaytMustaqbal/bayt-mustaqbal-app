@@ -155,12 +155,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           <QuickAction icon="wallet" label="Pengeluaran" tone="cyan" onClick={() => onNavigate('expenses')} />
           <QuickAction icon="calendar" label="Agenda" tone="blue" onClick={() => onNavigate('agenda')} />
           <QuickAction icon="note" label="Catatan" tone="violet" onClick={() => onNavigate('notes')} />
-          <QuickAction
-            icon="download"
-            label="Pasang App"
-            tone="amber"
-            onClick={() => window.installApp && window.installApp()}
-          />
+          <QuickAction icon="users" label="Keluarga" tone="emerald" onClick={() => onNavigate('family')} />
         </div>
       </div>
 

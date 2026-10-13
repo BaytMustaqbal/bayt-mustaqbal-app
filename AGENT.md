@@ -28,7 +28,7 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 
 ```
 bayt-mustaqbal-app/
-├── index.html              # Entry PWA: Plus Jakarta Sans, manifest, install prompt, network monitor + skrip boot tema (anti-kedip) & meta theme-color/status-bar dinamis
+├── index.html              # Entry PWA: Plus Jakarta Sans, manifest, popup "Pasang app" (D19), network monitor + skrip boot tema (anti-kedip) & meta theme-color/status-bar dinamis
 ├── main.jsx                # React entry: createRoot → render <App /> ke #root + registrasi SW (production)
 ├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + data dummy (seed) + persist localStorage + bottom sheet Tambah/Ubah + modal Akun + toast (undo hapus) + banner offline + **state tema** (bm-theme, ikut sistem, toggle)
 ├── App.css                 # Tailwind (@tailwind base/components/utilities) + **design token DUA TEMA** (kanal RGB di :root & [data-theme='light']), **latar berlapis .app-bg::before/::after** (grid 28px + pendaran + vignette + grain, D18), efek/bayangan/kaca per tema, focus-visible, scrollbar, animasi
@@ -128,10 +128,10 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 | Aspek | Aturan |
 |-------|--------|
 | Navigasi < `lg` | **Bottom tab bar** 56px (dikunci `h-[56px]`), 5 tab, area sentuh 60×56px di HP 320px |
-| Navigasi ≥ `lg` | Nav atas (pill) + tombol Pasang; tab bar bawah disembunyikan |
-| Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]`; klaster kanan (semua ukuran): **tombol tema → lonceng notifikasi → chip pengguna (buka modal Akun) → tombol Pasang** |
+| Navigasi ≥ `lg` | Nav atas (pill); tab bar bawah disembunyikan |
+| Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]`; klaster kanan (semua ukuran): **tombol tema → lonceng notifikasi → chip pengguna (buka modal Akun)** |
 | Safe area bawah | Tab bar `pb-[env(safe-area-inset-bottom)]`; `<main>` `pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]` |
-| Banner install | Diposisikan tepat di atas tab bar (`bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]`, `lg:bottom-0`) |
+| Popup install | Kartu kecil di atas tab bar (`bottom-[calc(3.5rem_+_env(safe-area-inset-bottom)_+_0.75rem)]`), pojok kanan bawah di `lg` (`lg:right-6 lg:bottom-6`); lihat D19 |
 | Kartu KPI | Nilai uang diringkas di HP (`Rp 2,8 jt`) via `formatCurrencyShort`; nilai penuh di `title` + section Keuangan |
 | Anti-overflow | Semua `Card` punya `min-w-0` agar boleh menyusut di grid/flex |
 | Sentuh | `-webkit-tap-highlight-color: transparent` + `touch-action: manipulation`; checkbox 28px dengan area sentuh 44px |
@@ -180,7 +180,7 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 
 **Latar ikon navy `#0A192F`** (bukan transparan/putih) dipilih karena artwork logo mayoritas terang (putih/abu/cyan, ~18% piksel >235) dengan sedikit area biru gelap → butuh latar gelap agar kontras; navy juga = warna tema app + `background_color` manifest (splash nyatu). Ubah `$IconBg` / `$Ratio*` di bagian KONFIGURASI skrip lalu jalankan ulang `npm run icons` bila ingin latar/himpit lain.
 
-**Dipakai di app:** mark `public/brand/logo.png` di header (`Navigation.jsx`, tile 36px) dan **logo besar** di layar gerbang (`WelcomeGate.jsx`, max 200–240px sebagai gambar utama — menggantikan ilustrasi SVG lama + judul teks `h1`; `soft-pulse` ikut dihapus, nama app dibawa `alt="Bayt Mustaqbal"`); ikon app di banner "Pasang" (`index.html`, `icons/icon-192.png`). Ikon nav Dashboard tetap ikon SVG `home` — mark merek sudah diwakili logo.
+**Dipakai di app:** mark `public/brand/logo.png` di header (`Navigation.jsx`, tile 36px) dan **logo besar** di layar gerbang (`WelcomeGate.jsx`, max 200–240px sebagai gambar utama — menggantikan ilustrasi SVG lama + judul teks `h1`; `soft-pulse` ikut dihapus, nama app dibawa `alt="Bayt Mustaqbal"`); ikon app di popup "Pasang app" (`index.html`, `icons/icon-192.png`). Ikon nav Dashboard tetap ikon SVG `home` — mark merek sudah diwakili logo.
 
 **Verifikasi:** ukuran & format tiap PNG dicek (kotak 72…512, `Format32bppArgb`), sudut ikon = navy opak (alpha 255), logo brand ter-trim 256×221 termuat di browser (`naturalWidth`>0) di gerbang & header, 0 error konsol, `npm run build` hijau + semua berkas tersalin ke `dist/`.
 
@@ -212,7 +212,7 @@ npx vite preview
 
 ## PWA: Cara Kerja
 
-- **Install prompt:** muncul saat `beforeinstallprompt` (setelah 3x kunjungan, bisa di-skip via localStorage)
+- **Popup "Pasang app" (D19):** satu-satunya titik masuk pasang. Muncul saat `beforeinstallprompt` **dan** setelah pengguna lewat gerbang (sinyal `bm:entered` dari `App.jsx`), tampil **5 detik lalu hilang sendiri** (`INSTALL_PROMPT_MS`), muncul lagi tiap browser di-refresh, dan **berhenti permanen setelah terpasang** (`display-mode: standalone` / `navigator.standalone` + event `appinstalled`). Tanpa `localStorage` — kunci lama `skipInstallPrompt` sudah tidak dipakai
 - **Network status:** **toast** sesaat di atas saat status berubah (teal "Tersambung kembali" / merah "Koneksi terputus", hilang otomatis 3 detik). Status offline yang menetap ditampilkan **banner** di dalam `<main>` — jadi tidak dobel saat pertama kali dibuka
 - **Auto-sync:** saat event `online` → `registration.sync.register('family-api-sync')`
 - **Service Worker:**
@@ -239,7 +239,8 @@ npx vite preview
 | Password akun hanya kolom profil | Belum ada verifikasi sungguhan (siapa pun yang memegang perangkat bisa masuk) | Sudah dinyatakan terang di modal ("disimpan di perangkat ini, jangan pakai password asli"). Tutup dengan auth Worker + D1 (bcrypt/JWT) saat backend dibuat — **jangan** dipakai sebagai pengaman nyata sebelum itu |
 | Profil akun ≠ data anggota keluarga | Ganti nama/foto akun tidak mengubah kartu section Keluarga (nama bisa tampak ganda) | Sengaja dibiarkan (hindari pencocokan nama yang rapuh). Kerjakan saat anggota keluarga bisa diubah/hapus |
 | Catatan di Timeline memakai tanggal **terakhir diubah** | Menyunting catatan lama memindahkannya ke hari penyuntingan (posisi di alur berubah) | Sudah dilabeli terang "Catatan diperbarui" (bukan "dibuat"). Tambahkan field tanggal catatan saat backend dibuat |
-| **Header luber horizontal pada viewport 1024–1109px** (ditemukan 13 Okt 2026 saat verifikasi D18; **sudah ada sebelum** perubahan latar — mematikan lapisan `.app-bg` tidak mengubah angkanya) | Klaster kanan header (tombol notifikasi + tombol "Pasang", total 343px) melewati tepi sampai **95px** pada 1024px; `scrollWidth` mentok **1109px** → halaman bisa digeser ke samping (muncul di laptop berjendela sempit / jendela separuh layar). **Hilang** sejak 1152px | Belum diperbaiki — Kakang minta dicatat dulu. Usul: sembunyikan/satukan tombol "Pasang" di bawah 1152px **atau** kecilkan klaster kanan; verifikasi ulang di 1024 / 1056 / 1100 / 1152px setelah dipilih |
+| ~~**Header luber horizontal pada viewport 1024–1109px** (ditemukan 13 Okt 2026 saat verifikasi D18; **sudah ada sebelum** perubahan latar — mematikan lapisan `.app-bg` tidak mengubah angkanya)~~ | ~~Klaster kanan header (tombol notifikasi + tombol "Pasang", total 343px) melewati tepi sampai **95px** pada 1024px; `scrollWidth` mentok **1109px**~~ | **SELESAI (D19):** tombol "Pasang" di header dihapus (klaster kanan −121px). Terukur ulang setelah masuk app: `scrollWidth = clientWidth` (**luber 0**) di 320 / 390 / 1024 / 1056 / 1090 / **1109** / 1120 / 1152 / 1280; media query `lg` dipastikan aktif pada 1024 (`matchMedia('(min-width:1024px)').matches = true`) |
+| **iOS/iPadOS tidak punya jalan pasang dari dalam app** (konsekuensi D19) | Di Safari iOS, `beforeinstallprompt` **tidak pernah ada**, jadi popup 5 detik tak akan muncul. Karena tombol permanen sudah dihapus, pengguna iOS hanya bisa lewat **Bagikan → "Tambahkan ke Layar Utama"** (sebelumnya pun tombol lama **tidak bereaksi** di iOS — jadi bukan kemunduran, tapi sekarang tidak ada petunjuk apa pun) | Tambahkan petunjuk manual khusus iOS di popup (deteksi UA + cek sudah standalone) saat fase deploy/backend. Belum dikerjakan |
 
 ---
 

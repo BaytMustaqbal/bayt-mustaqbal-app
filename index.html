@@ -67,27 +67,32 @@
 
   <div id="root"></div>
 
-  <!-- PWA Install Prompt (di atas bottom nav pada mobile) -->
+  <!-- Popup "Pasang app" — kecil, muncul 5 detik lalu hilang sendiri.
+       Muncul lagi tiap app dibuka / browser di-refresh; TIDAK akan muncul lagi
+       setelah app benar-benar terpasang (event appinstalled atau mode standalone).
+       Ditaruh di index.html supaya bisa jalan sebelum React dan memakai event
+       beforeinstallprompt apa adanya. Tampilnya menunggu pengguna melewati layar
+       gerbang (event 'bm:entered' dari App.jsx) — kalau tidak, popup (z-60) akan
+       tersembunyi di balik gerbang (z-90). -->
   <div id="install-prompt"
-       class="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-[60] translate-y-[calc(100%_+_7rem)] border-t border-line bg-canvas/90 p-3 backdrop-blur-xl transition-transform duration-200 sm:p-4 lg:bottom-0"
+       class="pointer-events-none fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom)_+_0.75rem)] z-[60] justify-center px-4 lg:bottom-6 lg:justify-end lg:px-6"
        style="display: none;">
-    <div class="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
-      <div class="flex min-w-0 flex-1 items-center gap-3">
-        <span class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-brand/25 bg-brand/10 sm:h-11 sm:w-11">
+    <div id="install-prompt-card"
+         role="status"
+         class="pointer-events-auto flex w-full max-w-sm flex-col gap-2.5 rounded-2xl border border-line bg-surface/95 p-2.5 shadow-pop backdrop-blur-xl transition-[opacity,transform] duration-200 ease-smooth sm:max-w-md sm:flex-row sm:items-center"
+         style="opacity: 0; transform: translateY(0.5rem);">
+      <div class="flex min-w-0 flex-1 items-center gap-2.5">
+        <span class="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-brand/25 bg-brand/10">
           <img src="icons/icon-192.png" alt="" class="h-full w-full object-cover" />
         </span>
-        <div class="min-w-0 leading-tight">
+        <div class="min-w-0 flex-1 leading-tight">
           <p class="truncate text-sm font-semibold">Pasang Bayt Mustaqbal</p>
-          <p class="truncate text-xs text-mutedfg">Tambah ke layar utama untuk akses cepat</p>
+          <p class="truncate text-xs text-mutedfg">Akses cepat dari layar utama</p>
         </div>
       </div>
       <div class="flex shrink-0 items-center gap-2">
-        <button onclick="window.skipInstallPrompt()"
-                class="min-h-[44px] rounded-full px-4 text-sm font-medium text-mutedfg transition-colors hover:bg-muted hover:text-ink">
-          Nanti
-        </button>
-        <button onclick="window.installApp()"
-                class="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-5 text-sm font-semibold text-white shadow-glow transition-transform hover:from-[#1E40AF] hover:to-[#1D4ED8] active:scale-[0.99]">
+        <button type="button" onclick="window.installApp()"
+                class="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-3.5 text-sm font-semibold text-white shadow-glow transition-transform hover:from-[#1E40AF] hover:to-[#1D4ED8] active:scale-[0.99] sm:flex-none">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -95,6 +100,13 @@
             <path d="M12 15V3" />
           </svg>
           Pasang
+        </button>
+        <button type="button" onclick="window.hideInstallPrompt()" aria-label="Tutup tawaran pasang"
+                class="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
         </button>
       </div>
     </div>
@@ -143,53 +155,95 @@
     });
     window.addEventListener('offline', () => showNetworkToast(false));
 
-    // ---- PWA install prompt ----
+    // ---- Popup "Pasang app" ----
+    // Muncul 5 detik tiap app dibuka (dan lagi setiap browser di-refresh), lalu
+    // hilang sendiri. TIDAK pernah muncul lagi setelah app benar-benar terpasang
+    // (event appinstalled, atau dibuka dalam mode standalone).
+    // Tidak ada catatan "jangan tampilkan lagi" — sengaja: tombol Pasang permanen
+    // di header & tile Dashboard sudah dihapus, jadi ini satu-satunya jalan pasang.
+    const INSTALL_PROMPT_MS = 5000;
     let deferredPrompt = null;
+    let installTimer = null;
+    let installEventFired = false; // beforeinstallprompt sudah terjadi?
+    let appEntered = false;        // pengguna sudah melewati layar gerbang?
+
     const installPrompt = () => document.getElementById('install-prompt');
+    const installCard = () => document.getElementById('install-prompt-card');
+
+    // App sedang dibuka SEBAGAI app terpasang (bukan di tab browser)?
+    function isStandalone() {
+      try {
+        return (
+          window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone === true
+        );
+      } catch (e) {
+        return false;
+      }
+    }
 
     function showInstallPrompt() {
       const el = installPrompt();
-      if (!el) return;
-      el.style.display = 'block';
-      requestAnimationFrame(() => {
-        el.style.transform = 'translateY(0)';
-      });
+      const card = installCard();
+      if (!el || !card || isStandalone()) return;
+      el.style.display = 'flex';
+      // Paksa reflow supaya transisi tetap berjalan. Lebih kokoh daripada
+      // requestAnimationFrame, yang tidak dipanggil saat tab sedang disembunyikan.
+      void card.offsetWidth;
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+      if (installTimer) clearTimeout(installTimer);
+      installTimer = setTimeout(window.hideInstallPrompt, INSTALL_PROMPT_MS);
     }
 
-    function hideInstallPrompt() {
+    window.hideInstallPrompt = function () {
+      if (installTimer) {
+        clearTimeout(installTimer);
+        installTimer = null;
+      }
       const el = installPrompt();
-      if (!el) return;
-      el.style.transform = 'translateY(100%)';
+      const card = installCard();
+      if (!el || !card) return;
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(0.5rem)';
       setTimeout(() => {
         el.style.display = 'none';
-      }, 200);
-    }
+      }, 220);
+    };
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      if (localStorage.getItem('skipInstallPrompt') !== 'true') {
-        showInstallPrompt();
-      }
+      installEventFired = true;
+      // Tampilkan hanya setelah pengguna melewati gerbang, supaya popup tidak
+      // tersembunyi di baliknya (gerbang z-90, popup z-60).
+      if (appEntered) showInstallPrompt();
+    });
+
+    // Sinyal dari App.jsx saat pengguna selesai melewati layar gerbang.
+    // Hanya yang pertama dihitung: ganti pengguna (gerbang muncul lagi) tidak
+    // boleh memunculkan popup untuk kedua kalinya.
+    window.addEventListener('bm:entered', () => {
+      if (appEntered) return;
+      appEntered = true;
+      if (installEventFired) showInstallPrompt();
     });
 
     window.installApp = function () {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choice) => {
-        if (choice.outcome === 'accepted') hideInstallPrompt();
-        deferredPrompt = null;
-      });
-    };
-
-    window.skipInstallPrompt = function () {
-      hideInstallPrompt();
-      localStorage.setItem('skipInstallPrompt', 'true');
+      if (!deferredPrompt || typeof deferredPrompt.prompt !== 'function') return;
+      const promptEvent = deferredPrompt;
+      deferredPrompt = null;
+      promptEvent.prompt();
+      return Promise.resolve(promptEvent.userChoice)
+        .then((choice) => {
+          if (choice && choice.outcome === 'accepted') window.hideInstallPrompt();
+        })
+        .catch(() => {});
     };
 
     window.addEventListener('appinstalled', () => {
-      hideInstallPrompt();
-      localStorage.removeItem('skipInstallPrompt');
+      deferredPrompt = null;
+      window.hideInstallPrompt();
     });
   </script>
 </body>

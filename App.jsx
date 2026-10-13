@@ -540,6 +540,12 @@ export default function App() {
     return () => mq.removeEventListener?.('change', onChange);
   }, []);
 
+  // Beri tahu index.html bahwa pengguna sudah lewat layar gerbang; popup
+  // "Pasang app" menunggu sinyal ini supaya tidak tersembunyi di balik gerbang.
+  useEffect(() => {
+    if (entered) window.dispatchEvent(new Event('bm:entered'));
+  }, [entered]);
+
   // Tombol tema di header: lompat ke kebalikan tema yang sedang terlihat
   // (dari 'system' pun jadi pilihan tegas light/dark — tidak membingungkan).
   const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');

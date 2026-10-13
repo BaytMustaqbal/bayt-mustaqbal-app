@@ -352,6 +352,90 @@ tema gelap/terang) sebelum satu baris pun diubah di app.
 
 ---
 
+## D19 — Titik Masuk "Pasang App" = Satu Popup 5 Detik (bukan tombol permanen)
+
+**Tanggal:** 13 Oktober 2026
+
+App punya **tiga** titik masuk pemasangan PWA, dan ketiganya bermasalah:
+
+1. Tombol **"Pasang"** di header — selalu tampil tanpa menunggu app benar-benar bisa
+   dipasang, jadi sering **tidak bereaksi** (`window.installApp()` keluar lebih awal
+   saat `deferredPrompt` kosong). Ia juga **penyebab luber horizontal 1024–1109px**
+   yang selama ini tercatat sebagai Known Issue.
+2. Tile **"Pasang App"** di Aksi Cepat Dashboard — masalah reaksi sama, plus menempati
+   1 dari 4 kolom grid.
+3. **Banner** `#install-prompt` di `index.html` — muncul saat `beforeinstallprompt`,
+   tapi **tidak pernah hilang sendiri** (menetap sampai ditekan), dan tombol "Nanti"-nya
+   menyimpan penolakan **permanen** di `localStorage` — sekali ditolak, tawaran tidak
+   pernah datang lagi.
+
+Kakang memutuskan: **buang dua tombol permanen**, ganti dengan **satu popup kecil**
+yang muncul beberapa detik lalu hilang sendiri.
+
+| Opsi | Bentuk | Alasan/Konsekuensi |
+|---|---|---|
+| **A. Popup 5 detik tiap app dibuka (dipilih)** | Muncul saat browser menyatakan app bisa dipasang, **hilang sendiri setelah 5 detik**, **muncul lagi setiap browser di-refresh**, dan **berhenti permanen setelah app terpasang**. Tombol tutup hanya menyembunyikan (tanpa catatan penolakan). | Sesuai permintaan Kakang apa adanya. Karena tombol permanen dihapus, ini satu-satunya jalan pasang dari dalam app — jadi tawaran perlu datang lagi di kunjungan berikutnya, tapi tidak boleh mengganggu: 5 detik lalu pergi sendiri tanpa perlu ditekan. Tanpa `localStorage` → tidak ada state tersembunyi yang bisa basi |
+| B. Sekali saja selamanya | Setelah auto-hilang pun dicatat, tidak pernah muncul lagi | Paling tenang, tapi yang kebetulan melewatkannya (atau belum siap memasang) kehilangan cara pasang dari dalam app; hanya lewat menu browser |
+| C. Muncul tiap kali sampai dipasang / ditekan "Nanti" | Selalu tampil sampai ada tindakan | Paling mendorong pemasangan, tapi untuk app yang dipakai harian terasa mengganggu — dan tidak sesuai permintaan "hilang sendiri" |
+
+**Konsekuensi teknis:**
+- Tombol "Pasang" di header **dihapus** (`components/Navigation.jsx`). Ini sekaligus
+  **menutup luber 1024–1109px**: klaster kanan berkurang 113px + 8px jarak (>95px luber
+  terburuk). Import `CTA_CLASS` di berkas itu ikut dibersihkan (jadi tak terpakai).
+- Tile "Pasang App" diganti pintasan **"Keluarga"** (`onNavigate('family')`, ikon `users`,
+  nada `emerald`) → grid `grid-cols-4` tetap seimbang **dan** Aksi Cepat kini menutup
+  keempat modul data (Pengeluaran · Agenda · Catatan · Keluarga), sejalan dengan 3 tile
+  lain yang juga pintasan section.
+- Banner bilah-penuh di `index.html` diubah jadi **kartu kecil**: `max-w-sm` di ponsel,
+  `max-w-md` di `sm`+. Tata letak **bertumpuk** di bawah 640px (ikon + 2 baris teks, lalu
+  tombol "Pasang" selebar kartu + tombol tutup 44px) dan **satu baris** di 640px ke atas —
+  bentuk satu baris terbukti memepetkan teks jadi 48px di 320px (judul terpotong jadi
+  "Pasang…"), jadi tumpukan itu keharusan, bukan pilihan gaya.
+- Posisi: **tepat di atas tab bar** di ponsel
+  (`bottom-[calc(3.5rem_+_env(safe-area-inset-bottom)_+_0.75rem)]`), **pojok kanan bawah**
+  di `lg` (`lg:right-6 lg:bottom-6`). `z-[60]` → di atas header/tab bar (`z-40`),
+  di bawah modal (`z-70/80`) dan gerbang (`z-90`).
+- **Berhenti permanen setelah terpasang**: `matchMedia('(display-mode: standalone)')` &
+  `navigator.standalone` diperiksa sebelum menampilkan, dan event `appinstalled` ikut
+  menyembunyikan. **Tidak ada `localStorage`** — kunci lama `skipInstallPrompt` tidak
+  dibaca lagi (dan tidak ditulis lagi).
+- **Tampilnya menunggu pengguna lewat gerbang**: popup ada di `z-[60]`, gerbang `z-[90]`,
+  jadi popup yang muncul saat gerbang terbuka **tak akan terlihat** (5 detiknya terbuang).
+  `App.jsx` kini mengirim `window.dispatchEvent(new Event('bm:entered'))` saat pengguna
+  masuk; `index.html` menunggu sinyal itu. Hanya sinyal **pertama** dihitung, supaya
+  "Ganti pengguna" (gerbang muncul lagi) tidak memunculkan popup kedua kali.
+- Transisi dipicu **reflow paksa** (`void card.offsetWidth`), bukan
+  `requestAnimationFrame` — rAF tidak dipanggil saat tab disembunyikan, sehingga
+  opasitas bisa tertinggal di 0 (terbukti saat verifikasi; nilai akhir jadi tak terukur).
+- `installApp()` dibuat defensif (`typeof deferredPrompt.prompt !== 'function'` → keluar)
+  supaya event tiruan/aneh tidak melempar error.
+
+**Bukti (DOM/computed style):**
+- **Luber horizontal 0** di 320 / 390 / 1024 / 1056 / 1090 / **1109** / 1120 / 1152 / 1280
+  (sebelumnya 1024–1109 luber sampai 95px, `scrollWidth` mentok 1109). Keabsahan uji
+  dipastikan: pada iframe 1024 `innerWidth = 1024` &
+  `matchMedia('(min-width: 1024px)').matches = true` → tata letak desktop `lg` benar-benar aktif.
+- Aksi Cepat = **4 tile** (Pengeluaran · Agenda · Catatan · Keluarga), 62×83px (320px)
+  sampai 80×83px (390px); klik "Keluarga" → judul section "Semua Keluarga".
+- Popup: **ditahan** saat masih di gerbang (`display: none`) → **tampil** setelah masuk
+  (`display: flex`, `opacity: 1`, `transform: translateY(0)`) → **hilang sendiri** pada
+  ~5 detik (`display: none`) → **tidak tampil** saat mode standalone (`display: none`).
+- Geometri: 320–480px → kartu 278–384×112, **judul & subjudul tidak terpotong**, tepat di
+  atas tab bar (jarak 11px pada 390px; tab bar `z-40` vs popup `z-60`); ≥640px → kartu
+  448×66 satu baris, pojok kanan bawah (24px dari tepi). Semua tombol ≥44px
+  (Pasang 99–310×44, tutup 44×44). **0 luber**, **0 error konsol** di semua lebar.
+- Build produksi hijau; kelas baru (`flex-col`, `sm:flex-row`, `sm:max-w-md`,
+  `sm:flex-none`, `lg:justify-end`) ikut ter-generate ke CSS hasil build.
+
+**Catatan jujur:** pada sesi verifikasi ini `document.visibilityState` = `hidden`, sehingga
+**transisi CSS tidak berjalan** (nilai terukur nyangkut di titik awal: `opacity: 0`,
+`transform: translateY(8px)`). Karena itu keadaan akhir diukur dengan transisi
+dimatikan lebih dulu (`card.style.transition = 'none'`) — nilainya benar, tetapi
+**gerak animasi 200ms-nya belum pernah dilihat mata**. Kakang perlu memastikan sendiri
+di HP/browser nyata bahwa popup muncul-hilang dengan lembut.
+
+---
+
 ## Pertanyaan yang MASIH Terbuka
 
 Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
@@ -373,3 +457,4 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | 11 Okt 2026 | D11–D14 | Rekening aktif, tanpa foto, variabel estimasi, libur hardcode | Grill 4 pertanyaan terbuka |
 | 13 Okt 2026 | D17 | Modul "Keluarga" = papan profil anggota (kategori: anggota/medis/kontak/dokumen) | Tab Keluarga belum pernah didefinisikan; isinya menduplikasi Agenda & Keuangan |
 | 13 Okt 2026 | D18 | Latar = "blueprint teknik": grid 28px seluruh kanvas + pendaran atas & bawah + vignette + grain (statis, murni CSS) | Kanvas terasa plain — pendaran lama berhenti di bagian atas & latar tidak berlapis sehingga kartu kaca ikut datar |
+| 13 Okt 2026 | D19 | Titik masuk "Pasang app" = satu popup 5 detik tiap app dibuka; tombol "Pasang" di header & tile "Pasang App" dihapus (tile jadi pintasan Keluarga) | Tombol Pasang selalu tampil walau app belum bisa dipasang (sering tak bereaksi) & jadi penyebab luber header 1024–1109px; banner lama tak pernah hilang sendiri |
