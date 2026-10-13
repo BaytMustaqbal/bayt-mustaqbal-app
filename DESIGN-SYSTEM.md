@@ -13,7 +13,7 @@
 - **Family-Oriented**: target sentuh ≥ 44px, bahasa sederhana, kontras teks ≥ 4.5:1 tetap dijaga
 
 ### Logo & Icon System
-- App mark: **logo Kakang** (`assets/logo.png`) — mark transparan `public/brand/logo.png` di tile `bg-brandtint` header (36px) & layar gerbang (64px); versi ter-trim, `object-contain`
+- App mark: **logo Kakang** (`assets/logo.png`) — mark transparan `public/brand/logo.png`; di header = tile `bg-brandtint` 36px, di layar gerbang = **logo besar** sebagai gambar utama (max 240–280px, `object-contain`)
 - Ikon PWA: logo di atas **latar navy `#0A192F`** (artwork mayoritas terang → butuh latar gelap; navy juga = tema app) — lihat §8
 - Ikon UI: **SVG inline** (gaya Lucide, stroke 24×24, stroke-width 1.75) — lihat `components/Icon.jsx`
 - Ikon di dalam UI: tile `bg-brandtint` + ikon `text-brandfg` (bukan kotak solid terang)
@@ -262,9 +262,9 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 ## 12. Animation & Motion
 
 - **Durasi**: 0.2–0.4s; easing `cubic-bezier(0.22,1,0.36,1)` untuk gerbang
-- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `softPulse` (denyut node ilustrasi), `dropMenuIn/Out` + `dropItemIn/Out` (dropdown), `sheetBackdropIn` + `sheetPanelIn` (bottom sheet Tambah/Ubah), `toastIn` (toast naik + fade)
+- **Animasi yang ada**: `appFadeIn` (section), `gateIn` (gerbang), `dropMenuIn/Out` + `dropItemIn/Out` (dropdown), `sheetBackdropIn` + `sheetPanelIn` (bottom sheet Tambah/Ubah), `toastIn` (toast naik + fade)
 - **Reduced motion**: `prefers-reduced-motion` mematikan semua animasi/transisi (App.css)
-- **Glow**: boleh berdenyut pelan (`soft-pulse` 3.2s) hanya pada elemen dekoratif, jangan pada teks
+- **Glow**: statis (`shadow-glow`) pada elemen dekoratif/kartu kunci; tidak ada animasi denyut — `soft-pulse` dihapus bersama ilustrasi gerbang
 
 ## 13. Device-Specific Considerations
 
