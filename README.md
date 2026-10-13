@@ -35,10 +35,10 @@ Tidak ada langkah build tambahan: Tailwind diproses lewat PostCSS.
 
 ```
 bayt-mustaqbal-app/
-├── index.html                  # Shell: meta PWA, banner install, skip link, toast jaringan
+├── index.html                  # Shell: meta PWA, banner install, skip link, toast jaringan, skrip boot tema (anti-kedip)
 ├── main.jsx                    # Mount React + registrasi service worker (produksi saja)
-├── App.jsx                     # Root: state 5 section + mockData + formatter rupiah
-├── App.css                     # Token & utilitas dasar (entry Tailwind)
+├── App.jsx                     # Root: state 5 section + mockData + formatter rupiah + state tema (Sistem/Terang/Gelap)
+├── App.css                     # Token DUA TEMA (gelap & terang) & utilitas dasar (entry Tailwind)
 ├── components/                 # Navigation, ui.jsx (Card/StatCard/Badge/Avatar/ItemActions/...),
 │                               # TaskList, NoteList, Toast, FormSheet, AccountModal, FamilyCard, FamilyMemberCard,
 │                               # ScheduleItem, Calendar, Icon, charts.jsx, notifications.js
@@ -65,15 +65,15 @@ bayt-mustaqbal-app/
 - **Mobile-first:** bottom tab bar 56 px (< 1024 px) dengan safe-area iOS, header sticky, desktop nav muncul di `lg`
 - **PWA:** manifest + service worker + 12 ikon dari **logo Kakang**; service worker hanya didaftarkan di produksi
 - **Banner install** muncul setelah event `beforeinstallprompt`; toast status jaringan hanya saat online/offline berubah
-- **Tema High-Tech Blue:** dark navy `#0A192F` + aksen cyan `#22D3EE`, glass pada elemen kunci, glow tipis, **skala elevasi + gerak** (indikator tab menggeser, header naik elevasi saat digulir, item daftar masuk berundak), angka dengan Fira Code (lihat `DESIGN-SYSTEM.md`)
+- **Tema High-Tech Blue — gelap & terang:** navy `#0A192F` + aksen cyan `#22D3EE` (gelap, default) atau keluarga cyan versi lebih dalam di atas latar terang `#F2FAFD`. Pilihan **Sistem / Terang / Gelap** (ikut pengaturan perangkat atau dipilih manual), tersimpan di perangkat, tombol cepat di header + pengaturan lengkap di modal "Akun saya". Ganti tema **tanpa kedip** (disetel sebelum app tampil) dan **tanpa memuat ulang**. Glass pada elemen kunci, glow tipis di gelap, **skala elevasi + gerak** (indikator tab menggeser, header naik elevasi saat digulir, item daftar masuk berundak), angka dengan Fira Code (lihat `DESIGN-SYSTEM.md` §2). Catatan jujur: **ikon & splash PWA tetap navy** karena manifest hanya punya satu warna
 - **Layar gerbang** muncul tiap app dibuka: pilih Kakang/Istri (tersimpan di `localStorage`) — nanti menjadi layar login
-- **Akun saya (chip pengguna di pojok kanan atas):** modal di tengah layar untuk ganti **foto profil** (dikecilkan otomatis ke 256 px, disimpan di perangkat), **nama**, **username** (dicek unik, tampil `@username` di gerbang), dan **password** — plus tombol "Ganti pengguna". Catatan jujur: belum ada server, jadi password **hanya disimpan di perangkat dan belum diverifikasi** (dinyatakan terang di dalam modal)
+- **Akun saya (chip pengguna di pojok kanan atas):** modal di tengah layar untuk ganti **foto profil** (dikecilkan otomatis ke 256 px, disimpan di perangkat), **nama**, **username** (dicek unik, tampil `@username` di gerbang), **password**, dan **tampilan** (Sistem/Terang/Gelap) — plus tombol "Ganti pengguna". Catatan jujur: belum ada server, jadi password **hanya disimpan di perangkat dan belum diverifikasi** (dinyatakan terang di dalam modal)
 - **Tambah / Ubah / Hapus item** di Agenda (Jadwal & Tugas), Keuangan, dan Catatan: form bottom sheet (mode ubah berisi nilai lama) + tombol Ubah/Hapus di tiap kartu. Hapus = langsung + **toast "Urungkan"** (6 detik, tanpa dialog)
 - **Pencarian catatan** (judul + isi) di tab Catatan, di atas filter kategori
 - **Dashboard baru:** kartu hero glass (pengeluaran + realisasi anggaran), aksi cepat, KPI, dan 3 chart tulis sendiri (tren 6 bulan, 7 hari, komposisi) — **batang & garis bisa diketuk** untuk melihat nilai tiap hari/bulan (nilai total donat sudah tampil di tengah)
 - **Notifikasi dalam app (lonceng pojok kanan atas):** isinya **dihitung dari data** — anggaran hampir/terlewati, tugas mendekati atau melewati jatuh tempo, agenda terdekat, pengeluaran terbesar. Badge angka = yang belum dibaca, ada "Tandai semua dibaca" (status tersimpan di `localStorage`); ketuk item → lompat ke bagian terkait + filternya ikut disetel. Turunan data (bukan pesan statis) jadi tidak pernah basi dan tidak butuh backend
 - **Kalender keluarga & Timeline** (dua mode di tab Agenda): Kalender = grid Minggu/Bulan/Tahun dengan warna per anggota + daftar agenda hari terpilih; **Timeline** = satu alur kronologis gabungan **agenda + tugas + pengeluaran + catatan** (rel + titik per hari), dibaca dari hari ini ke depan lalu blok **Riwayat**, ada chip filter jenis. Ketuk baris mana pun → sheet "Ubah" modul asalnya. Catatan jujur: catatan diletakkan pada tanggal terakhir diubah (belum ada tanggal pembuatan) → berlabel **"Catatan diperbarui"**
-- **Terverifikasi** di 320 / 360 / 390 / 414 / 768 px: 0 overflow horizontal, 0 elemen interaktif di bawah 44 px
+- **Terverifikasi** di 320 / 360 / 390 / 414 / 768 px: 0 overflow horizontal, 0 elemen interaktif di bawah 44 px; **tema terang & gelap** diperiksa: kontras teks 27/27 lolos (WCAG ≥ 4,5:1), titik anggota 5/5 ≥ 3:1, 0 sisa warna tema gelap di seluruh layar/panel, konsol 0 error
 
 ## Belum ada
 

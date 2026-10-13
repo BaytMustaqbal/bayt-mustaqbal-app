@@ -3,9 +3,11 @@
 > Design system ini dihasilkan lewat skill `ui-ux-pro-max` (query: *high-tech navy family finance dashboard*), kemudian disesuaikan dengan kebutuhan keluarga.
 > Gaya: **High-Tech Blue** — dark navy + electric cyan, glassmorphism terukur, glow tipis, font mono untuk angka.
 >
-> **Riwayat:** versi lama = Flat Design teal (`#0D9488`) tanpa shadow/gradasi — **diganti total** pada iterasi tema (keputusan Kakang: *biru nuansa high-tech*). Mode terang direncanakan nanti; token warna sudah dipisah di `:root` supaya mode terang bisa ditambah tanpa membongkar ulang.
+> **Riwayat:** versi lama = Flat Design teal (`#0D9488`) tanpa shadow/gradasi — **diganti total** pada iterasi tema (keputusan Kakang: *biru nuansa high-tech*).
 >
 > **Iterasi "kedalaman + gerak"** (keputusan Kakang pada sesi review UI/UX): ditambahkan **skala elevasi** (`e1`/`e2`/`pop`/`nav`), **indikator tab bawah yang menggeser**, **header yang naik elevasi saat digulir**, **token durasi/easing** yang seragam, dan **item daftar masuk berundak** (`cardIn`). Semua CSS-only — tanpa dependensi baru.
+>
+> **Iterasi "mode terang"** (keputusan Kakang, Q1–Q5): app kini punya **tema gelap (default) & terang** dengan pilihan **Sistem / Terang / Gelap** (localStorage `bm-theme`), tombol ikon di header + bagian "Tampilan" di modal *Akun saya*, dan skrip boot anti-kedip di `index.html`. Palet terang = keluarga cyan yang sama (bukan tema lain), tiap warna diperiksa kontras WCAG terukur (§2). Mode gelap dipertahankan **persis** seperti sebelumnya (no-op visual). Semua CSS/token — tanpa dependensi baru.
 
 ## 1. Visual Identity
 
@@ -27,7 +29,23 @@
 
 Token dipakai sebagai Tailwind theme extension (lihat `tailwind.config.js`) dan CSS variable (lihat `App.css`).
 
-### Primary Palette (dark)
+### Mekanisme dua tema (PENTING)
+
+- **Nilai warna HANYA ada di `App.css`**, ditulis sebagai **kanal RGB tanpa koma** (`--brand: 34 211 238`), bukan hex. Ini supaya pengubah opasitas Tailwind tetap bekerja: `border-brand/20` → `rgb(var(--brand) / 0.2)`.
+- Tema gelap di `:root` (default), tema terang di `[data-theme='light']`. `color-scheme` ikut berganti (`dark`/`light`) supaya kontrol bawaan browser (scrollbar, date picker) serasi.
+- Di CSS biasa setiap variabel **wajib** dibungkus `rgb(...)`: `background: rgb(var(--canvas))`. Tanpa itu latar/scrollbar/fokus rusak.
+- `tailwind.config.js` hanya memetakan token → `rgb(var(--x) / <alpha-value>)`; jangan menulis warna langsung di sana.
+- **Pengecualian:** `brandtint` sengaja `rgb(var(--brand) / 0.14)` (tanpa `<alpha-value>`) sehingga `bg-brandtint` selalu tint 14%; pengubah seperti `bg-brandtint/40` tetap bekerja karena Tailwind mengganti angka alfa di dalam nilainya.
+- **Jangan pakai warna mentah** (`bg-white`, `text-slate-500`, `bg-[#fff]`) di komponen — pakai token (`surface`, `mutedfg`, ...) agar tidak pecah di salah satu tema.
+- **Nilai bergantung tema** (pendaran, grid, kaca, bayangan, alur donut) juga variabel: `--app-glow-1/2`, `--grid-line`, `--glass-bg/-border`, `--shadow-*`, `--donut-track`.
+- **Warna chart/ikon SVG lewat `style`, bukan atribut** — atribut presentasi SVG tidak menyelesaikan `var()`: pakai `style={{ stroke: 'rgb(var(--chart1))' }}`.
+- **Satu kelas latar per keadaan.** Jangan menumpuk "latar dasar + tambahan" (`bg-surface bg-cta/25`): urutan aturan Tailwind yang menang adalah alfabetis (`brandtint` → `cta` → `surface`), jadi `bg-surface` akan selalu menang dan sorotan tidak pernah terlihat. Pakai salah-satu (ternary), lihat `Calendar.jsx` (hari ini/terpilih).
+- **Titik masuk tema:** `App.jsx` (state `theme`/`resolvedTheme`, localStorage `bm-theme`, dengar `matchMedia`, `toggleTheme`) + skrip boot sinkron di `index.html` (mencegah kedip putih sebelum React jalan) + `AccountModal.jsx` (pilihan lengkap).
+- **Batas jujur:** `public/manifest.json` hanya punya satu `background_color`/`theme_color` (navy `#0A192F`) dan ikon PWA berlatar navy → **splash & ikon tetap navy** di tema apa pun. Yang dinamis hanya `<meta name="theme-color">` dan warna status bar iOS (keduanya diperbarui saat tema berganti).
+- **Pengecualian warna mentah (disengaja):** `index.html` (di luar jangkauan token React) memakai hex tetap untuk tiga hal yang **memang harus identik di kedua tema**: latar anti-kedip (`html { background-color: #0A192F }` + `html[data-theme='light'] { #F2FAFD }` — kembar token), gradient CTA banner Pasang (`#1D4ED8 → #2563EB` = token cta/ctahover), dan toast status jaringan (`#155E75`/`#BE123C` + teks putih, kontras ≥5:1 di kedua tema). Kalau token berubah, tiga tempat ini harus ikut diperiksa.
+
+### Primary Palette (dark — default)
+
 ```
 Brand            (#22D3EE) - Aksen cyan listrik: garis chart, titik status, glow, indikator tab
 Brand FG         (#7DD3FC) - Teks/ikon aksen di atas tint & surface (kontras ≥ 8:1)
@@ -38,7 +56,8 @@ Success          (#22C55E) - Nilai positif / tersimpan
 Danger           (#F43F5E) - Error / offline
 ```
 
-### Secondary Palette (dark)
+### Secondary Palette (dark — default)
+
 ```
 Canvas           (#0A192F) - Latar halaman (deep navy)
 Surface          (#0F1E38) - Kartu & panel
@@ -48,19 +67,46 @@ Muted FG         (#93A7C4) - Teks sekunder (kontras 6.5:1 di atas surface)
 Line             (#1E3A5F) - Border & pemisah
 ```
 
-### Chart Series
+### Palette (terang — keluarga cyan yang sama, versi lebih dalam)
+
+Semua angka = rasio kontras **terukur** dari warna render nyata (bukan perkiraan).
+
 ```
-chart1 #22D3EE (cyan) · chart2 #3B82F6 (cobalt) · chart3 #8B5CF6 (violet)
-chart4 #F59E0B (amber) · chart5 #10B981 (emerald)
+Canvas           (#F2FAFD) - Latar halaman
+Surface          (#FFFFFF) - Kartu & panel
+Muted            (#E8F2F7) - Latar hover / elevated
+Line             (#C9DEE9) - Border & pemisah (dekoratif: 1,4:1 di surface — sama seperti gelap)
+Ink              (#10394A) - Teks utama (11,6:1 di canvas · 12,3:1 di surface)
+Muted FG         (#4A6377) - Teks sekunder (5,9:1 di canvas · 6,3:1 di surface)
+Brand            (#0E7490) - Aksen (5,1:1 sebagai teks · 5,4:1 ikon di surface)
+Brand FG         (#0A6072) - Teks di atas tint aksen (5,6:1)
+Brand Tint       (rgba 14 116 144 / 0.14)
+CTA              (#2563EB) - cobalt tetap sama; teks putih 5,2:1
+Accent Warm      (#B45309) - 4,8:1
+Success          (#15803D) - 5,0:1
+Danger           (#BE123C) - 6,3:1
+```
+
+**Nada badge/tile (teks di atas tint 15%):** cyan `#0891B2`/fg `#0B657E` · blue `#2563EB`/`#1D4ED8` · violet `#7C3AED`/`#6D28D9` · emerald `#059669`/`#065F46` · amber `#D97706`/`#92400E` · rose `#E11D48`/`#BE123C` — rasio terendah 4,95:1 (rose), aman ≥4,5:1.
+
+**Warna anggota (titik di kalender) terang:** `#0891B2` · `#7C3AED` · `#059669` · `#D97706` · `#0284C7` — semua ≥3:1 terhadap permukaan (indikator non-teks).
+
+### Chart Series
+
+```
+Gelap : chart1 #22D3EE (cyan) · chart2 #3B82F6 (cobalt) · chart3 #8B5CF6 (violet) · chart4 #F59E0B (amber) · chart5 #10B981 (emerald)
+Terang: chart1 #0891B2        · chart2 #2563EB         · chart3 #7C3AED         · chart4 #B45309        · chart5 #059669
 ```
 
 ### Usage Guidelines
-- **CTA (cobalt)**: tombol utama + teks putih → kontras 5.2:1; gradasi tipis `#1D4ED8 → #2563EB` aman di kedua ujungnya
-- **Brand (cyan)**: ikon dekoratif, titik status, garis — jangan untuk teks kecil di atas cyan (kontras putih di cyan hanya ~2:1)
-- **Brand FG**: teks/ikon aksen di atas tint atau surface (kontras ≥ 8:1)
+- **CTA (cobalt)**: tombol utama + teks putih → kontras 5.2:1 (sama di kedua tema); gradasi tipis `#1D4ED8 → #2563EB` aman di kedua ujungnya
+- **Brand**: ikon dekoratif, titik status, garis, indikator aktif — jangan untuk teks kecil di atas warna brand mentah
+- **Brand FG**: teks/ikon aksen di atas tint atau surface (gelap ≥ 8:1 · terang ≥ 5,6:1)
 - **Teks putih di atas cobalt CTA**: aman 5.2:1 (tombol "Masuk", "Pasang", "Lihat Keuangan")
-- **Glow** (`shadow-glow`): hanya untuk elemen yang perlu menonjol (fokus, tab/ikon aktif, bilah indikator); jangan ditumpuk
-- **Elevasi** (lihat §5): bayangan bernuansa navy (bukan hitam pekat) supaya kedalaman terbaca di atas permukaan navy — `e1` kartu diam, `e2` kartu hover, `pop` panel melayang (dropdown/sheet/toast/hero), `nav` bilah bawah
+- **Glow**: hanya di gelap yang terasa "neon"; di terang glow diganti pendaran tipis cyan + bayangan abu-teal (§5) supaya tidak jadi bercak. Hanya untuk elemen yang perlu menonjol (fokus, tab/ikon aktif, bilah indikator); jangan ditumpuk
+- **Elevasi** (lihat §5): gelap = bayangan navy + garis cahaya putih; terang = `rgba(16 57 74, ...)` + inset putih kuat. `e1` kartu diam, `e2` kartu hover, `pop` panel melayang (dropdown/sheet/toast/hero), `nav` bilah bawah
+- **Nada badge/tile** memakai token (`bg-tonecyan/15 text-tonecyanfg`) sehingga varian `hover:`/`focus:` tetap bekerja dan warnanya ikut tema
+- **Uji kontras terukur (terang)**: 27/27 pasangan teks lolos (terendah 4,95:1), 5/5 titik anggota lolos ≥3:1; garis pemisah `line` 1,4:1 — memang dekoratif, sama seperti gelap (1,45:1)
 
 ## 3. Typography System
 
@@ -138,7 +184,7 @@ Status    : Badge bertinta translucent (cyan/emerald/amber/rose/gray) + teks
 ```
 
 #### Navigation System
-- **Bar atas (sticky)**: glass `bg-canvas/80 backdrop-blur-xl`; **naik elevasi saat digulir** (`window.scrollY > 6` → `border-line bg-canvas/90 shadow-e2`, transisi 200ms; saat di puncak border transparan); logo tile tint; **lonceng notifikasi**; chip pengguna (**buka modal "Akun saya"**, avatar foto/inisial + nama); nav desktop pill di `lg`; tombol Pasang (CTA, `sm`+). Urutan klaster kanan: **lonceng → chip pengguna → Pasang**
+- **Bar atas (sticky)**: glass `bg-canvas/80 backdrop-blur-xl`; **naik elevasi saat digulir** (`window.scrollY > 6` → `border-line bg-canvas/90 shadow-e2`, transisi 200ms; saat di puncak border transparan); logo tile tint; **tombol tema** (ikon matahari/bulan/monitor, 44px, label aksesibel "Ganti ke mode gelap/terang" — ganti tema langsung + simpan); **lonceng notifikasi**; chip pengguna (**buka modal "Akun saya"**, avatar foto/inisial + nama); nav desktop pill di `lg`; tombol Pasang (CTA, `sm`+). Urutan klaster kanan: **tema → lonceng → chip pengguna → Pasang**
 - **Notifikasi (lonceng)**: tombol bulat 44px di klaster kanan header; badge angka = jumlah belum dibaca (maks tampil "9+", gradasi cobalt + `shadow-glow`). Panel menempel di bawah header **rata kanan konten** (`right-4 sm:right-6`; `w-80`, dibatasi `max-w-[calc(100vw_-_2rem)]` di layar sempit — di 320px jadi 288px, tepi kiri tetap 16px dari layar). Isinya **turunan data** (`components/notifications.js`), bukan pesan statis
 - **Bottom Tab Bar (< `lg`)**: glass + `shadow-nav` (bayangan halus ke atas, memisahkan bilah dari konten yang lewat di bawahnya), tinggi **tetap 56px** (`h-[56px]`), 5 tab, label 11px; tab aktif = teks `brandfg` + pill tint; **indikator cyan = satu elemen yang menggeser** di tepi atas (lebar = 1/5 slot, `translateX(activeIndex × 100%)`, transisi 320ms `ease-smooth`) — posisi dihitung dari tab aktif/section (dropdown yang terbuka ikut dihitung aktif); isi `max-w-md`
 - **Aktif**: `aria-current="page"` + cyan, bukan warna saja
@@ -220,7 +266,7 @@ Avatar           : komponen bersama (ui.jsx) — foto (`object-cover`, dari data
   - **Tandai semua dibaca** = tombol 44px di kaki panel (muncul hanya kalau masih ada yang belum dibaca); status baca tersimpan di `localStorage` dengan kunci **terpisah** dari snapshot data (`bayt-mustaqbal-notif-read-v1`) karena ini keadaan tampilan, bukan data keluarga
   - **Id notifikasi diikat ke keadaan** (bulan / tanggal / id item) → kalau keadaan berubah (bulan baru, tenggat bergeser, agenda terdekat berganti), lonceng menyala lagi secara wajar; id yang notifikasinya sudah tidak ada dibuang saat menyimpan agar daftar tidak menumpuk
   - Hanya satu panel terbuka pada satu waktu (`openKey` yang sama dengan dropdown kategori) — membuka menu kategori otomatis menutup panel notifikasi, dan sebaliknya
-- **Modal "Akun saya" (AccountModal)**: dibuka dari **chip pengguna** di header; berisi foto profil (pilih/ganti/hapus, dikecilkan otomatis ke 256px), Nama, Username, Password (kolom profil — **belum diverifikasi siapa pun**, dinyatakan terang di dalam modal), plus pintasan "Ganti pengguna" (kembali ke gerbang). Simpan → nama/username/avatar/password masuk snapshot data (`bayt-mustaqbal-data-v1`), inisial dihitung ulang dari nama, toast "Profil akun diperbarui"; fokus kembali ke chip saat ditutup
+- **Modal "Akun saya" (AccountModal)**: dibuka dari **chip pengguna** di header; berisi foto profil (pilih/ganti/hapus, dikecilkan otomatis ke 256px), Nama, Username, Password (kolom profil — **belum diverifikasi siapa pun**, dinyatakan terang di dalam modal), **bagian Tampilan** (pilihan radio Sistem / Terang / Gelap — langsung berlaku & tersimpan, di bawah kolom Password), plus pintasan "Ganti pengguna" (kembali ke gerbang). Simpan → nama/username/avatar/password masuk snapshot data (`bayt-mustaqbal-data-v1`), inisial dihitung ulang dari nama, toast "Profil akun diperbarui"; fokus kembali ke chip saat ditutup
 
 ## 7. Touch Targets & Interaction Patterns
 
@@ -258,10 +304,11 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 ```
 > Kenapa latar ikon **navy**? Artwork logo mayoritas terang (putih/abu/cyan) → butuh latar gelap agar kontras; navy juga menyatu dengan `background_color` splash. (Versi lama memakai latar cyan + glyph rumah; sekarang diganti logo asli.)
 > Ubah `$IconBg`/`$Ratio*` di bagian KONFIGURASI `scripts/generate-icons.ps1` lalu `npm run icons` bila ingin variasi.
+> **Batas dua tema (jujur):** manifest hanya punya satu warna splash & ikon berlatar navy → **splash/ikon tetap navy** walau app bertema terang. Yang ikut tema hanya `<meta name="theme-color">` + warna status bar iOS (diperbarui skrip boot & saat tema berganti). Lihat §2 "Batas jujur".
 
 ### Aset statis & build (PENTING)
 - Vite **hanya** menyalin folder `public/` ke `dist/`. Jadi `manifest.json`, `service-worker.js`, dan `icons/` wajib berada di `public/` — kalau ditaruh di root, semuanya 404 di produksi (install PWA & mode offline mati, ikon tidak muncul)
-- `service-worker.js`: naikkan nomor versi cache (`family-*-v7`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
+- `service-worker.js`: naikkan nomor versi cache (`family-*-v8`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
 
 ## 9. Offline Capabilities
 
@@ -289,7 +336,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 
 ## 11. Accessibility Guidelines
 
-- **Kontras**: ≥ 4.5:1 teks normal (ink 15:1, mutedfg 6.5:1, CTA putih 5.2:1); 3:1 untuk dekorasi besar
+- **Kontras**: ≥ 4.5:1 teks normal — **gelap**: ink 15:1, mutedfg 6.5:1, CTA putih 5.2:1 · **terang**: ink 12,3:1 (surface), mutedfg 6,3:1, CTA putih 5.2:1, nada terendah 4,95:1; 3:1 untuk indikator non-teks (titik anggota terang 5/5 lolos). Diukur dari warna render nyata, rincian di §2
 - **Ukuran**: body 16px min; chart punya `aria-label` + `figcaption` sr-only (tabel data alternatif), donat tetap `role="img"`; batang & garis interaktif lewat tombol overlay satu-area yang bisa dijangkau keyboard (panah/Home/End/Escape) dengan pengumuman `aria-live`
 - **Target sentuh**: 44px minimum (terverifikasi otomatis)
 - **Fokus**: `:focus-visible` ring cyan 2px; gerbang meng-fokus tombol masuk saat dibuka
@@ -297,6 +344,7 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 - **Badge hitungan tidak dibacakan sebagai angka telanjang**: jumlah belum dibaca masuk `aria-label` tombol lonceng ("Notifikasi, 4 belum dibaca") + satu wilayah `role="status"` sr-only ("4 notifikasi belum dibaca" / "Semua notifikasi sudah dibaca") — bukan satu live region per badge
 - **Panel notifikasi**: daftar tombol biasa (tanpa `role="menu"`) karena isinya tautan aksi, bukan pilihan radio — dijangkau Tab dari tombol lonceng; di `lg` fokus otomatis ke item pertama; Escape menutup panel **dan** memulihkan fokus ke tombol lonceng; klik/ketuk di luar juga menutup
 - **Modal Akun**: `role="dialog"` + `aria-modal` + `aria-labelledby` (judul "Akun saya"); fokus otomatis ke field Nama, Escape/backdrop/Batal/× menutup **dan** memulihkan fokus ke chip pengguna; label terhubung `htmlFor/id`; error per-field (`aria-invalid` + `aria-describedby`) **dan fokus pindah ke field bermasalah** saat gagal simpan; pesan galat foto profil memakai `role="alert"`; tombol lihat/sembunyikan password (`aria-pressed` + `aria-label` berganti) — panduan UX: pengguna harus bisa memeriksa apa yang diketik; scroll body dikunci selama modal terbuka
+- **Tema**: pilihan tampilan = `<fieldset>` + `<legend>` "Tampilan" dengan 3 radio asli (`name="bm-theme"`) — bukan div ber-`role="radio"`, jadi panah/Enter/Space bawaan browser bekerja; ikon tidak sendirian (label teks "Sistem/Terang/Gelap"). Tombol tema di header ikon 44px + `aria-label` yang menyebut **mode tujuan** dan, bila sedang "Sistem", menyebut bahwa ia mengikuti perangkat ("Ganti ke mode terang (sekarang mengikuti pengaturan perangkat)"). Tidak ada animasi tema, jadi aman terhadap `prefers-reduced-motion`; gerbang tetap memaksa `data-theme` sebelum React jalan (tak ada kedip putih)
 - **Batas yang diketahui (modal & bottom sheet)**: belum ada *focus trap* — Tab masih bisa berjalan ke tab bar/elemen di belakang dialog (perilaku sama dengan `FormSheet` sejak awal, jadi sengaja tidak dibedakan). Kalau ingin ditutup rapat, pasang trap di satu komponen dialog bersama agar keduanya konsisten
 
 ## 12. Animation & Motion
@@ -309,13 +357,14 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 
 ## 13. Device-Specific Considerations
 
-- **iOS**: safe-area notch & home indicator; `apple-mobile-web-app-status-bar-style: black`; Dynamic Type dihormati
+- **iOS**: safe-area notch & home indicator; `apple-mobile-web-app-status-bar-style` **dinamis** (`default` di terang, `black` di gelap — diperbarui skrip boot & saat tema berganti); Dynamic Type dihormati
 - **Android**: maskable icon memakai safe zone 80%; bottom nav sesuai Material guidance
 - **HP kelas bawah**: tanpa `backdrop-filter` berulang (kartu solid; glass hanya elemen kunci); fallback `@supports`
 
 ## 14. Performance Optimization
 
-- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS ~238 kB (gzip ~72 kB), CSS ~37 kB (gzip ~7,5 kB)
+- **Bundle**: chart & ikon tanpa dependensi eksternal (SVG/div manual) → JS ~261 kB (gzip ~78 kB), CSS ~42 kB (gzip ~8,4 kB). Kenaikan dari tema terang: token warna tambahan + sedikit kelas (`data-theme` tidak menambah request/JS apa pun)
+- **Tema tanpa biaya runtime**: pergantian tema = satu atribut `data-theme` + variabel CSS (bukan bundel/route kedua); tidak ada animasi saat berganti → tidak ada kerja render tambahan
 - **Animasi murah**: elevasi = `box-shadow` statis (bukan `backdrop-filter` berulang); masuknya item daftar hanya opacity/transform (GPU) → aman untuk HP kelas bawah
 - **Reduce Repaints**: animasi via transform/opacity; `transition-[width]` pada progressbar
 - **Blur hemat**: backdrop-filter hanya di header/tab bar/hero/gerbang

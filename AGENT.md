@@ -14,7 +14,7 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 ## Stack Aktual (Saat Ini)
 
 - **Frontend:** React 18 (JSX, bukan TS) + Vite 4
-- **Styling:** Tailwind CSS via **PostCSS** (`tailwind.config.js` + `postcss.config.js`) + `App.css` custom — design system **High-Tech Blue**: dark navy `#0A192F` + electric cyan `#22D3EE`, glassmorphism terukur, glow tipis. **Skala elevasi** (`e1`/`e2`/`pop`/`nav`), token durasi/easing (`duration-fast/base/slow`, `ease-smooth/crisp`), dan konstanta hover kartu (`CARD_INTERACTIVE`) ada di `tailwind.config.js` + `components/ui.jsx` (lihat `DESIGN-SYSTEM.md` §5 & §12)
+- **Styling:** Tailwind CSS via **PostCSS** (`tailwind.config.js` + `postcss.config.js`) + `App.css` custom — design system **High-Tech Blue**: dark navy `#0A192F` + electric cyan `#22D3EE`, glassmorphism terukur, glow tipis. **Dua tema: gelap (default) & terang** — nilai warna hanya di `App.css` (`:root` = gelap, `[data-theme='light']` = terang) sebagai kanal RGB; pilihan **Sistem/Terang/Gelap** di localStorage `bm-theme`. **Skala elevasi** (`e1`/`e2`/`pop`/`nav`), token durasi/easing (`duration-fast/base/slow`, `ease-smooth/crisp`), dan konstanta hover kartu (`CARD_INTERACTIVE`) ada di `tailwind.config.js` + `components/ui.jsx` (lihat `DESIGN-SYSTEM.md` §2 & §5 & §12)
 - **Icons:** SVG inline custom (`components/Icon.jsx`, gaya Lucide) — Font Awesome **sudah dihapus**. **Logo/merek** = `assets/logo.png` (Kakang): dipakai sebagai mark di header + layar gerbang (`public/brand/logo.png`, transparan) dan sebagai **ikon PWA** (`public/icons/*`, latar navy) lewat `npm run icons`.
 - **Font:** Plus Jakarta Sans (teks) + **Fira Code** (angka/KPI/label chart) — Google Fonts
 - **PWA:** `public/manifest.json` + `public/service-worker.js` (cache-first, background sync) — SW diregistrasi **hanya di build production** (`main.jsx`). Aset statis **wajib** di `public/`, karena Vite hanya menyalin folder itu ke `dist/`
@@ -28,26 +28,26 @@ Proyek ini **masih di tahap awal**: frontend PWA statis dengan **mock data**. Ba
 
 ```
 bayt-mustaqbal-app/
-├── index.html              # Entry PWA: Plus Jakarta Sans, manifest, install prompt, network monitor
+├── index.html              # Entry PWA: Plus Jakarta Sans, manifest, install prompt, network monitor + skrip boot tema (anti-kedip) & meta theme-color/status-bar dinamis
 ├── main.jsx                # React entry: createRoot → render <App /> ke #root + registrasi SW (production)
-├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + data dummy (seed) + persist localStorage + bottom sheet Tambah/Ubah + modal Akun + toast (undo hapus) + banner offline
-├── App.css                 # Tailwind (@tailwind base/components/utilities) + design token, focus-visible, scrollbar, animasi
-├── tailwind.config.js      # Theme tokens: warna, skala elevasi (e1/e2/pop/nav), durasi+easing gerak + content paths
+├── App.jsx                 # Root: 5 section + layar gerbang (pilih pengguna) + data dummy (seed) + persist localStorage + bottom sheet Tambah/Ubah + modal Akun + toast (undo hapus) + banner offline + **state tema** (bm-theme, ikut sistem, toggle)
+├── App.css                 # Tailwind (@tailwind base/components/utilities) + **design token DUA TEMA** (kanal RGB di :root & [data-theme='light']), efek/bayangan/kaca per tema, focus-visible, scrollbar, animasi
+├── tailwind.config.js      # Theme tokens: warna (→ rgb(var(--x) / <alpha-value>)), nada tone*, member*, chart*, skala elevasi (e1/e2/pop/nav), durasi+easing gerak + content paths
 ├── postcss.config.js       # Plugin: tailwindcss + autoprefixer
 ├── vite.config.js          # Vite config: react plugin, port 3000
 ├── package.json            # Deps: react, react-dom, vite, @vitejs/plugin-react, tailwindcss, postcss, autoprefixer
 ├── DESIGN-SYSTEM.md        # Design system: High-Tech Blue, tipografi, layout, komponen, PWA, a11y
 ├── components/
-│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, note, pin, utensils, edit, trash, search, undo, barChart, target, chevron, lock, eye/eyeOff, camera dll.)
+│   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, note, pin, utensils, edit, trash, search, undo, barChart, target, chevron, lock, eye/eyeOff, camera, sun/moon/monitor (tema) dll.)
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
 │   │                       #   QuickAction, EmptyState, ExpenseCard, ItemActions, Badge, FamilyList, CTA_CLASS,
 │   │                       #   Avatar (foto/inisial) + initialsOf(nama)
-│   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + lonceng notifikasi + chip pengguna) + bottom tab bar 56px glass;
+│   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + tombol tema (sun/moon, 44px) + lonceng notifikasi + chip pengguna) + bottom tab bar 56px glass;
 │   │                       #   tab Agenda, Keuangan, Keluarga & Catatan = dropdown filter (animasi, badge jumlah, a11y menu);
 │   │                       #   lonceng = panel notifikasi turunan data (badge belum dibaca, "tandai semua dibaca");
 │   │                       #   chip pengguna = pembuka modal "Akun saya"
 │   ├── AccountModal.jsx    # Modal "Akun saya" (tengah layar): foto profil (kecilkan 256px di canvas), Nama, Username,
-│   │                       #   Password (kolom profil, belum diverifikasi), "Ganti pengguna"; role=dialog, error per-field
+│   │                       #   Password (kolom profil, belum diverifikasi), bagian **Tampilan** (radio Sistem/Terang/Gelap), "Ganti pengguna"; role=dialog, error per-field
 │   ├── notifications.js    # Notifikasi turunan data (tanpa backend): anggaran, tugas, agenda terdekat, pengeluaran besar → id stabil + target navigasi
 │   ├── categories.js       # Kategori agenda, keuangan, keluarga, catatan + filter tugas & penghitung per item + meta ikon
 │   ├── WelcomeGate.jsx     # Layar gerbang tiap app dibuka: logo besar + tagline (iman–teknologi–keluarga) + kartu pengguna (avatar foto/inisial + nama + @username/peran) + tombol "Muat ulang data contoh" → nanti jadi login
@@ -60,7 +60,9 @@ bayt-mustaqbal-app/
 │   ├── NoteList.jsx        # Daftar kartu catatan keluarga (ikon kategori, isi 3 baris, badge, pin, tombol Ubah/Hapus)
 │   ├── ScheduleItem.jsx    # Item agenda (ikon, judul, jam, tanggal, badge anggota) + tombol Ubah/Hapus
 │   ├── Calendar.jsx        # Kalender keluarga (mode Kalender di tab Agenda): view Minggu/Bulan/Tahun,
-│   │                       #   warna per member + legenda, agenda hari terpilih, tugas jatuh tempo
+│   │                       #   warna per member + legenda, agenda hari terpilih, tugas jatuh tempo;
+│   │                       #   sorotan "hari ini" (tint 14%) & "terpilih" (tint cta 25% + ring) —
+│   │                       #   satu kelas latar per keadaan (hindari urutan CSS Tailwind menimpanya)
 │   ├── Timeline.jsx        # Timeline keluarga (mode Timeline di tab Agenda): satu alur kronologis
 │   │                       #   gabungan agenda + tugas + pengeluaran + catatan (rel vertikal + titik
 │   │                       #   per hari + cabang ke tiap item), chip filter jenis, klik item → sheet Ubah
@@ -68,7 +70,7 @@ bayt-mustaqbal-app/
 ├── assets/
 │   └── logo.png            # LOGO ASLI Kakang (986×844, latar transparan) — sumber tunggal brand & ikon
 ├── public/                 # Aset statis → disalin apa adanya ke dist/ oleh Vite
-│   ├── manifest.json       # PWA manifest (theme #0A192F; ikon dari logo; 8 "any" + 2 maskable)
+│   ├── manifest.json       # PWA manifest (theme/background #0A192F — **tetap navy di tema apa pun**; ikon dari logo; 8 "any" + 2 maskable)
 │   ├── service-worker.js   # Cache strategy: static cache-first, API network-first, bg sync, push
 │   ├── brand/
 │   │   └── logo.png        # Logo ter-trim + transparan (256px) untuk mark di app (header & gerbang)
@@ -96,7 +98,8 @@ bayt-mustaqbal-app/
 | Keluarga | Dropdown bagian (nav HP+desktop) → filter; grid `FamilyMemberCard` (avatar inisial + badge status) + daftar sub-bagian `FamilyList` (Kesehatan / Pendidikan Anak / Kontak & Darurat, 3–5 item tiap bagian) + chip sinkron; "Semua Keluarga" = semua bagian bertumpuk | `mockData` di `App.jsx` |
 | Catatan | Dropdown filter catatan (nav HP+desktop): Semua/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info (badge jumlah) + chip sinkron; **kotak cari** (judul + isi) + grid `NoteList` (kartu + badge kategori + pin "penting" + tombol Ubah/Hapus) | `mockData` di `App.jsx` |
 | Notifikasi (lonceng) | Tombol di pojok kanan atas header (sebelum chip pengguna) → panel turun rata kanan berisi **notifikasi turunan data** (anggaran hampir/terlewati, tugas dekat/lewat tenggat, agenda terdekat, pengeluaran terbesar) + badge jumlah belum dibaca + "Tandai semua dibaca"; ketuk item → pindah section + filter disetel | `components/notifications.js` (dihitung dari `mockData`) |
-| Akun saya (modal) | **Chip pengguna di header** membuka modal di tengah layar: **foto profil** (pilih/ganti/hapus; foto dikecilkan otomatis ke 256px di canvas → disimpan data URL), **Nama** (inisial dihitung ulang otomatis), **Username** (3–20 huruf kecil/angka/._-; dicek unik antar akun; tampil sebagai `@username` di kartu gerbang), **Password** (kolom profil — bisa diisi/ganti/hapus, **belum diverifikasi siapa pun**), + pintasan **"Ganti pengguna"** (kembali ke gerbang) | `data.users` di snapshot `bayt-mustaqbal-data-v1` (state di `App.jsx`, modal di `components/AccountModal.jsx`) |
+| Akun saya (modal) | **Chip pengguna di header** membuka modal di tengah layar: **foto profil** (pilih/ganti/hapus; foto dikecilkan otomatis ke 256px di canvas → disimpan data URL), **Nama** (inisial dihitung ulang otomatis), **Username** (3–20 huruf kecil/angka/._-; dicek unik antar akun; tampil sebagai `@username` di kartu gerbang), **Password** (kolom profil — bisa diisi/ganti/hapus, **belum diverifikasi siapa pun**), **bagian Tampilan** (radio **Sistem / Terang / Gelap** — langsung berlaku & tersimpan), + pintasan **"Ganti pengguna"** (kembali ke gerbang) | `data.users` di snapshot `bayt-mustaqbal-data-v1` (state di `App.jsx`, modal di `components/AccountModal.jsx`) |
+| Tema (terang/gelap) | Tombol ikon di kluster kanan header (**sebelum lonceng**, 44px, ikon matahari/bulan sesuai mode tujuan) mengganti tema sekali ketuk; pilihan lengkap **Sistem / Terang / Gelap** ada di modal Akun › Tampilan. Pilihan **Sistem** mengikuti `prefers-color-scheme` perangkat dan berubah otomatis saat pengaturan perangkat berubah. Skrip boot di `index.html` menyetel tema **sebelum React jalan** (anti-kedip). `<meta name="theme-color">` + warna status bar iOS ikut tema; **splash & ikon PWA tetap navy** (manifest hanya punya satu warna) | localStorage `bm-theme` (`'system'\|'light'\|'dark'`), state di `App.jsx` |
 
 > **Tambah / Ubah / Hapus berfungsi di 4 tab data** (Agenda — Jadwal & Tugas, Keuangan, Catatan; Keluarga baru **tambah**): `SectionHeader` "Tambah" membuka `FormSheet` mode tambah; tombol **Ubah** di kartu membuka `FormSheet` mode ubah (`initialValues` terisi, judul "Ubah …", tombol "Perbarui"); tombol **Hapus** langsung membuang item + `Toast` dengan **"Urungkan"** (6 detik, pulihkan ke posisi semula) — jaring aman pengganti dialog konfirmasi. Item baru/berubah langsung ikut grid, chip, kalender, dan KPI Dashboard.
 >
@@ -107,6 +110,8 @@ bayt-mustaqbal-app/
 > **Persistensi (`localStorage` key `bayt-mustaqbal-data-v1`):** seed awal = `mockData`; setiap perubahan (tambah/ubah/hapus, toggle tugas) disimpan sebagai snapshot, jadi tidak hilang saat reload. Saat dimuat, snapshot **digabung dengan `mockData`** (kunci baru seperti `notes` otomatis terisi walau snapshot lama); snapshot rusak/parsial ditolak (app kembali ke data contoh, tidak blank). Tombol **"Muat ulang data contoh"** di layar gerbang menghapus snapshot dan kembali ke `mockData`.
 >
 > **Status notifikasi sudah dibaca** disimpan di kunci **terpisah** (`bayt-mustaqbal-notif-read-v1`) karena ini keadaan tampilan, bukan data keluarga — jadi "Muat ulang data contoh" tidak mengembalikan badge belum-dibaca. Id notifikasi diikat ke keadaan (bulan/tanggal/id item) dan id yang sudah tidak ada dibuang saat menyimpan.
+>
+> **Pilihan tema** disimpan di kunci **terpisah** juga (`bm-theme` = `'system'` | `'light'` | `'dark'`), di luar snapshot data keluarga — karena preferensi tampilan perangkat, bukan data keluarga: "Muat ulang data contoh" **tidak** mengubah tema. Skrip kecil di `<head>` `index.html` membaca kunci ini dan menyetel `data-theme` + `color-scheme` + `<meta theme-color>` **sebelum** React jalan, jadi tidak ada kedipan tema salah saat app dibuka. Pilihan `'system'` mengikuti `prefers-color-scheme` dan berubah otomatis saat pengaturan perangkat berganti (didengar lewat `matchMedia` di `App.jsx`).
 >
 > **Profil akun** (nama, username, avatar foto, password) tersimpan **di dalam snapshot data keluarga** (`data.users` pada `bayt-mustaqbal-data-v1`) — bukan kunci terpisah, karena ini memang data akun. Konsekuensi yang disengaja: **"Muat ulang data contoh" ikut mengembalikan profil ke contoh**. Foto avatar = data URL JPEG 256×256 (≤ 150 kB, di luar itu ditolak dengan pesan jelas); foto 6,4 MB → ± 25 kB. Password **belum diverifikasi siapa pun** (belum ada backend) — di modal dinyatakan terang "hanya disimpan di perangkat ini, jangan pakai password asli"; memindahkan verifikasi ke Worker + D1 adalah langkah berikutnya saat backend dibuat.
 >
@@ -124,7 +129,7 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 |-------|--------|
 | Navigasi < `lg` | **Bottom tab bar** 56px (dikunci `h-[56px]`), 5 tab, area sentuh 60×56px di HP 320px |
 | Navigasi ≥ `lg` | Nav atas (pill) + tombol Pasang; tab bar bawah disembunyikan |
-| Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]`; klaster kanan (semua ukuran): **lonceng notifikasi → chip pengguna (buka modal Akun) → tombol Pasang** |
+| Header | `sticky` (bukan `fixed`) + `pt-[env(safe-area-inset-top)]`; klaster kanan (semua ukuran): **tombol tema → lonceng notifikasi → chip pengguna (buka modal Akun) → tombol Pasang** |
 | Safe area bawah | Tab bar `pb-[env(safe-area-inset-bottom)]`; `<main>` `pb-[calc(4.5rem_+_env(safe-area-inset-bottom))]` |
 | Banner install | Diposisikan tepat di atas tab bar (`bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]`, `lg:bottom-0`) |
 | Kartu KPI | Nilai uang diringkas di HP (`Rp 2,8 jt`) via `formatCurrencyShort`; nilai penuh di `title` + section Keuangan |
@@ -141,6 +146,19 @@ Kakang meminta tampilan dioptimalkan untuk HP — berikut aturan yang berlaku se
 **Catatan jujur uji keyboard Timeline**: pada sesi verifikasi ini jendela browser melaporkan `document.visibilityState === "hidden"` di semua tab, sehingga `browser.press` Tab/Enter tidak terkirim (pada sesi sebelumnya event ini berfungsi). Karena itu yang dibuktikan programatik = baris benar-benar fokusable + aturan `:focus-visible` termuat + tanpa `outline-none`. **Uji Tab/Enter sungguhan pada baris Timeline perlu Kakang lakukan manual** (fokus keyboard + Enter membuka sheet).
 
 **Hasil verifikasi modal Akun** (browser: langsung 800px + iframe 320×640; diuji lewat `browser.evaluate` + `browser.press`): chip membuka modal `role="dialog"` + `aria-modal` + `aria-labelledby` "Akun saya", fokus otomatis ke field Nama; Escape/klik backdrop/Batal/× menutup **dan** fokus balik ke chip; scroll body terkunci saat terbuka lalu pulih; **fokus terlihat** di semua kontrol (Tab sungguhan → `:focus-visible` + outline cyan 2px, termasuk tombol lihat password & Simpan). Validasi: nama kosong/1 karakter, username 2 karakter & format salah, **username duplikat antar akun** → error per-field + fokus pindah ke field bermasalah; password < 6 karakter & "ulangi password tidak sama"; field "Ulangi password" muncul hanya saat password diisi. Unggah foto: PNG 1200×800 → di-crop tengah & dikecilkan ke 256×256 (dibuktikan dengan probe piksel: sudut cyan, tengah merah) → JPEG data URL; foto noise 6,4 MB → 25 kB; berkas non-gambar → "Berkas ini bukan gambar…", HEIC tak terbaca → pesan jelas (foto lama tetap aman); "Hapus foto" → kembali inisial. Simpan → nama/username/avatar/password masuk snapshot + inisial dihitung ulang (nama 3 kata → "RT") + toast "Profil akun diperbarui"; **bertahan setelah reload** (kartu gerbang menampilkan foto). Modal di 320×640: panel 288px (tepi 16px), tidak meluber, isi 779px → scroll internal panel, tombol lihat password 44×44. Regresi: panel notifikasi & dropdown kategori tetap jalan, FormSheet tetap terbuka/tutup, konsol 0 error setelah reload bersih.
+
+**Hasil verifikasi tema (gelap & terang)** (browser 800px + iframe 320/360/768px; `browser.evaluate` + hitung kontras WCAG dari warna render nyata):
+
+- **Mode gelap = no-op visual**: dibandingkan sebelum perubahan, semua nilai terukur identik — kanvas `rgb(10,25,47)`, nada `-200`, titik anggota `-400`, `.glass` putih 6%/2%, `--shadow-e1` inset putih 5% + `rgba(2,8,20,0.4)`, `bg-toneamber/15` = `rgba(251,191,36,…)`.
+- **Mode terang**: kanvas `#F2FAFD`, permukaan `#FFFFFF`, `color-scheme: light`, `<meta theme-color>` `#F2FAFD`, status bar iOS `default`, kaca putih 88%/72%, glows/grid/bayangan/nada semua ter-swap; **27/27 pasangan teks lolos** (terendah nada rose 4,95:1), **5/5 titik anggota ≥3:1**; pemisah `line` 1,39:1 (dekoratif — setara gelap 1,45:1).
+- **Pindai sisa warna gelap** di mode terang (`browser.evaluate` menelusuri `color`/`background-color`/`border-*`/`outline`/`stroke`/`fill` seluruh DOM, dicocokkan ke daftar nilai khas gelap): **0 temuan** di Beranda, Agenda (Jadwal/Tugas/Kalender/Timeline), Keuangan, Keluarga, Catatan, panel notifikasi, modal Akun, FormSheet, dan gerbang.
+- **Tombol tema header**: sekali klik membalik tema + menyimpan `bm-theme` + memperbarui meta; klik lagi kembali. **Modal Akun › Tampilan**: 3 radio asli (`system`/`light`/`dark`), klik Gelap → `data-theme='dark'` + meta `#0A192F` + tersimpan; klik Terang → kembali; legend "Tampilan".
+- **Chart**: busur donat terang memakai `rgb(var(--chart1..4))` (8 145 178 / 37 99 235 / 124 58 237 / 180 83 9) + alur `rgb(var(--donut-track))` 201 222 233; gradasi batang berakhir transparan; titik anggota legenda 5 warna + bar tugas `mutedfg/60` (dulu `white/60` → tak terlihat di terang).
+- **Kalender**: pada viewport **benar** 320px (clientWidth 321) sel hari = **44,74px ≥ 44**; sorotan hari ini tint 14% (kontras 5,9:1 terang / 7,42:1 gelap) & hari terpilih tint cta 25% + ring (8,6:1 / 11,33:1) — keduanya kini benar-benar terlihat (dulu tertimpa `bg-surface` karena urutan aturan Tailwind; diperbaiki jadi satu kelas latar per keadaan, berlaku di **kedua** tema).
+- **Sel "bulan ini" (view Tahun)** diperbaiki dari tint 40% ke 14%: kontras nama/jumlah 5,9/5,17 (terang) & 7,42/5,04 (gelap) — sebelumnya 3,96/3,47 & 3,85/2,62 (gagal ≥4,5).
+- **Luber & target sentuh**: 0 overflow horizontal di 320/360/768 (5 section + modal Akun); tab nav 56px, chip 44px.
+- **Konsol**: 0 error / 0 warning (hanya info React DevTools). Build hijau: CSS 42,20 kB / JS 260,64 kB.
+- **Batas jujur**: karena tab browser sesi ini melaporkan `visibilityState === "hidden"`, transisi CSS membeku di nilai awal sehingga nilai terhitung setelah *klik* bisa "tergeser"; pengukuran karena itu dilakukan **setelah muat ulang** (mount bersih) atau dengan transisi dimatikan sementara. Uji visual akhir (mata manusia) tetap disarankan Kakang lakukan sendiri.
 
 ---
 
