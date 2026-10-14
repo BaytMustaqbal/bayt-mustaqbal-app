@@ -690,7 +690,7 @@ Delapan keputusan yang diambil (semua lewat pilihan A/B/C, rinciannya di spec):
 | 2 | Kedalaman | **Alokasi + realisasi** | Realisasi dihitung dari pengeluaran nyata → kelihatan keranjang mana yang bocor (inti manfaat 50/30/20) |
 | 3 | Penghubung ke keranjang | **Field `bucket` per pengeluaran** + 3 kategori baru | Kategori sekarang belum punya rumah untuk Keinginan & Tabungan; koreksi manual per transaksi penting (mis. zakat/infak, "cicilan" yang muncul di dua keranjang) |
 | 4 | Rasio | **Bisa disunting**, default 50/30/20 | Ubah ke 60/20/20 nanti tidak perlu ubah kode |
-| 5 | Pos dalam keranjang | **Saran yang bisa disesuaikan** | Daftar Kakang tetap jadi pengingat, tapi bisa menyesuaikan pos nyata keluarga |
+| 5 | Pos dalam keranjang | **Saran yang bisa disesuaikan** — label saja, tanpa centang & tanpa nominal | Daftar Kakang tetap jadi pengingat, tapi bisa menyesuaikan pos nyata keluarga |
 | 6 | Pendekatan data | **Satu bulan aktif, semua angka turunan** | Mengikuti cara app bekerja (hero/donat/tren memang satu periode) & mencegah muncul angka anggaran kedua (pelajaran D21) |
 | 7 | Cicilan rumah | **Kategori `Rumah & Cicilan`** | Cicilan/sewa tempat tinggal = kebutuhan pokok, beda dari "utang" di keranjang 20% |
 | 8 | Editor gaji & rasio | **Editor kecil di halaman Anggaran** | Validasi "jumlah = 100" tanpa menyentuh `FormSheet` yang dipakai 4 section |
@@ -715,7 +715,6 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | O6 | Mata uang — perlu kolom nominal luar (USD / mata uang lain)? | Sebelum Fase 1 | Tidak perlu. Satu keluarga satu negara |
 | O7 | Format angka uang di UI | Sebelum Fase 1 | `Rp 1.500.000` — format yang paling familier buat keluarga |
 | O8 | Apakah Istri punya transaksi rutin sendiri yang perlu pintasan khusus? | Sebelum Fase 1.5 | Tidak ada peran khusus; dia tetap input manual |
-| O9 | Arti "**ditandai**" pada pos anggaran (D26): perlu centang "selesai", atau cukup label yang bisa diubah? | Sebelum modul Anggaran dikerjakan | Belum perlu — pos hanya label (tanpa centang & tanpa nominal); kalau perlu, tambahnya 1 field + 1 tampilan |
 
 ---
 

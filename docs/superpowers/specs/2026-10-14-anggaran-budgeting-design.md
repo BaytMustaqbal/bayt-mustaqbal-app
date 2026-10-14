@@ -24,6 +24,7 @@ Kakang memasukkan **gaji** setiap gajian, lalu app otomatis membaginya **50% Keb
 | 6 | Pendekatan data | **Satu bulan aktif, angka turunan** (tidak ada agregat tersimpan) |
 | 7 | Cicilan rumah | **Kategori tersendiri** `Rumah & Cicilan` (donat jadi 9 irisan) |
 | 8 | Editor gaji & rasio | **Editor kecil di halaman Anggaran** (FormSheet tidak disentuh) |
+| 9 | Arti "ditandai" pada pos | **Label saja** — tanpa centang "selesai", tanpa nominal (dikonfirmasi 14 Okt 2026) |
 
 ### Alasan keputusan yang paling menentukan
 
@@ -219,7 +220,6 @@ Semua nilai cadangan dikumpulkan di satu helper `getBudget(data)` (`components/b
 
 | # | Poin | Default kalau tidak dijawab |
 |---|---|---|
-| A1 | Arti "**ditandai**" pada pos: apakah perlu centang "selesai"? | Belum perlu — pos hanya label (tanpa centang, tanpa nominal). Tambahnya 1 field + 1 tampilan kalau ternyata perlu |
 | A2 | Zakat & infak ditaruh di **Kebutuhan** | Kebutuhan (kewajiban); bisa dikoreksi per transaksi lewat field keranjang |
 | A3 | Setoran tabungan dicatat sebagai **pengeluaran** (padahal secara akuntansi itu transfer) | Dipertahankan, supaya realisasi 20% bisa diukur |
 | A4 | Kalau Kakang mengubah rasio (mis. 60/20/20), data contoh tetap 50/30/20 | Boleh berbeda — ringkasan keranjang langsung menyesuaikan; data contoh tidak ikut berubah |
