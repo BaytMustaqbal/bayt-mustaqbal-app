@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
 import { Card, GlassCard, StatCard, QuickAction, ProgressBar, Badge, CTA_CLASS } from './ui';
 import { DonutChart, LineChart } from './charts';
+import { Timeline } from './Timeline';
 
 /* =========================================================
    Dashboard — slice pertama tema "High-Tech Blue".
@@ -201,6 +202,15 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         action={<span className="shrink-0 text-xs text-mutedfg">bulan ini</span>}
       >
         <DonutChart data={data.categories} formatValue={formatCurrencyShort} centerLabel="Total" />
+      </Panel>
+
+      {/* ---------- Timeline Agenda ---------- */}
+      <Panel
+        icon="calendar"
+        title="Timeline Agenda"
+        action={<span className="shrink-0 text-xs text-mutedfg">filter</span>}
+      >
+        <Timeline data={data.schedule} onEdit={onNavigate} formatCurrency={formatCurrencyShort} />
       </Panel>
 
       {/* ---------- Daftar terbaru ---------- */}
