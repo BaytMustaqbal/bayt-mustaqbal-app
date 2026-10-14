@@ -21,7 +21,46 @@ export const FINANCE_CATEGORIES = [
   { id: 'transportasi', label: 'Transportasi', icon: 'car' },
   { id: 'kesehatan', label: 'Kesehatan', icon: 'activity' },
   { id: 'ibadah', label: 'Ibadah & Sosial', icon: 'handCoins' },
+  { id: 'rumah', label: 'Rumah & Cicilan', icon: 'home' },
+  { id: 'hiburan', label: 'Hiburan & Liburan', icon: 'sparkles' },
+  { id: 'tabungan', label: 'Tabungan & Utang', icon: 'trendingUp' },
 ];
+
+// --- Tiga keranjang anggaran (rumus 50/30/20) ---
+// Dipakai halaman Anggaran (sub-tab Keuangan). Murni label + ikon: nominalnya
+// dihitung dari `budget.ratios`, bukan disimpan (lihat components/budget.js).
+export const BUCKETS = [
+  { id: 'needs', label: 'Kebutuhan', icon: 'home' },
+  { id: 'wants', label: 'Keinginan', icon: 'sparkles' },
+  { id: 'savings', label: 'Tabungan & Utang', icon: 'trendingUp' },
+];
+
+// Peta kategori keuangan → keranjang. Hanya default: satu pengeluaran boleh
+// menimpanya lewat field `bucket` (atau 'auto' untuk kembali ke peta ini).
+// `ibadah` (zakat/infak) tidak ada di rumus 50/30/20 → masuk Kebutuhan.
+export const CATEGORY_BUCKET = {
+  belanja: 'needs',
+  utilitas: 'needs',
+  pendidikan: 'needs',
+  transportasi: 'needs',
+  kesehatan: 'needs',
+  ibadah: 'needs',
+  rumah: 'needs',
+  hiburan: 'wants',
+  tabungan: 'savings',
+};
+
+export const DEFAULT_BUCKET = 'needs';
+
+// Keranjang sebuah pengeluaran: timpaan manual menang; 'auto'/kosong → peta
+// kategori; kategori tak dikenal → Kebutuhan (jangan pernah `undefined`).
+export const bucketOf = (item) => {
+  const manual = item && item.bucket;
+  if (manual && manual !== 'auto') return manual;
+  return CATEGORY_BUCKET[item && item.category] || DEFAULT_BUCKET;
+};
+
+export const getBucketMeta = (id) => BUCKETS.find((b) => b.id === id) || BUCKETS[0];
 
 // Bagian modul "Keluarga". Modul ini = **papan profil anggota** (data diri,
 // info medis ringkas, kontak darurat, dokumen penting). Jadwal & biaya anak
