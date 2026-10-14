@@ -64,6 +64,10 @@ const mockData = {
     // Kendaraan — servis & perawatan motor/mobil
     { id: 12, title: 'Service Motor', time: '09:00', date: '2026-10-17', member: 'Rezki YT', category: 'kendaraan' },
     { id: 13, title: 'Servis Rutin (ganti oli & filter)', time: '10:30', date: '2026-10-20', member: 'Rezki YT', category: 'kendaraan' },
+    // Contoh baru supaya nampak di Timeline
+    { id: 14, title: 'Membaca Al-Quran malam', time: '20:00', date: '2026-10-15', member: 'Rezki YT', category: 'ibadah' },
+    { id: 15, title: 'Meeting tim kerja', time: '14:00', date: '2026-10-16', member: 'Rezki YT', category: 'agenda' },
+    { id: 16, title: 'Belanja bulanan keluarga', time: '10:00', date: '2026-10-18', member: 'Hilda AK', category: 'belanja' },
   ],
   // Info medis ringkas & STATIS (dokter langganan, asuransi, obat rutin).
   // Jadwal kontrol/imunisasi ada di Agenda — bukan di sini.
