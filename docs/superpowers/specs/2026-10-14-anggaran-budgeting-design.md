@@ -218,8 +218,10 @@ Semua nilai cadangan dikumpulkan di satu helper `getBudget(data)` (`components/b
 
 ## 10. Poin terbuka
 
-| # | Poin | Default kalau tidak dijawab |
+> **Status (14 Okt 2026):** **A2 & A3 sudah final** — dipilih defaultnya dan **sudah diterapkan** di kode, jadi bukan lagi poin terbuka. **A4** bukan pertanyaan yang harus dijawab: itu catatan perilaku (data contoh tidak ikut berubah saat rasio diubah) dan sudah terbukti saat verifikasi.
+
+| # | Poin | Keputusan final |
 |---|---|---|
-| A2 | Zakat & infak ditaruh di **Kebutuhan** | Kebutuhan (kewajiban); bisa dikoreksi per transaksi lewat field keranjang |
-| A3 | Setoran tabungan dicatat sebagai **pengeluaran** (padahal secara akuntansi itu transfer) | Dipertahankan, supaya realisasi 20% bisa diukur |
-| A4 | Kalau Kakang mengubah rasio (mis. 60/20/20), data contoh tetap 50/30/20 | Boleh berbeda — ringkasan keranjang langsung menyesuaikan; data contoh tidak ikut berubah |
+| ~~A2~~ | ~~Zakat & infak ditaruh di **Kebutuhan**~~ → **FINAL** | **Kebutuhan** (kewajiban); tetap bisa dikoreksi per transaksi lewat field keranjang |
+| ~~A3~~ | ~~Setoran tabungan dicatat sebagai **pengeluaran** (padahal secara akuntansi itu transfer)~~ → **FINAL** | **Dipertahankan** sebagai pengeluaran, supaya realisasi keranjang 20% bisa diukur |
+| A4 | Kalau Kakang mengubah rasio (mis. 60/20/20), data contoh tetap 50/30/20 | Bukan poin terbuka — perilaku yang diinginkan: ringkasan keranjang langsung menyesuaikan, data contoh tidak ikut berubah |

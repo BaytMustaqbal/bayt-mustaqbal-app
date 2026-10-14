@@ -676,6 +676,7 @@ supaya nanti mudah diarahkan dari Capacitor.
 
 **Tanggal:** 14 Oktober 2026
 **Spec lengkap:** `docs/superpowers/specs/2026-10-14-anggaran-budgeting-design.md`
+**Status:** ✅ **SUDAH dikerjakan** (14 Okt 2026) — commit `3bcd386` (keranjang di `categories.js`), `92c6206` (`components/budget.js`), `5d0ad91` (data contoh + donat 9 irisan + pembaca lewat `getBudget` + halaman Anggaran pertama), `e88058c` (editor gaji/rasio ber-validasi), `90ff1da` (pos bisa tambah/ubah/hapus/pindah keranjang), `95e375f` (field **Keranjang** di form pengeluaran). Dokumen (`AGENT.md`, `DESIGN-SYSTEM.md`, `README.md`) disinkronkan menyusul.
 
 Kakang minta halaman untuk mengatur **budgeting**: setiap gajian diinput gaji, lalu otomatis
 dibagi menurut rumus **50/30/20** (Kebutuhan · Keinginan · Tabungan & Utang) beserta pos-posnya
@@ -702,6 +703,8 @@ Delapan keputusan yang diambil (semua lewat pilihan A/B/C, rinciannya di spec):
 - Data contoh: **gaji Rp 8 jt** (angka lama dipertahankan), pengeluaran jadi **11 item** dengan total **tetap Rp 6,3 jt** → invariant D21 (hero = donat = tren Okt) **tidak dilanggar**; hero tetap "79% · sisa Rp 1,7 jt".
 - Snapshot `localStorage` lama tidak bikin rusak: `income` (fallback `total`), `ratios`, `pos`, dan `bucket` semuanya punya nilai cadangan di satu helper `getBudget(data)`.
 - Riwayat bulanan **ditunda** sampai backend Worker + D1 (bulan = baris tabel).
+
+**Hasil verifikasi (DOM, 14 Okt 2026):** hero tetap **79% · sisa Rp 1,7 jt**; donat 9 legenda = **Rp 6,3 jt** = jumlah 11 kartu Keuangan (3 angka D21 tetap cocok); Anggaran menampilkan realisasi **3.600.000 / 1.800.000 / 900.000** vs alokasi **4.000.000 / 2.400.000 / 1.600.000** (status Hati-hati / Aman / Aman, sisa 400 rb / 600 rb / 700 rb), pos 6 / 4 / 4; rasio tidak berjumlah 100% **ditolak** ("Jumlah rasio harus 100% (sekarang 110%)", editor tetap terbuka, tidak ada yang disimpan); rasio 60/20/20 tersimpan dan bertahan setelah reload; pemasukan 0 → alokasi Rp 0 (tanpa NaN); ubah keranjang sebuah pengeluaran **memindahkan** realisasinya; pengeluaran lama tanpa `bucket` → form menampilkan "Otomatis"; snapshot lama bergaya `budget.total` tetap terbaca; 0 luber horizontal, 0 error konsol.
 
 ---
 

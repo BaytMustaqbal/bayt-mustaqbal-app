@@ -94,9 +94,11 @@ Danger           (#BE123C) - 6,3:1
 ### Chart Series
 
 ```
-Gelap : chart1 #22D3EE (cyan) · chart2 #3B82F6 (cobalt) · chart3 #8B5CF6 (violet) · chart4 #F59E0B (amber) · chart5 #10B981 (emerald) · chart6 #F43F5E (rose)
-Terang: chart1 #0891B2        · chart2 #2563EB         · chart3 #7C3AED         · chart4 #B45309        · chart5 #059669         · chart6 #BE123C
+Gelap : chart1 #22D3EE (cyan) · chart2 #3B82F6 (cobalt) · chart3 #8B5CF6 (violet) · chart4 #F59E0B (amber) · chart5 #10B981 (emerald) · chart6 #F43F5E (rose) · chart7 #A3E635 (lime) · chart8 #F97316 (orange) · chart9 #EC4899 (pink)
+Terang: chart1 #0891B2        · chart2 #2563EB         · chart3 #7C3AED         · chart4 #B45309        · chart5 #059669         · chart6 #BE123C         · chart7 #65A30D         · chart8 #EA580C         · chart9 #DB2777
 ```
+
+Warna seri ditulis sebagai **token** (`rgb(var(--chartN))`) di data, bukan hex — supaya donut tetap terbaca di dua tema. **Donut "Komposisi" kini 9 irisan** (D26): enam kategori lama tetap memakai `chart1..6`, tiga kategori baru dapat `chart7` (Hiburan & Liburan), `chart8` (Rumah & Cicilan), `chart9` (Tabungan & Investasi). Urutan irisan **menurun menurut nilai** (perilaku lama), bukan menurut nomor token.
 
 ### Usage Guidelines
 - **CTA (cobalt)**: tombol utama + teks putih → kontras 5.2:1 (sama di kedua tema); gradasi tipis `#1D4ED8 → #2563EB` aman di kedua ujungnya
@@ -239,7 +241,41 @@ Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat compon
                    Donat: nilai total sudah tampil di tengah + tiap irisan punya nilai & % di legenda.
 ```
 
+### Anggaran-Specific (D26 — modul 50/30/20)
+
+```
+Sub-tab Keuangan : `role="group" aria-label="Mode tampilan keuangan"` — dua tombol
+                   "Pengeluaran"/"Anggaran", min-h 44px, aktif = `bg-brandtint text-brandfg`
+                   + `aria-pressed`; di HP grid 2 kolom penuh, dari `sm` inline-flex.
+                   Pola sama dengan sub-tab Agenda (Jadwal/Tugas/Kalender/Timeline).
+Kartu pemasukan : label "Pemasukan <bulan>" + nominal mono + ringkasan rasio
+                   ("Dibagi 50% Kebutuhan · 30% Keinginan · 20% Tabungan & Utang")
+                   + tombol outline "Ubah" (44px, `aria-expanded`).
+Editor rasio    : buka di tempat (bukan FormSheet) — 1 input pemasukan + 3 input persen,
+                   min-h 44px, `inputMode="numeric"`; petunjuk langsung "Jumlah rasio
+                   saat ini: N% — harus tepat 100%" (`aria-live="polite"`), tombol
+                   "Pakai 50/30/20" (outline + ikon target), "Simpan" (CTA) dan "Batal".
+                   **Simpan hanya jalan kalau jumlah rasio tepat 100%** — kalau tidak,
+                   muncul kotak galat `border-tonerose/40 bg-tonerose/10` + ikon
+                   alertTriangle + teks "Jumlah rasio harus 100% (sekarang N%)" dan
+                   tidak ada data yang ditulis. Pemasukan boleh 0 (alokasi Rp 0).
+Kartu keranjang : 3 kartu (Kebutuhan / Keinginan / Tabungan & Utang), 1 kolom di HP,
+                   3 kolom dari `lg`; ikon tile 40px + Badge status; baris
+                   "realisasi dari alokasi" (mono); ProgressBar; "N% terpakai · M
+                   pengeluaran"; baris "Sisa …"/"Lebih …" (merah kalau lebih).
+Aturan status   : aman ≤ 80% · hati-hati 80–100% · lebih > 100% dari alokasi.
+                   SELALU ikon + teks (circleCheck / alertTriangle / trendingUp),
+                   bukan warna saja — Badge tone emerald / amber / merah.
+Pos saran       : daftar bulat + label; tiap baris punya tombol 44px ubah (pensil) &
+                   hapus (tempat sampah) + tombol "Tambah pos" bergaris putus
+                   (`border-dashed`, lebar penuh, 44px). Hanya label + keranjang yang
+                   disimpan (tanpa nominal) lewat FormSheet `budgetPos`; nominal selalu
+                   turunan dari rasio.
+Ringkasan       : 3 StatCard — Alokasi bulan ini, Realisasi, Sisa/Lebih dari anggaran.
+```
+
 ### Family-Specific Components
+
 ```
 FamilyMemberCard : kartu profil anggota — avatar **foto** (`object-cover`, `bg-muted`, border `line`)
                    bila `member.avatar` ada (mis. Rezki), kalau tidak avatar
@@ -294,15 +330,15 @@ Avatar           : komponen bersama (ui.jsx) — foto (`object-cover`: data URL 
 ### Primary Screens (5 section, in-file switch, tanpa router)
 1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, panel "Pengeluaran Terbaru", lalu **Timeline Agenda ringkas** (preview 3 hari + "Lihat semua"). **Tombol mata** jumlah uang = **hanya memengaruhi kartu hero** (keputusan Kakang); nilai di KPI/chart/daftar tetap tampil
 2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Ibadah/Kesehatan/Rumah Tangga/Kendaraan, badge jumlah) — **satu-satunya filter kategori** (deretan chip filter di dalam section dihapus; nama filter aktif sudah tampil sebagai judul `SectionHeader`, jumlah di sub-judul); sub-tampilan **Jadwal | Tugas | Kalender | Timeline** (default Jadwal) — **Jadwal** = grid `ScheduleItem`; **Tugas** = chip filter status/prioritas (Semua Tugas/Belum Selesai/Sudah Selesai/Prioritas Tinggi/Sedang/Rendah) + `TaskList` (toggle selesai + badge prioritas); **Kalender** = kalender gabungan anggota (`Calendar.jsx`): view **Minggu/Bulan/Tahun** (default Bulan), **warna per member + legenda** (Rezki YT cyan, Hilda AK violet, RAGASUCI emerald, RAJABRANA amber, Keluarga sky), dot member di sel + bar bawah = ada tugas jatuh tempo, klik tanggal → daftar agenda hari itu, nav prev/next + "Hari Ini", filter kategori ikut memfilter kalender; **Timeline** = alur kronologis gabungan 4 modul (`Timeline.jsx`): rel vertikal + titik per hari + cabang ke tiap baris, kelompok **hari ini ke depan** lalu blok **Riwayat**, chip filter jenis (Semua/Agenda/Tugas/Keuangan/Catatan)
-3. **Keuangan**: dropdown kategori di tab Keuangan (Semua/Belanja/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah) — satu-satunya filter; grid `ExpenseCard` berikon kategori + total terfilter di header
+3. **Keuangan**: sub-tampilan **Pengeluaran | Anggaran** (default Pengeluaran — D26). **Pengeluaran**: dropdown kategori di tab Keuangan (Semua Pengeluaran/Belanja Bulanan/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah & Sosial/**Rumah & Cicilan**/**Hiburan & Liburan**/**Tabungan & Utang**) — satu-satunya filter; grid `ExpenseCard` berikon kategori + total terfilter di header. **Anggaran** (`Budgeting.jsx`): kartu pemasukan + editor gaji/rasio **di tempat** (bukan FormSheet; simpan hanya bila rasio tepat 100%) → 3 kartu keranjang **Kebutuhan/Keinginan/Tabungan & Utang** (alokasi 50/30/20 vs realisasi pengeluaran, status Aman/Hati-hati/Lebih) + pos saran yang bisa ditambah/ubah/dihapus/dipindah keranjang lewat FormSheet `budgetPos`
 4. **Keluarga** (**papan profil anggota** — D17): dropdown bagian di tab Keluarga (Semua/Anggota/**Info Medis**/**Kontak & Darurat**/**Dokumen Penting**, badge jumlah) — satu-satunya filter; "Semua Keluarga" = semua bagian bertumpuk. **Anggota** = grid `FamilyMemberCard` berisi data diri (avatar foto bila ada — mis. Rezki dari seed `/avatars/profile-rezki.jpg` — atau inisial, nama, peran, umur dari tanggal lahir, golongan darah, alergi, WA) — **1 kolom di HP** (kartu memuat detail, butuh lebar), `sm`+ berjejer; sisanya `FamilyList`. Kesehatan→Informasi medis ringkas (dokter/asuransi/obat, **statis**), Pendidikan Anak→dihapus dari modul ini (jadwal & biaya milik Agenda/Keuangan)
 5. **Catatan**: dropdown filter di tab Catatan (Semua Catatan/Penting/Daftar Belanja/Rumah & Alat/Dapur & Resep/Ide & Info, badge jumlah) — satu-satunya filter kategori; **kotak cari** (judul + isi, `type="search"`, tombol bersihkan) + grid `NoteList` (kartu catatan + badge kategori + pin "penting" + `ItemActions`)
 
-> **Kenapa deretan chip filter kategori dihapus** (keputusan Kakang, sesi review UI): chip di dalam section (Agenda/Keuangan/Keluarga/Catatan) menampilkan **isi, jumlah, dan state yang sama persis** dengan dropdown kategori di tab — dua UI untuk satu pekerjaan. Nama filter aktif sudah terbaca di `SectionHeader` (judul = nama kategori, sub-judul = "N dari M …"), dan tab yang punya dropdown sudah bertanda **chevron** + `aria-haspopup="menu"`, jadi tidak ada informasi yang hilang. Yang **tetap ada** (tidak punya padanan di dropdown): chip sub-tampilan **Jadwal | Tugas | Kalender | Timeline**, chip filter status/prioritas **Tugas**, chip jenis **Timeline**, chip skala kalender **Minggu/Bulan/Tahun**, dan **kotak cari Catatan**.
+> **Kenapa deretan chip filter kategori dihapus** (keputusan Kakang, sesi review UI): chip di dalam section (Agenda/Keuangan/Keluarga/Catatan) menampilkan **isi, jumlah, dan state yang sama persis** dengan dropdown kategori di tab — dua UI untuk satu pekerjaan. Nama filter aktif sudah terbaca di `SectionHeader` (judul = nama kategori, sub-judul = "N dari M …"), dan tab yang punya dropdown sudah bertanda **chevron** + `aria-haspopup="menu"`, jadi tidak ada informasi yang hilang. Yang **tetap ada** (tidak punya padanan di dropdown): chip sub-tampilan **Jadwal | Tugas | Kalender | Timeline** (Agenda) dan **Pengeluaran | Anggaran** (Keuangan), chip filter status/prioritas **Tugas**, chip jenis **Timeline**, chip skala kalender **Minggu/Bulan/Tahun**, dan **kotak cari Catatan**.
 
 ### Screens Khusus
 - **Layar Gerbang (WelcomeGate)**: muncul **setiap app dibuka** (keputusan Kakang) — pilih pengguna (Kakang/Istri, tersimpan `localStorage`) sebagai kartu (avatar foto bila ada, nama, `@username` bila diisi — kalau belum, peran) + tombol **"Muat ulang data contoh"** (hapus snapshot → kembali `mockData`) → nanti menjadi layar login saat backend siap
-- **Bottom sheet "Tambah/Ubah" (FormSheet)**: dibuka dari tombol `SectionHeader` "Tambah" (mode tambah) atau `ItemActions` "Ubah" di kartu item (mode ubah, `initialValues` terisi, judul "Ubah …", tombol "Perbarui") di Agenda (Jadwal & Tugas)/Keuangan/Keluarga/Catatan; `role="dialog"` + `aria-modal`, label terhubung `htmlFor/id`, fokus otomatis ke field pertama, tutup via tombol ×/Batal/klik backdrop/Escape, scroll body dikunci selama terbuka
+- **Bottom sheet "Tambah/Ubah" (FormSheet)**: dibuka dari tombol `SectionHeader` "Tambah" (mode tambah) atau `ItemActions` "Ubah" di kartu item (mode ubah, `initialValues` terisi, judul "Ubah …", tombol "Perbarui") di Agenda (Jadwal & Tugas)/Keuangan/Keluarga/Catatan; `role="dialog"` + `aria-modal`, label terhubung `htmlFor/id`, fokus otomatis ke field pertama, tutup via tombol ×/Batal/klik backdrop/Escape, scroll body dikunci selama terbuka. Dua pemakaian khusus modul Anggaran (D26): form **pengeluaran** punya pilihan **Keranjang** (default "Otomatis (ikut kategori)"), dan form **pos anggaran** (`budgetPos`) dibuka dari baris pos (ubah/hapus) atau tombol "Tambah pos" di kartu keranjang — keranjang tujuan sudah terisi saat form dibuka
 - **Panel Notifikasi (lonceng header)**: dibuka dari tombol lonceng; isinya **dihitung dari data** (`components/notifications.js`) — anggaran (≥ 80% "hampir habis", ≥ 100% "terlewati"), tugas (mendekati tenggat ≤ 3 hari, atau melewati tenggat; kalau tidak ada → ringkasan "belum selesai"), agenda terdekat (≤ 2 pekan; judul "hari ini"/"besok"/"terdekat"), pengeluaran terbesar (bila ≥ 20% anggaran). Urut dari yang paling perlu ditindak (anggaran → tugas → agenda → pengeluaran); maksimum 4–5 item, **bukan** tumpukan pesan
   - **Ketuk item** = lompat ke section terkait + filter ikut disetel (mis. notifikasi tugas → Agenda › Tugas, filter "Belum Selesai"); notifikasi ikut ditandai terbaca
   - **Tandai semua dibaca** = tombol 44px di kaki panel (muncul hanya kalau masih ada yang belum dibaca); status baca tersimpan di `localStorage` dengan kunci **terpisah** dari snapshot data (`bayt-mustaqbal-notif-read-v1`) karena ini keadaan tampilan, bukan data keluarga
