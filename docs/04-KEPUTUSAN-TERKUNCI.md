@@ -524,6 +524,28 @@ tombol mata tetap mengubah **tepat 3** dari **24** simpul "Rp" (hanya kartu hero
 
 ---
 
+## D22 — Card "7 Hari Terakhir" Dihapus dari Dashboard
+
+**Tanggal:** 14 Oktober 2026
+
+Kakang meminta **menghapus card "7 Hari Terakhir" hanya di Dashboard**. Data dummy
+`weekly` tetap ada di `App.jsx` (siap pakai kembali), dan komponen `BarChart` di
+`charts.jsx` juga tidak dihapus — hanya **importnya** yang ditirihkan dari
+`components/Dashboard.jsx` (sudah tidak dipakai).
+
+**Konsekuensi tampilan & layout:**
+- Dashboard sekarang **dua chart**: tren 6 bulan (full width) → donut "Komposisi"
+  (full width). Sebelumnya donut berdempetan dengan bar chart di
+  `lg:grid-cols-2`; kini donut memakan lebar penuh di atas 640px. Nilainya tidak berubah.
+- Nilai apa pun tidak berubah: hero tetap `Rp 6.300.000`, donut tetap `Rp 6,3 jt`
+  (6 irisan, 100%), tren Okt `Rp 6,3 jt`.
+
+**Bukti (DOM):** hanya **2** `figure` tersisa di `#main` (tren + donut),
+"7 Hari Terakhir" tidak ada (`hasBarTitle` = false); **0 luber**, **0 error konsol**;
+`npm run build` hijau.
+
+---
+
 ## Pertanyaan yang MASIH Terbuka
 
 Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
@@ -548,3 +570,4 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | 13 Okt 2026 | D19 | Titik masuk "Pasang app" = satu popup 5 detik tiap app dibuka; tombol "Pasang" di header & tile "Pasang App" dihapus (tile jadi pintasan Keluarga) | Tombol Pasang selalu tampil walau app belum bisa dipasang (sering tak bereaksi) & jadi penyebab luber header 1024–1109px; banner lama tak pernah hilang sendiri |
 | 13 Okt 2026 | D20 | Foto profil contoh disajikan dari `public/avatars/profile-rezki.jpg` (bukan `assets/`) & dipakai sebagai seed avatar Kakang **dan** kartu anggota "Rezki YT"; `FamilyMemberCard` pakai `Avatar` | Kakang minta foto profilnya terpasang agar tampilan "Akun saya" & avatar terlihat nyata; `assets/` tidak ikut ke `dist/` sehingga foto akan 404 di produksi |
 | 13 Okt 2026 | D21 | Angka pengeluaran contoh disamakan jadi **Rp 6,3 jt** di hero, donat (kini 6 kategori + token `--chart6`), & tren Okt; anggaran contoh naik ke **Rp 8 jt** | Kakang minta total 6,3 jt; sekaligus ditemukan hero (4,71 jt) ≠ donat/tren (2,78 jt) — data dummy tidak sinkron |
+| 14 Okt 2026 | D22 | Hapus card "7 Hari Terakhir" di Dashboard; donut "Komposisi" jadi full-width di atas 640px | Kakang: "bisa kamu hapus card 7 Hari Terakhir?" — hanya di Dashboard (data `weekly` & komponen BarChart tetap ada) |

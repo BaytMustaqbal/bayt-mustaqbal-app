@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
 import { Card, GlassCard, StatCard, QuickAction, ProgressBar, Badge, CTA_CLASS } from './ui';
-import { BarChart, DonutChart, LineChart } from './charts';
+import { DonutChart, LineChart } from './charts';
 
 /* =========================================================
    Dashboard — slice pertama tema "High-Tech Blue".
@@ -194,24 +194,14 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         <LineChart data={data.monthlyTrend} formatValue={formatCurrencyShort} />
       </Card>
 
-      {/* ---------- Bar + Donat ---------- */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-        <Panel
-          icon="barChart"
-          title="7 Hari Terakhir"
-          action={<span className="shrink-0 text-xs text-mutedfg">harian</span>}
-        >
-          <BarChart data={data.weekly} formatValue={formatCurrencyShort} />
-        </Panel>
-
-        <Panel
-          icon="pieChart"
-          title="Komposisi Pengeluaran"
-          action={<span className="shrink-0 text-xs text-mutedfg">bulan ini</span>}
-        >
-          <DonutChart data={data.categories} formatValue={formatCurrencyShort} centerLabel="Total" />
-        </Panel>
-      </div>
+      {/* ---------- Donat ---------- */}
+      <Panel
+        icon="pieChart"
+        title="Komposisi Pengeluaran"
+        action={<span className="shrink-0 text-xs text-mutedfg">bulan ini</span>}
+      >
+        <DonutChart data={data.categories} formatValue={formatCurrencyShort} centerLabel="Total" />
+      </Panel>
 
       {/* ---------- Daftar terbaru ---------- */}
       <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">

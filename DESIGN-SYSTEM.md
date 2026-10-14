@@ -165,7 +165,7 @@ Latar **bukan** kanvas datar; ia berlapis dan jadi dasar yang membuat kartu kaca
 - Grid yang sama masih dipakai ulang secara lokal di belakang chart & layar gerbang (`.grid-lines`).
 
 ### Layout Patterns (aktual)
-- **Dashboard**: sapaan → kartu hero glass (keuangan bulan ini + realisasi anggaran) → aksi cepat 4 tile → KPI 2→4 kolom (`lg`) → tren (line, full width) → bar+donat (1→2 kolom `lg`) → 2 panel daftar terbaru
+- **Dashboard**: sapaan → kartu hero glass (keuangan bulan ini + realisasi anggaran) → aksi cepat 4 tile → KPI 2→4 kolom (`lg`) → tren (line, full width) → donat "Komposisi" (full width; dulu berdempetan dengan bar chart "7 Hari Terakhir" yang sudah dihapus) → 2 panel daftar terbaru
 - **Layar gerbang**: kartu sentral max-w-md, konten vertikal: identitas → **logo besar** (mark merek, tanpa ilustrasi terpisah) → pilih pengguna → tombol masuk
 - **Daftar kartu** (agenda/keuangan/keluarga/tugas): grid 1 → 2 (`md`) → 3/4 kolom (`lg`)
 - **Form / isi konten**: satu kolom, label di atas input
