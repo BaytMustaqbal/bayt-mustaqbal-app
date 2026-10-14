@@ -210,7 +210,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         title="Timeline Agenda"
         action={<span className="shrink-0 text-xs text-mutedfg">filter</span>}
       >
-        <Timeline data={data.schedule} onEdit={onNavigate} formatCurrency={formatCurrencyShort} />
+        <Timeline data={data} onEdit={onNavigate} formatCurrency={formatCurrencyShort} />
       </Panel>
 
       {/* ---------- Daftar terbaru ---------- */}
