@@ -24,6 +24,7 @@ import {
   countByCategory,
   countByTaskFilter,
 } from './components/categories';
+import { getBudget } from './components/budget';
 import './App.css';
 
 // Data contoh (sementara, sampai backend Worker + D1 siap)
@@ -90,17 +91,23 @@ const mockData = {
     { id: 3, title: 'Kakek & Nenek', meta: '0813-9876-5432' },
     { id: 4, title: 'Golongan darah', meta: 'Rezki YT: O · Hilda AK: A · Anak: B', badge: 'Catatan', tone: 'brand' },
   ],
+  // Pengeluaran contoh Oktober 2026 — 11 item, total Rp 6.300.000.
+  // Total ini SENGAJA sama dengan nilai Okt di `monthlyTrend` dan jumlah
+  // `categories`, supaya hero = donat = tren (lihat D21).
+  // Keranjang anggaran TIDAK disimpan di sini: dihitung dari `category`
+  // lewat CATEGORY_BUCKET (components/categories.js).
   expenses: [
-    { id: 1, category: 'belanja', description: 'Belanja kebutuhan dapur', amount: 1850000, date: '2026-10-14' },
-    { id: 2, category: 'utilitas', description: 'Tagihan listrik & air', amount: 620000, date: '2026-10-13' },
-    { id: 3, category: 'pendidikan', description: 'SPP sekolah', amount: 1250000, date: '2026-10-12' },
-    { id: 4, category: 'transportasi', description: 'Bensin & tol', amount: 450000, date: '2026-10-11' },
-    { id: 5, category: 'utilitas', description: 'Internet & pulsa', amount: 380000, date: '2026-10-10' },
-    { id: 6, category: 'ibadah', description: 'Zakat & infak', amount: 750000, date: '2026-10-09' },
-    { id: 7, category: 'kesehatan', description: 'Obat & vitamin keluarga', amount: 250000, date: '2026-10-08' },
-    { id: 8, category: 'belanja', description: 'Makan siang keluarga', amount: 350000, date: '2026-10-07' },
-    { id: 9, category: 'pendidikan', description: 'Perlengkapan sekolah', amount: 200000, date: '2026-10-06' },
-    { id: 10, category: 'transportasi', description: 'Servis motor', amount: 200000, date: '2026-10-05' },
+    { id: 1, category: 'rumah', description: 'Sewa & cicilan rumah', amount: 1150000, date: '2026-10-14' },
+    { id: 2, category: 'belanja', description: 'Belanja bahan makanan', amount: 900000, date: '2026-10-13' },
+    { id: 3, category: 'pendidikan', description: 'SPP sekolah', amount: 600000, date: '2026-10-12' },
+    { id: 4, category: 'utilitas', description: 'Tagihan listrik & air', amount: 450000, date: '2026-10-11' },
+    { id: 5, category: 'ibadah', description: 'Zakat & infak', amount: 250000, date: '2026-10-10' },
+    { id: 6, category: 'transportasi', description: 'Bensin & tol', amount: 150000, date: '2026-10-09' },
+    { id: 7, category: 'kesehatan', description: 'Obat & vitamin keluarga', amount: 100000, date: '2026-10-08' },
+    { id: 8, category: 'hiburan', description: 'Makan di luar keluarga', amount: 450000, date: '2026-10-07' },
+    { id: 9, category: 'hiburan', description: 'Langganan streaming & hobi', amount: 350000, date: '2026-10-06' },
+    { id: 10, category: 'hiburan', description: 'Liburan akhir pekan', amount: 1000000, date: '2026-10-05' },
+    { id: 11, category: 'tabungan', description: 'Setoran tabungan & dana darurat', amount: 900000, date: '2026-10-04' },
   ],
   tasks: [
     { id: 1, title: 'Bersihkan dapur', completed: false, assignedTo: 'RAGASUCI', dueDate: '2026-10-15', priority: 'high' },
@@ -188,8 +195,37 @@ const mockData = {
     },
   ],
   // --- Data analitik (dummy) ---
-  // Anggaran & tren masih contoh: di D1 nanti ini dari tabel budget + expenses.
-  budget: { total: 8000000, month: 'Oktober 2026' },
+  // Anggaran: yang disimpan hanya gaji (`income`), rasio, dan daftar pos.
+  // Alokasi & realisasi DIHITUNG saat render (components/budget.js) — tidak
+  // disimpan, supaya tidak ada angka kedua yang bisa berbeda dari sumbernya.
+  // Di D1 nanti ini dari tabel budget + expenses.
+  budget: {
+    month: 'Oktober 2026',
+    income: 8000000,
+    ratios: { needs: 50, wants: 30, savings: 20 },
+    pos: {
+      needs: [
+        { id: 'n1', label: 'Cicilan rumah/sewa' },
+        { id: 'n2', label: 'Belanja bahan makanan & beras' },
+        { id: 'n3', label: 'Tagihan utilitas (listrik/air/internet)' },
+        { id: 'n4', label: 'Transportasi (BBM/angkutan umum)' },
+        { id: 'n5', label: 'Sekolah anak' },
+        { id: 'n6', label: 'Asuransi kesehatan' },
+      ],
+      wants: [
+        { id: 'w1', label: 'Makan di luar/hangout' },
+        { id: 'w2', label: 'Hobi & hiburan' },
+        { id: 'w3', label: 'Langganan streaming' },
+        { id: 'w4', label: 'Liburan/travelling' },
+      ],
+      savings: [
+        { id: 's1', label: 'Dana darurat (target 3–6× pengeluaran bulanan)' },
+        { id: 's2', label: 'Tabungan' },
+        { id: 's3', label: 'Investasi' },
+        { id: 's4', label: 'Pembayaran cicilan/utang' },
+      ],
+    },
+  },
   monthlyTrend: [
     { label: 'Mei', value: 3120000 },
     { label: 'Jun', value: 2875000 },
@@ -213,12 +249,17 @@ const mockData = {
     // Jumlah semua nilai = total pengeluaran bulan ini (6,3 jt) — sama dengan
     // hasil jumlah `expenses` & nilai Okt di `monthlyTrend`, agar ketiga angka
     // (hero · donat · tren) selalu cocok.
-    { label: 'Belanja Bulanan', value: 2200000, color: 'rgb(var(--chart1))' },
-    { label: 'Pendidikan', value: 1450000, color: 'rgb(var(--chart2))' },
-    { label: 'Utilitas', value: 1000000, color: 'rgb(var(--chart3))' },
-    { label: 'Ibadah & Sosial', value: 750000, color: 'rgb(var(--chart4))' },
-    { label: 'Transportasi', value: 650000, color: 'rgb(var(--chart5))' },
-    { label: 'Kesehatan', value: 250000, color: 'rgb(var(--chart6))' },
+    // Urutan menurun (terbesar dulu) seperti sebelumnya. Enam kategori lama
+    // tetap memakai warna aslinya; tiga kategori baru dapat --chart7/8/9.
+    { label: 'Hiburan & Liburan', value: 1800000, color: 'rgb(var(--chart7))' },
+    { label: 'Rumah & Cicilan', value: 1150000, color: 'rgb(var(--chart8))' },
+    { label: 'Belanja Bulanan', value: 900000, color: 'rgb(var(--chart1))' },
+    { label: 'Tabungan & Investasi', value: 900000, color: 'rgb(var(--chart9))' },
+    { label: 'Pendidikan', value: 600000, color: 'rgb(var(--chart2))' },
+    { label: 'Utilitas', value: 450000, color: 'rgb(var(--chart3))' },
+    { label: 'Ibadah & Sosial', value: 250000, color: 'rgb(var(--chart4))' },
+    { label: 'Transportasi', value: 150000, color: 'rgb(var(--chart5))' },
+    { label: 'Kesehatan', value: 100000, color: 'rgb(var(--chart6))' },
   ],
 };
 
@@ -1052,7 +1093,7 @@ export default function App() {
             <SectionHeader
               icon="wallet"
               title={activeMeta.label}
-              subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(data.budget.total)}`}
+              subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(getBudget(data).income)}`}
               actionLabel="Tambah"
               actionTone="accent"
               onAction={() => openAdd('expenses')}

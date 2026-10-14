@@ -45,6 +45,11 @@
   --chart4: 245 158 11;
   --chart5: 16 185 129;
   --chart6: 244 63 94;
+  /* Tambahan untuk modul Anggaran: donut punya 9 kategori sekarang.
+     Dipilih agar irisan yang bersebelahan tidak berwarna nyaris sama. */
+  --chart7: 163 230 53;
+  --chart8: 251 146 60;
+  --chart9: 236 72 153;
 
   /* Nada badge & tile ikon (latar, teks) — teks aman di atas tint 15% */
   --tone-cyan: 34 211 238;
@@ -122,6 +127,9 @@
   --chart4: 180 83 9;
   --chart5: 5 150 105;
   --chart6: 190 18 60;
+  --chart7: 101 163 13;
+  --chart8: 234 88 12;
+  --chart9: 219 39 119;
 
   /* Nada badge & tile ikon — semua teks ≥4,7:1 di atas tintnya */
   --tone-cyan: 8 145 178;

@@ -3,6 +3,7 @@ import { Icon } from './Icon';
 import { Card, GlassCard, StatCard, QuickAction, ProgressBar, Badge, CTA_CLASS } from './ui';
 import { DonutChart, LineChart } from './charts';
 import { Timeline } from './Timeline';
+import { getBudget } from './budget';
 
 /* =========================================================
    Dashboard — slice pertama tema "High-Tech Blue".
@@ -36,10 +37,15 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
   const [showMoney, setShowMoney] = useState(false);
   const masked = 'Rp ••••••';
 
+  // Satu sumber angka anggaran (components/budget.js). Snapshot localStorage
+  // lama (budget masih `{ total, month }`) tetap terbaca: `income` di sana
+  // punya nilai cadangan ke `total`.
+  const budget = getBudget(data);
+
   const totals = useMemo(() => {
     const totalExpense = data.expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const tasksDone = data.tasks.filter((t) => t.completed).length;
-    const budgetLeft = Math.max(0, data.budget.total - totalExpense);
+    const budgetLeft = Math.max(0, budget.income - totalExpense);
     const monthCount = data.monthlyTrend.length;
     const prevMonth = monthCount > 1 ? data.monthlyTrend[monthCount - 2].value : 0;
     const delta = prevMonth ? Math.round(((totalExpense - prevMonth) / prevMonth) * 100) : 0;
@@ -59,7 +65,11 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
     year: 'numeric',
   }).format(new Date());
 
-  const usedPct = Math.min(100, Math.round((totals.totalExpense / data.budget.total) * 100));
+  // Gaji 0/belum diisi → 0% (bukan NaN/∞).
+  const usedPct =
+    budget.income > 0
+      ? Math.min(100, Math.round((totals.totalExpense / budget.income) * 100))
+      : 0;
   const isDown = totals.delta <= 0;
 
   return (
@@ -85,7 +95,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-mutedfg">
               <Icon name="wallet" size={14} />
-              Pengeluaran {data.budget.month}
+              Pengeluaran {budget.month}
             </p>
             <div className="mt-2 flex items-center gap-2">
               <p
@@ -132,10 +142,10 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
               <span>Realisasi anggaran</span>
               <span className="font-mono font-semibold text-ink">{usedPct}%</span>
             </div>
-            <ProgressBar value={totals.totalExpense} max={data.budget.total} className="mt-2" />
+            <ProgressBar value={totals.totalExpense} max={budget.income} className="mt-2" />
             <div className="mt-2 flex items-baseline justify-between gap-3 text-xs">
               <span className="text-mutedfg">
-                Sisa dari {showMoney ? formatCurrencyShort(data.budget.total) : 'Rp ••••'}
+                Sisa dari {showMoney ? formatCurrencyShort(budget.income) : 'Rp ••••'}
               </span>
               <span className="font-mono font-semibold text-brandfg">
                 {showMoney ? formatCurrency(totals.budgetLeft) : masked}
@@ -177,7 +187,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           value={formatCurrencyShort(totals.budgetLeft)}
           valueTitle={formatCurrency(totals.budgetLeft)}
           label="Sisa anggaran"
-          hint={`dari ${formatCurrencyShort(data.budget.total)}`}
+          hint={`dari ${formatCurrencyShort(budget.income)}`}
         />
       </div>
 
