@@ -852,6 +852,13 @@ export default function App() {
     setActiveSection('agenda');
   };
 
+  // Dipanggil tombol "Lihat semua" pada kartu Timeline di Dashboard →
+  // buka halaman Agenda langsung di sub-tab Timeline (tampilan penuh).
+  const handleOpenAgendaTimeline = () => {
+    setAgendaMode('timeline');
+    setActiveSection('agenda');
+  };
+
   // Dipanggil dropdown kategori keuangan di navigasi → buka section + set filter
   const handleFinanceSelect = (categoryId) => {
     setFinanceFilter(categoryId);
@@ -1187,6 +1194,8 @@ export default function App() {
             formatCurrency={formatCurrency}
             formatCurrencyShort={formatCurrencyShort}
             onNavigate={setActiveSection}
+            onOpenTimeline={handleOpenAgendaTimeline}
+            onEditItem={openEdit}
           />
         );
     }

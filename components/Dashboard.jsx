@@ -29,7 +29,7 @@ function Panel({ icon, title, action, children }) {
   );
 }
 
-export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate }) {
+export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem }) {
   // Jumlah uang di kartu hero disembunyikan secara default (privasi saat
   // orang lain melirik layar). Tombol mata menampilkannya sementara —
   // sengaja TIDAK disimpan, supaya tiap kali app dibuka kembali tersembunyi.
@@ -204,84 +204,68 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         <DonutChart data={data.categories} formatValue={formatCurrencyShort} centerLabel="Total" />
       </Panel>
 
-      {/* ---------- Timeline Agenda ---------- */}
+      {/* ---------- Timeline Agenda (ringkas) ----------
+          Dashboard hanya memuat hari ini + 2 hari ke depan, tanpa blok riwayat
+          dan tanpa chip filter — tampilan penuh tetap di halaman Agenda.
+          "Lihat semua" membuka halaman Agenda langsung di sub-tab Timeline. */}
       <Panel
         icon="calendar"
         title="Timeline Agenda"
-        action={<span className="shrink-0 text-xs text-mutedfg">filter</span>}
+        action={
+          <button
+            type="button"
+            onClick={() => onOpenTimeline?.()}
+            className="grid h-11 shrink-0 place-items-center rounded-full px-3 text-xs font-medium text-brandfg transition-colors hover:bg-brandtint"
+          >
+            Lihat semua
+          </button>
+        }
       >
-        <Timeline data={data} onEdit={onNavigate} formatCurrency={formatCurrencyShort} />
+        <Timeline
+          data={data}
+          onEdit={onEditItem}
+          formatCurrency={formatCurrencyShort}
+          limitDays={3}
+          showHistory={false}
+          showFilters={false}
+        />
       </Panel>
 
-      {/* ---------- Daftar terbaru ---------- */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-        <Panel
-          icon="calendar"
-          title="Agenda Terdekat"
-          action={
-            <button
-              type="button"
-              onClick={() => onNavigate('agenda')}
-              className="grid h-11 shrink-0 place-items-center rounded-full px-3 text-xs font-medium text-brandfg transition-colors hover:bg-brandtint"
-            >
-              Semua
-            </button>
-          }
-        >
-          {data.schedule.length === 0 ? (
-            <p className="py-6 text-center text-sm text-mutedfg">Belum ada agenda.</p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {data.schedule.slice(0, 4).map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-3 py-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand shadow-glow" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{item.title}</p>
-                      <p className="truncate text-xs text-mutedfg">
-                        {item.time} · {item.member}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="shrink-0 font-mono text-xs text-mutedfg">{item.date}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
-
-        <Panel
-          icon="wallet"
-          title="Pengeluaran Terbaru"
-          action={
-            <button
-              type="button"
-              onClick={() => onNavigate('expenses')}
-              className="grid h-11 shrink-0 place-items-center rounded-full px-3 text-xs font-medium text-brandfg transition-colors hover:bg-brandtint"
-            >
-              Semua
-            </button>
-          }
-        >
-          {data.expenses.length === 0 ? (
-            <p className="py-6 text-center text-sm text-mutedfg">Belum ada pengeluaran.</p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {data.expenses.slice(0, 4).map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-3 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-ink">{item.category}</p>
-                    <p className="truncate text-xs text-mutedfg">{item.description}</p>
-                  </div>
-                  <span className="shrink-0 font-mono text-sm font-semibold text-brandfg">
-                    {formatCurrency(item.amount)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
-      </div>
+      {/* ---------- Pengeluaran terbaru ----------
+          "Agenda Terdekat" dilepas dari Dashboard: isinya sudah tercakup kartu
+          Timeline Agenda di atas (hari ini + 2 hari ke depan), jadi tampilnya
+          tidak lagi dua daftar agenda yang tumpang tindih. */}
+      <Panel
+        icon="wallet"
+        title="Pengeluaran Terbaru"
+        action={
+          <button
+            type="button"
+            onClick={() => onNavigate('expenses')}
+            className="grid h-11 shrink-0 place-items-center rounded-full px-3 text-xs font-medium text-brandfg transition-colors hover:bg-brandtint"
+          >
+            Semua
+          </button>
+        }
+      >
+        {data.expenses.length === 0 ? (
+          <p className="py-6 text-center text-sm text-mutedfg">Belum ada pengeluaran.</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {data.expenses.slice(0, 4).map((item) => (
+              <li key={item.id} className="flex items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-ink">{item.category}</p>
+                  <p className="truncate text-xs text-mutedfg">{item.description}</p>
+                </div>
+                <span className="shrink-0 font-mono text-sm font-semibold text-brandfg">
+                  {formatCurrency(item.amount)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
 
       {/* Catatan kejujuran data */}
       <p className="text-center text-[11px] text-mutedfg">

@@ -188,7 +188,20 @@ function DayRow({ day, today, onEdit, formatCurrency }) {
   );
 }
 
-export function Timeline({ data, onEdit, formatCurrency = (v) => String(v) }) {
+// Mode tampilan:
+//   penuh (default)  → dipakai halaman Agenda → sub-tab Timeline.
+//   ringkas          → dipakai kartu Dashboard: batasi `limitDays` hari ke depan,
+//                      `showHistory={false}` (blok riwayat disembunyikan) dan
+//                      `showFilters={false}` (chip filter milik halaman penuh).
+// Nilai default sengaja = tampilan penuh, supaya pemanggil lama tidak berubah.
+export function Timeline({
+  data,
+  onEdit,
+  formatCurrency = (v) => String(v),
+  limitDays,
+  showHistory = true,
+  showFilters = true,
+}) {
   const [filter, setFilter] = useState('semua');
 
   // Empat modul → satu daftar baris. Item tanpa tanggal dibuang (tidak bisa
@@ -245,35 +258,40 @@ export function Timeline({ data, onEdit, formatCurrency = (v) => String(v) }) {
       }));
   }, [shown]);
 
-  const upcoming = days.filter((day) => day.date >= today);
-  const past = days.filter((day) => day.date < today).reverse();
+  const upcomingAll = days.filter((day) => day.date >= today);
+  // Mode ringkas membatasi jumlah hari ke depan; mode penuh menampilkan semua.
+  const upcoming = typeof limitDays === 'number' ? upcomingAll.slice(0, limitDays) : upcomingAll;
+  const past = showHistory ? days.filter((day) => day.date < today).reverse() : [];
   const hasToday = upcoming.length > 0 && upcoming[0].date === today;
 
   return (
     <div>
-      {/* Filter jenis aktivitas — jumlah mengikuti data nyata */}
-      <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter jenis aktivitas">
-        {FILTERS.map((f) => {
-          const active = filter === f.id;
-          return (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              aria-pressed={active}
-              className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
-                active
-                  ? 'border-brand/50 bg-brandtint text-brandfg'
-                  : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
-              }`}
-            >
-              <Icon name={f.icon} size={16} />
-              {f.label}
-              <span className="font-mono text-xs opacity-80">{counts[f.id] || 0}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Filter jenis aktivitas — jumlah mengikuti data nyata.
+          Disembunyikan di mode ringkas (kartu Dashboard). */}
+      {showFilters && (
+        <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter jenis aktivitas">
+          {FILTERS.map((f) => {
+            const active = filter === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setFilter(f.id)}
+                aria-pressed={active}
+                className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${
+                  active
+                    ? 'border-brand/50 bg-brandtint text-brandfg'
+                    : 'border-line bg-surface text-mutedfg hover:bg-muted hover:text-ink'
+                }`}
+              >
+                <Icon name={f.icon} size={16} />
+                {f.label}
+                <span className="font-mono text-xs opacity-80">{counts[f.id] || 0}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {shown.length === 0 ? (
         <EmptyState

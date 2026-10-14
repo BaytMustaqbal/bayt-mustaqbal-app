@@ -546,6 +546,76 @@ Kakang meminta **menghapus card "7 Hari Terakhir" hanya di Dashboard**. Data dum
 
 ---
 
+## D23 — Timeline (Alur Aktivitas) Ditambahkan ke Dashboard
+
+**Tanggal:** 14 Oktober 2026
+
+Kakang minta **timeline alur aktivitas ikut tampil di Dashboard**, bukan hanya di halaman
+Agenda → sub-tab Timeline. Komponen `Timeline.jsx` yang sudah ada dipakai ulang (tidak ada
+komponen baru) di dalam Panel "Timeline Agenda", setelah panel donat.
+
+**Konsekuensi teknis:**
+- `Timeline` harus menerima **objek `data` utuh** (`data={data}`), bukan `data.schedule`.
+  Komponennya membaca `data.schedule/tasks/expenses/notes`; mengirim array membuat semua
+  hitungan 0 sehingga kartu menampilkan "Belum ada aktivitas". Halaman Agenda memang sudah
+  benar (`data={data}`), makanya isinya lengkap.
+- Tiga contoh agenda baru (id 14–16) ditambahkan agar alurnya berisi: "Membaca Al-Quran
+  malam" (ibadah), "Menghadiri undangan keluarga" (keluarga), "Belanja bulanan keluarga"
+  (rumahtangga). Dua di antaranya sempat memakai kategori tak sah (`agenda`, `belanja`)
+  sehingga labelnya tampil teks mentah — sudah diganti ke kategori yang ada di
+  `AGENDA_CATEGORIES`.
+
+> **Jebakan dev server (penting untuk sesi berikutnya):** setelah kode diperbaiki
+> (`data={data}`, commit `cc0c65d`), kartu **tetap** kosong karena dev server Vite di
+> port 3000 menyajikan **transform BASI** khusus file `Dashboard.jsx`
+> (`jsxDEV(Timeline, { data: data.schedule … })`) — `App.jsx` & `Timeline.jsx` tersaji segar,
+> hanya satu file itu yang watcher-nya melewatkan event `change`. Solusinya: sentuh
+> (perbarui mtime) file itu agar Vite mentransformasi ulang. **Kalau UI tidak mengikuti
+> perubahan kode, cek dulu modul yang benar-benar disajikan server** (`fetch('/components/X.jsx')`)
+> sebelum mencurigai logika komponen.
+
+---
+
+## D24 — Timeline di Dashboard Dibuat Ringkas (Preview 3 Hari + "Lihat semua")
+
+**Tanggal:** 14 Oktober 2026
+
+Setelah D23, kartu "Timeline Agenda" memuat **seluruh alur** (42 item: 16 agenda + 8 tugas +
+10 pengeluaran + 8 catatan, plus blok "Riwayat") — terlampau panjang untuk sebuah Dashboard
+(terukur **4008px**). Prinsip yang dipakai: **Dashboard = permukaan ringkasan**, jadi memakai
+*progressive disclosure* — cuplikan ringkas + jalan "lihat semua".
+
+Catatan jujur: dataset panduan UI/UX internal proyek ini **tidak memuat aturan khusus**
+"kartu dashboard kepanjangan"; yang terverifikasi & relevan hanya *"truncate with expand
+option"* dan hindari **scroll bersarang** — karena itu opsi scroll-dalam-kartu tidak dipilih.
+
+| Opsi | Bentuk | Alasan/Konsekuensi |
+|---|---|---|
+| **A. Preview + "Lihat semua" (dipilih)** | Kartu hanya memuat hari ini + 2 hari berikutnya; blok "Riwayat" & chip filter disembunyikan; tombol "Lihat semua" membuka Agenda → sub-tab Timeline. Kartu "Agenda Terdekat" **dilepas** karena tumpang tindih | Tinggi terbatas, tanpa scroll bersarang, tidak ada dua daftar agenda |
+| B. Preview, "Agenda Terdekat" tetap | Sama seperti A, tapi dua daftar agenda dibiarkan | Masih tumpang tindih |
+| C. Batas tinggi + scroll dalam kartu | `max-h` + `overflow-y-auto` | Scroll bersarang menyulitkan di layar sentuh & isi jadi tersembunyi |
+| D. Hapus kartu dari Dashboard | Timeline hanya di halaman Agenda | Kehilangan tampilan timeline di halaman depan |
+
+**Konsekuensi teknis:**
+- `components/Timeline.jsx` dapat **tiga prop opsional**: `limitDays` (batasi jumlah hari ke
+  depan), `showHistory` (default `true`), `showFilters` (default `true`). Nilai default =
+  tampilan penuh → pemakaian di halaman Agenda tidak berubah sama sekali.
+- `components/Dashboard.jsx` memakai `limitDays={3} showHistory={false} showFilters={false}`;
+  aksi header Panel diubah dari label "filter" menjadi tombol **"Lihat semua"** (≥44px).
+- `App.jsx` menambah `handleOpenAgendaTimeline()` (`setAgendaMode('timeline')` +
+  `setActiveSection('agenda')`) yang dikirim sebagai prop `onOpenTimeline`.
+- Panel "Agenda Terdekat" dilepas; "Pengeluaran Terbaru" kini full-width (pembungkus
+  `lg:grid-cols-2` dihapus). Tidak ada nilai uang yang berubah.
+
+**Bukti (DOM):** kartu preview tinggi **873px** vs alur penuh **4008px** (≈78% lebih pendek);
+preview memuat **3 kelompok hari** (Hari Ini, Besok, +1), **tanpa** "Riwayat — sebelum hari
+ini", **tanpa** chip filter, ada tombol "Lihat semua"; "Agenda Terdekat" tidak ada,
+"Pengeluaran Terbaru" tetap ada; klik "Lihat semua" mendarat tepat di Agenda → sub-tab
+Timeline ("Timeline Keluarga", alur penuh 25 kelompok hari / 67 item + chip filter kembali);
+**0 luber**, **0 error konsol**; `npm run build` hijau.
+
+---
+
 ## Pertanyaan yang MASIH Terbuka
 
 Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
@@ -571,3 +641,5 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | 13 Okt 2026 | D20 | Foto profil contoh disajikan dari `public/avatars/profile-rezki.jpg` (bukan `assets/`) & dipakai sebagai seed avatar Kakang **dan** kartu anggota "Rezki YT"; `FamilyMemberCard` pakai `Avatar` | Kakang minta foto profilnya terpasang agar tampilan "Akun saya" & avatar terlihat nyata; `assets/` tidak ikut ke `dist/` sehingga foto akan 404 di produksi |
 | 13 Okt 2026 | D21 | Angka pengeluaran contoh disamakan jadi **Rp 6,3 jt** di hero, donat (kini 6 kategori + token `--chart6`), & tren Okt; anggaran contoh naik ke **Rp 8 jt** | Kakang minta total 6,3 jt; sekaligus ditemukan hero (4,71 jt) ≠ donat/tren (2,78 jt) — data dummy tidak sinkron |
 | 14 Okt 2026 | D22 | Hapus card "7 Hari Terakhir" di Dashboard; donut "Komposisi" jadi full-width di atas 640px | Kakang: "bisa kamu hapus card 7 Hari Terakhir?" — hanya di Dashboard (data `weekly` & komponen BarChart tetap ada) |
+| 14 Okt 2026 | D23 | Timeline (alur aktivitas) ditambahkan ke Dashboard sebagai Panel "Timeline Agenda" (komponen sama dengan halaman Agenda, wajib `data={data}` utuh) + 3 contoh agenda baru (id 14–16) | Kakang minta tampilan timeline ada di Dashboard; alurnya butuh agenda bertanggal |
+| 14 Okt 2026 | D24 | Timeline di Dashboard dijadikan **ringkas** (preview 3 hari + "Lihat semua" → Agenda sub-tab Timeline); blok Riwayat & chip filter disembunyikan; kartu "Agenda Terdekat" dilepas | Kakang: kartu terasa terlalu panjang → dipilih progressive disclosure (opsi A), bukan scroll dalam kartu |
