@@ -16,3 +16,6 @@ npm-debug.log*
 # Berkas sistem operasi
 .DS_Store
 Thumbs.db
+
+# Scratch workspace alur kerja agent (ledger/brief) — bukan bagian aplikasi
+.superpowers/
