@@ -614,6 +614,13 @@ ini", **tanpa** chip filter, ada tombol "Lihat semua"; "Agenda Terdekat" tidak a
 Timeline ("Timeline Keluarga", alur penuh 25 kelompok hari / 67 item + chip filter kembali);
 **0 luber**, **0 error konsol**; `npm run build` hijau.
 
+**Pembaruan (sesi yang sama):** atas permintaan Kakang, kartu **"Pengeluaran Terbaru"
+dipindah ke ATAS kartu "Timeline Agenda"**. Urutan akhir Dashboard: sapaan → hero →
+aksi cepat → KPI → tren → komposisi → **Pengeluaran Terbaru** → **Timeline Agenda**.
+Efeknya: seluruh blok uang (hero, KPI, tren, komposisi, pengeluaran) berkumpul di atas,
+dan kartu terpanjang (Timeline) menjadi penutup. Bukti DOM: judul "Pengeluaran Terbaru"
+di `y≈1513`, "Timeline Agenda" di `y≈1889`.
+
 ---
 
 ## Pertanyaan yang MASIH Terbuka
@@ -643,3 +650,4 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | 14 Okt 2026 | D22 | Hapus card "7 Hari Terakhir" di Dashboard; donut "Komposisi" jadi full-width di atas 640px | Kakang: "bisa kamu hapus card 7 Hari Terakhir?" — hanya di Dashboard (data `weekly` & komponen BarChart tetap ada) |
 | 14 Okt 2026 | D23 | Timeline (alur aktivitas) ditambahkan ke Dashboard sebagai Panel "Timeline Agenda" (komponen sama dengan halaman Agenda, wajib `data={data}` utuh) + 3 contoh agenda baru (id 14–16) | Kakang minta tampilan timeline ada di Dashboard; alurnya butuh agenda bertanggal |
 | 14 Okt 2026 | D24 | Timeline di Dashboard dijadikan **ringkas** (preview 3 hari + "Lihat semua" → Agenda sub-tab Timeline); blok Riwayat & chip filter disembunyikan; kartu "Agenda Terdekat" dilepas | Kakang: kartu terasa terlalu panjang → dipilih progressive disclosure (opsi A), bukan scroll dalam kartu |
+| 14 Okt 2026 | D24 (lanjutan) | Kartu "Pengeluaran Terbaru" dipindah ke **atas** kartu "Timeline Agenda" | Kakang: "pindahkan card Pengeluaran Terbaru menjadi di atasnya card Timeline Agenda" |

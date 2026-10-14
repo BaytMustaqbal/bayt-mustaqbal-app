@@ -204,37 +204,10 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         <DonutChart data={data.categories} formatValue={formatCurrencyShort} centerLabel="Total" />
       </Panel>
 
-      {/* ---------- Timeline Agenda (ringkas) ----------
-          Dashboard hanya memuat hari ini + 2 hari ke depan, tanpa blok riwayat
-          dan tanpa chip filter — tampilan penuh tetap di halaman Agenda.
-          "Lihat semua" membuka halaman Agenda langsung di sub-tab Timeline. */}
-      <Panel
-        icon="calendar"
-        title="Timeline Agenda"
-        action={
-          <button
-            type="button"
-            onClick={() => onOpenTimeline?.()}
-            className="grid h-11 shrink-0 place-items-center rounded-full px-3 text-xs font-medium text-brandfg transition-colors hover:bg-brandtint"
-          >
-            Lihat semua
-          </button>
-        }
-      >
-        <Timeline
-          data={data}
-          onEdit={onEditItem}
-          formatCurrency={formatCurrencyShort}
-          limitDays={3}
-          showHistory={false}
-          showFilters={false}
-        />
-      </Panel>
-
       {/* ---------- Pengeluaran terbaru ----------
           "Agenda Terdekat" dilepas dari Dashboard: isinya sudah tercakup kartu
-          Timeline Agenda di atas (hari ini + 2 hari ke depan), jadi tampilnya
-          tidak lagi dua daftar agenda yang tumpang tindih. */}
+          Timeline Agenda di bawah (hari ini + 2 hari ke depan), jadi tidak lagi
+          ada dua daftar agenda yang tumpang tindih. */}
       <Panel
         icon="wallet"
         title="Pengeluaran Terbaru"
@@ -265,6 +238,33 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
             ))}
           </ul>
         )}
+      </Panel>
+
+      {/* ---------- Timeline Agenda (ringkas) ----------
+          Dashboard hanya memuat hari ini + 2 hari ke depan, tanpa blok riwayat
+          dan tanpa chip filter — tampilan penuh tetap di halaman Agenda.
+          "Lihat semua" membuka halaman Agenda langsung di sub-tab Timeline. */}
+      <Panel
+        icon="calendar"
+        title="Timeline Agenda"
+        action={
+          <button
+            type="button"
+            onClick={() => onOpenTimeline?.()}
+            className="grid h-11 shrink-0 place-items-center rounded-full px-3 text-xs font-medium text-brandfg transition-colors hover:bg-brandtint"
+          >
+            Lihat semua
+          </button>
+        }
+      >
+        <Timeline
+          data={data}
+          onEdit={onEditItem}
+          formatCurrency={formatCurrencyShort}
+          limitDays={3}
+          showHistory={false}
+          showFilters={false}
+        />
       </Panel>
 
       {/* Catatan kejujuran data */}
