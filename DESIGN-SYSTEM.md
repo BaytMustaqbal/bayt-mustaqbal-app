@@ -352,6 +352,8 @@ Ikon dari logo Kakang (`npm run icons` → `scripts/generate-icons.ps1`, trim ot
 - Vite **hanya** menyalin folder `public/` ke `dist/`. Jadi `manifest.json`, `service-worker.js`, dan `icons/` wajib berada di `public/` — kalau ditaruh di root, semuanya 404 di produksi (install PWA & mode offline mati, ikon tidak muncul)
 - `service-worker.js`: naikkan nomor versi cache (`family-*-v8`) setiap ada perubahan tampilan/aset agar HP yang sudah memasang PWA mengambil berkas baru
 
+> **Rencana pembungkusan (D25):** selama pengembangan app tetap **PWA**. Setelah pengembangan selesai, app akan dibungkus dengan **Capacitor** (Android/iOS) sebagai **kanal tambahan** — kode & desainnya sama, jadi design system ini tetap berlaku. Yang perlu disesuaikan saat itu hanya: deteksi popup "Pasang app" (`beforeinstallprompt` tidak ada di WebView) dan sumber data lokal. Rinciannya di `docs/04-KEPUTUSAN-TERKUNCI.md` (D25).
+
 ## 9. Offline Capabilities
 
 - **App Shell Cache**: UI statis termuat instan dari cache (`cache-first` untuk aset statis)

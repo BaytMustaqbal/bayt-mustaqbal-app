@@ -97,6 +97,7 @@ Modul berikutnya dibangun **setelah** modul sebelumnya dipakai ± 2 minggu (prin
 - **Frontend statis → Cloudflare Pages.** Build command `npm run build`, output `dist/`.
 - **Backend → Cloudflare Worker + D1** (belum dibuat). Langkah `wrangler` ada di `PROJECT_SUMMARY.md`.
 - Domain sasaran: `app.baytmustaqbal.my.id`.
+- **Bungkus app (Capacitor)** → Android/iOS, dikerjakan **setelah** pengembangan selesai (keputusan D25). Selama pengembangan tetap PWA; Capacitor hanya kanal tambahan.
 - `.github/workflows/deploy.yml` sudah dihapus karena masih menunjuk `frontend/` + `worker/` yang tidak ada; akan ditulis ulang saat setup deploy.
 
 ---

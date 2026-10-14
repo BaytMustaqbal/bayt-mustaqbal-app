@@ -269,6 +269,13 @@ npx vite preview
 - `.github/workflows/deploy.yml` **sudah dihapus** (menunjuk `frontend/` + `worker/` yang tidak ada) — tulis ulang saat setup deploy
 - Custom domain: `app.baytmustaqbal.my.id`
 
+**Bungkus jadi app native (Capacitor) — SETELAH pengembangan selesai (D25):**
+- Selama pengembangan **tetap PWA** (kanal utama). Capacitor = kanal **tambahan** Android/iOS, bukan pengganti — satu basis kode, tanpa ubah desain
+- Paket: `@capacitor/core` + `@capacitor/cli` + `@capacitor/android` (`ios` bila perlu); `webDir: 'dist'`
+- Dua mode muat aset (**bundled** vs `server.url`) → diputuskan saat itu; `localStorage` di dalam app berbeda dari Chrome (aman, karena D1 jadi sumber kebenaran)
+- Popup "Pasang app" (D19) tidak relevan di dalam app (`beforeinstallprompt` tidak pernah muncul)
+- iOS: butuh macOS + Xcode + akun Apple Developer berbayar — siapkan lebih awal kalau Istri memakai iPhone
+
 > **Peta dokumen (penting) — jangan tertukar:**
 > - `AGENT.md` + `DESIGN-SYSTEM.md` → kondisi **nyata** app sekarang (React + Vite + Tailwind PWA, data dummy)
 > - `README.md` → pintu masuk: cara menjalankan (`npm run dev`), struktur berkas, apa yang sudah & belum ada
@@ -304,4 +311,4 @@ npx vite preview
 ---
 
 *Generated for AI agents working on Bayt Mustaqbal project.*
-*Last updated: 2026-10-14 — urutan kartu Dashboard: "Pengeluaran Terbaru" dipindah ke **atas** "Timeline Agenda" (permintaan Kakang; blok uang berkumpul di atas, timeline jadi penutup) (D24 lanjutan). Sebelumnya: kartu "Timeline Agenda" di Dashboard dibuat **ringkas** (preview hari ini + 2 hari, tanpa blok Riwayat & chip filter, + tombol "Lihat semua" ke Agenda → sub-tab Timeline); kartu "Agenda Terdekat" dilepas (D24). Sebelumnya: Timeline (alur aktivitas) ditambahkan ke Dashboard sebagai Panel "Timeline Agenda" (D23). Sebelumnya: card "7 Hari Terakhir" dihapus dari Dashboard (donut "Komposisi" jadi full-width; komponen BarChart & data `weekly` tetap ada) (D22). Sebelumnya: angka pengeluaran contoh disatukan jadi **Rp 6,3 jt** di hero, donat (kini 6 kategori + token `--chart6`), dan tren Okt; anggaran contoh naik ke **Rp 8 jt** (D21); foto profil contoh Kakang (`assets/profile-rezki.jpg` → `public/avatars/profile-rezki.jpg`, 256px) jadi avatar seed user `kakang` + kartu anggota "Rezki YT"; `FamilyMemberCard` kini pakai `Avatar` (foto/inisial) (D20).*
+*Last updated: 2026-10-14 — **tetap PWA** selama pengembangan; **Capacitor** dikerjakan setelah pengembangan selesai sebagai kanal tambahan Android/iOS (D25 — rencana, belum dikerjakan, nol perubahan kode). Sebelumnya: urutan kartu Dashboard: "Pengeluaran Terbaru" dipindah ke **atas** "Timeline Agenda" (permintaan Kakang; blok uang berkumpul di atas, timeline jadi penutup) (D24 lanjutan). Sebelumnya: kartu "Timeline Agenda" di Dashboard dibuat **ringkas** (preview hari ini + 2 hari, tanpa blok Riwayat & chip filter, + tombol "Lihat semua" ke Agenda → sub-tab Timeline); kartu "Agenda Terdekat" dilepas (D24). Sebelumnya: Timeline (alur aktivitas) ditambahkan ke Dashboard sebagai Panel "Timeline Agenda" (D23). Sebelumnya: card "7 Hari Terakhir" dihapus dari Dashboard (donut "Komposisi" jadi full-width; komponen BarChart & data `weekly` tetap ada) (D22). Sebelumnya: angka pengeluaran contoh disatukan jadi **Rp 6,3 jt** di hero, donat (kini 6 kategori + token `--chart6`), dan tren Okt; anggaran contoh naik ke **Rp 8 jt** (D21); foto profil contoh Kakang (`assets/profile-rezki.jpg` → `public/avatars/profile-rezki.jpg`, 256px) jadi avatar seed user `kakang` + kartu anggota "Rezki YT"; `FamilyMemberCard` kini pakai `Avatar` (foto/inisial) (D20).*

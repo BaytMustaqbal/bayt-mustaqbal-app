@@ -623,6 +623,55 @@ di `y≈1513`, "Timeline Agenda" di `y≈1889`.
 
 ---
 
+## D25 — Tetap PWA Selama Pengembangan; Capacitor Direncanakan Setelah Selesai
+
+**Tanggal:** 14 Oktober 2026
+
+Kakang bertanya apakah sebaiknya memakai **WebView** alih-alih PWA. Setelah ditelusuri,
+pertanyaannya bukan "PWA vs WebView" — keduanya **bukan** alternatif: PWA adalah *isinya*,
+WebView adalah *kotak pembungkusnya*. Kode React-nya tetap sama persis; yang berubah hanya
+cara mengantar ke perangkat + kemampuan native yang bisa dipanggil.
+
+Empat fakta proyek ini yang membuat PWA tetap unggul **selama pengembangan**:
+
+| Fakta proyek | Kenapa penting |
+|---|---|
+| Penggunanya **2 orang** (Kakang + Istri) | Tidak butuh Play Store/App Store; manfaat "app asli" (ditemukan orang banyak) = nol |
+| Notifikasi sudah lewat **WhatsApp/Fonnte (D15)** | Kelemahan nomor 1 PWA (web push lemah, terbatas di iOS) sudah tertutup rencana lain — pengiriman dilakukan server → WA grup |
+| Data akan pindah ke **Worker + D1** | Risiko khas PWA (penyimpanan browser bisa dibersihkan OS) hilang karena `localStorage` tinggal jadi cache |
+| Masih **PROTOTYPE & cepat berubah** | PWA: deploy sekali → HP langsung dapat versi baru. Capacitor/WebView: tiap perubahan harus rebuild (→ re-sign) → install ulang |
+
+**Keputusan:** selama pengembangan inti (sampai backend Worker + D1 jalan & fitur stabil)
+**tetap PWA** — PWA adalah kanal utama. **Capacitor** dikerjakan **setelah pengembangan
+selesai** sebagai kanal **tambahan** (Android/iOS), **bukan pengganti**.
+
+Alasan memilih **Capacitor** dan bukan WebView buatan sendiri: mesin render & storage resmi
+mengikuti WebView sistem, ada plugin resmi untuk kebutuhan native, dan proyek tetap **satu
+basis kode** (tanpa menulis ulang apa pun).
+
+**Catatan teknis untuk dikerjakan nanti (BELUM dikerjakan):**
+- Paket: `@capacitor/core` + `@capacitor/cli` + `@capacitor/android` (`@capacitor/ios` bila perlu);
+  `capacitor.config` → `webDir: 'dist'` (sama seperti build Cloudflare Pages).
+- Dua mode muat aset: **bundled** (aset `dist/` ikut masuk app → jalan tanpa internet, tapi tiap
+  update frontend perlu rilis ulang) atau **`server.url`** (WebView memuat domain → selalu versi
+  terbaru, tapi butuh internet saat membuka). Trade-off ini **diputuskan saat itu**, bukan sekarang.
+- **Storage:** `localStorage` di dalam app **berbeda** dari `localStorage` di Chrome — snapshot lama
+  tidak ikut dan bisa terhapus saat app di-uninstall/clear data. Aman karena D1 akan jadi sumber
+  kebenaran; kalau ingin data lokal lebih kuat → `@capacitor/preferences`.
+- **Popup "Pasang app" (D19) tidak relevan** di dalam app: `beforeinstallprompt` tidak pernah muncul
+  di WebView → deteksi & popup-nya dimatikan/disesuaikan saat itu.
+- **iOS tetap butuh macOS + Xcode + akun Apple Developer (US$99/th).** Kalau Istri memakai iPhone,
+  alat & biaya ini perlu disiapkan **lebih awal**, bukan mendadak.
+- Notifikasi **tidak berubah** (tetap WA/Fonnte). Kalau nanti mau alarm lokal native →
+  `@capacitor/local-notifications`; itu keputusan baru, bukan kebutuhan sekarang.
+
+**Konsekuensi SEKARANG: nol perubahan kode.** Tidak ada dependensi Capacitor yang ditambah, tidak
+ada `fetch` baru (aturan proyek tetap: jangan asumsikan API/DB ada). Satu hal murah yang berguna
+dilakukan lebih awal: saat backend dibuat, taruh **base URL API di satu konstanta** (jangan disebar)
+supaya nanti mudah diarahkan dari Capacitor.
+
+---
+
 ## Pertanyaan yang MASIH Terbuka
 
 Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
@@ -651,3 +700,4 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | 14 Okt 2026 | D23 | Timeline (alur aktivitas) ditambahkan ke Dashboard sebagai Panel "Timeline Agenda" (komponen sama dengan halaman Agenda, wajib `data={data}` utuh) + 3 contoh agenda baru (id 14–16) | Kakang minta tampilan timeline ada di Dashboard; alurnya butuh agenda bertanggal |
 | 14 Okt 2026 | D24 | Timeline di Dashboard dijadikan **ringkas** (preview 3 hari + "Lihat semua" → Agenda sub-tab Timeline); blok Riwayat & chip filter disembunyikan; kartu "Agenda Terdekat" dilepas | Kakang: kartu terasa terlalu panjang → dipilih progressive disclosure (opsi A), bukan scroll dalam kartu |
 | 14 Okt 2026 | D24 (lanjutan) | Kartu "Pengeluaran Terbaru" dipindah ke **atas** kartu "Timeline Agenda" | Kakang: "pindahkan card Pengeluaran Terbaru menjadi di atasnya card Timeline Agenda" |
+| 14 Okt 2026 | D25 | **Tetap PWA** selama pengembangan; **Capacitor** dikerjakan **setelah pengembangan selesai** sebagai kanal tambahan Android/iOS (bukan pengganti, bukan WebView buatan sendiri) | Kakang bertanya "PWA vs WebView?" → dipilih mencatat dulu tanpa mengubah kode; Capacitor menyusul pasca-pengembangan |
