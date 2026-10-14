@@ -672,6 +672,39 @@ supaya nanti mudah diarahkan dari Capacitor.
 
 ---
 
+## D26 — Modul Anggaran (Budgeting 50/30/20): Sub-tab di Keuangan, Alokasi + Realisasi
+
+**Tanggal:** 14 Oktober 2026
+**Spec lengkap:** `docs/superpowers/specs/2026-10-14-anggaran-budgeting-design.md`
+
+Kakang minta halaman untuk mengatur **budgeting**: setiap gajian diinput gaji, lalu otomatis
+dibagi menurut rumus **50/30/20** (Kebutuhan · Keinginan · Tabungan & Utang) beserta pos-posnya
+(cicilan/sewa, bahan makanan, utilitas, transportasi, sekolah & asuransi; makan di luar, hobi,
+streaming, liburan; dana darurat, tabungan, investasi, utang).
+
+Delapan keputusan yang diambil (semua lewat pilihan A/B/C, rinciannya di spec):
+
+| # | Pertanyaan | Dipilih | Alasan singkat |
+|---|---|---|---|
+| 1 | Letak modul | **Sub-tab di section Keuangan** (`Pengeluaran` & `Anggaran`) | Menjaga 5 section (DESIGN-SYSTEM §6), tidak menyentuh bottom-nav HP, anggaran duduk sebelah data pengeluarannya |
+| 2 | Kedalaman | **Alokasi + realisasi** | Realisasi dihitung dari pengeluaran nyata → kelihatan keranjang mana yang bocor (inti manfaat 50/30/20) |
+| 3 | Penghubung ke keranjang | **Field `bucket` per pengeluaran** + 3 kategori baru | Kategori sekarang belum punya rumah untuk Keinginan & Tabungan; koreksi manual per transaksi penting (mis. zakat/infak, "cicilan" yang muncul di dua keranjang) |
+| 4 | Rasio | **Bisa disunting**, default 50/30/20 | Ubah ke 60/20/20 nanti tidak perlu ubah kode |
+| 5 | Pos dalam keranjang | **Saran yang bisa disesuaikan** | Daftar Kakang tetap jadi pengingat, tapi bisa menyesuaikan pos nyata keluarga |
+| 6 | Pendekatan data | **Satu bulan aktif, semua angka turunan** | Mengikuti cara app bekerja (hero/donat/tren memang satu periode) & mencegah muncul angka anggaran kedua (pelajaran D21) |
+| 7 | Cicilan rumah | **Kategori `Rumah & Cicilan`** | Cicilan/sewa tempat tinggal = kebutuhan pokok, beda dari "utang" di keranjang 20% |
+| 8 | Editor gaji & rasio | **Editor kecil di halaman Anggaran** | Validasi "jumlah = 100" tanpa menyentuh `FormSheet` yang dipakai 4 section |
+
+**Konsekuensi teknis:**
+- `budget` → `{ month, income, ratios, pos }`; `bucketOf(item)` = field `bucket` → peta kategori → `needs`.
+- Kategori keuangan +3: `rumah` (Rumah & Cicilan), `hiburan` (Hiburan & Liburan), `tabungan` (Tabungan & Utang).
+- **Donat jadi 9 irisan** → 3 token warna baru (`--chart7/8/9`, tema gelap & terang).
+- Data contoh: **gaji Rp 8 jt** (angka lama dipertahankan), pengeluaran jadi **11 item** dengan total **tetap Rp 6,3 jt** → invariant D21 (hero = donat = tren Okt) **tidak dilanggar**; hero tetap "79% · sisa Rp 1,7 jt".
+- Snapshot `localStorage` lama tidak bikin rusak: `income` (fallback `total`), `ratios`, `pos`, dan `bucket` semuanya punya nilai cadangan di satu helper `getBudget(data)`.
+- Riwayat bulanan **ditunda** sampai backend Worker + D1 (bulan = baris tabel).
+
+---
+
 ## Pertanyaan yang MASIH Terbuka
 
 Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
@@ -682,6 +715,7 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | O6 | Mata uang — perlu kolom nominal luar (USD / mata uang lain)? | Sebelum Fase 1 | Tidak perlu. Satu keluarga satu negara |
 | O7 | Format angka uang di UI | Sebelum Fase 1 | `Rp 1.500.000` — format yang paling familier buat keluarga |
 | O8 | Apakah Istri punya transaksi rutin sendiri yang perlu pintasan khusus? | Sebelum Fase 1.5 | Tidak ada peran khusus; dia tetap input manual |
+| O9 | Arti "**ditandai**" pada pos anggaran (D26): perlu centang "selesai", atau cukup label yang bisa diubah? | Sebelum modul Anggaran dikerjakan | Belum perlu — pos hanya label (tanpa centang & tanpa nominal); kalau perlu, tambahnya 1 field + 1 tampilan |
 
 ---
 
@@ -701,3 +735,4 @@ Sisa hal yang belum diputuskan. Perlu dijawab sebelum fase terkait dimulai.
 | 14 Okt 2026 | D24 | Timeline di Dashboard dijadikan **ringkas** (preview 3 hari + "Lihat semua" → Agenda sub-tab Timeline); blok Riwayat & chip filter disembunyikan; kartu "Agenda Terdekat" dilepas | Kakang: kartu terasa terlalu panjang → dipilih progressive disclosure (opsi A), bukan scroll dalam kartu |
 | 14 Okt 2026 | D24 (lanjutan) | Kartu "Pengeluaran Terbaru" dipindah ke **atas** kartu "Timeline Agenda" | Kakang: "pindahkan card Pengeluaran Terbaru menjadi di atasnya card Timeline Agenda" |
 | 14 Okt 2026 | D25 | **Tetap PWA** selama pengembangan; **Capacitor** dikerjakan **setelah pengembangan selesai** sebagai kanal tambahan Android/iOS (bukan pengganti, bukan WebView buatan sendiri) | Kakang bertanya "PWA vs WebView?" → dipilih mencatat dulu tanpa mengubah kode; Capacitor menyusul pasca-pengembangan |
+| 14 Okt 2026 | D26 | **Modul Anggaran** (50/30/20) jadi **sub-tab di Keuangan** (`Pengeluaran` & `Anggaran`): alokasi + realisasi, field `bucket` per pengeluaran + 3 kategori baru (`rumah`, `hiburan`, `tabungan`), rasio bisa disunting, pos bisa disesuaikan; satu bulan aktif dengan angka turunan | Kakang butuh halaman budgeting: input gaji → otomatis bagi 50/30/20 → lacak realisasi tiap keranjang |
