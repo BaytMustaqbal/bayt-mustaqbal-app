@@ -25,6 +25,7 @@ import {
   countByTaskFilter,
 } from './components/categories';
 import { getBudget } from './components/budget';
+import { Budgeting } from './components/Budgeting';
 import './App.css';
 
 // Data contoh (sementara, sampai backend Worker + D1 siap)
@@ -524,6 +525,8 @@ export default function App() {
   const [agendaMode, setAgendaMode] = useState('jadwal');
   // Filter kategori pengeluaran (default: semua) — pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
+  // Sub-tampilan Keuangan: daftar pengeluaran | halaman Anggaran (50/30/20)
+  const [financeMode, setFinanceMode] = useState('pengeluaran');
   // Filter bagian keluarga (default: semua) — pola sama dengan agenda & keuangan
   const [familyFilter, setFamilyFilter] = useState('semua');
   // Filter tugas: status (semua/belum/selesai) & prioritas (tinggi/sedang/rendah)
@@ -757,6 +760,14 @@ export default function App() {
     };
     saveData({ ...current, [key]: list.map((it) => (it.id === id ? applyEdit(it) : it)) });
     pushToast({ message: `${SECTION_LABEL[section]} diperbarui`, duration: 2500 });
+  };
+
+  // Simpan gaji & rasio anggaran (halaman Anggaran, sub-tab Keuangan).
+  // Hanya `income` + `ratios` yang disimpan — alokasi/realisasi selalu dihitung
+  // ulang saat render (components/budget.js), jadi tidak ada angka kedua.
+  const handleSaveBudget = ({ income, ratios }) => {
+    saveData({ ...dataRef.current, budget: { ...dataRef.current.budget, income, ratios } });
+    pushToast({ message: 'Anggaran diperbarui', duration: 2500 });
   };
 
   // Hapus item + tawarkan "Urungkan" (dipulihkan ke posisi semula).
@@ -1088,18 +1099,66 @@ export default function App() {
             ? data.expenses
             : data.expenses.filter((item) => item.category === financeFilter);
         const filteredTotal = filtered.reduce((sum, item) => sum + item.amount, 0);
+        const budget = getBudget(data);
         return (
           <section className="app-fade-in">
-            <SectionHeader
-              icon="wallet"
-              title={activeMeta.label}
-              subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(getBudget(data).income)}`}
-              actionLabel="Tambah"
-              actionTone="accent"
-              onAction={() => openAdd('expenses')}
-            />
+            {financeMode === 'anggaran' ? (
+              <SectionHeader
+                icon="pieChart"
+                title="Anggaran"
+                subtitle={`Gaji ${formatCurrencyShort(budget.income)} · ${budget.month}`}
+              />
+            ) : (
+              <SectionHeader
+                icon="wallet"
+                title={activeMeta.label}
+                subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
+                actionLabel="Tambah"
+                actionTone="accent"
+                onAction={() => openAdd('expenses')}
+              />
+            )}
 
-            {filtered.length === 0 ? (
+            {/* Sub-tampilan Keuangan: Pengeluaran (daftar) | Anggaran (50/30/20) */}
+            <div
+              className="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
+              role="group"
+              aria-label="Mode tampilan keuangan"
+            >
+              <button
+                type="button"
+                onClick={() => setFinanceMode('pengeluaran')}
+                aria-pressed={financeMode === 'pengeluaran'}
+                className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+                  financeMode === 'pengeluaran'
+                    ? 'bg-brandtint text-brandfg'
+                    : 'text-mutedfg hover:text-ink'
+                }`}
+              >
+                <Icon name="wallet" size={16} />
+                Pengeluaran
+              </button>
+              <button
+                type="button"
+                onClick={() => setFinanceMode('anggaran')}
+                aria-pressed={financeMode === 'anggaran'}
+                className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+                  financeMode === 'anggaran' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                }`}
+              >
+                <Icon name="pieChart" size={16} />
+                Anggaran
+              </button>
+            </div>
+
+            {financeMode === 'anggaran' ? (
+              <Budgeting
+                data={data}
+                formatCurrency={formatCurrency}
+                formatCurrencyShort={formatCurrencyShort}
+                onSaveBudget={handleSaveBudget}
+              />
+            ) : filtered.length === 0 ? (
               <EmptyState
                 icon="wallet"
                 title="Tidak ada pengeluaran di kategori ini"
