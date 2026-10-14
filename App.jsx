@@ -299,6 +299,20 @@ const SHEET_CONFIG = {
       { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 150000' },
       { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
       { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(FINANCE_CATEGORIES)[0].value, options: catOptions(FINANCE_CATEGORIES) },
+      // Keranjang anggaran: "Otomatis" = ikut kategori (lihat CATEGORY_BUCKET
+      // di components/categories.js); pilihan lain menimpanya untuk item ini.
+      {
+        key: 'bucket',
+        label: 'Keranjang',
+        type: 'select',
+        defaultValue: 'auto',
+        options: [
+          { value: 'auto', label: 'Otomatis (ikut kategori)' },
+          { value: 'needs', label: 'Kebutuhan' },
+          { value: 'wants', label: 'Keinginan' },
+          { value: 'savings', label: 'Tabungan & Utang' },
+        ],
+      },
     ],
   },
   tasks: {
@@ -385,7 +399,7 @@ const toFormValues = (section, item) => {
     return { title: item.title, date: item.date, time: item.time, category: item.category, member: item.member };
   }
   if (section === 'expenses') {
-    return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category };
+    return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category, bucket: item.bucket || 'auto' };
   }
   if (section === 'tasks') {
     return { title: item.title, dueDate: item.dueDate, priority: item.priority, assignedTo: item.assignedTo };
@@ -699,7 +713,7 @@ export default function App() {
         ...current,
         expenses: [
           ...current.expenses,
-          { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category },
+          { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' },
         ],
       };
     } else if (section === 'tasks') {
@@ -769,7 +783,7 @@ export default function App() {
         return { ...item, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
       }
       if (section === 'expenses') {
-        return { ...item, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category };
+        return { ...item, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' };
       }
       if (section === 'tasks') {
         return { ...item, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo };
