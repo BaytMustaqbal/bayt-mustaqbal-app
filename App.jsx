@@ -16,6 +16,7 @@ import { Toast } from './components/Toast';
 import { buildNotifications } from './components/notifications';
 import {
   AGENDA_CATEGORIES,
+  BUCKETS,
   FINANCE_CATEGORIES,
   FAMILY_CATEGORIES,
   TASK_FILTERS,
@@ -352,6 +353,23 @@ const SHEET_CONFIG = {
       { key: 'meta', label: 'Info singkat (opsional)', type: 'text', placeholder: 'contoh: 0812-3456-7890 atau Berlaku s/d 2030-05-12' },
     ],
   },
+  // Pos saran di halaman Anggaran. Sama seperti section lain, hanya label +
+  // keranjang (tanpa nominal): nominalnya tetap turunan dari rasio.
+  budgetPos: {
+    title: 'Tambah Pos Anggaran',
+    icon: 'target',
+    fields: [
+      { key: 'label', label: 'Nama pos', type: 'text', required: true, placeholder: 'contoh: Cicilan motor' },
+      {
+        key: 'bucket',
+        label: 'Keranjang',
+        type: 'select',
+        required: true,
+        defaultValue: BUCKETS[0].id,
+        options: BUCKETS.map((b) => ({ value: b.id, label: b.label })),
+      },
+    ],
+  },
 };
 
 // ---- Pemetaan section → kunci array data & label Indonesia ----------------
@@ -374,6 +392,9 @@ const toFormValues = (section, item) => {
   }
   if (section === 'notes') {
     return { title: item.title, body: item.body || '', category: item.category, pinned: !!item.pinned };
+  }
+  if (section === 'budgetPos') {
+    return { label: item.label, bucket: item.bucket };
   }
   return {};
 };
@@ -770,6 +791,55 @@ export default function App() {
     pushToast({ message: 'Anggaran diperbarui', duration: 2500 });
   };
 
+  // Simpan pos anggaran (tambah/ubah) — hanya label + keranjang yang disimpan.
+  // Pos lama dicari lewat id, jadi memindahkan keranjang = hapus dari asal lalu
+  // tambah ke tujuan (tidak meninggalkan salinan).
+  const savePos = (values, posId) => {
+    const current = dataRef.current;
+    const budgetNow = getBudget(current);
+    const label = String(values.label || '').trim();
+    if (!label) return;
+    const bucketIds = BUCKETS.map((b) => b.id);
+    const target = bucketIds.includes(values.bucket) ? values.bucket : bucketIds[0];
+    const entry = { id: posId || `pos-${Date.now()}`, label };
+    const pos = {};
+    BUCKETS.forEach((b) => {
+      pos[b.id] = (budgetNow.pos[b.id] || []).filter((p) => p.id !== entry.id);
+    });
+    pos[target] = [...pos[target], entry];
+    saveData({ ...current, budget: { ...current.budget, pos } });
+    pushToast({ message: posId ? 'Pos anggaran diperbarui' : 'Pos anggaran ditambahkan', duration: 2500 });
+  };
+
+  // Hapus pos anggaran + tawarkan "Urungkan" (dipulihkan ke posisi semula),
+  // mengikuti pola deleteItem.
+  const deletePos = (bucket, pos) => {
+    const current = dataRef.current;
+    const list = getBudget(current).pos[bucket] || [];
+    const index = list.findIndex((p) => p.id === pos.id);
+    if (index < 0) return;
+    const posMap = {};
+    BUCKETS.forEach((b) => {
+      posMap[b.id] = (getBudget(current).pos[b.id] || []).filter((p) => p.id !== pos.id);
+    });
+    saveData({ ...current, budget: { ...current.budget, pos: posMap } });
+    pushToast({
+      message: `Pos "${pos.label}" dihapus`,
+      actionLabel: 'Urungkan',
+      duration: 6000,
+      onAction: () => {
+        const now = getBudget(dataRef.current);
+        const restored = {};
+        BUCKETS.forEach((b) => {
+          restored[b.id] = [...(now.pos[b.id] || [])];
+        });
+        const target = restored[bucket] ? bucket : BUCKETS[0].id;
+        restored[target].splice(Math.min(index, restored[target].length), 0, pos);
+        saveData({ ...dataRef.current, budget: { ...dataRef.current.budget, pos: restored } });
+      },
+    });
+  };
+
   // Hapus item + tawarkan "Urungkan" (dipulihkan ke posisi semula).
   const deleteItem = (section, item) => {
     const key = SECTION_KEY[section];
@@ -795,9 +865,11 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [sheetInitial, setSheetInitial] = useState(null);
 
-  const openAdd = (section) => {
+  // `nilaiAwal` dipakai untuk form yang datang dengan konteks terisi
+  // (mis. "Tambah pos" dari salah satu kartu keranjang → keranjang sudah dipilih).
+  const openAdd = (section, nilaiAwal = null) => {
     setEditing(null);
-    setSheetInitial(null);
+    setSheetInitial(nilaiAwal);
     setSheetOpen(section);
   };
   const openEdit = (section, item) => {
@@ -812,7 +884,12 @@ export default function App() {
   };
 
   // Kirim dari FormSheet: mode ubah → perbarui item, mode tambah → tambah baru.
+  // Pos anggaran punya jalur sendiri (bukan array di `data`, tapi `budget.pos`).
   const submitSheet = (section, values) => {
+    if (section === 'budgetPos') {
+      savePos(values, editing && editing.section === 'budgetPos' ? editing.id : null);
+      return;
+    }
     if (editing && editing.section === section) updateItem(section, editing.id, values);
     else addItem(section, values);
   };
@@ -1157,6 +1234,9 @@ export default function App() {
                 formatCurrency={formatCurrency}
                 formatCurrencyShort={formatCurrencyShort}
                 onSaveBudget={handleSaveBudget}
+                onAddPos={(bucket) => openAdd('budgetPos', { bucket })}
+                onEditPos={(bucket, pos) => openEdit('budgetPos', { ...pos, bucket })}
+                onDeletePos={(bucket, pos) => deletePos(bucket, pos)}
               />
             ) : filtered.length === 0 ? (
               <EmptyState

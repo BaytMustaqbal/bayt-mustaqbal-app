@@ -18,7 +18,15 @@ const STATUS_META = {
   lebih: { label: 'Lebih', icon: 'trendingUp', tone: 'red' },
 };
 
-export function Budgeting({ data, formatCurrency, formatCurrencyShort, onSaveBudget }) {
+export function Budgeting({
+  data,
+  formatCurrency,
+  formatCurrencyShort,
+  onSaveBudget,
+  onAddPos,
+  onEditPos,
+  onDeletePos,
+}) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ income: '', needs: '', wants: '', savings: '' });
   const [error, setError] = useState('');
@@ -248,17 +256,50 @@ export function Budgeting({ data, formatCurrency, formatCurrencyShort, onSaveBud
                 <p className="mb-2 text-xs font-bold uppercase tracking-wider text-mutedfg">
                   Pos saran
                 </p>
-                <ul className="space-y-1.5">
+                <ul className="space-y-1">
                   {pos.map((item) => (
-                    <li key={item.id} className="flex items-start gap-2 text-sm text-mutedfg">
-                      <span
-                        className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand/60"
-                        aria-hidden="true"
-                      />
-                      <span className="min-w-0">{item.label}</span>
+                    <li key={item.id} className="flex items-center justify-between gap-1">
+                      <span className="flex min-w-0 items-start gap-2 text-sm text-mutedfg">
+                        <span
+                          className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand/60"
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0">{item.label}</span>
+                      </span>
+                      {/* Tombol 44px seperti ItemActions, ditulis lokal karena baris
+                          pos lebih rapat (bukan kartu) dan perlu penanda data-pos. */}
+                      <span className="flex shrink-0 items-center gap-0.5">
+                        <button
+                          type="button"
+                          data-pos="edit"
+                          onClick={() => onEditPos(bucket.id, item)}
+                          aria-label={`Ubah pos ${item.label}`}
+                          className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-brandtint hover:text-brandfg"
+                        >
+                          <Icon name="edit" size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          data-pos="delete"
+                          onClick={() => onDeletePos(bucket.id, item)}
+                          aria-label={`Hapus pos ${item.label}`}
+                          className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg"
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </span>
                     </li>
                   ))}
                 </ul>
+                <button
+                  type="button"
+                  data-pos="add"
+                  onClick={() => onAddPos(bucket.id)}
+                  className="mt-2 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line text-sm font-semibold text-brandfg transition-colors hover:bg-brandtint"
+                >
+                  <Icon name="plus" size={16} />
+                  Tambah pos
+                </button>
               </div>
             </Card>
           );
