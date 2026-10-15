@@ -6,9 +6,17 @@
 
 import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
+import { DonutChart } from './charts';
 import { Badge, Card, CTA_CLASS, ProgressBar, StatCard } from './ui';
 import { BUCKETS } from './categories';
 import { allocate, DEFAULT_RATIOS, getBudget, ratiosValid, summarize } from './budget';
+
+// Warna irisan donat alokasi — memakai token chart yang sudah ada di App.css.
+const BUCKET_COLOR = {
+  needs: 'rgb(var(--chart1))',
+  wants: 'rgb(var(--chart4))',
+  savings: 'rgb(var(--chart5))',
+};
 
 // Status keranjang — selalu IKON + TEKS, jangan andalkan warna saja
 // (aman ≤80%, hati-hati 80–100%, lebih >100%).
@@ -198,6 +206,24 @@ export function Budgeting({
           </div>
         )}
       </Card>
+
+      {/* Donat alokasi per keranjang — visualisasi pembagian 50/30/20 */}
+      {budget.income > 0 && (
+        <Card className="p-4 sm:p-5">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-mutedfg">
+            Alokasi per keranjang
+          </p>
+          <DonutChart
+            data={BUCKETS.map((b) => ({
+              label: b.label,
+              value: alokasi[b.id],
+              color: BUCKET_COLOR[b.id],
+            }))}
+            formatValue={formatCurrencyShort}
+            centerLabel={budget.month}
+          />
+        </Card>
+      )}
 
       {/* Tiga keranjang */}
       <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3">
