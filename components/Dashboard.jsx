@@ -45,7 +45,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
   const totals = useMemo(() => {
     const totalExpense = data.expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const tasksDone = data.tasks.filter((t) => t.completed).length;
-    const budgetLeft = Math.max(0, budget.income - totalExpense);
+    const budgetLeft = budget.income - totalExpense;
     const monthCount = data.monthlyTrend.length;
     const prevMonth = monthCount > 1 ? data.monthlyTrend[monthCount - 2].value : 0;
     const delta = prevMonth ? Math.round(((totalExpense - prevMonth) / prevMonth) * 100) : 0;
@@ -68,7 +68,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
   // Gaji 0/belum diisi → 0% (bukan NaN/∞).
   const usedPct =
     budget.income > 0
-      ? Math.min(100, Math.round((totals.totalExpense / budget.income) * 100))
+      ? Math.round((totals.totalExpense / budget.income) * 100)
       : 0;
   const isDown = totals.delta <= 0;
 
@@ -145,10 +145,15 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
             <ProgressBar value={totals.totalExpense} max={budget.income} className="mt-2" />
             <div className="mt-2 flex items-baseline justify-between gap-3 text-xs">
               <span className="text-mutedfg">
-                Sisa dari {showMoney ? formatCurrencyShort(budget.income) : 'Rp ••••'}
+                {totals.budgetLeft >= 0 ? 'Sisa dari' : 'Anggaran'}{' '}
+                {showMoney ? formatCurrencyShort(budget.income) : 'Rp ••••'}
               </span>
-              <span className="font-mono font-semibold text-brandfg">
-                {showMoney ? formatCurrency(totals.budgetLeft) : masked}
+              <span className={`font-mono font-semibold ${totals.budgetLeft < 0 ? 'text-tonerosefg' : 'text-brandfg'}`}>
+                {showMoney
+                  ? totals.budgetLeft >= 0
+                    ? formatCurrency(totals.budgetLeft)
+                    : `Lebih ${formatCurrency(-totals.budgetLeft)}`
+                  : masked}
               </span>
             </div>
             <button type="button" onClick={() => onNavigate('expenses')} className={`${CTA_CLASS} mt-4 w-full`}>
@@ -183,10 +188,10 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         />
         <StatCard
           icon="target"
-          tone="emerald"
-          value={formatCurrencyShort(totals.budgetLeft)}
-          valueTitle={formatCurrency(totals.budgetLeft)}
-          label="Sisa anggaran"
+          tone={totals.budgetLeft >= 0 ? 'emerald' : 'rose'}
+          value={formatCurrencyShort(Math.abs(totals.budgetLeft))}
+          valueTitle={formatCurrency(Math.abs(totals.budgetLeft))}
+          label={totals.budgetLeft >= 0 ? 'Sisa anggaran' : 'Lebih dari anggaran'}
           hint={`dari ${formatCurrencyShort(budget.income)}`}
         />
       </div>
