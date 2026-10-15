@@ -14,7 +14,7 @@
 
 - **Tanpa dependensi baru** — termasuk tanpa test runner. Verifikasi: `npm run build` + pemeriksaan di dev server `http://localhost:3000` (tab browser yang sudah ada).
 - **Tanpa `fetch`/API/DB baru** (AGENT.md). Data tetap `mockData` + snapshot `localStorage`.
-- **Invariant D21:** hero = donat = tren Okt = **Rp 6.300.000**; anggaran (gaji) tetap **Rp 8.000.000** → hero tetap "79% · sisa Rp 1,7 jt".
+- **Invariant D21:** hero = donat = tren Okt = **Rp 10.650.000** (diubah 15 Okt 2026: "Sewa & cicilan rumah" → Rp 5,5 jt); anggaran (gaji) tetap **Rp 8.000.000** → hero "133% · sisa −Rp 2,65 jt" (status "terlewati").
 - **Satu sumber angka:** tidak ada alokasi/realisasi yang disimpan di `mockData`.
 - **Target sentuh ≥44px**; status keranjang **selalu ikon + teks** (bukan warna saja); **0 overflow horizontal** pada 320/390/768/1280.
 - **Bahasa Indonesia** untuk teks UI dan dokumen. Tailwind via PostCSS (bukan CDN).
@@ -394,7 +394,7 @@ Spec §10: tandai A2/A3 sebagai keputusan final (bukan lagi poin terbuka).
 - [ ] **Step 3: Verifikasi menyeluruh**
 
 1. `npm run build` hijau.
-2. Invariant D21 & aritmatika: hero = donat = tren Okt = `6.300.000`; alokasi `4.000.000/2.400.000/1.600.000`; realisasi `3.600.000/1.800.000/900.000`; sisa `400.000/600.000/700.000`.
+2. Invariant D21 & aritmatika: hero = donat = tren Okt = `10.650.000`; alokasi `4.000.000/2.400.000/1.600.000`; realisasi `7.950.000/1.800.000/900.000`; sisa `-3.950.000/600.000/700.000`.
 3. Snapshot lama disuntik → tetap aman (fallback `income ← total`).
 4. Pos & field keranjang bertahan setelah reload.
 5. 320/390/768/1280 → overflow 0, target sentuh ≥44px, sub-tab & sheet bisa di-Tab/Enter/Esc, konsol error 0.

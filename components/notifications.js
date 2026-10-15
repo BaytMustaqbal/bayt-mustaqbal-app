@@ -7,6 +7,8 @@
 // Dipakai App (menghitung + menyimpan status "sudah dibaca") dan Navigation
 // (lonceng di pojok kanan atas header).
 
+import { getBudget } from './budget';
+
 const pad = (n) => String(n).padStart(2, '0');
 
 // Kunci tanggal lokal (YYYY-MM-DD) — hindari toISOString() yang memakai UTC.
@@ -49,7 +51,10 @@ export function buildNotifications(data, formatShort, now = new Date()) {
   const out = [];
 
   // ---- 1) Anggaran bulan ini: hanya bersuara kalau sudah mengkhawatirkan ----
-  const budget = Number(data.budget?.total) || 0;
+  // Anggaran selalu lewat `getBudget` — sama seperti Dashboard & header
+  // Keuangan — supaya snapshot lama (yang masih pakai `budget.total`) ikut
+  // terbaca dan tidak ada sumber anggaran kedua.
+  const budget = getBudget(data).income;
   const spent = (data.expenses || []).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const usedPct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
   if (budget > 0 && usedPct >= 100) {

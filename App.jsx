@@ -93,13 +93,13 @@ const mockData = {
     { id: 3, title: 'Kakek & Nenek', meta: '0813-9876-5432' },
     { id: 4, title: 'Golongan darah', meta: 'Rezki YT: O · Hilda AK: A · Anak: B', badge: 'Catatan', tone: 'brand' },
   ],
-  // Pengeluaran contoh Oktober 2026 — 11 item, total Rp 6.300.000.
+  // Pengeluaran contoh Oktober 2026 — 11 item, total Rp 10.650.000.
   // Total ini SENGAJA sama dengan nilai Okt di `monthlyTrend` dan jumlah
   // `categories`, supaya hero = donat = tren (lihat D21).
   // Keranjang anggaran TIDAK disimpan di sini: dihitung dari `category`
   // lewat CATEGORY_BUCKET (components/categories.js).
   expenses: [
-    { id: 1, category: 'rumah', description: 'Sewa & cicilan rumah', amount: 1150000, date: '2026-10-14' },
+    { id: 1, category: 'rumah', description: 'Sewa & cicilan rumah', amount: 5500000, date: '2026-10-14' },
     { id: 2, category: 'belanja', description: 'Belanja bahan makanan', amount: 900000, date: '2026-10-13' },
     { id: 3, category: 'pendidikan', description: 'SPP sekolah', amount: 600000, date: '2026-10-12' },
     { id: 4, category: 'utilitas', description: 'Tagihan listrik & air', amount: 450000, date: '2026-10-11' },
@@ -234,7 +234,7 @@ const mockData = {
     { label: 'Jul', value: 3410000 },
     { label: 'Agu', value: 2960000 },
     { label: 'Sep', value: 3620000 },
-    { label: 'Okt', value: 6300000 },
+    { label: 'Okt', value: 10650000 },
   ],
   weekly: [
     { label: 'Sen', value: 95000 },
@@ -248,13 +248,13 @@ const mockData = {
   categories: [
     // Warna seri = token tema (bukan hex) supaya donut tetap terbaca di
     // mode terang maupun gelap. Diselesaikan CSS lewat inline `style`.
-    // Jumlah semua nilai = total pengeluaran bulan ini (6,3 jt) — sama dengan
+    // Jumlah semua nilai = total pengeluaran bulan ini (10,65 jt) — sama dengan
     // hasil jumlah `expenses` & nilai Okt di `monthlyTrend`, agar ketiga angka
     // (hero · donat · tren) selalu cocok.
     // Urutan menurun (terbesar dulu) seperti sebelumnya. Enam kategori lama
     // tetap memakai warna aslinya; tiga kategori baru dapat --chart7/8/9.
+    { label: 'Rumah & Cicilan', value: 5500000, color: 'rgb(var(--chart8))' },
     { label: 'Hiburan & Liburan', value: 1800000, color: 'rgb(var(--chart7))' },
-    { label: 'Rumah & Cicilan', value: 1150000, color: 'rgb(var(--chart8))' },
     { label: 'Belanja Bulanan', value: 900000, color: 'rgb(var(--chart1))' },
     { label: 'Tabungan & Investasi', value: 900000, color: 'rgb(var(--chart9))' },
     { label: 'Pendidikan', value: 600000, color: 'rgb(var(--chart2))' },

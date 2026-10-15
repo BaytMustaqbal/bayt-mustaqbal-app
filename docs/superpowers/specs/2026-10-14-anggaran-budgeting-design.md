@@ -58,7 +58,7 @@ budget: {
 Item pengeluaran mendapat field opsional `bucket`:
 
 ```js
-{ id: 1, category: 'rumah', description: 'Sewa & cicilan rumah', amount: 1150000, date: '2026-10-14', bucket: 'needs' }
+{ id: 1, category: 'rumah', description: 'Sewa & cicilan rumah', amount: 5500000, date: '2026-10-14', bucket: 'needs' }
 ```
 
 `bucket` bernilai `'needs' | 'wants' | 'savings'`, atau `'auto'`/tidak ada. Rumus pembacaan:
@@ -106,12 +106,12 @@ Status tiap keranjang (selalu **ikon + teks**, bukan warna saja):
 
 ## 5. Data contoh baru
 
-Gaji **Rp 8.000.000** (angka lama `budget.total` dipertahankan → hero "realisasi anggaran 79% · sisa Rp 1,7 jt" **tidak berubah**).
+Gaji **Rp 8.000.000** (angka lama `budget.total` dipertahankan). Catatan 15 Okt 2026: "Sewa & cicilan rumah" dinaikkan ke Rp 5,5 jt → total pengeluaran **Rp 10.650.000**, hero **133%** (status "terlewati"), sisa **−Rp 2,65 jt**.
 Alokasi: Kebutuhan **4.000.000** · Keinginan **2.400.000** · Tabungan & Utang **1.600.000**.
 
 | Keranjang | Item (kategori) | Jumlah |
 |---|---|---|
-| **Kebutuhan** — 3.600.000 / 4.000.000 = **90%** (status *Hati-hati*) | Sewa & cicilan rumah (`rumah`) | 1.150.000 |
+| **Kebutuhan** — 7.950.000 / 4.000.000 = **199%** (status *Lebih*) | Sewa & cicilan rumah (`rumah`) | 5.500.000 |
 | | Belanja bahan makanan (`belanja`) | 900.000 |
 | | SPP sekolah (`pendidikan`) | 600.000 |
 | | Tagihan listrik & air (`utilitas`) | 450.000 |
@@ -123,9 +123,9 @@ Alokasi: Kebutuhan **4.000.000** · Keinginan **2.400.000** · Tabungan & Utang 
 | | Liburan akhir pekan (`hiburan`) | 1.000.000 |
 | **Tabungan & Utang** — 900.000 / 1.600.000 = **56%** (*Aman*) | Setoran tabungan & dana darurat (`tabungan`) | 900.000 |
 
-Total **Rp 6.300.000** — tetap sama, jadi invariant D21 utuh: **hero = donat = tren Okt = 6,3 jt**.
+Total **Rp 10.650.000** — invariant D21 utuh: **hero = donat = tren Okt = 10,65 jt** (diubah 15 Okt 2026: "Sewa & cicilan rumah" dinaikkan ke Rp 5,5 jt).
 
-Donat `categories` jadi **9 irisan** (jumlah tetap 6.300.000), butuh token baru `--chart7`, `--chart8`, `--chart9` di tema gelap **dan** terang:
+Donat `categories` jadi **9 irisan** (jumlah 10.650.000), butuh token baru `--chart7`, `--chart8`, `--chart9` di tema gelap **dan** terang:
 
 | Kategori | Nilai | Token |
 |---|---|---|
@@ -135,8 +135,8 @@ Donat `categories` jadi **9 irisan** (jumlah tetap 6.300.000), butuh token baru 
 | Ibadah & Sosial | 250.000 | `--chart4` |
 | Transportasi | 150.000 | `--chart5` |
 | Kesehatan | 100.000 | `--chart6` |
-| Rumah & Cicilan | 1.150.000 | **`--chart7`** |
-| Hiburan & Liburan | 1.800.000 | **`--chart8`** |
+| Rumah & Cicilan | 5.500.000 | **`--chart8`** |
+| Hiburan & Liburan | 1.800.000 | **`--chart7`** |
 | Tabungan & Investasi | 900.000 | **`--chart9`** |
 
 Pos bawaan (label saja, mengikuti daftar Kakang):
@@ -208,7 +208,7 @@ Semua nilai cadangan dikumpulkan di satu helper `getBudget(data)` (`components/b
 ## 9. Cara membuktikan (proyek belum punya test runner → verifikasi DOM + build)
 
 1. `npm run build` hijau; konsol **0 error**.
-2. Aritmatika: alokasi **4.000.000 / 2.400.000 / 1.600.000**, realisasi **3.600.000 / 1.800.000 / 900.000**, sisa **400.000 / 600.000 / 700.000**, total **6.300.000** = hero = donat = tren Okt (D21).
+2. Aritmatika: alokasi **4.000.000 / 2.400.000 / 1.600.000**, realisasi **7.950.000 / 1.800.000 / 900.000**, sisa **−3.950.000 / 600.000 / 700.000**, total **10.650.000** = hero = donat = tren Okt (D21).
 3. Editor rasio: jumlah ≠ 100 → **ditolak** dengan pesan; preset 50/30/20 bekerja; simpan → alokasi + hero berubah konsisten; **reload tetap** (localStorage).
 4. Badge: default sudah menampilkan **Hati-hati** (Kebutuhan 90%) dan **Aman** (Keinginan 75%, Tabungan 56%); status **Lebih** diuji dengan mengubah angka sementara, lalu dikembalikan.
 5. Snapshot lama disuntik (`{"budget":{"total":8000000,"month":"September 2026"}}`) → app tidak crash, fallback terpakai, `income` = 8 jt.
