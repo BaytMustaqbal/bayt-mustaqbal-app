@@ -15,6 +15,7 @@ import { reviewRoutes } from './routes/review';
 import { dashRoutes } from './routes/dash';
 import { auditRoutes } from './routes/audit';
 import { authMiddleware } from './middleware/auth';
+import { handleCron } from './cron';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -48,4 +49,7 @@ app.route('/api/audit', auditRoutes);
 
 app.get('/', (c) => c.json({ ok: true, message: 'Bayt Mustaqbal API' }));
 
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled: handleCron,
+};
