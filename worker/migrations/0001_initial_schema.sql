@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   nama TEXT NOT NULL,
   avatar_url TEXT,
   role TEXT NOT NULL DEFAULT 'user',
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS settings (
   user_id TEXT NOT NULL REFERENCES users(id),
   key TEXT NOT NULL,
   value TEXT NOT NULL,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT,
@@ -35,6 +37,7 @@ CREATE TABLE IF NOT EXISTS categories (
   type TEXT NOT NULL,
   icon TEXT,
   color TEXT,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -47,6 +50,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   balance INTEGER NOT NULL DEFAULT 0,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -62,6 +66,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   type TEXT NOT NULL,
   date TEXT NOT NULL,
   description TEXT,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -78,6 +83,7 @@ CREATE TABLE IF NOT EXISTS recurring (
   start_date TEXT NOT NULL,
   end_date TEXT,
   category_id TEXT REFERENCES categories(id),
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -93,6 +99,7 @@ CREATE TABLE IF NOT EXISTS bills (
   status TEXT NOT NULL DEFAULT 'unpaid',
   paid_at TEXT,
   recurring_id TEXT REFERENCES recurring(id),
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -106,6 +113,7 @@ CREATE TABLE IF NOT EXISTS attendance (
   date TEXT NOT NULL,
   status TEXT NOT NULL,
   note TEXT,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -118,6 +126,7 @@ CREATE TABLE IF NOT EXISTS attendance_quota (
   name TEXT NOT NULL,
   total INTEGER NOT NULL,
   used INTEGER NOT NULL DEFAULT 0,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -133,6 +142,7 @@ CREATE TABLE IF NOT EXISTS calendar_events (
   category TEXT,
   member_id TEXT,
   description TEXT,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -147,6 +157,7 @@ CREATE TABLE IF NOT EXISTS service_asset (
   type TEXT NOT NULL,
   purchase_date TEXT,
   warranty_expiry TEXT,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -159,6 +170,7 @@ CREATE TABLE IF NOT EXISTS service_log (
   date TEXT NOT NULL,
   description TEXT,
   cost INTEGER,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
@@ -172,12 +184,13 @@ CREATE TABLE IF NOT EXISTS notes (
   content TEXT,
   category TEXT,
   important INTEGER NOT NULL DEFAULT 0,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   void TEXT
 );
 
--- 14. audit_log (tanpa soft delete)
+-- 14. audit_log (tanpa soft delete — append only)
 CREATE TABLE IF NOT EXISTS audit_log (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
@@ -194,6 +207,7 @@ CREATE TABLE IF NOT EXISTS notification_log (
   type TEXT NOT NULL,
   message TEXT NOT NULL,
   read INTEGER NOT NULL DEFAULT 0,
+  rev INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   void TEXT
 );
