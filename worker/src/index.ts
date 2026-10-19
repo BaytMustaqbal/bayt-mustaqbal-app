@@ -6,6 +6,14 @@ import { txnRoutes } from './routes/txn';
 import { billRoutes } from './routes/bill';
 import { categoriesRoutes } from './routes/categories';
 import { settingsRoutes } from './routes/settings';
+import { recRoutes } from './routes/rec';
+import { attRoutes } from './routes/att';
+import { calRoutes } from './routes/cal';
+import { svcRoutes } from './routes/svc';
+import { noteRoutes } from './routes/note';
+import { reviewRoutes } from './routes/review';
+import { dashRoutes } from './routes/dash';
+import { auditRoutes } from './routes/audit';
 import { authMiddleware } from './middleware/auth';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -29,6 +37,14 @@ app.route('/api/txn', txnRoutes);
 app.route('/api/bill', billRoutes);
 app.route('/api/categories', categoriesRoutes);
 app.route('/api/settings', settingsRoutes);
+app.route('/api/rec', recRoutes);
+app.route('/api/att', attRoutes);
+app.route('/api/cal', calRoutes);
+app.route('/api/svc', svcRoutes);
+app.route('/api/note', noteRoutes);
+app.route('/api/review', reviewRoutes);
+app.route('/api/dash', dashRoutes);
+app.route('/api/audit', auditRoutes);
 
 app.get('/', (c) => c.json({ ok: true, message: 'Bayt Mustaqbal API' }));
 
