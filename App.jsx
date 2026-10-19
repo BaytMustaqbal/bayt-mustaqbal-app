@@ -6,6 +6,7 @@ import { FamilyMemberCard } from './components/FamilyMemberCard';
 import { TaskList } from './components/TaskList';
 import { NoteList } from './components/NoteList';
 import { Dashboard } from './components/Dashboard';
+import { SplashScreen } from './components/SplashScreen';
 import { WelcomeGate } from './components/WelcomeGate';
 import { AccountModal } from './components/AccountModal';
 import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList, initialsOf } from './components/ui';
@@ -554,6 +555,8 @@ export default function App() {
   // Gerbang welcome muncul SETIAP app dibuka (keputusan Kakang).
   // Saat backend siap, state ini tinggal ditukar jadi status login.
   const [entered, setEntered] = useState(false);
+  // Splash screen: tampil setiap app dibuka, lepas setelah fade-out.
+  const [splashDone, setSplashDone] = useState(false);
   // Filter kategori agenda (default: semua) — sinkron antara dropdown nav & chip di section
   const [agendaFilter, setAgendaFilter] = useState('semua');
   // Sub-tampilan Agenda: jadwal (daftar) | tugas | kalender keluarga
@@ -1396,7 +1399,13 @@ export default function App() {
   };
 
   if (!entered) {
-    return <WelcomeGate users={data.users} defaultUserId={activeUserId} onEnter={handleEnter} onReset={resetData} />;
+    return (
+      <>
+        {/* Splash tetap muncul meski belum `entered` — berada sebelum early-return */}
+        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+        <WelcomeGate users={data.users} defaultUserId={activeUserId} onEnter={handleEnter} onReset={resetData} />
+      </>
+    );
   }
 
   return (
@@ -1478,6 +1487,9 @@ export default function App() {
 
       {/* Toast: konfirmasi ringkas + "Urungkan" untuk hapus */}
       <Toast toast={toast} onDismiss={dismissToast} />
+
+      {/* Splash screen — tampil setiap buka app, lepas setelah fade-out */}
+      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
     </div>
   );
 }
