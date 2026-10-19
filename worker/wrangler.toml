@@ -1,0 +1,11 @@
+name = "api-bayt-mustaqbal"
+main = "src/index.ts"
+compatibility_date = "2026-10-19"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bayt-mustaqbal-db"
+database_id = "b9f5d75e-7d22-4f21-80f9-16660163da82"
+
+[triggers]
+crons = ["0 0 * * *", "0 * * * *", "30 17 * * *"]

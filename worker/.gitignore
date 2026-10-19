@@ -1,0 +1,11 @@
+# Dependensi
+node_modules/
+
+# Output build
+dist/
+
+# State/cache lokal wrangler
+.wrangler/
+
+# Variabel lingkungan (jangan pernah di-commit)
+.dev.vars

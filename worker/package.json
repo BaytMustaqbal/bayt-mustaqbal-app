@@ -1,0 +1,26 @@
+{
+  "name": "bayt-mustaqbal-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend Cloudflare Worker + D1 untuk Bayt Mustaqbal",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "migrations:new": "wrangler d1 migrations new bayt-mustaqbal-db",
+    "migrations:apply": "wrangler d1 migrations apply bayt-mustaqbal-db",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "hono": "^4.0.0",
+    "jsonwebtoken": "^9.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261019.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^4.0.0"
+  }
+}
