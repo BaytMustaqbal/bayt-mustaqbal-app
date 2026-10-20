@@ -21,6 +21,16 @@ authRoutes.post('/register', async (c) => {
   // Status keluarga: suami | istri | anak | lainnya (default anak)
   const FAMILY_ROLES = ['suami', 'istri', 'anak', 'lainnya'];
   const role = family_role && FAMILY_ROLES.includes(family_role) ? family_role : 'anak';
+  // Level Orangtua: hanya boleh 1 Suami dan 1 Istri (unik).
+  // Master (baytmustaqbal@gmail.com) diabaikan — ia disembunyikan dari silsilah.
+  if (role === 'suami' || role === 'istri') {
+    const existing = await c.env.DB.prepare(
+      'SELECT id FROM users WHERE family_role = ? AND void IS NULL AND username != ? LIMIT 1'
+    ).bind(role, 'baytmustaqbal@gmail.com').first();
+    if (existing) {
+      return c.json({ ok: false, data: null, error: { code: 'CONFLICT', message: `Sudah ada akun dengan status ${role === 'suami' ? 'Suami' : 'Istri'}. Hanya satu yang diizinkan.` } }, 409);
+    }
+  }
   // Posisi silsilah: orangtua | anak | cucu.
   // Kalau tidak dikirim, ikut status keluarga (hindari kombinasi janggal: role 'anak' di level 1).
   const GENERASI = ['orangtua', 'anak', 'cucu'];
@@ -68,7 +78,7 @@ authRoutes.post('/login', async (c) => {
   }
   const token = signToken({ userId: user.id, role: user.role }, c.env.JWT_SECRET);
   c.header('Set-Cookie', `token=${token}; HttpOnly; Secure; SameSite=Lax; Max-Age=604800; Path=/`);
-  return c.json({ ok: true, data: { token, user: { id: user.id, username: user.username, nama: user.nama, role: user.role, family_role: user.family_role || 'anak', generasi: user.generasi || 'orangtua', birth_date: user.birth_date || null } }, error: null });
+  return c.json({ ok: true, data: { token, user: { id: user.id, username: user.username, nama: user.nama, role: user.role, family_role: user.family_role || 'anak', generasi: user.generasi || 'orangtua', birth_date: user.birth_date || null, avatar_url: user.avatar_url || null } }, error: null });
 });
 
 // POST /api/auth/logout
@@ -91,9 +101,9 @@ authRoutes.get('/me', async (c) => {
 // PUT /api/auth/me — update profil sendiri (nama + tanggal lahir)
 authRoutes.put('/me', async (c) => {
   const userId = c.get('userId');
-  const { nama, birth_date } = await c.req.json() as { nama?: string; birth_date?: string | null };
+  const { nama, birth_date, avatar_url } = await c.req.json() as { nama?: string; birth_date?: string | null; avatar_url?: string | null };
 
-  const existing = await c.env.DB.prepare('SELECT id, nama, birth_date FROM users WHERE id = ? AND void IS NULL')
+  const existing = await c.env.DB.prepare('SELECT id, nama, birth_date, avatar_url FROM users WHERE id = ? AND void IS NULL')
     .bind(userId).first() as any;
   if (!existing) {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } }, 404);
@@ -104,9 +114,16 @@ authRoutes.put('/me', async (c) => {
   const newBirth = birth_date !== undefined
     ? (birth_date && /^\d{4}-\d{2}-\d{2}$/.test(birth_date) ? birth_date : null)
     : existing.birth_date;
+  // Avatar: data URL hasil crop client. Batas wajar 500KB agar row tidak membengkak.
+  // null → hapus avatar; string valid → ganti; selain itu → pakai nilai lama.
+  let newAvatar = existing.avatar_url;
+  if (avatar_url !== undefined) {
+    if (avatar_url === null) newAvatar = null;
+    else if (typeof avatar_url === 'string' && avatar_url.length <= 500_000) newAvatar = avatar_url || null;
+  }
   const now = new Date().toISOString();
-  await c.env.DB.prepare('UPDATE users SET nama = ?, birth_date = ?, updated_at = ? WHERE id = ? AND void IS NULL')
-    .bind(newNama, newBirth, now, userId).run();
+  await c.env.DB.prepare('UPDATE users SET nama = ?, birth_date = ?, avatar_url = ?, updated_at = ? WHERE id = ? AND void IS NULL')
+    .bind(newNama, newBirth, newAvatar, now, userId).run();
 
   const user = await c.env.DB.prepare('SELECT id, username, nama, avatar_url, role, family_role, generasi, birth_date FROM users WHERE id = ? AND void IS NULL')
     .bind(userId).first();
