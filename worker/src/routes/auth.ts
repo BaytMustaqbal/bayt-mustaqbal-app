@@ -6,7 +6,10 @@ export const authRoutes = new Hono<{ Bindings: Env }>();
 
 // POST /api/auth/register
 authRoutes.post('/register', async (c) => {
-  const { username, password, nama, family_role } = await c.req.json() as { username: string; password: string; nama: string; family_role?: string };
+  const { username, password, nama, family_role, generasi, birth_date } = await c.req.json() as {
+    username: string; password: string; nama: string;
+    family_role?: string; generasi?: string; birth_date?: string;
+  };
   if (!username || !password || !nama) {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Field wajib: username, password, nama' } }, 400);
   }
@@ -18,13 +21,18 @@ authRoutes.post('/register', async (c) => {
   // Status keluarga: suami | istri | anak | lainnya (default anak)
   const FAMILY_ROLES = ['suami', 'istri', 'anak', 'lainnya'];
   const role = family_role && FAMILY_ROLES.includes(family_role) ? family_role : 'anak';
+  // Posisi silsilah: orangtua | anak | cucu (default orangtua)
+  const GENERASI = ['orangtua', 'anak', 'cucu'];
+  const gen = generasi && GENERASI.includes(generasi) ? generasi : 'orangtua';
+  // Tanggal lahir opsional — format ISO YYYY-MM-DD, null kalau kosong/invalid
+  const birth = birth_date && /^\d{4}-\d{2}-\d{2}$/.test(birth_date) ? birth_date : null;
   const hash = await hashPassword(password);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   try {
-    await c.env.DB.prepare('INSERT INTO users (id, username, password_hash, nama, role, family_role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, username, hash, nama, 'user', role, now, now).run();
-    return c.json({ ok: true, data: { id, username, nama, role: 'user', family_role: role }, error: null });
+    await c.env.DB.prepare('INSERT INTO users (id, username, password_hash, nama, role, family_role, generasi, birth_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, username, hash, nama, 'user', role, gen, birth, now, now).run();
+    return c.json({ ok: true, data: { id, username, nama, role: 'user', family_role: role, generasi: gen, birth_date: birth }, error: null });
   } catch (e: any) {
     if (e.message.includes('UNIQUE')) {
       return c.json({ ok: false, data: null, error: { code: 'CONFLICT', message: 'Username sudah ada' } }, 409);
