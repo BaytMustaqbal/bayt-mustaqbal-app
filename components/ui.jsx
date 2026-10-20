@@ -259,13 +259,23 @@ export function Badge({ children, tone = 'brand' }) {
 }
 
 /* Daftar baris untuk sub-bagian keluarga (Info Medis / Kontak & Darurat / Dokumen) */
-export function FamilyList({ title, icon, items }) {
+export function FamilyList({ title, icon, items, onAdd }) {
   return (
     <div>
       <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-mutedfg">
         <Icon name={icon} size={16} />
         {title}
         <span className="ml-auto font-mono text-xs font-normal opacity-70">{items.length}</span>
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            aria-label={`Tambah ${title.toLowerCase()}`}
+            className="ml-1 grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-line text-mutedfg opacity-50 transition-all hover:opacity-100 hover:text-ink"
+          >
+            <Icon name="plus" size={13} />
+          </button>
+        )}
       </h2>
       {items.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-line bg-surface/60 px-4 py-6 text-center text-sm text-mutedfg">

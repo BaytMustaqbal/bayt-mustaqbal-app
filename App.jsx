@@ -1575,9 +1575,9 @@ export default function App() {
                   )}
                 </div>
               )}
-              {showMedis && <FamilyList title="Info Medis" icon="activity" items={data.familyMedical} />}
-              {showKontak && <FamilyList title="Kontak & Darurat" icon="phone" items={data.familyContacts} />}
-              {showDokumen && <FamilyList title="Dokumen Penting" icon="file" items={data.familyDocuments} />}
+              {showMedis && <FamilyList title="Info Medis" icon="activity" items={data.familyMedical} onAdd={() => openAdd('family', { bagian: 'medis' })} />}
+              {showKontak && <FamilyList title="Kontak & Darurat" icon="phone" items={data.familyContacts} onAdd={() => openAdd('family', { bagian: 'kontak' })} />}
+              {showDokumen && <FamilyList title="Dokumen Penting" icon="file" items={data.familyDocuments} onAdd={() => openAdd('family', { bagian: 'dokumen' })} />}
             </div>
           </section>
         );
