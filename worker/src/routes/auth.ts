@@ -21,9 +21,10 @@ authRoutes.post('/register', async (c) => {
   // Status keluarga: suami | istri | anak | lainnya (default anak)
   const FAMILY_ROLES = ['suami', 'istri', 'anak', 'lainnya'];
   const role = family_role && FAMILY_ROLES.includes(family_role) ? family_role : 'anak';
-  // Posisi silsilah: orangtua | anak | cucu (default orangtua)
+  // Posisi silsilah: orangtua | anak | cucu.
+  // Kalau tidak dikirim, ikut status keluarga (hindari kombinasi janggal: role 'anak' di level 1).
   const GENERASI = ['orangtua', 'anak', 'cucu'];
-  const gen = generasi && GENERASI.includes(generasi) ? generasi : 'orangtua';
+  const gen = generasi && GENERASI.includes(generasi) ? generasi : (role === 'anak' ? 'anak' : 'orangtua');
   // Tanggal lahir opsional — format ISO YYYY-MM-DD, null kalau kosong/invalid
   const birth = birth_date && /^\d{4}-\d{2}-\d{2}$/.test(birth_date) ? birth_date : null;
   const hash = await hashPassword(password);
@@ -98,8 +99,8 @@ authRoutes.put('/me', async (c) => {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } }, 404);
   }
 
-  // Partial update: hanya field yang dikirim yang diubah
-  const newNama = nama !== undefined ? (nama.trim() || existing.nama) : existing.nama;
+  // Partial update: hanya field yang dikirim yang diubah (guard tipe: null/angka → pakai nilai lama)
+  const newNama = (typeof nama === 'string' && nama.trim()) ? nama.trim() : existing.nama;
   const newBirth = birth_date !== undefined
     ? (birth_date && /^\d{4}-\d{2}-\d{2}$/.test(birth_date) ? birth_date : null)
     : existing.birth_date;
