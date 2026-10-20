@@ -83,6 +83,8 @@ export function AccountModal({
   open,
   user,
   users = [],
+  initialGenerasi = null,
+  onSaved,
   onClose,
   onSwitchUser,
   onLogout,
@@ -106,10 +108,42 @@ export function AccountModal({
   const [regUsername, setRegUsername] = useState('');
   const [regNama, setRegNama] = useState('');
   const [regFamilyRole, setRegFamilyRole] = useState('anak');
+  const [regBirthDate, setRegBirthDate] = useState('');
+  const [regGenerasi, setRegGenerasi] = useState('orangtua');
   const [regPassword, setRegPassword] = useState('');
   const [regPassword2, setRegPassword2] = useState('');
   const [regErrors, setRegErrors] = useState({});
   const [regSuccess, setRegSuccess] = useState('');
+
+  /* ---- Profil sendiri: tanggal lahir ---- */
+  const [profileBirthDate, setProfileBirthDate] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState('');
+
+  // Preset posisi silsilah saat dibuka dari placeholder FamilyTree (App.jsx)
+  useEffect(() => {
+    if (initialGenerasi) setRegGenerasi(initialGenerasi);
+  }, [initialGenerasi]);
+
+  // Isi field tanggal lahir dari data user saat modal dibuka
+  useEffect(() => {
+    if (open) setProfileBirthDate(user?.birthDate || '');
+  }, [open, user?.birthDate]);
+
+  // Simpan tanggal lahir profil sendiri (PUT /auth/me)
+  const handleProfileSave = async () => {
+    setProfileSaving(true);
+    setProfileSaved('');
+    try {
+      await auth.updateProfile({ birthDate: profileBirthDate || null });
+      setProfileSaved('Tanggal lahir tersimpan.');
+      onSaved?.();
+    } catch (err) {
+      setProfileSaved('Gagal menyimpan: ' + err.message);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const validateRegister = () => {
     const errs = {};
@@ -134,11 +168,14 @@ export function AccountModal({
     }
     setRegErrors({});
     try {
-      const result = await auth.register(regUsername.trim().toLowerCase(), regPassword, regNama.trim(), regFamilyRole);
-      setRegSuccess(`Akun "${result.username}" (${result.nama}) berhasil didaftarkan sebagai ${regFamilyRole}!`);
+      const result = await auth.register(regUsername.trim().toLowerCase(), regPassword, regNama.trim(), regFamilyRole, regGenerasi, regBirthDate || null);
+      setRegSuccess(`Akun "${result.username}" (${result.nama}) berhasil didaftarkan!`);
+      onSaved?.(); // refresh daftar anggota (tree ikut terbaru)
       setRegUsername('');
       setRegNama('');
       setRegFamilyRole('anak');
+      setRegBirthDate('');
+      setRegGenerasi('orangtua');
       setRegPassword('');
       setRegPassword2('');
     } catch (err) {
@@ -592,6 +629,20 @@ export function AccountModal({
               )}
             </div>
 
+            {/* Tanggal lahir (opsional) — tampil di kotak silsilah */}
+            <div>
+              <label htmlFor="reg-birth-date" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Tanggal lahir (opsional)
+              </label>
+              <input
+                id="reg-birth-date"
+                type="date"
+                value={regBirthDate}
+                onChange={(e) => setRegBirthDate(e.target.value)}
+                className={`${inputCls} min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
+              />
+            </div>
+
             {/* Status keluarga — menentukan tampil sebagai apa di halaman Keluarga */}
             <div>
               <label htmlFor="reg-family-role" className="mb-1 block text-xs font-semibold text-mutedfg">
@@ -607,6 +658,23 @@ export function AccountModal({
                 <option value="istri">Istri / Ibu</option>
                 <option value="anak">Anak</option>
                 <option value="lainnya">Lainnya</option>
+              </select>
+            </div>
+
+            {/* Posisi dalam silsilah — level di diagram FamilyTree */}
+            <div>
+              <label htmlFor="reg-generasi" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Posisi dalam silsilah
+              </label>
+              <select
+                id="reg-generasi"
+                value={regGenerasi}
+                onChange={(e) => setRegGenerasi(e.target.value)}
+                className={`${inputCls} min-h-[48px] w-full appearance-none rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
+              >
+                <option value="orangtua">Orangtua</option>
+                <option value="anak">Anak</option>
+                <option value="cucu">Cucu</option>
               </select>
             </div>
 
@@ -668,6 +736,36 @@ export function AccountModal({
             </button>
           </div>
         )}
+
+        {/* ---------- Tanggal lahir (profil sendiri, simpan langsung ke server) ---------- */}
+        <div className="mt-4">
+          <label htmlFor="profile-birth-date" className="mb-1 block text-xs font-semibold text-mutedfg">
+            Tanggal lahir saya
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              id="profile-birth-date"
+              type="date"
+              value={profileBirthDate}
+              onChange={(e) => { setProfileBirthDate(e.target.value); setProfileSaved(''); }}
+              className={`${inputCls} min-h-[44px] flex-1 rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
+            />
+            <button
+              type="button"
+              onClick={handleProfileSave}
+              disabled={profileSaving}
+              className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl border border-line px-3 text-xs font-semibold text-mutedfg transition-colors hover:text-ink disabled:opacity-50"
+            >
+              {profileSaving ? <Icon name="loader" size={14} /> : <Icon name="check" size={14} />}
+              Simpan
+            </button>
+          </div>
+          {profileSaved && (
+            <p className={`mt-1.5 text-xs font-medium ${profileSaved.startsWith('Gagal') ? 'text-danger' : 'text-green'}`}>
+              {profileSaved}
+            </p>
+          )}
+        </div>
 
         {/* ---------- Aksi ---------- */}
         <div className="mt-5 flex gap-2.5">
