@@ -37,7 +37,7 @@ authRoutes.post('/register', async (c) => {
 // Master account disembunyikan (hanya untuk admin/register, bukan anggota).
 authRoutes.get('/users', async (c) => {
   const results = await c.env.DB.prepare(
-    "SELECT id, username, nama, family_role, avatar_url, created_at FROM users WHERE void IS NULL AND username != 'baytmustaqbal@gmail.com' ORDER BY created_at ASC"
+    "SELECT id, username, nama, family_role, generasi, birth_date, avatar_url, created_at FROM users WHERE void IS NULL AND username != 'baytmustaqbal@gmail.com' ORDER BY created_at ASC"
   ).all();
   return c.json({ ok: true, data: results.results || [], error: null });
 });
@@ -59,7 +59,7 @@ authRoutes.post('/login', async (c) => {
   }
   const token = signToken({ userId: user.id, role: user.role }, c.env.JWT_SECRET);
   c.header('Set-Cookie', `token=${token}; HttpOnly; Secure; SameSite=Lax; Max-Age=604800; Path=/`);
-  return c.json({ ok: true, data: { token, user: { id: user.id, username: user.username, nama: user.nama, role: user.role, family_role: user.family_role || 'anak' } }, error: null });
+  return c.json({ ok: true, data: { token, user: { id: user.id, username: user.username, nama: user.nama, role: user.role, family_role: user.family_role || 'anak', generasi: user.generasi || 'orangtua', birth_date: user.birth_date || null } }, error: null });
 });
 
 // POST /api/auth/logout
@@ -71,7 +71,7 @@ authRoutes.post('/logout', (c) => {
 // GET /api/auth/me
 authRoutes.get('/me', async (c) => {
   const userId = c.get('userId');
-  const user = await c.env.DB.prepare('SELECT id, username, nama, avatar_url, role, family_role FROM users WHERE id = ? AND void IS NULL')
+  const user = await c.env.DB.prepare('SELECT id, username, nama, avatar_url, role, family_role, generasi, birth_date FROM users WHERE id = ? AND void IS NULL')
     .bind(userId).first();
   if (!user) {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } }, 404);
