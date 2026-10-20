@@ -152,8 +152,8 @@ export function LoginScreen({ onLogin, onReset }) {
           <button
             type="button"
             onClick={() => {
-              setUsername(import.meta.env.VITE_DEV_USER || 'YT_Rezki');
-              setPassword(import.meta.env.VITE_DEV_PASS || '05022025');
+              setUsername(import.meta.env.VITE_DEV_USER || 'baytmustaqbal@gmail.com');
+              setPassword(import.meta.env.VITE_DEV_PASS || '@_Eki091278');
               setError('');
             }}
             className="mx-auto flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-mutedfg transition-colors hover:text-brandfg"

@@ -1,6 +1,10 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { Avatar, CTA_CLASS } from './ui';
+import { auth } from '../services/client';
+
+/* Username master — bisa daftarkan akun baru dari sini */
+const MASTER_USER = 'baytmustaqbal@gmail.com';
 
 /* ============================================================================
    Modal "Akun saya" — ganti nama, username, avatar, dan password.
@@ -96,6 +100,50 @@ export function AccountModal({
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState('');
+
+  /* ---- Register akun baru (master only) ---- */
+  const isMaster = user?.username === MASTER_USER;
+  const [regUsername, setRegUsername] = useState('');
+  const [regNama, setRegNama] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regPassword2, setRegPassword2] = useState('');
+  const [regErrors, setRegErrors] = useState({});
+  const [regSuccess, setRegSuccess] = useState('');
+
+  const validateRegister = () => {
+    const errs = {};
+    const norm = regUsername.trim().toLowerCase();
+    if (!norm) errs.username = 'Username wajib diisi';
+    else if (!/^[a-z0-9._@-]{3,30}$/.test(norm)) errs.username = '3–30 karakter: huruf kecil, angka, titik, @, garis bawah, atau strip';
+    if (!regNama.trim()) errs.nama = 'Nama wajib diisi';
+    else if (regNama.trim().length < 2) errs.nama = 'Nama minimal 2 karakter';
+    if (!regPassword) errs.password = 'Password wajib diisi';
+    else if (regPassword.length < 6) errs.password = 'Password minimal 6 karakter';
+    else if (regPassword !== regPassword2) errs.password2 = 'Ulangi password tidak sama';
+    return errs;
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    const errs = validateRegister();
+    if (Object.keys(errs).length) {
+      setRegErrors(errs);
+      setRegSuccess('');
+      return;
+    }
+    setRegErrors({});
+    try {
+      const result = await auth.register(regUsername.trim().toLowerCase(), regPassword, regNama.trim());
+      setRegSuccess(`Akun "${result.username}" (${result.nama}) berhasil didaftarkan!`);
+      setRegUsername('');
+      setRegNama('');
+      setRegPassword('');
+      setRegPassword2('');
+    } catch (err) {
+      setRegErrors({ _submit: err.message });
+      setRegSuccess('');
+    }
+  };
 
   const fieldRefs = useRef({});
   const fileRef = useRef(null);
@@ -488,6 +536,118 @@ export function AccountModal({
             pengaturan terang/gelap HP.
           </p>
         </fieldset>
+
+        {/* ---------- Daftar akun baru (master only) ---------- */}
+        {isMaster && (
+          <div className="mt-4 space-y-3.5">
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-line" />
+              <span className="text-xs font-semibold text-mutedfg">Daftar Akun Baru</span>
+              <div className="h-px flex-1 bg-line" />
+            </div>
+
+            {regSuccess && (
+              <div className="rounded-xl border border-green/30 bg-green/10 px-3.5 py-2.5 text-xs text-green">
+                {regSuccess}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="reg-username" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Username
+              </label>
+              <input
+                id="reg-username"
+                type="text"
+                value={regUsername}
+                onChange={(e) => { setRegUsername(e.target.value); setRegErrors((p) => ({ ...p, username: undefined, _submit: undefined })); }}
+                placeholder="mis. istri"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-invalid={!!regErrors.username}
+                className={inputCls}
+              />
+              {regErrors.username && (
+                <p className="mt-1 text-xs font-medium text-danger">{regErrors.username}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="reg-nama" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Nama lengkap / panggilan
+              </label>
+              <input
+                id="reg-nama"
+                type="text"
+                value={regNama}
+                onChange={(e) => { setRegNama(e.target.value); setRegErrors((p) => ({ ...p, nama: undefined, _submit: undefined })); }}
+                placeholder="mis. Istri Kakang"
+                className={inputCls}
+              />
+              {regErrors.nama && (
+                <p className="mt-1 text-xs font-medium text-danger">{regErrors.nama}</p>
+              )}
+            </div>
+
+            <div className="relative">
+              <label htmlFor="reg-password" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Password
+              </label>
+              <input
+                id="reg-password"
+                type={showPassword ? 'text' : 'password'}
+                value={regPassword}
+                onChange={(e) => { setRegPassword(e.target.value); setRegErrors((p) => ({ ...p, password: undefined, password2: undefined, _submit: undefined })); }}
+                placeholder="Minimal 6 karakter"
+                autoComplete="new-password"
+                aria-invalid={!!regErrors.password}
+                className={`${inputCls} pr-12`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                aria-pressed={showPassword}
+                className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-mutedfg transition-colors hover:text-brandfg"
+              >
+                <Icon name={showPassword ? 'eyeOff' : 'eye'} size={16} />
+              </button>
+            </div>
+
+            <div>
+              <label htmlFor="reg-password2" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Ulangi password
+              </label>
+              <input
+                id="reg-password2"
+                type={showPassword ? 'text' : 'password'}
+                value={regPassword2}
+                onChange={(e) => setRegPassword2(e.target.value)}
+                placeholder="Ketik ulang password"
+                autoComplete="new-password"
+                aria-invalid={!!regErrors.password2}
+                className={inputCls}
+              />
+              {regErrors.password2 && (
+                <p className="mt-1 text-xs font-medium text-danger">{regErrors.password2}</p>
+              )}
+            </div>
+
+            {regErrors._submit && (
+              <p className="text-xs font-medium text-danger">{regErrors._submit}</p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleRegister}
+              className={`${CTA_CLASS} min-h-[44px] w-full text-sm font-semibold`}
+            >
+              <Icon name="plus" size={15} />
+              Daftar
+            </button>
+          </div>
+        )}
 
         {/* ---------- Aksi ---------- */}
         <div className="mt-5 flex gap-2.5">

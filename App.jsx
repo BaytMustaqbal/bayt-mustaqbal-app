@@ -701,8 +701,8 @@ export default function App() {
      supaya tidak perlu ketik login berulang kali. */
   useEffect(() => {
     if (import.meta.env.DEV && !isLoggedIn && !entered && !authChecking && storedToken() === null) {
-      const devUser = import.meta.env.VITE_DEV_USER || 'YT_Rezki';
-      const devPass = import.meta.env.VITE_DEV_PASS || '05022025';
+      const devUser = import.meta.env.VITE_DEV_USER || 'baytmustaqbal@gmail.com';
+      const devPass = import.meta.env.VITE_DEV_PASS || '@_Eki091278';
       const timer = setTimeout(() => {
         auth.login(devUser, devPass)
           .then((result) => handleLogin(result.user))

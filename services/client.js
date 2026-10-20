@@ -86,6 +86,12 @@ export const auth = {
   me: async () => {
     return apiFetch('/auth/me');
   },
+  register: async (username, password, nama) => {
+    return apiFetch('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, nama }),
+    });
+  },
 };
 
 /* ---- Data transform: Transaction (backend) ↔ Expense (frontend) ---- */
