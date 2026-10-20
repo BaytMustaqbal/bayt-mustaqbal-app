@@ -86,3 +86,28 @@ authRoutes.get('/me', async (c) => {
   }
   return c.json({ ok: true, data: user, error: null });
 });
+
+// PUT /api/auth/me — update profil sendiri (nama + tanggal lahir)
+authRoutes.put('/me', async (c) => {
+  const userId = c.get('userId');
+  const { nama, birth_date } = await c.req.json() as { nama?: string; birth_date?: string | null };
+
+  const existing = await c.env.DB.prepare('SELECT id, nama, birth_date FROM users WHERE id = ? AND void IS NULL')
+    .bind(userId).first() as any;
+  if (!existing) {
+    return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } }, 404);
+  }
+
+  // Partial update: hanya field yang dikirim yang diubah
+  const newNama = nama !== undefined ? (nama.trim() || existing.nama) : existing.nama;
+  const newBirth = birth_date !== undefined
+    ? (birth_date && /^\d{4}-\d{2}-\d{2}$/.test(birth_date) ? birth_date : null)
+    : existing.birth_date;
+  const now = new Date().toISOString();
+  await c.env.DB.prepare('UPDATE users SET nama = ?, birth_date = ?, updated_at = ? WHERE id = ? AND void IS NULL')
+    .bind(newNama, newBirth, now, userId).run();
+
+  const user = await c.env.DB.prepare('SELECT id, username, nama, avatar_url, role, family_role, generasi, birth_date FROM users WHERE id = ? AND void IS NULL')
+    .bind(userId).first();
+  return c.json({ ok: true, data: user, error: null });
+});
