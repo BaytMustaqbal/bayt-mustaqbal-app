@@ -1,28 +1,5 @@
 import { Env } from './types/env';
-
-// WA notification via Fonnte API
-// Note: extracted to utils/fonnte.ts in Task 7
-async function sendWA(message: string, target: string, token: string): Promise<boolean> {
-  try {
-    const res = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ target, message, countryCode: '62' }),
-    });
-    const result = await res.json() as any;
-    if (result.error) {
-      console.error('WA send error:', result.error, result.message);
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.error('WA send failed:', e);
-    return false;
-  }
-}
+import { sendWA } from './utils/fonnte'; // fonnte WA utility (Task 7)
 
 // Daily digest: summarize today's transactions
 async function sendDailyDigest(env: Env): Promise<void> {
@@ -47,7 +24,7 @@ async function sendDailyDigest(env: Env): Promise<void> {
 💸 Pengeluaran: Rp ${totalExpense.toLocaleString('id-ID')}
 📈 Saldo bersih: Rp ${net.toLocaleString('id-ID')}`;
 
-  await sendWA(message, env.FONNTE_TARGET, env.FONNTE_TOKEN);
+  await sendWA(env, message);
   console.log('Daily digest sent');
 }
 
@@ -71,7 +48,7 @@ async function sendBillReminder(env: Env): Promise<void> {
 ${bill.name}
 Jumlah: Rp ${bill.amount.toLocaleString('id-ID')}
 Jatuh tempo: ${bill.due_date}`;
-    await sendWA(message, env.FONNTE_TARGET, env.FONNTE_TOKEN);
+    await sendWA(env, message);
   }
 
   console.log(`Bill reminders sent: ${bills.length}`);
