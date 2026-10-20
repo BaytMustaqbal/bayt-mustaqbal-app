@@ -556,7 +556,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const stored = getUser();
   const transformedUser = stored
-    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, initials: initialsOf(stored.nama || stored.name) }
+    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, avatar: stored.avatar || stored.avatar_url || null, initials: initialsOf(stored.nama || stored.name) }
     : null;
   const [currentUser, setCurrentUser] = useState(transformedUser);
   // Splash screen: tampil setiap app dibuka, lepas setelah fade-out.
@@ -805,9 +805,21 @@ export default function App() {
         return next;
       }),
     });
-    // Update currentUser di localStorage juga
+    // Cache lokal (optimistic) supaya modal langsung terisi
     storeUser({ id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, birth_date: currentUser.birthDate, avatar_url: patch.avatar });
-    pushToast({ message: 'Profil akun diperbarui', duration: 2500 });
+    // Simpan nama + avatar ke server (PUT /auth/me) supaya tampil di semua perangkat
+    auth.updateProfile({ nama: patch.name, avatarUrl: patch.avatar || null })
+      .then((updated) => {
+        setCurrentUser((prev) => (prev
+          ? { ...prev, name: updated.nama, avatar: updated.avatar_url || null }
+          : prev));
+        storeUser({ id: currentUser.id, nama: updated.nama, username: currentUser.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, birth_date: currentUser.birthDate, avatar_url: updated.avatar_url });
+        loadFromAPI(); // segarkan tree (avatar/nama)
+        pushToast({ message: 'Profil akun diperbarui', duration: 2500 });
+      })
+      .catch((err) => {
+        pushToast({ message: 'Gagal menyimpan ke server: ' + err.message + ' (perubahan hanya di perangkat ini)', duration: 4000, tone: 'warning' });
+      });
   };
 
   // Helper: recompute derived data (monthlyTrend, weekly, categories) setelah expenses berubah
@@ -1263,6 +1275,7 @@ export default function App() {
       family_role: user.family_role || 'anak',
       generasi: user.generasi || 'orangtua',
       birthDate: user.birth_date || null,
+      avatar: user.avatar_url || null,
       initials: initialsOf(user.nama),
     };
     storeUser(frontendUser);

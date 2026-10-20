@@ -105,6 +105,11 @@ export function AccountModal({
 
   /* ---- Register akun baru (master only) ---- */
   const isMaster = user?.username === MASTER_USER;
+  // Level Orangtua: hanya 1 Suami & 1 Istri — opsi di-disable kalau sudah terpakai.
+  // `users` membawa `role` = family_role akun tersebut (dari App.jsx buildDataBundle).
+  const takenRoles = (users || []).filter((u) => u.id !== user?.id).map((u) => u.role);
+  const suamiTaken = takenRoles.includes('suami');
+  const istriTaken = takenRoles.includes('istri');
   const [regUsername, setRegUsername] = useState('');
   const [regNama, setRegNama] = useState('');
   const [regFamilyRole, setRegFamilyRole] = useState('anak');
@@ -671,8 +676,8 @@ export function AccountModal({
                 }}
                 className={`${inputCls} min-h-[48px] w-full appearance-none rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
               >
-                <option value="suami">Suami / Ayah</option>
-                <option value="istri">Istri / Ibu</option>
+                <option value="suami" disabled={suamiTaken}>Suami / Ayah{suamiTaken ? ' — sudah ada' : ''}</option>
+                <option value="istri" disabled={istriTaken}>Istri / Ibu{istriTaken ? ' — sudah ada' : ''}</option>
                 <option value="anak">Anak</option>
                 <option value="lainnya">Lainnya</option>
               </select>

@@ -97,11 +97,12 @@ export const auth = {
       }),
     });
   },
-  // Update profil sendiri (nama + tanggal lahir) — PUT /auth/me
-  updateProfile: async ({ nama, birthDate }) => {
+  // Update profil sendiri (nama, tanggal lahir, avatar) — PUT /auth/me
+  updateProfile: async ({ nama, birthDate, avatarUrl }) => {
     const body = {};
     if (nama !== undefined) body.nama = nama;
     if (birthDate !== undefined) body.birth_date = birthDate;
+    if (avatarUrl !== undefined) body.avatar_url = avatarUrl;
     return apiFetch('/auth/me', { method: 'PUT', body: JSON.stringify(body) });
   },
   // Daftar anggota keluarga (semua akun aktif, master disembunyikan backend)

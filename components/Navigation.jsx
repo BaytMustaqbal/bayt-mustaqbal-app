@@ -257,7 +257,6 @@ export function Navigation({
   // Indeks tab yang sedang "menyala". Hanya dropdown kategori yang dihitung
   // sebagai aktif; panel notifikasi (openKey='notif') tidak menggeser indikator.
   const activeId = openKey && DROPDOWNS[openKey] ? openKey : activeSection;
-  const activeIndex = Math.max(0, NAV_ITEMS.findIndex((item) => item.id === activeId));
 
   // Jumlah notifikasi yang belum dibaca (untuk badge + label pembaca layar).
   const notifUnread = notifications.filter((n) => !notifReadIds.includes(n.id)).length;
@@ -442,50 +441,85 @@ export function Navigation({
         className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/85 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-xl lg:hidden"
       >
         {/* Tinggi dikunci 56px agar banner install bisa diposisikan tepat di atasnya */}
-        <ul className="relative mx-auto flex h-[56px] max-w-md items-stretch px-1.5 lg:max-w-6xl">
-          {/* Indikator geser: satu elemen, bergerak via transform saat tab berubah */}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute top-0 h-0.5 rounded-full bg-brand shadow-glow transition-transform duration-slow ease-smooth"
-            style={{
-              left: '0.375rem',
-              width: 'calc((100% - 0.75rem) / 5)',
-              transform: `translateX(${activeIndex * 100}%)`,
-            }}
-          />
-          {NAV_ITEMS.map((item) => {
-            const isDropdown = !!DROPDOWNS[item.id];
-            const active = activeSection === item.id || (isDropdown && openKey === item.id);
+        <ul className="relative mx-auto flex h-[68px] max-w-md items-stretch px-2 lg:max-w-6xl">
+          {/* Kiri: Agenda + Keuangan */}
+          {NAV_ITEMS.filter((i) => i.id === 'agenda' || i.id === 'expenses').map((item) => {
+            const active = activeSection === item.id || openKey === item.id;
             return (
               <li key={item.id} className="min-w-0 flex-1">
                 <button
                   type="button"
-                  onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)}
-                  aria-haspopup={isDropdown ? 'menu' : undefined}
-                  aria-expanded={isDropdown ? openKey === item.id : undefined}
-                  aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined}
-                  data-dropdown-trigger={isDropdown ? '' : undefined}
+                  onClick={(e) => toggleMenu(item.id, e)}
+                  aria-haspopup="menu"
+                  aria-expanded={active}
+                  aria-controls={`${item.id}-menu-mobile`}
+                  data-dropdown-trigger=""
                   aria-current={active && openKey !== item.id ? 'page' : undefined}
-                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${
-                    active ? 'text-brandfg' : 'text-mutedfg'
-                  }`}
+                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${active ? 'text-brandfg' : 'text-mutedfg'}`}
                 >
-                  <span
-                    className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${
-                      active ? 'bg-brandtint' : ''
-                    }`}
-                  >
+                  <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint' : ''}`}>
                     <Icon name={item.icon} size={19} />
                   </span>
                   <span className="flex w-full items-center justify-center gap-0.5">
                     <span className="truncate">{item.label}</span>
-                    {isDropdown && (
-                      <Icon
-                        name="chevronDown"
-                        size={12}
-                        className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`}
-                      />
-                    )}
+                    <Icon
+                      name="chevronDown"
+                      size={12}
+                      className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`}
+                    />
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+
+          {/* Tengah: Dashboard FAB (menonjol + collar notch) */}
+          <li className="relative w-20 shrink-0">
+            <span
+              aria-hidden="true"
+              className="absolute bottom-0 left-1/2 h-8 w-20 -translate-x-1/2 rounded-t-[2rem] bg-canvas"
+            />
+            <button
+              type="button"
+              onClick={() => handleSection('dashboard')}
+              aria-current={activeSection === 'dashboard' ? 'page' : undefined}
+              className={`absolute left-1/2 -top-4 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-full bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-glow ring-4 ring-canvas transition-transform active:scale-95 ${activeSection === 'dashboard' ? 'outline outline-2 outline-offset-2 outline-brand/60' : ''}`}
+            >
+              <Icon name="home" size={24} />
+              <span className="sr-only">Dashboard</span>
+            </button>
+            <span
+              className={`absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-semibold ${activeSection === 'dashboard' ? 'text-brandfg' : 'text-mutedfg'}`}
+            >
+              Dashboard
+            </span>
+          </li>
+
+          {/* Kanan: Keluarga + Catatan */}
+          {NAV_ITEMS.filter((i) => i.id === 'family' || i.id === 'notes').map((item) => {
+            const active = activeSection === item.id || openKey === item.id;
+            return (
+              <li key={item.id} className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={(e) => toggleMenu(item.id, e)}
+                  aria-haspopup="menu"
+                  aria-expanded={active}
+                  aria-controls={`${item.id}-menu-mobile`}
+                  data-dropdown-trigger=""
+                  aria-current={active && openKey !== item.id ? 'page' : undefined}
+                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${active ? 'text-brandfg' : 'text-mutedfg'}`}
+                >
+                  <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint' : ''}`}>
+                    <Icon name={item.icon} size={19} />
+                  </span>
+                  <span className="flex w-full items-center justify-center gap-0.5">
+                    <span className="truncate">{item.label}</span>
+                    <Icon
+                      name="chevronDown"
+                      size={12}
+                      className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`}
+                    />
                   </span>
                 </button>
               </li>
