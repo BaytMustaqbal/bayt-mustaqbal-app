@@ -25,15 +25,18 @@ const BULAN = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ];
 
-/* ISO YYYY-MM-DD → "12 Mei 1990". Null/invalid → null (baris disembunyikan). */
+/* ISO YYYY-MM-DD → "12 Mei 1990". Null/invalid/tanggal tak nyata → null (baris disembunyikan). */
 export function formatBirthDate(iso) {
   if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
   const [y, m, d] = iso.split('-').map(Number);
-  if (m < 1 || m > 12) return null;
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  // Cek tanggal benar-benar ada (mis. 31 Februari → null)
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
   return `${d} ${BULAN[m - 1]} ${y}`;
 }
 
-function MemberBox({ member, level, onSelect }) {
+function MemberBox({ member, onSelect }) {
   const [open, setOpen] = useState(false);
   const birth = formatBirthDate(member.birthDate);
 
@@ -110,7 +113,7 @@ function LevelSection({ generasi, members, isMaster, onAdd, onSelect }) {
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {items.map((m) => (
-            <MemberBox key={m.id} member={{ ...m, generasi: m.generasi || generasi }} level={generasi} onSelect={onSelect} />
+            <MemberBox key={m.id} member={m} onSelect={onSelect} />
           ))}
         </div>
       )}
@@ -144,7 +147,7 @@ export function FamilyTree({ members = [], isMaster = false, onAdd = () => {}, o
             {/* Kiri: Suami */}
             <div className="flex justify-center">
               {suami
-                ? <div className="w-full max-w-[220px]"><MemberBox member={suami} level="orangtua" onSelect={onSelect} /></div>
+                ? <div className="w-full max-w-[220px]"><MemberBox member={suami} onSelect={onSelect} /></div>
                 : null}
             </div>
 
@@ -161,7 +164,7 @@ export function FamilyTree({ members = [], isMaster = false, onAdd = () => {}, o
             {/* Kanan: Istri */}
             <div className="flex justify-center">
               {istri
-                ? <div className="w-full max-w-[220px]"><MemberBox member={istri} level="orangtua" onSelect={onSelect} /></div>
+                ? <div className="w-full max-w-[220px]"><MemberBox member={istri} onSelect={onSelect} /></div>
                 : null}
             </div>
           </div>
@@ -171,7 +174,7 @@ export function FamilyTree({ members = [], isMaster = false, onAdd = () => {}, o
         {orantuaLain.length > 0 && (
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {orantuaLain.map((m) => (
-              <MemberBox key={m.id} member={m} level="orangtua" onSelect={onSelect} />
+              <MemberBox key={m.id} member={m} onSelect={onSelect} />
             ))}
           </div>
         )}

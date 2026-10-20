@@ -120,10 +120,7 @@ export function AccountModal({
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState('');
 
-  // Preset posisi silsilah saat dibuka dari placeholder FamilyTree (App.jsx)
-  useEffect(() => {
-    if (initialGenerasi) setRegGenerasi(initialGenerasi);
-  }, [initialGenerasi]);
+  // Preset posisi silsilah ditangani di efek reset modal (sumber tunggal, hindari race).
 
   // Isi field tanggal lahir dari data user saat modal dibuka
   useEffect(() => {
@@ -135,9 +132,10 @@ export function AccountModal({
     setProfileSaving(true);
     setProfileSaved('');
     try {
-      await auth.updateProfile({ birthDate: profileBirthDate || null });
+      const result = await auth.updateProfile({ birthDate: profileBirthDate || null });
       setProfileSaved('Tanggal lahir tersimpan.');
-      onSaved?.();
+      // Teruskan user terbaru supaya induk bisa update currentUser (hindari field basi)
+      onSaved?.(result);
     } catch (err) {
       setProfileSaved('Gagal menyimpan: ' + err.message);
     } finally {
@@ -149,7 +147,7 @@ export function AccountModal({
     const errs = {};
     const norm = regUsername.trim().toLowerCase();
     if (!norm) errs.username = 'Username wajib diisi';
-    else if (!/^[a-z0-9._@-]{3,30}$/.test(norm)) errs.username = '3–30 karakter: huruf kecil, angka, titik, @, garis bawah, atau strip';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(norm)) errs.username = 'Username harus berupa alamat email (mis. nama@email.com)';
     if (!regNama.trim()) errs.nama = 'Nama wajib diisi';
     else if (regNama.trim().length < 2) errs.nama = 'Nama minimal 2 karakter';
     if (!regPassword) errs.password = 'Password wajib diisi';
@@ -175,7 +173,7 @@ export function AccountModal({
       setRegNama('');
       setRegFamilyRole('anak');
       setRegBirthDate('');
-      setRegGenerasi('orangtua');
+      setRegGenerasi('anak');
       setRegPassword('');
       setRegPassword2('');
     } catch (err) {
@@ -207,6 +205,18 @@ export function AccountModal({
     setAvatarBusy(false);
     setErrors({});
     setNotice('');
+    // Reset form daftar akun supaya tidak ada banner/field basi dari sesi sebelumnya.
+    // Default selalu berpasangan konsisten: status 'anak' ↔ posisi 'anak'.
+    setRegUsername('');
+    setRegNama('');
+    setRegBirthDate('');
+    setRegFamilyRole(initialGenerasi === 'orangtua' ? 'suami' : 'anak');
+    setRegGenerasi(initialGenerasi || 'anak');
+    setRegPassword('');
+    setRegPassword2('');
+    setRegErrors({});
+    setRegSuccess('');
+    setProfileSaved('');
     const t = setTimeout(() => fieldRefs.current.name?.focus(), 80);
     return () => clearTimeout(t);
     // user dianggap tetap selama modal terbuka — cukup re-run saat `open` berubah
@@ -600,7 +610,7 @@ export function AccountModal({
                 type="text"
                 value={regUsername}
                 onChange={(e) => { setRegUsername(e.target.value); setRegErrors((p) => ({ ...p, username: undefined, _submit: undefined })); }}
-                placeholder="mis. istri"
+                placeholder="mis. keluarga@email.com"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
@@ -651,7 +661,14 @@ export function AccountModal({
               <select
                 id="reg-family-role"
                 value={regFamilyRole}
-                onChange={(e) => setRegFamilyRole(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setRegFamilyRole(v);
+                  // Samakan default posisi silsilah dengan status keluarga supaya
+                  // daftar akun tanpa sentuh dropdown tidak mendarat di level salah.
+                  if (v === 'anak' && regGenerasi === 'orangtua') setRegGenerasi('anak');
+                  if (v !== 'anak' && regGenerasi === 'anak') setRegGenerasi('orangtua');
+                }}
                 className={`${inputCls} min-h-[48px] w-full appearance-none rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
               >
                 <option value="suami">Suami / Ayah</option>

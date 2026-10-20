@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon } from './components/Icon';
 import { Navigation } from './components/Navigation';
 import { ScheduleItem } from './components/ScheduleItem';
-import { FamilyMemberCard } from './components/FamilyMemberCard';
 import { TaskList } from './components/TaskList';
 import { NoteList } from './components/NoteList';
 import { Dashboard } from './components/Dashboard';
@@ -430,6 +429,7 @@ const fetchApiData = async () => {
 const FAMILY_ROLE_LABEL = { suami: 'Suami', istri: 'Istri', anak: 'Anak', lainnya: 'Lainnya' };
 
 /* Map akun backend → format anggota keluarga (FamilyTree) */
+const VALID_GENERASI = ['orangtua', 'anak', 'cucu'];
 const mapUsersToFamily = (users) =>
   (users || []).map((u) => ({
     id: u.id,
@@ -438,9 +438,10 @@ const mapUsersToFamily = (users) =>
     role: FAMILY_ROLE_LABEL[u.family_role] || 'Anak',
     initials: initialsOf(u.nama),
     avatar: u.avatar_url || undefined,
-    generasi: u.generasi || 'orangtua',
+    // Normalisasi generasi tak dikenal (mis. typo dari SQL manual) → 'orangtua'
+    // supaya anggota tak "hilang" dari pohon.
+    generasi: VALID_GENERASI.includes(u.generasi) ? u.generasi : 'orangtua',
     birthDate: u.birth_date || null,
-    status: 'active',
   }));
 
 const formatCurrency = (value) =>
@@ -1133,6 +1134,26 @@ export default function App() {
     setAccountInitialGenerasi(generasi);
     setAccountOpen(true);
   };
+
+  // Setelah daftar akun / simpan profil: segarkan data + perbarui currentUser
+  // (hindari field tanggal lahir basi) + reset preset agar bisa trigger lagi.
+  const handleProfileSaved = (updatedUser) => {
+    if (updatedUser) {
+      const merged = {
+        ...currentUser,
+        name: updatedUser.nama || currentUser.name,
+        birthDate: updatedUser.birth_date ?? currentUser.birthDate,
+      };
+      setCurrentUser(merged);
+      storeUser({
+        id: merged.id, nama: merged.name, username: merged.username, role: merged.role,
+        family_role: merged.family_role, generasi: merged.generasi,
+        birth_date: merged.birthDate, avatar_url: merged.avatar_url,
+      });
+    }
+    setAccountInitialGenerasi(null); // reset preset → klik "+" berikutnya tetap bekerja
+    loadFromAPI();
+  };
   const openEdit = (section, item) => {
     setEditing({ section, id: item.id });
     setSheetInitial(toFormValues(section, item));
@@ -1761,8 +1782,8 @@ export default function App() {
         user={currentUser}
         users={data.users}
         initialGenerasi={accountInitialGenerasi}
-        onSaved={() => loadFromAPI()}
-        onClose={() => setAccountOpen(false)}
+        onSaved={handleProfileSaved}
+        onClose={() => { setAccountOpen(false); setAccountInitialGenerasi(null); }}
         onSwitchUser={handleLogout}
         onSave={saveAccount}
         onLogout={handleLogout}
