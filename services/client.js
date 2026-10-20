@@ -86,11 +86,23 @@ export const auth = {
   me: async () => {
     return apiFetch('/auth/me');
   },
-  register: async (username, password, nama, familyRole = 'anak') => {
+  register: async (username, password, nama, familyRole = 'anak', generasi = 'orangtua', birthDate = null) => {
     return apiFetch('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, password, nama, family_role: familyRole }),
+      body: JSON.stringify({
+        username, password, nama,
+        family_role: familyRole,
+        generasi,
+        birth_date: birthDate,
+      }),
     });
+  },
+  // Update profil sendiri (nama + tanggal lahir) — PUT /auth/me
+  updateProfile: async ({ nama, birthDate }) => {
+    const body = {};
+    if (nama !== undefined) body.nama = nama;
+    if (birthDate !== undefined) body.birth_date = birthDate;
+    return apiFetch('/auth/me', { method: 'PUT', body: JSON.stringify(body) });
   },
   // Daftar anggota keluarga (semua akun aktif, master disembunyikan backend)
   users: async () => {
