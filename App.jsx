@@ -7,7 +7,7 @@ import { TaskList } from './components/TaskList';
 import { NoteList } from './components/NoteList';
 import { Dashboard } from './components/Dashboard';
 import { SplashScreen } from './components/SplashScreen';
-import { WelcomeGate } from './components/WelcomeGate';
+import { LoginScreen } from './components/LoginScreen';
 import { AccountModal } from './components/AccountModal';
 import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList, initialsOf } from './components/ui';
 import { FamilyCalendar } from './components/Calendar';
@@ -28,60 +28,26 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
+import { auth, txn, cal, notesApi, settingsApi } from './services/client';
 import './App.css';
 
-// Data contoh (sementara, sampai backend Worker + D1 siap)
-const mockData = {
-  users: [
-    // Foto profil contoh Kakang (seed) supaya tampilan "Akun saya" terlihat nyata
-    // (lihat docs/04-KEPUTUSAN-TERKUNCI.md D20). Berkas asli di assets/profile-rezki.jpg;
-    // versi 256px yang disajikan app ada di public/avatars/ (ikut ke dist saat build).
-    { id: 'kakang', name: 'Rezki YT', role: 'Admin', initials: 'RY', avatar: '/avatars/profile-rezki.jpg' },
-    { id: 'istri', name: 'Hilda AK', role: 'Anggota', initials: 'HA' },
-  ],
-  // Profil anggota keluarga — inti modul "Keluarga" (papan profil, bukan jadwal).
-  // Jadwal kontrol/imunisasi ada di Agenda (kategori Kesehatan), biaya sekolah di
-  // Keuangan — jangan diduplikasi di sini. Lihat docs/04-KEPUTUSAN-TERKUNCI.md D17.
+/* ---- Seed data untuk fitur TANPA tabel backend (localStorage-only) ----
+   Fitur yang ada pasangan backend (schedule, expenses, notes, budget)
+   dimuat dari API. Yang tidak ada pasangannya — tetap pakai seed lokal
+   supaya UI lengkap meski backend belum punya tabelnya. */
+const LOCAL_SEED = {
   family: [
     { id: 1, name: 'Rezki YT', role: 'Admin', initials: 'RY', avatar: '/avatars/profile-rezki.jpg', status: 'active', birthDate: '1990-05-12', blood: 'O', allergy: '—', phone: '0812-1000-0001' },
     { id: 2, name: 'Hilda AK', role: 'Anggota', initials: 'HA', status: 'active', birthDate: '1992-08-03', blood: 'A', allergy: 'Seafood', phone: '0812-1000-0002' },
     { id: 3, name: 'RAGASUCI', role: 'Anggota', initials: 'RS', status: 'active', birthDate: '2016-02-20', blood: 'B', allergy: 'Debu', phone: '—' },
     { id: 4, name: 'RAJABRANA', role: 'Anggota', initials: 'RB', status: 'active', birthDate: '2019-11-07', blood: 'B', allergy: '—', phone: '—' },
   ],
-  schedule: [
-    // Keluarga — kegiatan bersama
-    { id: 1, title: 'Makan Malam Keluarga', time: '19:00', date: '2026-10-15', member: 'Rezki YT', category: 'keluarga' },
-    { id: 2, title: 'Arisan Keluarga Besar', time: '18:30', date: '2026-10-22', member: 'Hilda AK', category: 'keluarga' },
-    // Anak — sekolah, les & kegiatan anak
-    { id: 3, title: 'Rapat Wali Murid', time: '14:00', date: '2026-10-16', member: 'Hilda AK', category: 'anak' },
-    { id: 4, title: 'Les Musik Anak', time: '16:00', date: '2026-10-18', member: 'RAGASUCI', category: 'anak' },
-    { id: 5, title: 'Olahraga Pagi Anak', time: '06:30', date: '2026-10-19', member: 'RAJABRANA', category: 'anak' },
-    // Ibadah — pengajian, zakat & hari besar
-    { id: 6, title: 'Pengajian Rutin Keluarga', time: '19:30', date: '2026-10-17', member: 'Keluarga', category: 'ibadah' },
-    { id: 7, title: 'Donasi & Zakat Bulanan', time: '10:00', date: '2026-10-26', member: 'Keluarga', category: 'ibadah' },
-    // Kesehatan — periksa & imunisasi (sinkron data sub-bagian Keluarga)
-    { id: 8, title: 'Imunisasi lanjutan (RAGASUCI)', time: '09:00', date: '2026-11-02', member: 'Hilda AK', category: 'kesehatan' },
-    { id: 9, title: 'Kontrol gigi', time: '15:30', date: '2026-10-25', member: 'Hilda AK', category: 'kesehatan' },
-    // Rumah Tangga — kebersihan, belanja & perbaikan
-    { id: 10, title: 'Kebersihan Rumah Akhir Pekan', time: '08:00', date: '2026-10-24', member: 'Keluarga', category: 'rumahtangga' },
-    { id: 11, title: 'Perbaikan wastafel kamar mandi', time: '09:30', date: '2026-10-18', member: 'Rezki YT', category: 'rumahtangga' },
-    // Kendaraan — servis & perawatan motor/mobil
-    { id: 12, title: 'Service Motor', time: '09:00', date: '2026-10-17', member: 'Rezki YT', category: 'kendaraan' },
-    { id: 13, title: 'Servis Rutin (ganti oli & filter)', time: '10:30', date: '2026-10-20', member: 'Rezki YT', category: 'kendaraan' },
-    // Contoh baru supaya nampak di Timeline
-    { id: 14, title: 'Membaca Al-Quran malam', time: '20:00', date: '2026-10-15', member: 'Rezki YT', category: 'ibadah' },
-    { id: 15, title: 'Menghadiri undangan keluarga', time: '14:00', date: '2026-10-16', member: 'Keluarga', category: 'keluarga' },
-    { id: 16, title: 'Belanja bulanan keluarga', time: '10:00', date: '2026-10-18', member: 'Hilda AK', category: 'rumahtangga' },
-  ],
-  // Info medis ringkas & STATIS (dokter langganan, asuransi, obat rutin).
-  // Jadwal kontrol/imunisasi ada di Agenda — bukan di sini.
   familyMedical: [
     { id: 1, title: 'Dokter keluarga', meta: 'dr. Ayu Prasetyo · Klinik Sehat Sentosa · 021-555-0123', badge: 'Langganan', tone: 'brand' },
     { id: 2, title: 'BPJS Kesehatan', meta: 'Kelas 2 · seluruh anggota · kartu digital di HP', badge: 'Asuransi', tone: 'brand' },
     { id: 3, title: 'Riwayat imunisasi anak', meta: 'RAGASUCI & RAJABRANA · lengkap sampai usia 5 tahun', badge: 'Lengkap', tone: 'green' },
     { id: 4, title: 'Obat & vitamin rutin', meta: 'Vitamin D seluruh anggota · diminum pagi setelah makan', badge: 'Rutin', tone: 'green' },
   ],
-  // Dokumen penting + masa berlaku — dokumen kedaluwarsa paling mudah terlupakan.
   familyDocuments: [
     { id: 1, title: 'Kartu Keluarga (KK)', meta: 'No. 3212…007 · asli di lemari berkas', badge: 'Ada', tone: 'green' },
     { id: 2, title: 'KTP Rezki YT', meta: 'Berlaku sampai 12 Mei 2030', badge: '2030', tone: 'brand' },
@@ -94,24 +60,6 @@ const mockData = {
     { id: 3, title: 'Kakek & Nenek', meta: '0813-9876-5432' },
     { id: 4, title: 'Golongan darah', meta: 'Rezki YT: O · Hilda AK: A · Anak: B', badge: 'Catatan', tone: 'brand' },
   ],
-  // Pengeluaran contoh Oktober 2026 — 11 item, total Rp 10.650.000.
-  // Total ini SENGAJA sama dengan nilai Okt di `monthlyTrend` dan jumlah
-  // `categories`, supaya hero = donat = tren (lihat D21).
-  // Keranjang anggaran TIDAK disimpan di sini: dihitung dari `category`
-  // lewat CATEGORY_BUCKET (components/categories.js).
-  expenses: [
-    { id: 1, category: 'rumah', description: 'Sewa & cicilan rumah', amount: 5500000, date: '2026-10-14' },
-    { id: 2, category: 'belanja', description: 'Belanja bahan makanan', amount: 900000, date: '2026-10-13' },
-    { id: 3, category: 'pendidikan', description: 'SPP sekolah', amount: 600000, date: '2026-10-12' },
-    { id: 4, category: 'utilitas', description: 'Tagihan listrik & air', amount: 450000, date: '2026-10-11' },
-    { id: 5, category: 'ibadah', description: 'Zakat & infak', amount: 250000, date: '2026-10-10' },
-    { id: 6, category: 'transportasi', description: 'Bensin & tol', amount: 150000, date: '2026-10-09' },
-    { id: 7, category: 'kesehatan', description: 'Obat & vitamin keluarga', amount: 100000, date: '2026-10-08' },
-    { id: 8, category: 'hiburan', description: 'Makan di luar keluarga', amount: 450000, date: '2026-10-07' },
-    { id: 9, category: 'hiburan', description: 'Langganan streaming & hobi', amount: 350000, date: '2026-10-06' },
-    { id: 10, category: 'hiburan', description: 'Liburan akhir pekan', amount: 1000000, date: '2026-10-05' },
-    { id: 11, category: 'tabungan', description: 'Setoran tabungan & dana darurat', amount: 900000, date: '2026-10-04' },
-  ],
   tasks: [
     { id: 1, title: 'Bersihkan dapur', completed: false, assignedTo: 'RAGASUCI', dueDate: '2026-10-15', priority: 'high' },
     { id: 2, title: 'Cuci mobil', completed: true, assignedTo: 'RAJABRANA', dueDate: '2026-10-14', priority: 'medium' },
@@ -122,149 +70,110 @@ const mockData = {
     { id: 7, title: 'Potong rumput halaman', completed: false, assignedTo: 'RAJABRANA', dueDate: '2026-10-21', priority: 'medium' },
     { id: 8, title: 'Periksa tagihan listrik', completed: true, assignedTo: 'Rezki YT', dueDate: '2026-10-20', priority: 'high' },
   ],
-  // Catatan keluarga — pin (pinned) menandai catatan penting.
-  notes: [
-    {
-      id: 1,
-      title: 'Kode & ukuran penting',
-      body: 'WiFi rumah: BaytMustaqbal2026 · Kunci cadangan di laci meja kerja · Filter air ukuran 10 inci.',
-      category: 'rumah',
-      pinned: true,
-      author: 'Rezki YT',
-      updatedAt: '2026-10-10',
-    },
-    {
-      id: 2,
-      title: 'Daftar belanja mingguan',
-      body: 'Beras 5 kg, minyak goreng 2 L, telur 1 kg, sabun cuci, sampo anak.',
-      category: 'belanja',
-      pinned: false,
-      author: 'Hilda AK',
-      updatedAt: '2026-10-11',
-    },
-    {
-      id: 3,
-      title: 'Resep sambal andalan',
-      body: 'Cabai merah 250 g, bawang merah 6, terasi 1 sdt, gula & garam. Tumis ±5 menit.',
-      category: 'dapur',
-      pinned: true,
-      author: 'Hilda AK',
-      updatedAt: '2026-10-08',
-    },
-    {
-      id: 4,
-      title: 'Jadwal servis alat rumah',
-      body: 'Cuci AC: Des & Jun · Ganti filter air: tiap 3 bulan · Servis motor: 2 bulan sekali.',
-      category: 'rumah',
-      pinned: false,
-      author: 'Rezki YT',
-      updatedAt: '2026-10-07',
-    },
-    {
-      id: 5,
-      title: 'Ide liburan akhir tahun',
-      body: 'Candi Borobudur + kebun teh, atau pantai Anyer. Cek promo tiket bulan depan.',
-      category: 'info',
-      pinned: false,
-      author: 'Rezki YT',
-      updatedAt: '2026-10-06',
-    },
-    {
-      id: 6,
-      title: 'Obat & vitamin rutin',
-      body: 'Vitamin D anak tiap pagi; paracetamol cadangan di kotak P3K dapur.',
-      category: 'info',
-      pinned: false,
-      author: 'Hilda AK',
-      updatedAt: '2026-10-05',
-    },
-    {
-      id: 7,
-      title: 'Bahan kue lebaran',
-      body: 'Tepung 2 kg, mentega 500 g, keju, kismis, susu bubuk.',
-      category: 'dapur',
-      pinned: false,
-      author: 'Hilda AK',
-      updatedAt: '2026-10-04',
-    },
-    {
-      id: 8,
-      title: 'Kontak penting rumah',
-      body: 'Tukang AC Pak Andi 0812-xxxx · PLN 123 · PDAM 0813-xxxx.',
-      category: 'rumah',
-      pinned: true,
-      author: 'Rezki YT',
-      updatedAt: '2026-10-03',
-    },
-  ],
-  // --- Data analitik (dummy) ---
-  // Anggaran: yang disimpan hanya gaji (`income`), rasio, dan daftar pos.
-  // Alokasi & realisasi DIHITUNG saat render (components/budget.js) — tidak
-  // disimpan, supaya tidak ada angka kedua yang bisa berbeda dari sumbernya.
-  // Di D1 nanti ini dari tabel budget + expenses.
-  budget: {
-    month: 'Oktober 2026',
-    income: 8000000,
-    ratios: { needs: 50, wants: 30, savings: 20 },
-    pos: {
-      needs: [
-        { id: 'n1', label: 'Cicilan rumah/sewa' },
-        { id: 'n2', label: 'Belanja bahan makanan & beras' },
-        { id: 'n3', label: 'Tagihan utilitas (listrik/air/internet)' },
-        { id: 'n4', label: 'Transportasi (BBM/angkutan umum)' },
-        { id: 'n5', label: 'Sekolah anak' },
-        { id: 'n6', label: 'Asuransi kesehatan' },
-      ],
-      wants: [
-        { id: 'w1', label: 'Makan di luar/hangout' },
-        { id: 'w2', label: 'Hobi & hiburan' },
-        { id: 'w3', label: 'Langganan streaming' },
-        { id: 'w4', label: 'Liburan/travelling' },
-      ],
-      savings: [
-        { id: 's1', label: 'Dana darurat (target 3–6× pengeluaran bulanan)' },
-        { id: 's2', label: 'Tabungan' },
-        { id: 's3', label: 'Investasi' },
-        { id: 's4', label: 'Pembayaran cicilan/utang' },
-      ],
-    },
-  },
-  monthlyTrend: [
-    { label: 'Mei', value: 3120000 },
-    { label: 'Jun', value: 2875000 },
-    { label: 'Jul', value: 3410000 },
-    { label: 'Agu', value: 2960000 },
-    { label: 'Sep', value: 3620000 },
-    { label: 'Okt', value: 10650000 },
-  ],
-  weekly: [
-    { label: 'Sen', value: 95000 },
-    { label: 'Sel', value: 120000 },
-    { label: 'Rab', value: 60000 },
-    { label: 'Kam', value: 180000 },
-    { label: 'Jum', value: 240000 },
-    { label: 'Sab', value: 420000 },
-    { label: 'Min', value: 150000 },
-  ],
-  categories: [
-    // Warna seri = token tema (bukan hex) supaya donut tetap terbaca di
-    // mode terang maupun gelap. Diselesaikan CSS lewat inline `style`.
-    // Jumlah semua nilai = total pengeluaran bulan ini (10,65 jt) — sama dengan
-    // hasil jumlah `expenses` & nilai Okt di `monthlyTrend`, agar ketiga angka
-    // (hero · donat · tren) selalu cocok.
-    // Urutan menurun (terbesar dulu) seperti sebelumnya. Enam kategori lama
-    // tetap memakai warna aslinya; tiga kategori baru dapat --chart7/8/9.
-    { label: 'Rumah & Cicilan', value: 5500000, color: 'rgb(var(--chart8))' },
-    { label: 'Hiburan & Liburan', value: 1800000, color: 'rgb(var(--chart7))' },
-    { label: 'Belanja Bulanan', value: 900000, color: 'rgb(var(--chart1))' },
-    { label: 'Tabungan & Investasi', value: 900000, color: 'rgb(var(--chart9))' },
-    { label: 'Pendidikan', value: 600000, color: 'rgb(var(--chart2))' },
-    { label: 'Utilitas', value: 450000, color: 'rgb(var(--chart3))' },
-    { label: 'Ibadah & Sosial', value: 250000, color: 'rgb(var(--chart4))' },
-    { label: 'Transportasi', value: 150000, color: 'rgb(var(--chart5))' },
-    { label: 'Kesehatan', value: 100000, color: 'rgb(var(--chart6))' },
-  ],
 };
+
+/* ---- Computed data (derived from expenses, NOT stored) ---- */
+const pad2 = (n) => String(n).padStart(2, '0');
+const monthLabel = (d) => new Intl.DateTimeFormat('id-ID', { month: 'short' }).format(d).replace('.', '');
+const dayLabel = (d) => new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(d).replace('.', '');
+
+// 6-bulan tren pengeluaran dari expenses
+const computeMonthlyTrend = (expenses) => {
+  const months = {};
+  expenses.forEach((e) => {
+    const m = (e.date || '').slice(0, 7);
+    months[m] = (months[m] || 0) + (Number(e.amount) || 0);
+  });
+  const result = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+    result.push({ label: monthLabel(d), value: months[key] || 0 });
+  }
+  return result;
+};
+
+// Distribusi mingguan dari expenses (berdasarkan hari)
+const computeWeekly = (expenses) => {
+  const days = Array(7).fill(0);
+  expenses.forEach((e) => {
+    const d = new Date((e.date || '').replace(/-/g, '/'));
+    if (!Number.isNaN(d.getTime())) {
+      days[d.getDay()] += Number(e.amount) || 0;
+    }
+  });
+  const now = new Date();
+  return ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((label, i) => ({
+    label: label,
+    value: days[(i + 1) % 7], // Minggu=0, Senin=1, ... → susun Senin—Minggu
+  }));
+};
+
+// Donut chart: agregat pengeluaran per kategori
+const computeCategories = (expenses) => {
+  const COLOR_MAP = {
+    rumah: 'rgb(var(--chart8))',
+    hiburan: 'rgb(var(--chart7))',
+    belanja: 'rgb(var(--chart1))',
+    tabungan: 'rgb(var(--chart9))',
+    pendidikan: 'rgb(var(--chart2))',
+    utilitas: 'rgb(var(--chart3))',
+    ibadah: 'rgb(var(--chart4))',
+    transportasi: 'rgb(var(--chart5))',
+    kesehatan: 'rgb(var(--chart6))',
+  };
+  const totals = {};
+  expenses.forEach((e) => {
+    const cat = e.category || 'lainnya';
+    totals[cat] = (totals[cat] || 0) + (Number(e.amount) || 0);
+  });
+  const LABEL_MAP = {};
+  FINANCE_CATEGORIES.forEach((c) => { if (c.id !== 'semua') LABEL_MAP[c.id] = c.label; });
+  return Object.entries(totals)
+    .map(([cat]) => ({
+      label: LABEL_MAP[cat] || cat,
+      value: totals[cat],
+      color: COLOR_MAP[cat] || 'rgb(var(--chart1))',
+    }))
+    .sort((a, b) => b.value - a.value);
+};
+
+// Month label for budget
+const monthName = (d) => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d);
+
+// Gabungkan API data + local seed → data state penuh
+const buildDataBundle = (apiData, currentUser) => {
+  const budget = apiData?.budget || {};
+  const expenses = apiData?.expenses || [];
+  return {
+    users: currentUser ? [{ id: currentUser.id, name: currentUser.nama, username: currentUser.username, role: currentUser.role, initials: initialsOf(currentUser.nama) }] : [],
+    family: LOCAL_SEED.family,
+    schedule: apiData?.schedule || [],
+    familyMedical: LOCAL_SEED.familyMedical,
+    familyDocuments: LOCAL_SEED.familyDocuments,
+    familyContacts: LOCAL_SEED.familyContacts,
+    expenses,
+    tasks: LOCAL_SEED.tasks,
+    notes: apiData?.notes || [],
+    budget: {
+      month: budget.month || monthName(new Date()),
+      income: Number(budget.income) || 8000000,
+      ratios: budget.ratios || { needs: 50, wants: 30, savings: 20 },
+      pos: budget.pos || {
+        needs: [{ id: 'n1', label: 'Cicilan rumah/sewa' }, { id: 'n2', label: 'Belanja bahan makanan & beras' }, { id: 'n3', label: 'Tagihan utilitas (listrik/air/internet)' }, { id: 'n4', label: 'Transportasi (BBM/angkutan umum)' }, { id: 'n5', label: 'Sekolah anak' }, { id: 'n6', label: 'Asuransi kesehatan' }],
+        wants: [{ id: 'w1', label: 'Makan di luar/hangout' }, { id: 'w2', label: 'Hobi & hiburan' }, { id: 'w3', label: 'Langganan streaming' }, { id: 'w4', label: 'Liburan/travelling' }],
+        savings: [{ id: 's1', label: 'Dana darurat (target 3–6× pengeluaran bulanan)' }, { id: 's2', label: 'Tabungan' }, { id: 's3', label: 'Investasi' }, { id: 's4', label: 'Pembayaran cicilan/utang' }],
+      },
+    },
+    monthlyTrend: computeMonthlyTrend(expenses),
+    weekly: computeWeekly(expenses),
+    categories: computeCategories(expenses),
+  };
+};
+
+// Seed budget.pos default (imported by getBudget)
+import { DEFAULT_POS, DEFAULT_RATIOS, DEFAULT_MONTH } from './components/budget';
 
 // ---- Konfigurasi form "Tambah" per section (dipakai FormSheet) ----
 const MEMBER_PEOPLE = ['Rezki YT', 'Hilda AK', 'RAGASUCI', 'RAJABRANA'];
@@ -414,55 +323,125 @@ const toFormValues = (section, item) => {
   return {};
 };
 
-// Kunci localStorage untuk snapshot data (seed awal = mockData).
-const STORAGE_KEY = 'bayt-mustaqbal-data-v1';
-const loadInitialData = () => {
+/* ---- localStorage cache & auth ----
+   API_CACHE_KEY: cache data yang di-fetch dari backend (untuk offline fallback)
+   STORAGE_KEY: snapshot gabungan (API + local) untuk persistensi antar reload
+   TOKEN_KEY: JWT token dari login */
+const STORAGE_KEY = 'bayt-mustaqbal-data-v2';
+const API_CACHE_KEY = 'bayt-mustaqbal-api-cache-v1';
+const TOKEN_KEY = 'bm-api-token';
+
+const persist = (next) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch (e) {
+    /* kuota penuh / mode privat → abaikan */
+  }
+};
+
+const loadSnapshot = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      const valid =
+      if (
         parsed &&
-        Array.isArray(parsed.users) &&
-        parsed.users.length > 0 &&
         Array.isArray(parsed.schedule) &&
-        Array.isArray(parsed.tasks) &&
         Array.isArray(parsed.expenses) &&
-        Array.isArray(parsed.family);
-      if (valid) {
-        // Gabung dengan seed: snapshot lama (tanpa `notes`) tetap jalan,
-        // kunci baru otomatis terisi dari data contoh.
-        const merged = { ...mockData, ...parsed };
-        if (!Array.isArray(merged.notes)) merged.notes = mockData.notes;
-        // Migrasi modul Keluarga (snapshot lama → "papan profil anggota", D17):
-        // kunci lama dibuang, kunci baru diisi contoh, dan field profil anggota
-        // dilengkapi dari seed tanpa menimpa nama/peran yang sudah diubah.
-        delete merged.familyHealth;
-        delete merged.familyEducation;
-        // Foto profil seed (D20) dilengkapi ke snapshot lama tanpa menimpa foto
-        // yang sudah diganti/dihapus pengguna (avatar '' tetap kosong).
-        if (Array.isArray(merged.users)) {
-          merged.users = merged.users.map((u) => {
-            const seed = mockData.users.find((s) => s.id === u.id);
-            return seed ? { ...seed, ...u } : u;
-          });
-        }
-        if (!Array.isArray(merged.familyMedical)) merged.familyMedical = mockData.familyMedical;
-        if (!Array.isArray(merged.familyDocuments)) merged.familyDocuments = mockData.familyDocuments;
-        if (!Array.isArray(merged.familyContacts)) merged.familyContacts = mockData.familyContacts;
-        if (Array.isArray(merged.family)) {
-          merged.family = merged.family.map((m) => {
-            const seed = mockData.family.find((s) => String(s.id) === String(m.id) || s.name === m.name);
-            return seed ? { ...seed, ...m } : m;
-          });
-        }
-        return merged;
+        Array.isArray(parsed.tasks) &&
+        Array.isArray(parsed.family) &&
+        Array.isArray(parsed.notes)
+      ) {
+        return parsed;
       }
     }
   } catch (e) {
-    /* storage rusak/unavailable → pakai data contoh */
+    /* storage rusak → turun ke cache kosong */
   }
-  return mockData;
+  return null;
+};
+
+// Cache API data untuk offline fallback
+const cacheApiData = (data) => {
+  try {
+    localStorage.setItem(API_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    /* abaikan */
+  }
+};
+const readApiCache = () => {
+  try {
+    const raw = localStorage.getItem(API_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+// Auth token helpers
+const tokenExists = () => {
+  try {
+    return !!localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return false;
+  }
+};
+const clearAuthToken = () => {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* abaikan */
+  }
+};
+
+// Merge API data + local seed → full data bundle
+const buildMergedData = (apiData, currentUser) => {
+  const bundle = buildDataBundle(apiData, currentUser);
+  // Overlay localStorage-only data yang sudah dimodifikasi (tasks, family)
+  const snapshot = loadSnapshot();
+  if (snapshot) {
+    return {
+      ...bundle,
+      tasks: snapshot.tasks || bundle.tasks,
+      family: snapshot.family || bundle.family,
+      familyMedical: snapshot.familyMedical || bundle.familyMedical,
+      familyDocuments: snapshot.familyDocuments || bundle.familyDocuments,
+      familyContacts: snapshot.familyContacts || bundle.familyContacts,
+    };
+  }
+  return bundle;
+};
+
+// Fetch all API data (schedule, expenses, notes, budget settings)
+const fetchApiData = async () => {
+  const [schedule, expenses, notes, settings] = await Promise.all([
+    cal.fetch().catch(() => []),
+    txn.fetch().catch(() => []),
+    notesApi.fetch(null).catch(() => []),
+    settingsApi.fetchAll().catch(() => []),
+  ]);
+
+  // Parse budget settings
+  const budgetSettings = {};
+  settings.forEach((s) => {
+    budgetSettings[s.key] = s.value;
+  });
+
+  let budget = {};
+  if (budgetSettings.budget_income) {
+    budget.income = Number(budgetSettings.budget_income);
+  }
+  if (budgetSettings.budget_ratios) {
+    try { budget.ratios = JSON.parse(budgetSettings.budget_ratios); } catch {}
+  }
+  if (budgetSettings.budget_month) {
+    budget.month = budgetSettings.budget_month;
+  }
+  if (budgetSettings.budget_pos) {
+    try { budget.pos = JSON.parse(budgetSettings.budget_pos); } catch {}
+  }
+
+  return { schedule, expenses, notes, budget };
 };
 
 const formatCurrency = (value) =>
@@ -482,20 +461,40 @@ const formatCurrencyShort = (value) => {
   return formatCurrency(n);
 };
 
-const USER_STORAGE_KEY = 'bm-user';
+/* ---- Auth state helpers ----
+   Token + user info disimpan di localStorage untuk persistensi sesi.
+   `getUser()` mengembalikan user object dari login response (bukan mockData). */
+const USER_KEY = 'bm-user';
 
-// localStorage bisa dilarang (mode privat) → jangan sampai app gagal render
-const readStoredUser = () => {
+const storedToken = () => {
   try {
-    return localStorage.getItem(USER_STORAGE_KEY) || 'kakang';
+    return localStorage.getItem(TOKEN_KEY) || null;
   } catch {
-    return 'kakang';
+    return null;
   }
 };
 
-const storeUser = (userId) => {
+const getUser = () => {
   try {
-    localStorage.setItem(USER_STORAGE_KEY, userId);
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const storeUser = (user) => {
+  try {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    /* diabaikan */
+  }
+};
+
+const clearUser = () => {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
   } catch {
     /* diabaikan */
   }
@@ -551,12 +550,19 @@ const systemPrefersLight = () => {
 export default function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [activeUserId, setActiveUserId] = useState(readStoredUser);
-  // Gerbang welcome muncul SETIAP app dibuka (keputusan Kakang).
-  // Saat backend siap, state ini tinggal ditukar jadi status login.
-  const [entered, setEntered] = useState(false);
+  // Auth: isLoggedIn = punya token yang valid. authChecking = sedang verify token.
+  const [isLoggedIn, setIsLoggedIn] = useState(storedToken() ? true : false);
+  const [authChecking, setAuthChecking] = useState(storedToken() ? true : false);
+  const [authError, setAuthError] = useState('');
+  const stored = getUser();
+  const transformedUser = stored
+    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, initials: initialsOf(stored.nama || stored.name) }
+    : null;
+  const [currentUser, setCurrentUser] = useState(transformedUser);
   // Splash screen: tampil setiap app dibuka, lepas setelah fade-out.
   const [splashDone, setSplashDone] = useState(false);
+  // entered = pengguna sudah melewati splash & berada di app (atau login screen)
+  const [entered, setEntered] = useState(false);
   // Filter kategori agenda (default: semua) — sinkron antara dropdown nav & chip di section
   const [agendaFilter, setAgendaFilter] = useState('semua');
   // Sub-tampilan Agenda: jadwal (daftar) | tugas | kalender keluarga
@@ -579,35 +585,132 @@ export default function App() {
   const [notifRead, setNotifRead] = useState(readNotifRead);
   // Modal "Akun saya" (nama, username, avatar, password) — dibuka dari chip pengguna
   const [accountOpen, setAccountOpen] = useState(false);
-  // Tema: pilihan pengguna ('system' | 'light' | 'dark') + preferensi perangkat.
-  // Tema yang benar-benar dipakai = hasil resolusi keduanya.
-  const [theme, setTheme] = useState(readStoredTheme);
-  const [systemLight, setSystemLight] = useState(systemPrefersLight);
-  const resolvedTheme = theme === 'system' ? (systemLight ? 'light' : 'dark') : theme;
-
-  // Data dummy murni — belum terhubung ke backend/API apa pun.
-  // Seed = mockData; setiap perubahan disimpan ke localStorage (snapshot),
-  // jadi interaksi (tambah/ubah/hapus/toggle) tidak hilang saat reload.
-  const [data, setData] = useState(loadInitialData);
-  const currentUser = data.users.find((u) => u.id === activeUserId) || data.users[0];
+  // Data state — dimuat dari API + localStorage cache
+  const [data, setData] = useState(null);
+  // Loading state untuk data API
+  const [dataLoading, setDataLoading] = useState(false);
 
   // dataRef menjaga snapshot terbaru untuk aksi yang berjalan belakangan
   // (mis. tombol "Urungkan" dari toast) tanpa closure basi.
   const dataRef = useRef(data);
-
-  const persist = (next) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch (e) {
-      /* kuota penuh / mode privat → abaikan, tetap jalan di memori */
-    }
-  };
 
   const saveData = (next) => {
     dataRef.current = next;
     setData(next);
     persist(next);
   };
+
+  // Tema: pilihan pengguna ('system' | 'light' | 'dark') + preferensi perangkat.
+  // Tema yang benar-benar dipakai = hasil resolusi keduanya.
+  const [theme, setTheme] = useState(readStoredTheme);
+  const [systemLight, setSystemLight] = useState(systemPrefersLight);
+  const resolvedTheme = theme === 'system' ? (systemLight ? 'light' : 'dark') : theme;
+
+  // ---- Auth check on mount ----
+  // Jika ada token di localStorage, verifikasi dengan /auth/me.
+  // Jika valid → mark logged in + fetch data. Jika invalid → clear & show login.
+  useEffect(() => {
+    // Dev: clear token lama agar auto-login pakai akun dari .env
+    if (import.meta.env.DEV) {
+      clearAuthToken();
+      setIsLoggedIn(false);
+      setAuthChecking(false);
+      return;
+    }
+    if (!storedToken()) {
+      setAuthChecking(false);
+      return;
+    }
+    setAuthChecking(true);
+    auth.me()
+      .then((user) => {
+        // Token valid — user sudah terautentikasi
+        setIsLoggedIn(true);
+        setAuthError('');
+        // Auto-enter: tidak perlu login lagi kalau token masih valid
+        setEntered(true);
+      })
+      .catch((err) => {
+        // Token invalid/expired → clear & show login
+        clearUser();
+        setIsLoggedIn(false);
+        setAuthError(err.message === 'UNAUTHORIZED'
+          ? 'Sesi berakhir. Masuk lagi.'
+          : 'Tidak dapat memverifikasi sesi.');
+      })
+      .finally(() => setAuthChecking(false));
+  }, []);
+
+  // ---- Fetch data from API when logged in ----
+  const loadFromAPI = async () => {
+    if (!isOnline) {
+      // Offline → gunakan cache
+      const cached = readApiCache();
+      if (cached) {
+        const merged = buildMergedData(cached, currentUser);
+        saveData(merged);
+      } else {
+        // Tidak ada cache → tetap tampilkan app dengan data lokal saja
+        const merged = buildDataBundle({}, currentUser);
+        saveData(merged);
+        pushToast({ message: 'Offline — hanya data lokal yang tersedia.', duration: 4000, tone: 'warning' });
+      }
+      return;
+    }
+    setDataLoading(true);
+    try {
+      const apiData = await fetchApiData();
+      cacheApiData(apiData);
+      const merged = buildMergedData(apiData, currentUser);
+      saveData(merged);
+      setAuthError('');
+    } catch (err) {
+      // API fail → fallback ke cache, tampilkan notif
+      const cached = readApiCache();
+      if (cached) {
+        const merged = buildMergedData(cached, currentUser);
+        saveData(merged);
+        setAuthError('Tidak dapat memuat data dari server. Menampilkan cache lokal.');
+      } else {
+        // Tidak ada cache sama sekali → tampilkan app dengan data lokal
+        const merged = buildDataBundle({}, currentUser);
+        saveData(merged);
+        setAuthError('Gagal memuat data dari server. Menampilkan data lokal.');
+      }
+    } finally {
+      setDataLoading(false);
+    }
+  };
+
+  // Effect: load data ketika auth state berubah
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadFromAPI();
+    }
+  }, [isLoggedIn]);
+
+  // Effect: reload data ketika online kembali
+  useEffect(() => {
+    if (isOnline && isLoggedIn && data) {
+      loadFromAPI();
+    }
+  }, [isOnline]);
+
+  /* ---------- Dev auto-login ----------
+     Hanya di development (Vite DEV), auto-fill kredensial dari .env.development
+     supaya tidak perlu ketik login berulang kali. */
+  useEffect(() => {
+    if (import.meta.env.DEV && !isLoggedIn && !entered && !authChecking && storedToken() === null) {
+      const devUser = import.meta.env.VITE_DEV_USER || 'YT_Rezki';
+      const devPass = import.meta.env.VITE_DEV_PASS || '05022025';
+      const timer = setTimeout(() => {
+        auth.login(devUser, devPass)
+          .then((result) => handleLogin(result.user))
+          .catch((err) => console.error('[dev] auto-login gagal:', err.message));
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoggedIn, entered, authChecking]);
 
   /* ---------- Tema ----------
      1) Terapkan tema yang sudah diresolusi ke elemen akar + meta warna browser.
@@ -656,7 +759,7 @@ export default function App() {
   const pushToast = (t) => setToast({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...t });
   const dismissToast = (id) => setToast((prev) => (prev && prev.id === id ? null : prev));
 
-  // Toggle selesai tugas → disimpan (tidak hilang saat reload)
+  // Toggle selesai tugas → disimpan (tasks = localStorage-only, tidak ada backend)
   const toggleTask = (taskId) => {
     saveData({
       ...dataRef.current,
@@ -664,26 +767,30 @@ export default function App() {
     });
   };
 
-  // Kembalikan data ke contoh awal (tombol di layar gerbang)
+  // Reset data ke seed (tombol di LoginScreen — hanya untuk dev)
   const resetData = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(API_CACHE_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
     } catch (e) {
       /* abaikan */
     }
-    dataRef.current = mockData;
-    setData(mockData);
+    clearUser();
+    setIsLoggedIn(false);
   };
 
   /* Simpan perubahan profil akun yang sedang aktif (nama, username, avatar,
-     password). Inisial dihitung ulang dari nama supaya avatar cadangan ikut
-     berubah. `password`: undefined = tidak diubah, '' = dihapus, string = baru. */
+     password). Backend belum punya endpoint PUT /users → semua perubahan
+     tetap lokal (snapshot). Ini untuk data lokal saja. */
   const saveAccount = (patch) => {
+    if (!currentUser) return;
     const current = dataRef.current;
     saveData({
       ...current,
       users: current.users.map((u) => {
-        if (u.id !== activeUserId) return u;
+        if (u.id !== currentUser.id) return u;
         const next = {
           ...u,
           name: patch.name,
@@ -695,127 +802,213 @@ export default function App() {
         return next;
       }),
     });
+    // Update currentUser di localStorage juga
+    storeUser({ id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role, avatar_url: patch.avatar });
     pushToast({ message: 'Profil akun diperbarui', duration: 2500 });
   };
 
-  // Tambah item sesuai section (dipanggil FormSheet)
-  const addItem = (section, values) => {
-    const id = Date.now();
+  // Helper: recompute derived data (monthlyTrend, weekly, categories) setelah expenses berubah
+  const recomputeDerived = (expenses) => {
+    const trend = computeMonthlyTrend(expenses);
+    const weekly = computeWeekly(expenses);
+    const categories = computeCategories(expenses);
+    return { trend, weekly, categories };
+  };
+
+  // Helper: update state + persist (sama seperti saveData tapi juga recompute derived data)
+  const updateData = (updater) => {
     const current = dataRef.current;
+    const next = typeof updater === 'function' ? updater(current) : updater;
+    saveData(next);
+  };
+
+  // Helper: tambah item ke state (dipakai untuk local-only + sebagai state update setelah API)
+  const addItemToState = (section, item) => {
+    const current = dataRef.current;
+    const key = SECTION_KEY[section] || section;
     let next = current;
     if (section === 'agenda') {
-      next = {
-        ...current,
-        schedule: [
-          ...current.schedule,
-          { id, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member },
-        ],
-      };
+      next = { ...current, schedule: [...(current.schedule || []), item] };
     } else if (section === 'expenses') {
-      next = {
-        ...current,
-        expenses: [
-          ...current.expenses,
-          { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' },
-        ],
-      };
+      next = { ...current, expenses: [...(current.expenses || []), item] };
+      const d = recomputeDerived(next.expenses);
+      next.monthlyTrend = d.trend;
+      next.weekly = d.weekly;
+      next.categories = d.categories;
     } else if (section === 'tasks') {
-      next = {
-        ...current,
-        tasks: [
-          ...current.tasks,
-          { id, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo, completed: false },
-        ],
-      };
+      next = { ...current, tasks: [...(current.tasks || []), item] };
     } else if (section === 'notes') {
-      next = {
-        ...current,
-        notes: [
-          ...current.notes,
-          {
-            id,
-            title: values.title,
-            body: values.body || '',
-            category: values.category,
-            pinned: !!values.pinned,
-            author: currentUser.name,
-            updatedAt: todayKey(),
-          },
-        ],
-      };
+      next = { ...current, notes: [...(current.notes || []), item] };
     } else if (section === 'family') {
-      if (values.bagian === 'anggota') {
-        const initials =
-          values.title
-            .split(/\s+/)
-            .map((w) => w[0])
-            .slice(0, 2)
-            .join('')
-            .toUpperCase() || '?';
-        next = {
-          ...current,
-          // Profil baru: hanya nama + (opsional) nomor WA dari "info singkat".
-          // Tanggal lahir/gol. darah/alergi diisi lewat penyuntingan data nanti.
-          family: [
-            ...current.family,
-            { id, name: values.title, role: 'Anggota', initials, status: 'active', birthDate: '', blood: '—', allergy: '—', phone: values.meta || '—' },
-          ],
-        };
+      if (item.bagian === 'anggota') {
+        next = { ...current, family: [...(current.family || []), { id: item.id, name: item.title, role: 'Anggota', initials: item.initials, status: 'active', birthDate: '', blood: '—', allergy: '—', phone: item.meta || '—' }] };
+      } else if (item.bagian === 'medis') {
+        next = { ...current, familyMedical: [...(current.familyMedical || []), { id: item.id, title: item.title, meta: item.meta, badge: 'Catatan', tone: 'gray' }] };
+      } else if (item.bagian === 'dokumen') {
+        next = { ...current, familyDocuments: [...(current.familyDocuments || []), { id: item.id, title: item.title, meta: item.meta, badge: 'Catatan', tone: 'gray' }] };
       } else {
-        const entry = { id, title: values.title, meta: values.meta || '' };
-        if (values.bagian === 'medis') {
-          next = { ...current, familyMedical: [...current.familyMedical, { ...entry, badge: 'Catatan', tone: 'gray' }] };
-        } else if (values.bagian === 'dokumen') {
-          next = { ...current, familyDocuments: [...current.familyDocuments, { ...entry, badge: 'Catatan', tone: 'gray' }] };
-        } else {
-          next = { ...current, familyContacts: [...current.familyContacts, entry] };
-        }
+        next = { ...current, familyContacts: [...(current.familyContacts || []), { id: item.id, title: item.title, meta: item.meta }] };
       }
     }
     saveData(next);
-    pushToast({ message: `${SECTION_LABEL[section]} ditambahkan`, duration: 2500 });
   };
 
-  // Ubah item yang sudah ada (mode edit FormSheet) — `completed`/`author` tetap.
-  const updateItem = (section, id, values) => {
+  // Helper: update item di state
+  const updateItemInState = (section, id, values) => {
     const key = SECTION_KEY[section];
     const current = dataRef.current;
     const list = current[key] || [];
     const applyEdit = (item) => {
-      if (section === 'agenda') {
-        return { ...item, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
-      }
-      if (section === 'expenses') {
-        return { ...item, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' };
-      }
-      if (section === 'tasks') {
-        return { ...item, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo };
-      }
-      if (section === 'notes') {
-        return { ...item, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned, updatedAt: todayKey() };
-      }
+      if (section === 'agenda') return { ...item, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
+      if (section === 'expenses') return { ...item, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' };
+      if (section === 'tasks') return { ...item, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo };
+      if (section === 'notes') return { ...item, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned, updatedAt: todayKey() };
       return item;
     };
-    saveData({ ...current, [key]: list.map((it) => (it.id === id ? applyEdit(it) : it)) });
-    pushToast({ message: `${SECTION_LABEL[section]} diperbarui`, duration: 2500 });
+    const updated = list.map((it) => (it.id === id ? applyEdit(it) : it));
+    const next = { ...current, [key]: updated };
+    if (section === 'expenses') {
+      const d = recomputeDerived(updated);
+      next.monthlyTrend = d.trend;
+      next.weekly = d.weekly;
+      next.categories = d.categories;
+    }
+    saveData(next);
   };
 
-  // Simpan gaji & rasio anggaran (halaman Anggaran, sub-tab Keuangan).
-  // Hanya `income` + `ratios` yang disimpan — alokasi/realisasi selalu dihitung
-  // ulang saat render (components/budget.js), jadi tidak ada angka kedua.
-  const handleSaveBudget = ({ income, ratios }) => {
-    saveData({ ...dataRef.current, budget: { ...dataRef.current.budget, income, ratios } });
-    pushToast({ message: 'Anggaran diperbarui', duration: 2500 });
+  // Helper: delete item dari state
+  const removeItemFromState = (section, item) => {
+    const key = SECTION_KEY[section];
+    const list = dataRef.current[key] || [];
+    const next = { ...dataRef.current, [key]: list.filter((it) => it.id !== item.id) };
+    if (section === 'expenses') {
+      const d = recomputeDerived(next.expenses);
+      next.monthlyTrend = d.trend;
+      next.weekly = d.weekly;
+      next.categories = d.categories;
+    }
+    saveData(next);
   };
 
-  // Simpan pos anggaran (tambah/ubah) — hanya label + keranjang yang disimpan.
-  // Pos lama dicari lewat id, jadi memindahkan keranjang = hapus dari asal lalu
-  // tambah ke tujuan (tidak meninggalkan salinan).
-  const savePos = (values, posId) => {
+  // Tambah item — untuk section yang terhubung API, panggil API dulu,
+  // lalu update state. Untuk section lokal (tasks, family), update state langsung.
+  const addItem = async (section, values) => {
+    if (!isOnline) {
+      // Offline → tambah lokal saja
+      const id = Date.now();
+      const item = buildLocalItem(section, values, id);
+      addItemToState(section, item);
+      pushToast({ message: `${SECTION_LABEL[section]} ditambahkan (offline)`, duration: 2500 });
+      return;
+    }
+
+    try {
+      if (section === 'agenda') {
+        const result = await cal.create({ title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member });
+        addItemToState(section, result);
+      } else if (section === 'expenses') {
+        const result = await txn.create({ category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto' });
+        addItemToState(section, result);
+      } else if (section === 'notes') {
+        const result = await notesApi.create({ title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned }, currentUser);
+        addItemToState(section, result);
+      } else {
+        // Local-only: tasks, family
+        const id = Date.now();
+        const item = buildLocalItem(section, values, id);
+        addItemToState(section, item);
+      }
+      pushToast({ message: `${SECTION_LABEL[section]} ditambahkan`, duration: 2500 });
+    } catch (err) {
+      pushToast({ message: `Gagal menambah ${SECTION_LABEL[section].toLowerCase()}: ${err.message}`, duration: 4000, tone: 'danger' });
+    }
+  };
+
+  // Build item object for local-only sections
+  const buildLocalItem = (section, values, id) => {
+    if (section === 'agenda') return { id, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
+    if (section === 'expenses') return { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' };
+    if (section === 'tasks') return { id, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo, completed: false };
+    if (section === 'notes') return { id, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned, author: currentUser?.name || '', updatedAt: todayKey() };
+    if (section === 'family') {
+      if (values.bagian === 'anggota') {
+        const initials = values.title.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+        return { bagian: 'anggota', id, title: values.title, initials, meta: values.meta };
+      }
+      return { bagian: values.bagian, id, title: values.title, meta: values.meta || '' };
+    }
+    return { id };
+  };
+
+  // Ubah item — untuk section yang terhubung API, panggil API.
+  const updateItem = async (section, id, values) => {
+    const key = SECTION_KEY[section];
     const current = dataRef.current;
-    const budgetNow = getBudget(current);
+
+    if (!isOnline) {
+      // Offline → update lokal
+      updateItemInState(section, id, values);
+      pushToast({ message: `${SECTION_LABEL[section]} diperbarui (offline)`, duration: 2500 });
+      return;
+    }
+
+    try {
+      if (section === 'agenda') {
+        const result = await cal.update(id, calTransform.toPayload({ title: values.title, date: values.date, time: values.time, category: values.category, member: values.member }));
+        const updated = calTransform.toSchedule(result);
+        const list = current[key] || [];
+        saveData({ ...current, [key]: list.map((it) => (it.id === id ? updated : it)) });
+      } else if (section === 'expenses') {
+        const result = await txn.update(id, txnTransform.toPayload({ category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto' }));
+        const updated = txnTransform.toExpense(result);
+        const list = current[key] || [];
+        const next = { ...current, [key]: list.map((it) => (it.id === id ? updated : it)) };
+        const d = recomputeDerived(next.expenses);
+        next.monthlyTrend = d.trend;
+        next.weekly = d.weekly;
+        next.categories = d.categories;
+        saveData(next);
+      } else if (section === 'notes') {
+        const result = await notesApi.update(id, noteTransform.toPayload({ title: values.title, body: values.body, category: values.category, pinned: !!values.pinned }), currentUser);
+        const updated = noteTransform.toNote(result, currentUser);
+        const list = current[key] || [];
+        saveData({ ...current, [key]: list.map((it) => (it.id === id ? updated : it)) });
+      } else {
+        // Local-only
+        updateItemInState(section, id, values);
+      }
+      pushToast({ message: `${SECTION_LABEL[section]} diperbarui`, duration: 2500 });
+    } catch (err) {
+      pushToast({ message: `Gagal memperbarui ${SECTION_LABEL[section].toLowerCase()}: ${err.message}`, duration: 4000, tone: 'danger' });
+    }
+  };
+
+  // Simpan gaji & rasio anggaran (keuangan → settings API)
+  const handleSaveBudget = async ({ income, ratios }) => {
+    const current = dataRef.current;
+    // Update state langsung (optimistic)
+    saveData({ ...current, budget: { ...current.budget, income, ratios } });
+
+    if (!isOnline) {
+      pushToast({ message: 'Anggaran diperbarui (offline)', duration: 2500 });
+      return;
+    }
+
+    try {
+      await settingsApi.upsert('budget_income', String(income));
+      await settingsApi.upsert('budget_ratios', JSON.stringify(ratios));
+      pushToast({ message: 'Anggaran diperbarui', duration: 2500 });
+    } catch (err) {
+      pushToast({ message: 'Anggaran disimpan lokal (gagal sinkron ke server)', duration: 4000, tone: 'warning' });
+    }
+  };
+
+  // Simpan pos anggaran (tambah/ubah) — keuangan settings
+  const savePos = async (values, posId) => {
+    const current = dataRef.current;
     const label = String(values.label || '').trim();
     if (!label) return;
+    const budgetNow = getBudget(current);
     const bucketIds = BUCKETS.map((b) => b.id);
     const target = bucketIds.includes(values.bucket) ? values.bucket : bucketIds[0];
     const entry = { id: posId || `pos-${Date.now()}`, label };
@@ -826,20 +1019,31 @@ export default function App() {
     pos[target] = [...pos[target], entry];
     saveData({ ...current, budget: { ...current.budget, pos } });
     pushToast({ message: posId ? 'Pos anggaran diperbarui' : 'Pos anggaran ditambahkan', duration: 2500 });
+
+    // Simpan ke settings API
+    if (isOnline) {
+      try {
+        await settingsApi.upsert('budget_pos', JSON.stringify(pos));
+      } catch (err) {
+        /* gagal sinkron — tetap tersimpan di localStorage */
+      }
+    }
   };
 
-  // Hapus pos anggaran + tawarkan "Urungkan" (dipulihkan ke posisi semula),
-  // mengikuti pola deleteItem.
+  // Hapus pos anggaran + tawarkan "Urungkan"
   const deletePos = (bucket, pos) => {
     const current = dataRef.current;
-    const list = getBudget(current).pos[bucket] || [];
-    const index = list.findIndex((p) => p.id === pos.id);
+    const index = (getBudget(current).pos[bucket] || []).findIndex((p) => p.id === pos.id);
     if (index < 0) return;
     const posMap = {};
     BUCKETS.forEach((b) => {
       posMap[b.id] = (getBudget(current).pos[b.id] || []).filter((p) => p.id !== pos.id);
     });
     saveData({ ...current, budget: { ...current.budget, pos: posMap } });
+    // Simpan ke settings API
+    if (isOnline) {
+      settingsApi.upsert('budget_pos', JSON.stringify(posMap)).catch(() => {});
+    }
     pushToast({
       message: `Pos "${pos.label}" dihapus`,
       actionLabel: 'Urungkan',
@@ -853,17 +1057,44 @@ export default function App() {
         const target = restored[bucket] ? bucket : BUCKETS[0].id;
         restored[target].splice(Math.min(index, restored[target].length), 0, pos);
         saveData({ ...dataRef.current, budget: { ...dataRef.current.budget, pos: restored } });
+        // Simpan ke settings API
+        if (isOnline) {
+          settingsApi.upsert('budget_pos', JSON.stringify(restored)).catch(() => {});
+        }
       },
     });
   };
 
-  // Hapus item + tawarkan "Urungkan" (dipulihkan ke posisi semula).
-  const deleteItem = (section, item) => {
+  // Hapus item + tawarkan "Urungkan"
+  const deleteItem = async (section, item) => {
     const key = SECTION_KEY[section];
     const list = dataRef.current[key] || [];
     const index = list.findIndex((it) => it.id === item.id);
     if (index < 0) return;
-    saveData({ ...dataRef.current, [key]: list.filter((it) => it.id !== item.id) });
+
+    // Optimistic: hapus dari state + persist
+    removeItemFromState(section, item);
+
+    // API call (async, fire-and-forget)
+    if (isOnline) {
+      try {
+        if (section === 'agenda') {
+          await cal.delete(item.id);
+        } else if (section === 'expenses') {
+          await txn.delete(item.id);
+        } else if (section === 'notes') {
+          await notesApi.delete(item.id);
+        }
+      } catch (err) {
+        // API gagal → restore ke state, tampilkan error
+        const restored = [...(dataRef.current[key] || [])];
+        restored.splice(Math.min(index, restored.length), 0, item);
+        saveData({ ...dataRef.current, [key]: restored });
+        pushToast({ message: `Gagal menghapus ${sectionItemLabel(item)}: ${err.message}`, duration: 4000, tone: 'danger' });
+        return;
+      }
+    }
+
     pushToast({
       message: `"${sectionItemLabel(item)}" dihapus`,
       actionLabel: 'Urungkan',
@@ -872,6 +1103,12 @@ export default function App() {
         const restored = [...(dataRef.current[key] || [])];
         restored.splice(Math.min(index, restored.length), 0, item);
         saveData({ ...dataRef.current, [key]: restored });
+        // Jika online, restore via API juga
+        if (isOnline) {
+          if (section === 'agenda') cal.create(item).catch(() => {});
+          else if (section === 'expenses') txn.create(item).catch(() => {});
+          else if (section === 'notes') notesApi.create(item, currentUser).catch(() => {});
+        }
       },
     });
   };
@@ -927,17 +1164,18 @@ export default function App() {
   // Gabungan semua data keluarga (tiap item diberi `category` = bagian).
   // Dipakai untuk badge jumlah di dropdown bagian keluarga.
   const familyAll = useMemo(
-    () => [
+    () => (data ? [
       ...data.family.map((m) => ({ ...m, category: 'anggota' })),
       ...data.familyMedical.map((h) => ({ ...h, category: 'medis' })),
       ...data.familyContacts.map((c) => ({ ...c, category: 'kontak' })),
       ...data.familyDocuments.map((d) => ({ ...d, category: 'dokumen' })),
-    ],
+    ] : []),
     [data]
   );
 
   // Tugas sesuai filter aktif (status/prioritas) untuk daftar & chip.
   const filteredTasks = useMemo(() => {
+    if (!data) return [];
     if (taskFilter === 'semua') return data.tasks;
     if (taskFilter === 'belum') return data.tasks.filter((t) => !t.completed);
     if (taskFilter === 'selesai') return data.tasks.filter((t) => t.completed);
@@ -946,6 +1184,7 @@ export default function App() {
 
   // Catatan sesuai filter aktif (semua | penting | kategori) + pencarian.
   const filteredNotes = useMemo(() => {
+    if (!data) return [];
     const base =
       noteFilter === 'semua'
         ? data.notes
@@ -959,7 +1198,7 @@ export default function App() {
 
   // Notifikasi turunan data (tanpa backend) — lihat components/notifications.js.
   // Dihitung ulang tiap data berubah, jadi isinya ikut berubah, tidak basi.
-  const notifications = useMemo(() => buildNotifications(data, formatCurrencyShort), [data]);
+  const notifications = useMemo(() => data ? buildNotifications(data, formatCurrencyShort) : [], [data]);
 
   // Simpan status "sudah dibaca" sekaligus buang id notifikasi yang sudah tidak
   // ada — supaya daftarnya tidak menumpuk selamanya di localStorage.
@@ -985,11 +1224,31 @@ export default function App() {
     if (t.section) setActiveSection(t.section);
   };
 
-  const handleEnter = (userId) => {
-    storeUser(userId);
-    setActiveUserId(userId);
+  // Called by LoginScreen setelah login sukses
+  const handleLogin = (user) => {
+    // user = { id, username, nama, role } from backend
+    const frontendUser = {
+      id: user.id,
+      name: user.nama,
+      username: user.username,
+      role: user.role,
+      initials: initialsOf(user.nama),
+    };
+    storeUser(frontendUser);
+    setCurrentUser(frontendUser);
+    setIsLoggedIn(true);
     setActiveSection('dashboard');
     setEntered(true);
+  };
+
+  // Logout — clear token + kembali ke login screen
+  const handleLogout = () => {
+    if (isOnline) auth.logout().catch(() => {});
+    clearUser();
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    setEntered(false);
+    setActiveSection('dashboard');
   };
 
   // Dipanggil dropdown kategori agenda di navigasi → buka section + set filter
@@ -1398,12 +1657,43 @@ export default function App() {
     }
   };
 
-  if (!entered) {
+  // While checking auth or loading data, show splash
+  if (authChecking || !isLoggedIn || !entered) {
     return (
       <>
-        {/* Splash tetap muncul meski belum `entered` — berada sebelum early-return */}
+        {/* Splash tetap muncul — berada sebelum early-return */}
         {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-        <WelcomeGate users={data.users} defaultUserId={activeUserId} onEnter={handleEnter} onReset={resetData} />
+        {authChecking ? null : (
+          <LoginScreen
+            onLogin={handleLogin}
+            onReset={resetData}
+          />
+        )}
+        {authError && !authChecking && (
+          <div
+            role="status"
+            className="fixed bottom-20 right-4 left-4 z-[95] rounded-xl border border-tonerose/40 bg-tonerose/10 px-4 py-3 text-sm text-tonerosefg sm:bottom-auto sm:left-auto"
+          >
+            {authError}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Waiting for API data to load
+  if (isLoggedIn && entered && !data) {
+    return (
+      <>
+        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+        {dataLoading && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-canvas/90">
+            <div className="text-center">
+              <Icon name="loader" size={32} className="animate-spin text-brand" />
+              <p className="mt-3 text-sm text-mutedfg">Memuat data…</p>
+            </div>
+          </div>
+        )}
       </>
     );
   }
@@ -1476,11 +1766,9 @@ export default function App() {
         user={currentUser}
         users={data.users}
         onClose={() => setAccountOpen(false)}
-        onSwitchUser={() => {
-          setAccountOpen(false);
-          setEntered(false);
-        }}
+        onSwitchUser={handleLogout}
         onSave={saveAccount}
+        onLogout={handleLogout}
         theme={theme}
         onThemeChange={setTheme}
       />

@@ -81,6 +81,7 @@ export function AccountModal({
   users = [],
   onClose,
   onSwitchUser,
+  onLogout,
   onSave,
   theme = 'system',
   onThemeChange,
@@ -513,6 +514,17 @@ export function AccountModal({
           <Icon name="users" size={14} />
           Ganti pengguna
         </button>
+
+        {onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="mt-1 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-line px-3 text-xs font-medium text-tonerosefg transition-colors hover:bg-tonerose/10"
+          >
+            <Icon name="logOut" size={14} />
+            Keluar
+          </button>
+        )}
       </form>
     </div>
   );
