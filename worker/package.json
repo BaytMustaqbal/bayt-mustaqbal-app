@@ -9,7 +9,8 @@
     "deploy": "wrangler deploy",
     "migrations:new": "wrangler d1 migrations new bayt-mustaqbal-db",
     "migrations:apply": "wrangler d1 migrations apply bayt-mustaqbal-db",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:integration": "tsx tests/integration.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
