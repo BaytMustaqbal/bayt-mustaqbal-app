@@ -13,6 +13,7 @@ import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList, initialsOf } 
 import { FamilyCalendar } from './components/Calendar';
 import { Timeline } from './components/Timeline';
 import { FormSheet } from './components/FormSheet';
+import { FamilyTree } from './components/FamilyTree';
 import { Toast } from './components/Toast';
 import { buildNotifications } from './components/notifications';
 import {
@@ -428,19 +429,18 @@ const fetchApiData = async () => {
 /* Label status keluarga dari kolom family_role backend */
 const FAMILY_ROLE_LABEL = { suami: 'Suami', istri: 'Istri', anak: 'Anak', lainnya: 'Lainnya' };
 
-/* Map akun backend → format anggota keluarga (FamilyMemberCard) */
+/* Map akun backend → format anggota keluarga (FamilyTree) */
 const mapUsersToFamily = (users) =>
   (users || []).map((u) => ({
     id: u.id,
     name: u.nama,
+    email: u.username || null,
     role: FAMILY_ROLE_LABEL[u.family_role] || 'Anak',
     initials: initialsOf(u.nama),
     avatar: u.avatar_url || undefined,
+    generasi: u.generasi || 'orangtua',
+    birthDate: u.birth_date || null,
     status: 'active',
-    birthDate: '',
-    blood: '—',
-    allergy: '—',
-    phone: '—',
   }));
 
 const formatCurrency = (value) =>
@@ -555,7 +555,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const stored = getUser();
   const transformedUser = stored
-    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', initials: initialsOf(stored.nama || stored.name) }
+    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, initials: initialsOf(stored.nama || stored.name) }
     : null;
   const [currentUser, setCurrentUser] = useState(transformedUser);
   // Splash screen: tampil setiap app dibuka, lepas setelah fade-out.
@@ -584,6 +584,8 @@ export default function App() {
   const [notifRead, setNotifRead] = useState(readNotifRead);
   // Modal "Akun saya" (nama, username, avatar, password) — dibuka dari chip pengguna
   const [accountOpen, setAccountOpen] = useState(false);
+  // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
+  const [accountInitialGenerasi, setAccountInitialGenerasi] = useState(null);
   // Data state — dimuat dari API + localStorage cache
   const [data, setData] = useState(null);
   // Loading state untuk data API
@@ -803,7 +805,7 @@ export default function App() {
       }),
     });
     // Update currentUser di localStorage juga
-    storeUser({ id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role, avatar_url: patch.avatar });
+    storeUser({ id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, birth_date: currentUser.birthDate, avatar_url: patch.avatar });
     pushToast({ message: 'Profil akun diperbarui', duration: 2500 });
   };
 
@@ -1126,6 +1128,11 @@ export default function App() {
     setSheetInitial(nilaiAwal);
     setSheetOpen(section);
   };
+  // Klik placeholder "+ Tambah" di FamilyTree → buka AccountModal dengan generasi preset
+  const handleTreeAdd = (generasi) => {
+    setAccountInitialGenerasi(generasi);
+    setAccountOpen(true);
+  };
   const openEdit = (section, item) => {
     setEditing({ section, id: item.id });
     setSheetInitial(toFormValues(section, item));
@@ -1233,6 +1240,8 @@ export default function App() {
       username: user.username,
       role: user.role,
       family_role: user.family_role || 'anak',
+      generasi: user.generasi || 'orangtua',
+      birthDate: user.birth_date || null,
       initials: initialsOf(user.nama),
     };
     storeUser(frontendUser);
@@ -1557,24 +1566,12 @@ export default function App() {
 
             <div className="space-y-8">
               {showAnggota && (
-                <div>
-                  <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-mutedfg">
-                    <Icon name="users" size={16} />
-                    Anggota
-                    <span className="ml-auto font-mono text-xs font-normal opacity-70">{data.family.length}</span>
-                  </h2>
-                  {data.family.length === 0 ? (
-                    <EmptyState icon="users" title="Belum ada anggota" message="Tambahkan anggota keluarga untuk mulai berkolaborasi." />
-                  ) : (
-                    // Kartu profil memuat detail (lahir/gol.darah/alergi/WA) — butuh
-                    // lebar. 1 kolom di HP, baru berjejer dari sm+.
-                    <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-                      {data.family.map((member) => (
-                        <FamilyMemberCard key={member.id} member={member} />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <FamilyTree
+                  members={data.family}
+                  isMaster={currentUser?.username === 'baytmustaqbal@gmail.com'}
+                  onAdd={handleTreeAdd}
+                  onSelect={() => {}}
+                />
               )}
               {showMedis && <FamilyList title="Info Medis" icon="activity" items={data.familyMedical} onAdd={() => openAdd('family', { bagian: 'medis' })} />}
               {showKontak && <FamilyList title="Kontak & Darurat" icon="phone" items={data.familyContacts} onAdd={() => openAdd('family', { bagian: 'kontak' })} />}
@@ -1763,6 +1760,8 @@ export default function App() {
         open={accountOpen}
         user={currentUser}
         users={data.users}
+        initialGenerasi={accountInitialGenerasi}
+        onSaved={() => loadFromAPI()}
         onClose={() => setAccountOpen(false)}
         onSwitchUser={handleLogout}
         onSave={saveAccount}
