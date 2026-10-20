@@ -117,9 +117,17 @@ const monthName = (d) => new Intl.DateTimeFormat('id-ID', { month: 'long', year:
 const buildDataBundle = (apiData, currentUser) => {
   const budget = apiData?.budget || {};
   const expenses = apiData?.expenses || [];
+  // Anggota keluarga = semua akun aktif dari backend (master sudah disembunyikan backend).
+  // Fallback ke currentUser saja bila daftar users tidak tersedia (offline).
+  const apiUsers = apiData?.users || [];
+  const fallbackUsers = currentUser && apiUsers.length === 0
+    ? [{ id: currentUser.id, nama: currentUser.nama, family_role: currentUser.family_role || 'anak', avatar_url: null }]
+    : apiUsers;
   return {
-    users: currentUser ? [{ id: currentUser.id, name: currentUser.nama, username: currentUser.username, role: currentUser.role, initials: initialsOf(currentUser.nama) }] : [],
-    family: LOCAL_SEED.family,
+    users: apiUsers.length > 0
+      ? apiUsers.map((u) => ({ id: u.id, name: u.nama, username: u.username, role: u.family_role, initials: initialsOf(u.nama) }))
+      : (currentUser ? [{ id: currentUser.id, name: currentUser.nama, username: currentUser.username, role: currentUser.role, initials: initialsOf(currentUser.nama) }] : []),
+    family: mapUsersToFamily(fallbackUsers),
     schedule: apiData?.schedule || [],
     familyMedical: LOCAL_SEED.familyMedical,
     familyDocuments: LOCAL_SEED.familyDocuments,
@@ -373,8 +381,9 @@ const buildMergedData = (apiData, currentUser) => {
   if (snapshot) {
     return {
       ...bundle,
+      // family sekarang dari daftar akun backend (bukan localStorage-only lagi)
+      family: bundle.family,
       tasks: snapshot.tasks || bundle.tasks,
-      family: snapshot.family || bundle.family,
       familyMedical: snapshot.familyMedical || bundle.familyMedical,
       familyDocuments: snapshot.familyDocuments || bundle.familyDocuments,
       familyContacts: snapshot.familyContacts || bundle.familyContacts,
@@ -385,11 +394,12 @@ const buildMergedData = (apiData, currentUser) => {
 
 // Fetch all API data (schedule, expenses, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, notes, settings] = await Promise.all([
+  const [schedule, expenses, notes, settings, users] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
     notesApi.fetch(null).catch(() => []),
     settingsApi.fetchAll().catch(() => []),
+    auth.users().catch(() => []),
   ]);
 
   // Parse budget settings
@@ -412,8 +422,26 @@ const fetchApiData = async () => {
     try { budget.pos = JSON.parse(budgetSettings.budget_pos); } catch {}
   }
 
-  return { schedule, expenses, notes, budget };
+  return { schedule, expenses, notes, budget, users };
 };
+
+/* Label status keluarga dari kolom family_role backend */
+const FAMILY_ROLE_LABEL = { suami: 'Suami', istri: 'Istri', anak: 'Anak', lainnya: 'Lainnya' };
+
+/* Map akun backend → format anggota keluarga (FamilyMemberCard) */
+const mapUsersToFamily = (users) =>
+  (users || []).map((u) => ({
+    id: u.id,
+    name: u.nama,
+    role: FAMILY_ROLE_LABEL[u.family_role] || 'Anak',
+    initials: initialsOf(u.nama),
+    avatar: u.avatar_url || undefined,
+    status: 'active',
+    birthDate: '',
+    blood: '—',
+    allergy: '—',
+    phone: '—',
+  }));
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('id-ID', {
@@ -527,7 +555,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const stored = getUser();
   const transformedUser = stored
-    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, initials: initialsOf(stored.nama || stored.name) }
+    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', initials: initialsOf(stored.nama || stored.name) }
     : null;
   const [currentUser, setCurrentUser] = useState(transformedUser);
   // Splash screen: tampil setiap app dibuka, lepas setelah fade-out.
@@ -1198,12 +1226,13 @@ export default function App() {
 
   // Called by LoginScreen setelah login sukses
   const handleLogin = (user) => {
-    // user = { id, username, nama, role } from backend
+    // user = { id, username, nama, role, family_role } from backend
     const frontendUser = {
       id: user.id,
       name: user.nama,
       username: user.username,
       role: user.role,
+      family_role: user.family_role || 'anak',
       initials: initialsOf(user.nama),
     };
     storeUser(frontendUser);

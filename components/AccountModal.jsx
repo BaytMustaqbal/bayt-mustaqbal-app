@@ -105,6 +105,7 @@ export function AccountModal({
   const isMaster = user?.username === MASTER_USER;
   const [regUsername, setRegUsername] = useState('');
   const [regNama, setRegNama] = useState('');
+  const [regFamilyRole, setRegFamilyRole] = useState('anak');
   const [regPassword, setRegPassword] = useState('');
   const [regPassword2, setRegPassword2] = useState('');
   const [regErrors, setRegErrors] = useState({});
@@ -133,10 +134,11 @@ export function AccountModal({
     }
     setRegErrors({});
     try {
-      const result = await auth.register(regUsername.trim().toLowerCase(), regPassword, regNama.trim());
-      setRegSuccess(`Akun "${result.username}" (${result.nama}) berhasil didaftarkan!`);
+      const result = await auth.register(regUsername.trim().toLowerCase(), regPassword, regNama.trim(), regFamilyRole);
+      setRegSuccess(`Akun "${result.username}" (${result.nama}) berhasil didaftarkan sebagai ${regFamilyRole}!`);
       setRegUsername('');
       setRegNama('');
+      setRegFamilyRole('anak');
       setRegPassword('');
       setRegPassword2('');
     } catch (err) {
@@ -588,6 +590,24 @@ export function AccountModal({
               {regErrors.nama && (
                 <p className="mt-1 text-xs font-medium text-danger">{regErrors.nama}</p>
               )}
+            </div>
+
+            {/* Status keluarga — menentukan tampil sebagai apa di halaman Keluarga */}
+            <div>
+              <label htmlFor="reg-family-role" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Status keluarga
+              </label>
+              <select
+                id="reg-family-role"
+                value={regFamilyRole}
+                onChange={(e) => setRegFamilyRole(e.target.value)}
+                className={`${inputCls} min-h-[48px] w-full appearance-none rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
+              >
+                <option value="suami">Suami / Ayah</option>
+                <option value="istri">Istri / Ibu</option>
+                <option value="anak">Anak</option>
+                <option value="lainnya">Lainnya</option>
+              </select>
             </div>
 
             <div className="relative">

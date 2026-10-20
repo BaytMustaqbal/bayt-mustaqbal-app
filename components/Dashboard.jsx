@@ -281,12 +281,6 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           showFilters={false}
         />
       </Panel>
-
-      {/* Catatan kejujuran data */}
-      <p className="text-center text-[11px] text-mutedfg">
-        <Badge tone="gray">Purwarupa</Badge>{' '}
-        <span className="align-middle">angka di atas masih data contoh, belum dari database.</span>
-      </p>
     </section>
   );
 }

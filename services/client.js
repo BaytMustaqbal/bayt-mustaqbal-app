@@ -86,11 +86,15 @@ export const auth = {
   me: async () => {
     return apiFetch('/auth/me');
   },
-  register: async (username, password, nama) => {
+  register: async (username, password, nama, familyRole = 'anak') => {
     return apiFetch('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, password, nama }),
+      body: JSON.stringify({ username, password, nama, family_role: familyRole }),
     });
+  },
+  // Daftar anggota keluarga (semua akun aktif, master disembunyikan backend)
+  users: async () => {
+    return apiFetch('/auth/users');
   },
 };
 
