@@ -1705,9 +1705,6 @@ export default function App() {
         onSectionChange={setActiveSection}
         user={currentUser}
         onOpenAccount={() => setAccountOpen(true)}
-        theme={theme}
-        resolvedTheme={resolvedTheme}
-        onToggleTheme={toggleTheme}
         schedule={data.schedule}
         expenses={data.expenses}
         family={familyAll}

@@ -167,9 +167,6 @@ export function Navigation({
   onSectionChange,
   user,
   onOpenAccount,
-  theme = 'system',
-  resolvedTheme = 'dark',
-  onToggleTheme,
   schedule,
   expenses,
   family,
@@ -379,20 +376,6 @@ export function Navigation({
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
-            {/* Ganti tema cepat (Terang ⇄ Gelap). Pilihan lengkap
-                (Sistem / Terang / Gelap) ada di modal "Akun saya". */}
-            <button
-              type="button"
-              onClick={onToggleTheme}
-              aria-label={`${resolvedTheme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}${
-                theme === 'system' ? ' (sekarang mengikuti pengaturan perangkat)' : ''
-              }`}
-              title={resolvedTheme === 'dark' ? 'Mode terang' : 'Mode gelap'}
-              className="grid h-11 w-11 place-items-center rounded-full border border-line text-mutedfg transition-colors hover:bg-muted hover:text-ink"
-            >
-              <Icon name={resolvedTheme === 'dark' ? 'sun' : 'moon'} size={19} />
-            </button>
-
             {/* Notifikasi (lonceng) — panel dibuka di bawah header, rata kanan.
                 Badge TIDAK dibacakan sebagai angka telanjang: hitungannya
                 masuk ke aria-label tombol + live region di bawah. */}
