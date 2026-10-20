@@ -31,45 +31,16 @@ import { Budgeting } from './components/Budgeting';
 import { auth, txn, cal, notesApi, settingsApi } from './services/client';
 import './App.css';
 
-/* ---- Seed data untuk fitur TANPA tabel backend (localStorage-only) ----
+/* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
    Fitur yang ada pasangan backend (schedule, expenses, notes, budget)
-   dimuat dari API. Yang tidak ada pasangannya — tetap pakai seed lokal
-   supaya UI lengkap meski backend belum punya tabelnya. */
+   dimuat dari API. Yang tidak ada pasangannya — mulai dari kosong;
+   Kakang menambah lewat UI (mis. tombol "+ Data" di halaman Keluarga). */
 const LOCAL_SEED = {
-  family: [
-    { id: 1, name: 'Rezki YT', role: 'Admin', initials: 'RY', avatar: '/avatars/profile-rezki.jpg', status: 'active', birthDate: '1990-05-12', blood: 'O', allergy: '—', phone: '0812-1000-0001' },
-    { id: 2, name: 'Hilda AK', role: 'Anggota', initials: 'HA', status: 'active', birthDate: '1992-08-03', blood: 'A', allergy: 'Seafood', phone: '0812-1000-0002' },
-    { id: 3, name: 'RAGASUCI', role: 'Anggota', initials: 'RS', status: 'active', birthDate: '2016-02-20', blood: 'B', allergy: 'Debu', phone: '—' },
-    { id: 4, name: 'RAJABRANA', role: 'Anggota', initials: 'RB', status: 'active', birthDate: '2019-11-07', blood: 'B', allergy: '—', phone: '—' },
-  ],
-  familyMedical: [
-    { id: 1, title: 'Dokter keluarga', meta: 'dr. Ayu Prasetyo · Klinik Sehat Sentosa · 021-555-0123', badge: 'Langganan', tone: 'brand' },
-    { id: 2, title: 'BPJS Kesehatan', meta: 'Kelas 2 · seluruh anggota · kartu digital di HP', badge: 'Asuransi', tone: 'brand' },
-    { id: 3, title: 'Riwayat imunisasi anak', meta: 'RAGASUCI & RAJABRANA · lengkap sampai usia 5 tahun', badge: 'Lengkap', tone: 'green' },
-    { id: 4, title: 'Obat & vitamin rutin', meta: 'Vitamin D seluruh anggota · diminum pagi setelah makan', badge: 'Rutin', tone: 'green' },
-  ],
-  familyDocuments: [
-    { id: 1, title: 'Kartu Keluarga (KK)', meta: 'No. 3212…007 · asli di lemari berkas', badge: 'Ada', tone: 'green' },
-    { id: 2, title: 'KTP Rezki YT', meta: 'Berlaku sampai 12 Mei 2030', badge: '2030', tone: 'brand' },
-    { id: 3, title: 'Akta Kelahiran anak', meta: 'RAGASUCI & RAJABRANA · asli di lemari berkas', badge: 'Ada', tone: 'green' },
-    { id: 4, title: 'Buku KIA (Ibu & Anak)', meta: 'RAGASUCI · catatan tumbuh kembang & imunisasi', badge: 'Ada', tone: 'green' },
-  ],
-  familyContacts: [
-    { id: 1, title: 'Puskesmas', meta: '0812-3456-7890', badge: 'Darurat', tone: 'red' },
-    { id: 2, title: 'Rumah Sakit Ibu & Anak', meta: '021-555-0199', badge: 'Darurat', tone: 'red' },
-    { id: 3, title: 'Kakek & Nenek', meta: '0813-9876-5432' },
-    { id: 4, title: 'Golongan darah', meta: 'Rezki YT: O · Hilda AK: A · Anak: B', badge: 'Catatan', tone: 'brand' },
-  ],
-  tasks: [
-    { id: 1, title: 'Bersihkan dapur', completed: false, assignedTo: 'RAGASUCI', dueDate: '2026-10-15', priority: 'high' },
-    { id: 2, title: 'Cuci mobil', completed: true, assignedTo: 'RAJABRANA', dueDate: '2026-10-14', priority: 'medium' },
-    { id: 3, title: 'Belanja mingguan', completed: false, assignedTo: 'Hilda AK', dueDate: '2026-10-16', priority: 'high' },
-    { id: 4, title: 'Baca buku anak', completed: true, assignedTo: 'Rezki YT', dueDate: '2026-10-14', priority: 'low' },
-    { id: 5, title: 'Ganti oli motor', completed: false, assignedTo: 'Rezki YT', dueDate: '2026-10-18', priority: 'medium' },
-    { id: 6, title: 'Strika seragam sekolah', completed: false, assignedTo: 'Hilda AK', dueDate: '2026-10-19', priority: 'low' },
-    { id: 7, title: 'Potong rumput halaman', completed: false, assignedTo: 'RAJABRANA', dueDate: '2026-10-21', priority: 'medium' },
-    { id: 8, title: 'Periksa tagihan listrik', completed: true, assignedTo: 'Rezki YT', dueDate: '2026-10-20', priority: 'high' },
-  ],
+  family: [],
+  familyMedical: [],
+  familyDocuments: [],
+  familyContacts: [],
+  tasks: [],
 };
 
 /* ---- Computed data (derived from expenses, NOT stored) ---- */
