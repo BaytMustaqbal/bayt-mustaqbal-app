@@ -613,6 +613,7 @@ export default function App() {
     // Dev: clear token lama agar auto-login pakai akun dari .env
     if (import.meta.env.DEV) {
       clearAuthToken();
+      localStorage.removeItem('bayt-mustaqbal-data-v2'); /* clear cache lama */
       setIsLoggedIn(false);
       setAuthChecking(false);
       return;
