@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import { registerSW } from 'virtual:pwa-register';
 
 const container = document.getElementById('root');
 
@@ -14,11 +15,14 @@ createRoot(container).render(
   </React.StrictMode>
 );
 
-// Service worker: hanya di build production, agar tidak mengganggu HMR di dev
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js').catch(() => {
-      // Gagal registrasi SW tidak boleh membuat app error
-    });
-  });
+// Register Service Worker via vite-plugin-pwa virtual module
+if (import.meta.env.PROD) {
+  const updateSW = registerSW({
+    onNeedRefresh() {
+      if (confirm('Versi baru tersedia. Muat ulang?')) update()
+    },
+    onOfflineReady() {
+      console.log('App siap offline')
+    }
+  })
 }
