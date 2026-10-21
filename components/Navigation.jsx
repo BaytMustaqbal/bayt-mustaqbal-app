@@ -483,9 +483,11 @@ export function Navigation({
               type="button"
               onClick={() => handleSection('dashboard')}
               aria-current={activeSection === 'dashboard' ? 'page' : undefined}
-              className={`absolute left-1/2 -top-4 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-full bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-glow ring-4 ring-canvas transition-transform active:scale-95 ${activeSection === 'dashboard' ? 'outline outline-2 outline-offset-2 outline-brand/60' : ''}`}
+              className={`absolute left-1/2 -top-4 grid h-14 w-14 -translate-x-1/2 place-items-center overflow-hidden rounded-full bg-white shadow-glow ring-4 ring-canvas transition-transform active:scale-95 ${activeSection === 'dashboard' ? 'outline outline-2 outline-offset-2 outline-brand/60' : ''}`}
             >
-              <Icon name="home" size={24} />
+              {/* Logo app sebagai tombol Dashboard — background putih supaya kontras
+                  di tema gelap & terang (logo sendiri berwarna gelap/biru) */}
+              <img src="/icons/icon-128.png" alt="Bayt Mustaqbal" className="h-12 w-12 object-contain" />
               <span className="sr-only">Dashboard</span>
             </button>
             <span
