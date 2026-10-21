@@ -330,6 +330,9 @@ export function Navigation({
         </div>
       </header>
 
+      {/* Indeks tab aktif untuk indikator geser di bottom nav */}
+      const activeIndex = NAV_ITEMS.findIndex((item) => item.id === activeSection);
+
       {/* Bar bawah: mobile & tablet (dirapikan max-w-md agar tidak melar) */}
       <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/85 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-xl lg:hidden">
         {/* Tinggi dikunci 56px agar banner install bisa diposisikan tepat di atasnya */}
