@@ -11,7 +11,7 @@ import { auth } from '../services/client';
  *   onLogin(user)  — dipanggil setelah login sukses (token sudah tersimpan)
  *   onReset        — reset data ke seed (opsional, untuk dev)
  */
-export function LoginScreen({ onLogin, onReset }) {
+export function LoginScreen({ onLogin, onReset, pushToast }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -36,11 +36,13 @@ export function LoginScreen({ onLogin, onReset }) {
       onReset && localStorage.removeItem('bayt-mustaqbal-data-v2'); // bersih cache lama
       onLogin(data.user);
     } catch (err) {
-      setError(err.message === 'UNAUTHORIZED'
+      const msg = err.message === 'UNAUTHORIZED'
         ? 'Username atau password salah.'
         : err.message === 'NETWORK_ERROR'
         ? 'Tidak dapat menghubungkan ke server. Periksa koneksi.'
-        : err.message || 'Login gagal. Coba lagi.');
+        : err.message || 'Login gagal. Coba lagi.';
+      setError(msg);
+      pushToast?.({ message: msg, duration: 4000, tone: 'danger' });
     } finally {
       setSubmitting(false);
     }

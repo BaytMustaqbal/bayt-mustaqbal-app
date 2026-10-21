@@ -7,6 +7,7 @@ import { NoteList } from './components/NoteList';
 import { Dashboard } from './components/Dashboard';
 import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
+import { RegisterScreen } from './components/RegisterScreen';
 import { AccountModal } from './components/AccountModal';
 import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList, initialsOf } from './components/ui';
 import { FamilyCalendar } from './components/Calendar';
@@ -554,6 +555,7 @@ export default function App() {
   // Auth: isLoggedIn = punya token yang valid. authChecking = sedang verify token.
   const [isLoggedIn, setIsLoggedIn] = useState(storedToken() ? true : false);
   const [authChecking, setAuthChecking] = useState(storedToken() ? true : false);
+  const [registerOpen, setRegisterOpen] = useState(false);
   const [authError, setAuthError] = useState('');
   const stored = getUser();
   const transformedUser = stored
@@ -1702,6 +1704,7 @@ export default function App() {
           <LoginScreen
             onLogin={handleLogin}
             onReset={resetData}
+            pushToast={pushToast}
           />
         )}
         {authError && !authChecking && (
@@ -1803,9 +1806,18 @@ export default function App() {
         onSwitchUser={handleLogout}
         onSave={saveAccount}
         onLogout={handleLogout}
+        onRegister={() => setRegisterOpen(true)}
         theme={theme}
         onThemeChange={setTheme}
       />
+
+      {/* RegisterScreen — hanya bisa diakses dari AccountModal (master only) */}
+      {registerOpen && (
+        <RegisterScreen
+          onLogin={handleLogin}
+          onBack={() => setRegisterOpen(false)}
+        />
+      )}
 
       {/* Toast: konfirmasi ringkas + "Urungkan" untuk hapus */}
       <Toast toast={toast} onDismiss={dismissToast} />
