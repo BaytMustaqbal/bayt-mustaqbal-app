@@ -351,18 +351,73 @@ export function Navigation({
             const isDropdown = !!DROPDOWNS[item.id];
             const active = activeSection === item.id || (isDropdown && openKey === item.id);
             const IconComp = NAV_ITEMS.find((n) => n.id === item.id);
+
+            if (isDashboard) {
+              return (
+                <li key={item.id} className="relative min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSection('dashboard')}
+                    aria-current={active ? 'page' : undefined}
+                    className="group flex h-full w-full flex-col items-center justify-end pb-1.5"
+                  >
+                    {/* Floating Action Button (FAB) melayang di atas navbar */}
+                    <span
+                      className={`absolute -top-5 flex h-14 w-14 items-center justify-center rounded-full border-4 border-canvas bg-gradient-to-tr from-brand to-brandfg p-1.5 shadow-lg transition-transform duration-base ease-crisp group-active:scale-95 ${
+                        active ? 'scale-110 shadow-glow ring-2 ring-brand/50' : 'hover:scale-105'
+                      }`}
+                    >
+                      <img
+                        src="/icons/icon-mark-square.png"
+                        alt="Dashboard"
+                        className="h-9 w-9 object-contain drop-shadow"
+                      />
+                    </span>
+                    <span
+                      className={`text-[11px] leading-tight transition-colors ${
+                        active ? 'font-bold text-brandfg' : 'font-medium text-mutedfg'
+                      }`}
+                    >
+                      Dashboard
+                    </span>
+                  </button>
+                </li>
+              );
+            }
+
             return (
               <li key={item.id} className="min-w-0 flex-1">
-                <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${active ? (isDashboard ? 'text-brandfg' : 'bg-brand/10 text-brandfg') : 'text-mutedfg'} ${isDashboard ? 'rounded-xl bg-brandtint' : ''}`}>
-                  <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint' : ''} ${isDashboard ? 'h-12 w-12 rounded-xl bg-brand' : ''}`}>
-                    {isDashboard ? <img src="/icons/icon-mark-square.png" alt="Dashboard" className="h-6 w-6 object-contain" /> : <Icon name={IconComp?.icon} size={19} />}
+                <button
+                  type="button"
+                  onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)}
+                  aria-haspopup={isDropdown ? 'menu' : undefined}
+                  aria-expanded={isDropdown ? openKey === item.id : undefined}
+                  aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined}
+                  data-dropdown-trigger={isDropdown ? '' : undefined}
+                  aria-current={active && openKey !== item.id ? 'page' : undefined}
+                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${
+                    active ? 'bg-brand/10 text-brandfg font-bold' : 'text-mutedfg'
+                  }`}
+                >
+                  <span
+                    className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${
+                      active ? 'bg-brandtint' : ''
+                    }`}
+                  >
+                    <Icon name={IconComp?.icon} size={19} />
                   </span>
-                  {!isDashboard && (
-                    <span className="flex w-full items-center justify-center gap-0.5">
-                      <span className="truncate">{IconComp?.label}</span>
-                      {isDropdown && (<Icon name="chevronDown" size={12} className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />)}
-                    </span>
-                  )}
+                  <span className="flex w-full items-center justify-center gap-0.5">
+                    <span className="truncate">{IconComp?.label}</span>
+                    {isDropdown && (
+                      <Icon
+                        name="chevronDown"
+                        size={12}
+                        className={`shrink-0 transition-transform duration-200 ${
+                          openKey === item.id ? 'rotate-180' : ''
+                        }`}
+                      />
+                    )}
+                  </span>
                 </button>
               </li>
             );
