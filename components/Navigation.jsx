@@ -18,6 +18,15 @@ const NAV_ITEMS = [
   { id: 'notes', label: 'Catatan', icon: 'note' },
 ];
 
+/* Urutan di bottom navbar: dashboard di tengah */
+const BOTTOM_NAV_ITEMS = [
+  { id: 'agenda' },
+  { id: 'expenses' },
+  { id: 'dashboard' },
+  { id: 'family' },
+  { id: 'notes' },
+];
+
 /* Tab yang membuka dropdown kategori + sumber jumlah itemnya. */
 const DROPDOWNS = {
   agenda: { items: AGENDA_CATEGORIES, ariaLabel: 'Kategori agenda' },
@@ -217,6 +226,7 @@ export function Navigation({
 
   const activeId = openKey && DROPDOWNS[openKey] ? openKey : activeSection;
   const notifUnread = notifications.filter((n) => !notifReadIds.includes(n.id)).length;
+  const bottomIndex = BOTTOM_NAV_ITEMS.findIndex((item) => item.id === activeSection);
 
   const handleNotification = (item) => {
     closeMenu();
@@ -330,28 +340,29 @@ export function Navigation({
         </div>
       </header>
 
-      {/* Indeks tab aktif untuk indikator geser di bottom nav */}
-      const activeIndex = NAV_ITEMS.findIndex((item) => item.id === activeSection);
-
       {/* Bar bawah: mobile & tablet (dirapikan max-w-md agar tidak melar) */}
       <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/85 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-xl lg:hidden">
         {/* Tinggi dikunci 56px agar banner install bisa diposisikan tepat di atasnya */}
         <ul className="relative mx-auto flex h-[68px] max-w-md items-stretch px-2 lg:max-w-6xl">
           {/* Indikator geser: satu elemen, bergerak via transform saat tab berubah */}
-          <span aria-hidden="true" className="pointer-events-none absolute top-0 h-0.5 rounded-full bg-brand shadow-glow transition-transform duration-slow ease-smooth" style={{ left: '0.375rem', width: 'calc((100% - 0.75rem) / 5)', transform: `translateX(${activeIndex * 100}%)` }} />
-          {NAV_ITEMS.map((item) => {
+          <span aria-hidden="true" className="pointer-events-none absolute top-0 h-0.5 rounded-full bg-brand shadow-glow transition-transform duration-slow ease-smooth" style={{ left: '0.375rem', width: 'calc((100% - 0.75rem) / 5)', transform: `translateX(${bottomIndex * 100}%)` }} />
+          {BOTTOM_NAV_ITEMS.map((item) => {
+            const isDashboard = item.id === 'dashboard';
             const isDropdown = !!DROPDOWNS[item.id];
             const active = activeSection === item.id || (isDropdown && openKey === item.id);
+            const IconComp = NAV_ITEMS.find((n) => n.id === item.id);
             return (
               <li key={item.id} className="min-w-0 flex-1">
-                <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${active ? 'text-brandfg' : 'text-mutedfg'}`}>
-                  <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint' : ''}`}>
-                    <Icon name={item.icon} size={19} />
+                <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${active ? (isDashboard ? 'text-brandfg' : 'bg-brand/10 text-brandfg') : 'text-mutedfg'} ${isDashboard ? 'rounded-xl bg-brandtint' : ''}`}>
+                  <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint' : ''} ${isDashboard ? 'h-12 w-12 rounded-xl bg-brand' : ''}`}>
+                    {isDashboard ? <img src="/brand/logo-mark-square.png" alt="Dashboard" className="h-6 w-6 object-contain" /> : <Icon name={IconComp?.icon} size={19} />}
                   </span>
-                  <span className="flex w-full items-center justify-center gap-0.5">
-                    <span className="truncate">{item.label}</span>
-                    {isDropdown && (<Icon name="chevronDown" size={12} className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />)}
-                  </span>
+                  {!isDashboard && (
+                    <span className="flex w-full items-center justify-center gap-0.5">
+                      <span className="truncate">{IconComp?.label}</span>
+                      {isDropdown && (<Icon name="chevronDown" size={12} className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />)}
+                    </span>
+                  )}
                 </button>
               </li>
             );
