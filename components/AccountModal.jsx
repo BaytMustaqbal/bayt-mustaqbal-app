@@ -89,6 +89,7 @@ export function AccountModal({
   onSwitchUser,
   onLogout,
   onSave,
+  onRegister,
   theme = 'system',
   onThemeChange,
 }) {
@@ -105,21 +106,6 @@ export function AccountModal({
 
   /* ---- Register akun baru (master only) ---- */
   const isMaster = user?.username === MASTER_USER;
-  // Level Orangtua: hanya 1 Suami & 1 Istri — opsi di-disable kalau sudah terpakai.
-  // `users` membawa `role` = family_role akun tersebut (dari App.jsx buildDataBundle).
-  const takenRoles = (users || []).filter((u) => u.id !== user?.id).map((u) => u.role);
-  const suamiTaken = takenRoles.includes('suami');
-  const istriTaken = takenRoles.includes('istri');
-  const [regUsername, setRegUsername] = useState('');
-  const [regNama, setRegNama] = useState('');
-  const [regNickname, setRegNickname] = useState('');
-  const [regFamilyRole, setRegFamilyRole] = useState('anak');
-  const [regBirthDate, setRegBirthDate] = useState('');
-  const [regGenerasi, setRegGenerasi] = useState('orangtua');
-  const [regPassword, setRegPassword] = useState('');
-  const [regPassword2, setRegPassword2] = useState('');
-  const [regErrors, setRegErrors] = useState({});
-  const [regSuccess, setRegSuccess] = useState('');
 
   /* ---- Profil sendiri: panggilan + tanggal lahir ---- */
   const [profileNickname, setProfileNickname] = useState('');
@@ -157,46 +143,6 @@ export function AccountModal({
     }
   };
 
-  const validateRegister = () => {
-    const errs = {};
-    const norm = regUsername.trim().toLowerCase();
-    if (!norm) errs.username = 'Username wajib diisi';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(norm)) errs.username = 'Username harus berupa alamat email (mis. nama@email.com)';
-    if (!regNama.trim()) errs.nama = 'Nama wajib diisi';
-    else if (regNama.trim().length < 2) errs.nama = 'Nama minimal 2 karakter';
-    if (!regPassword) errs.password = 'Password wajib diisi';
-    else if (regPassword.length < 6) errs.password = 'Password minimal 6 karakter';
-    else if (regPassword !== regPassword2) errs.password2 = 'Ulangi password tidak sama';
-    return errs;
-  };
-
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    const errs = validateRegister();
-    if (Object.keys(errs).length) {
-      setRegErrors(errs);
-      setRegSuccess('');
-      return;
-    }
-    setRegErrors({});
-    try {
-      const result = await auth.register(regUsername.trim().toLowerCase(), regPassword, regNama.trim(), regFamilyRole, regGenerasi, regBirthDate || null, regNickname.trim() || null);
-      setRegSuccess(`Akun "${result.username}" (${result.nama}) berhasil didaftarkan!`);
-      onSaved?.(); // refresh daftar anggota (tree ikut terbaru)
-      setRegUsername('');
-      setRegNama('');
-      setRegNickname('');
-      setRegFamilyRole('anak');
-      setRegBirthDate('');
-      setRegGenerasi('anak');
-      setRegPassword('');
-      setRegPassword2('');
-    } catch (err) {
-      setRegErrors({ _submit: err.message });
-      setRegSuccess('');
-    }
-  };
-
   const fieldRefs = useRef({});
   const fileRef = useRef(null);
   const titleId = useId();
@@ -222,16 +168,6 @@ export function AccountModal({
     setNotice('');
     // Reset form daftar akun supaya tidak ada banner/field basi dari sesi sebelumnya.
     // Default selalu berpasangan konsisten: status 'anak' ↔ posisi 'anak'.
-    setRegUsername('');
-    setRegNama('');
-    setRegNickname('');
-    setRegBirthDate('');
-    setRegFamilyRole(initialGenerasi === 'orangtua' ? 'suami' : 'anak');
-    setRegGenerasi(initialGenerasi || 'anak');
-    setRegPassword('');
-    setRegPassword2('');
-    setRegErrors({});
-    setRegSuccess('');
     setProfileSaved('');
     const t = setTimeout(() => fieldRefs.current.name?.focus(), 80);
     return () => clearTimeout(t);
@@ -560,16 +496,6 @@ export function AccountModal({
             </div>
           )}
 
-          {/* Kejujuran purwarupa: password belum diverifikasi siapa pun */}
-          <p className="mt-2.5 flex items-start gap-2 rounded-xl border border-line bg-canvas px-3 py-2.5 text-[11px] leading-relaxed text-mutedfg">
-            <span className="mt-0.5 shrink-0 text-accent" aria-hidden="true">
-              <Icon name="alertTriangle" size={14} />
-            </span>
-            <span>
-              Purwarupa: password hanya <strong className="font-semibold text-ink">disimpan di perangkat ini</strong> dan
-              belum diverifikasi server. Jangan pakai password asli.
-            </span>
-          </p>
         </div>
 
         {/* ---------- Tampilan (tema) ----------
@@ -611,177 +537,17 @@ export function AccountModal({
               <div className="h-px flex-1 bg-line" />
             </div>
 
-            {regSuccess && (
-              <div className="rounded-xl border border-green/30 bg-green/10 px-3.5 py-2.5 text-xs text-green">
-                {regSuccess}
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="reg-username" className="mb-1 block text-xs font-semibold text-mutedfg">
-                Username
-              </label>
-              <input
-                id="reg-username"
-                type="text"
-                value={regUsername}
-                onChange={(e) => { setRegUsername(e.target.value); setRegErrors((p) => ({ ...p, username: undefined, _submit: undefined })); }}
-                placeholder="mis. keluarga@email.com"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                aria-invalid={!!regErrors.username}
-                className={inputCls}
-              />
-              {regErrors.username && (
-                <p className="mt-1 text-xs font-medium text-danger">{regErrors.username}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="reg-nama" className="mb-1 block text-xs font-semibold text-mutedfg">
-                Nama lengkap / panggilan
-              </label>
-              <input
-                id="reg-nama"
-                type="text"
-                value={regNama}
-                onChange={(e) => { setRegNama(e.target.value); setRegErrors((p) => ({ ...p, nama: undefined, _submit: undefined })); }}
-                placeholder="mis. Istri Kakang"
-                className={inputCls}
-              />
-              {regErrors.nama && (
-                <p className="mt-1 text-xs font-medium text-danger">{regErrors.nama}</p>
-              )}
-            </div>
-
-            {/* Nama panggilan (opsional) — tampil sebagai nama utama di silsilah */}
-            <div>
-              <label htmlFor="reg-nickname" className="mb-1 block text-xs font-semibold text-mutedfg">
-                Nama panggilan (opsional)
-              </label>
-              <input
-                id="reg-nickname"
-                type="text"
-                value={regNickname}
-                onChange={(e) => setRegNickname(e.target.value)}
-                placeholder="mis. Eki"
-                className={inputCls}
-              />
-            </div>
-
-            {/* Tanggal lahir (opsional) — tampil di kotak silsilah */}
-            <div>
-              <label htmlFor="reg-birth-date" className="mb-1 block text-xs font-semibold text-mutedfg">
-                Tanggal lahir (opsional)
-              </label>
-              <input
-                id="reg-birth-date"
-                type="date"
-                value={regBirthDate}
-                onChange={(e) => setRegBirthDate(e.target.value)}
-                className={`${inputCls} min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
-              />
-            </div>
-
-            {/* Status keluarga — menentukan tampil sebagai apa di halaman Keluarga */}
-            <div>
-              <label htmlFor="reg-family-role" className="mb-1 block text-xs font-semibold text-mutedfg">
-                Status keluarga
-              </label>
-              <select
-                id="reg-family-role"
-                value={regFamilyRole}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setRegFamilyRole(v);
-                  // Samakan default posisi silsilah dengan status keluarga supaya
-                  // daftar akun tanpa sentuh dropdown tidak mendarat di level salah.
-                  if (v === 'anak' && regGenerasi === 'orangtua') setRegGenerasi('anak');
-                  if (v !== 'anak' && regGenerasi === 'anak') setRegGenerasi('orangtua');
-                }}
-                className={`${inputCls} min-h-[48px] w-full appearance-none rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
-              >
-                <option value="suami" disabled={suamiTaken}>Suami / Ayah{suamiTaken ? ' — sudah ada' : ''}</option>
-                <option value="istri" disabled={istriTaken}>Istri / Ibu{istriTaken ? ' — sudah ada' : ''}</option>
-                <option value="anak">Anak</option>
-                <option value="lainnya">Lainnya</option>
-              </select>
-            </div>
-
-            {/* Posisi dalam silsilah — level di diagram FamilyTree */}
-            <div>
-              <label htmlFor="reg-generasi" className="mb-1 block text-xs font-semibold text-mutedfg">
-                Posisi dalam silsilah
-              </label>
-              <select
-                id="reg-generasi"
-                value={regGenerasi}
-                onChange={(e) => setRegGenerasi(e.target.value)}
-                className={`${inputCls} min-h-[48px] w-full appearance-none rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
-              >
-                <option value="orangtua">Orangtua</option>
-                <option value="anak">Anak</option>
-                <option value="cucu">Cucu</option>
-              </select>
-            </div>
-
-            <div className="relative">
-              <label htmlFor="reg-password" className="mb-1 block text-xs font-semibold text-mutedfg">
-                Password
-              </label>
-              <input
-                id="reg-password"
-                type={showPassword ? 'text' : 'password'}
-                value={regPassword}
-                onChange={(e) => { setRegPassword(e.target.value); setRegErrors((p) => ({ ...p, password: undefined, password2: undefined, _submit: undefined })); }}
-                placeholder="Minimal 6 karakter"
-                autoComplete="new-password"
-                aria-invalid={!!regErrors.password}
-                className={`${inputCls} pr-12`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
-                aria-pressed={showPassword}
-                className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-mutedfg transition-colors hover:text-brandfg"
-              >
-                <Icon name={showPassword ? 'eyeOff' : 'eye'} size={16} />
-              </button>
-            </div>
-
-            <div>
-              <label htmlFor="reg-password2" className="mb-1 block text-xs font-semibold text-mutedfg">
-                Ulangi password
-              </label>
-              <input
-                id="reg-password2"
-                type={showPassword ? 'text' : 'password'}
-                value={regPassword2}
-                onChange={(e) => setRegPassword2(e.target.value)}
-                placeholder="Ketik ulang password"
-                autoComplete="new-password"
-                aria-invalid={!!regErrors.password2}
-                className={inputCls}
-              />
-              {regErrors.password2 && (
-                <p className="mt-1 text-xs font-medium text-danger">{regErrors.password2}</p>
-              )}
-            </div>
-
-            {regErrors._submit && (
-              <p className="text-xs font-medium text-danger">{regErrors._submit}</p>
-            )}
-
             <button
               type="button"
-              onClick={handleRegister}
+              onClick={onRegister}
               className={`${CTA_CLASS} min-h-[44px] w-full text-sm font-semibold`}
             >
-              <Icon name="plus" size={15} />
-              Daftar
+              <Icon name="userPlus" size={15} />
+              Daftar Akun Baru
             </button>
+            <p className="text-xs text-mutedfx">
+              Hanya akun master yang dapat mendaftarkan akun baru.
+            </p>
           </div>
         )}
 
