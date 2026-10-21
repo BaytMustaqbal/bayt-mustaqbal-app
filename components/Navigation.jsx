@@ -290,6 +290,7 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
         <ul className="relative mx-auto flex h-[68px] max-w-md items-stretch px-2 lg:max-w-6xl">
           {NAV_ITEMS.filter((i) => i.id === 'agenda' || i.id === 'expenses').map((item) => {
             const active = activeSection === item.id || openKey === item.id;
+            const isDropdown = !!DROPDOWNS[item.id];
             return (
               <li key={item.id} className="min-w-0 flex-1">
                 <button
@@ -327,6 +328,7 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
 
           {NAV_ITEMS.filter((i) => i.id === 'family' || i.id === 'notes').map((item) => {
             const active = activeSection === item.id || openKey === item.id;
+            const isDropdown = !!DROPDOWNS[item.id];
             return (
               <li key={item.id} className="min-w-0 flex-1">
                 <button
