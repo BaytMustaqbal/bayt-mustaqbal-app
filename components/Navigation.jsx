@@ -485,9 +485,9 @@ export function Navigation({
               aria-current={activeSection === 'dashboard' ? 'page' : undefined}
               className={`absolute left-1/2 -top-4 grid h-14 w-14 -translate-x-1/2 place-items-center overflow-hidden rounded-full bg-white shadow-glow ring-4 ring-canvas transition-transform active:scale-95 ${activeSection === 'dashboard' ? 'outline outline-2 outline-offset-2 outline-brand/60' : ''}`}
             >
-              {/* Logo app sebagai tombol Dashboard — background putih supaya kontras
-                  di tema gelap & terang (logo sendiri berwarna gelap/biru) */}
-              <img src="/icons/icon-128.png" alt="Bayt Mustaqbal" className="h-12 w-12 object-contain" />
+              {/* Logo app (versi ikon saja, tanpa teks) sebagai tombol Dashboard —
+                  background putih supaya kontras di tema gelap & terang */}
+              <img src="/icons/icon-mark.png" alt="Bayt Mustaqbal" className="h-12 w-12 object-contain" />
               <span className="sr-only">Dashboard</span>
             </button>
             <span
