@@ -483,7 +483,7 @@ export function Navigation({
               type="button"
               onClick={() => handleSection('dashboard')}
               aria-current={activeSection === 'dashboard' ? 'page' : undefined}
-              className={`absolute left-1/2 -top-5 grid h-[60px] w-[60px] -translate-x-1/2 place-items-center overflow-hidden rounded-full bg-[#0A192F] shadow-glow ring-4 ring-white/10 transition-transform active:scale-95 ${activeSection === 'dashboard' ? 'outline outline-2 outline-offset-2 outline-brand/60' : ''}`}
+              className={`absolute left-1/2 -top-5 grid h-[60px] w-[60px] -translate-x-1/2 place-items-center overflow-hidden rounded-xl bg-[#0A192F] shadow-glow ring-4 ring-white/10 transition-transform active:scale-95 ${activeSection === 'dashboard' ? 'outline outline-2 outline-offset-2 outline-brand/60' : ''}`}
             >
               {/* Logo app (versi ikon persegi, tanpa teks). Background tombol memakai
                   warna latar logo (#0A192F) supaya nyatu — aset brand tak di-recolor.
