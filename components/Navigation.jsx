@@ -48,7 +48,10 @@ function CategoryMenu({ items, data, activeId, closing, menuId, onSelect, ariaLa
             onClick={() => onSelect(cat.id)}
             className={`drop-menu__item flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors ${active ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'}`}
           >
-            <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${active ? 'bg-brand/15' : 'bg-muted'}`} aria-hidden="true">
+            <span
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${active ? 'bg-brand/15' : 'bg-muted'}`}
+              aria-hidden="true"
+            >
               <Icon name={cat.icon} size={16} />
             </span>
             <span className="min-w-0 flex-1 truncate font-medium">{cat.label}</span>
@@ -88,7 +91,13 @@ function NotificationMenu({ items, readIds, closing, onSelect, onMarkAll }) {
             const unread = !readIds.includes(item.id);
             return (
               <li key={item.id}>
-                <button type="button" data-notif-item="" style={{ '--i': index }} onClick={() => onSelect(item)} className={`drop-menu__item flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition-colors ${unread ? '' : 'opacity-70'}`}>
+                <button
+                  type="button"
+                  data-notif-item=""
+                  style={{ '--i': index }}
+                  onClick={() => onSelect(item)}
+                  className={`drop-menu__item flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition-colors hover:bg-muted ${unread ? '' : 'opacity-70'}`}
+                >
                   <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl ${NOTIF_TONES[item.tone] || NOTIF_TONES.cyan}`} aria-hidden="true">
                     <Icon name={item.icon} size={17} />
                   </span>
@@ -96,7 +105,9 @@ function NotificationMenu({ items, readIds, closing, onSelect, onMarkAll }) {
                     <span className="block text-sm font-semibold leading-snug text-ink">{item.title}</span>
                     <span className="mt-0.5 block text-xs leading-snug text-mutedfg">{item.message}</span>
                   </span>
-                  {unread && <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-brand shadow-glow" aria-hidden="true" />}
+                  {unread && (
+                    <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-brand shadow-glow" aria-hidden="true" />
+                  )}
                 </button>
               </li>
             );
@@ -115,7 +126,28 @@ function NotificationMenu({ items, readIds, closing, onSelect, onMarkAll }) {
   );
 }
 
-export function Navigation({ activeSection, onSectionChange, user, onOpenAccount, schedule, expenses, family, notes, agendaFilter, onAgendaSelect, financeFilter, onFinanceSelect, familyFilter, onFamilySelect, noteFilter, onNoteSelect, notifications = [], notifReadIds = [], onNotificationOpen, onMarkAllNotificationsRead }) {
+export function Navigation({
+  activeSection,
+  onSectionChange,
+  user,
+  onOpenAccount,
+  schedule,
+  expenses,
+  family,
+  notes,
+  agendaFilter,
+  onAgendaSelect,
+  financeFilter,
+  onFinanceSelect,
+  familyFilter,
+  onFamilySelect,
+  noteFilter,
+  onNoteSelect,
+  notifications = [],
+  notifReadIds = [],
+  onNotificationOpen,
+  onMarkAllNotificationsRead,
+}) {
   const [openKey, setOpenKey] = useState(null);
   const [closingKey, setClosingKey] = useState(null);
   const closeTimerRef = useRef(null);
@@ -142,6 +174,7 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
 
   const toggleMenu = (key, e) => (openKey === key ? closeMenu() : openMenu(key, e.currentTarget));
 
+  // Tutup saat: klik/ketuk di luar menu & trigger, atau tekan Escape
   useEffect(() => {
     if (!openKey) return undefined;
     const onPointerDown = (e) => {
@@ -173,6 +206,7 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
 
   useEffect(() => () => clearTimeout(closeTimerRef.current), []);
 
+  // Kepala naik elevasi begitu konten mulai bergulir di bawahnya
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 6);
@@ -198,12 +232,12 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
   };
 
   const handleSection = (id) => {
-    if (DROPDOWNS[id]) return;
+    if (DROPDOWNS[id]) return; // tab dropdown ditangani trigger-nya sendiri
     closeMenu();
     onSectionChange(id);
   };
 
-  const dropdownData = { agenda: schedule, expenses: expenses, family: family, notes: notes };
+  const dropdownData = { agenda: schedule, expenses, family, notes };
   const dropdownCount = { agenda: countByCategory, expenses: countByCategory, family: countByCategory, notes: countByNoteFilter };
   const activeFilter = (key) => (key === 'agenda' ? agendaFilter : key === 'expenses' ? financeFilter : key === 'family' ? familyFilter : noteFilter);
 
@@ -240,8 +274,11 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
                     >
                       <Icon name={item.icon} size={18} />
                       {item.label}
-                      {isDropdown && <Icon name="chevronDown" size={14} className={`transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />}
+                      {isDropdown && (
+                        <Icon name="chevronDown" size={14} className={`transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />
+                      )}
                     </button>
+
                     {isDropdown && openKey === item.id && (
                       <div ref={desktopMenuRef} className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2">
                         <CategoryMenu items={DROPDOWNS[item.id].items} data={dropdownData[item.id]} count={dropdownCount[item.id]} activeId={activeFilter(item.id)} closing={closingKey === item.id} menuId={`${item.id}-menu-desktop`} onSelect={(cat) => handleDropdownSelect(item.id, cat)} ariaLabel={DROPDOWNS[item.id].ariaLabel} />
@@ -254,6 +291,9 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
+            {/* Notifikasi (lonceng) — panel dibuka di bawah header, rata kanan.
+                Badge TIDAK dibacakan sebagai angka telanjang: hitungannya
+                masuk ke aria-label tombol + live region di bawah. */}
             <button
               type="button"
               onClick={(e) => toggleMenu('notif', e)}
@@ -272,12 +312,16 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
             </button>
             <span role="status" aria-atomic="true" className="sr-only">{notifUnread > 0 ? `${notifUnread} notifikasi belum dibaca` : 'Semua notifikasi sudah dibaca'}</span>
 
+            {/* Buka modal "Akun saya" (nama, username, avatar, password) */}
             <button type="button" id="account-trigger" onClick={onOpenAccount} aria-label={`Pengaturan akun (sekarang ${user.name})`} className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line px-1.5 text-sm transition-colors hover:bg-muted sm:px-3">
               <Avatar user={user} className="h-8 w-8 rounded-lg bg-brandtint text-xs font-bold text-brandfg" />
               <span className="hidden max-w-[7rem] truncate text-mutedfg sm:inline">{user.name}</span>
             </button>
           </div>
 
+          {/* Panel notifikasi: menempel di bawah header, rata kanan konten
+              (anchor-nya baris header, bukan tombol — supaya di layar 320px
+              panel tidak menjulur keluar tepi kiri). */}
           {openKey === 'notif' && (
             <div ref={notifMenuRef} className="absolute right-4 top-full z-50 mt-2 sm:right-6">
               <NotificationMenu items={notifications} readIds={notifReadIds} closing={closingKey === 'notif'} onSelect={handleNotification} onMarkAll={onMarkAllNotificationsRead} />
@@ -286,67 +330,24 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
         </div>
       </header>
 
+      {/* Bar bawah: mobile & tablet (dirapikan max-w-md agar tidak melar) */}
       <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/85 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-xl lg:hidden">
+        {/* Tinggi dikunci 56px agar banner install bisa diposisikan tepat di atasnya */}
         <ul className="relative mx-auto flex h-[68px] max-w-md items-stretch px-2 lg:max-w-6xl">
-          {NAV_ITEMS.filter((i) => i.id === 'agenda' || i.id === 'expenses').map((item) => {
-            const active = activeSection === item.id || openKey === item.id;
+          {/* Indikator geser: satu elemen, bergerak via transform saat tab berubah */}
+          <span aria-hidden="true" className="pointer-events-none absolute top-0 h-0.5 rounded-full bg-brand shadow-glow transition-transform duration-slow ease-smooth" style={{ left: '0.375rem', width: 'calc((100% - 0.75rem) / 5)', transform: `translateX(${activeIndex * 100}%)` }} />
+          {NAV_ITEMS.map((item) => {
             const isDropdown = !!DROPDOWNS[item.id];
+            const active = activeSection === item.id || (isDropdown && openKey === item.id);
             return (
               <li key={item.id} className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={(e) => toggleMenu(item.id, e)}
-                  aria-haspopup="menu"
-                  aria-expanded={active}
-                  aria-controls={`${item.id}-menu-mobile`}
-                  data-dropdown-trigger=""
-                  aria-current={active && openKey !== item.id ? 'page' : undefined}
-                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-all duration-150 ${active ? 'text-brandfg bg-brand/10' : 'text-mutedfg hover:bg-surface/5'}`}
-                >
-                  <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint shadow-glow' : ''}`}>
+                <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${active ? 'text-brandfg' : 'text-mutedfg'}`}>
+                  <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint' : ''}`}>
                     <Icon name={item.icon} size={19} />
                   </span>
                   <span className="flex w-full items-center justify-center gap-0.5">
                     <span className="truncate">{item.label}</span>
-                    {isDropdown && (
-                      <Icon name="chevronDown" size={12} className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />
-                    )}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-
-          <li className="relative w-20 shrink-0">
-            <span aria-hidden="true" className="absolute bottom-0 left-1/2 h-8 w-20 -translate-x-1/2 rounded-t-[2rem] bg-canvas" />
-            <button type="button" onClick={() => handleSection('dashboard')} aria-current={activeSection === 'dashboard' ? 'page' : undefined} className={`absolute left-1/2 -top-5 grid h-[60px] w-[60px] -translate-x-1/2 place-items-center overflow-hidden rounded-full bg-[#0A192F] shadow-glow ring-4 ring-white/10 transition-transform active:scale-95 hover:bg-white/5 ${activeSection === 'dashboard' ? 'outline outline-2 outline-offset-2 outline-brand/60' : ''}`}>
-              <img src="/icons/icon-mark-square.png" alt="" aria-hidden="true" className="h-auto w-[48px] max-w-none object-contain" />
-              <span className="sr-only">Dashboard</span>
-            </button>
-            <span className={`absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-semibold ${activeSection === 'dashboard' ? 'text-brandfg' : 'text-mutedfg'}`}>Dashboard</span>
-          </li>
-
-          {NAV_ITEMS.filter((i) => i.id === 'family' || i.id === 'notes').map((item) => {
-            const active = activeSection === item.id || openKey === item.id;
-            const isDropdown = !!DROPDOWNS[item.id];
-            return (
-              <li key={item.id} className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={(e) => toggleMenu(item.id, e)}
-                  aria-haspopup="menu"
-                  aria-expanded={active}
-                  aria-controls={`${item.id}-menu-mobile`}
-                  data-dropdown-trigger=""
-                  aria-current={active && openKey !== item.id ? 'page' : undefined}
-                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-all duration-150 ${active ? 'text-brandfg bg-brand/10' : 'text-mutedfg hover:bg-surface/5'}`}
-                >
-                  <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint shadow-glow' : ''}`}>
-                    <Icon name={item.icon} size={19} />
-                  </span>
-                  <span className="flex w-full items-center justify-center gap-0.5">
-                    <span className="truncate">{item.label}</span>
-                    <Icon name="chevronDown" size={12} className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />
+                    {isDropdown && (<Icon name="chevronDown" size={12} className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />)}
                   </span>
                 </button>
               </li>
@@ -354,6 +355,8 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
           })}
         </ul>
 
+        {/* Menu kategori aktif: menggantung di atas tab bar (hanya satu terbuka).
+            Panel notifikasi tidak di sini — ia menempel di header. */}
         {DROPDOWNS[openKey] && (
           <div className="absolute bottom-full left-1/2 mb-3 -translate-x-1/2 lg:hidden">
             <CategoryMenu items={DROPDOWNS[openKey].items} data={dropdownData[openKey]} count={dropdownCount[openKey]} activeId={activeFilter(openKey)} closing={closingKey === openKey} menuId={`${openKey}-menu-mobile`} onSelect={(cat) => handleDropdownSelect(openKey, cat)} ariaLabel={DROPDOWNS[openKey].ariaLabel} />
