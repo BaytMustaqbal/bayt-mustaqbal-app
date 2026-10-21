@@ -37,7 +37,7 @@ export function SplashScreen({ onDone }) {
       <img
         src="/brand/logo.png"
         alt="Bayt Mustaqbal"
-        className="splash-logo h-24 w-24 object-contain sm:h-28 sm:w-28"
+        className="splash-logo h-32 w-32 object-contain sm:h-36 sm:w-36"
       />
       <div className="text-center">
         <p className="splash-text text-xl font-extrabold tracking-tight text-ink sm:text-2xl">
