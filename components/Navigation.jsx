@@ -483,12 +483,12 @@ export function Navigation({
               type="button"
               onClick={() => handleSection('dashboard')}
               aria-current={activeSection === 'dashboard' ? 'page' : undefined}
-              className={`absolute left-1/2 -top-4 grid h-14 w-14 -translate-x-1/2 place-items-center overflow-hidden rounded-full bg-[#0A192F] shadow-glow ring-4 ring-white/10 transition-transform active:scale-95 ${activeSection === 'dashboard' ? 'outline outline-2 outline-offset-2 outline-brand/60' : ''}`}
+              className={`absolute left-1/2 -top-5 grid h-[60px] w-[60px] -translate-x-1/2 place-items-center overflow-hidden rounded-full bg-[#0A192F] shadow-glow ring-4 ring-white/10 transition-transform active:scale-95 ${activeSection === 'dashboard' ? 'outline outline-2 outline-offset-2 outline-brand/60' : ''}`}
             >
               {/* Logo app (versi ikon saja, tanpa teks). Background tombol memakai
                   warna latar logo (#0A192F) supaya nyatu — aset brand tak di-recolor.
-                  Logo dekoratif: nama tombol dibacakan lewat sr-only di bawah. */}
-              <img src="/icons/icon-mark.png" alt="" aria-hidden="true" className="h-12 w-12 object-contain" />
+                  Lebar mark diatur agar mengisi lingkaran; tinggi ikut rasio aset. */}
+              <img src="/icons/icon-mark.png" alt="" aria-hidden="true" className="h-auto w-[54px] max-w-none object-contain" />
               <span className="sr-only">Dashboard</span>
             </button>
             <span
