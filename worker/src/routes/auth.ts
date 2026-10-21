@@ -6,9 +6,9 @@ export const authRoutes = new Hono<{ Bindings: Env }>();
 
 // POST /api/auth/register
 authRoutes.post('/register', async (c) => {
-  const { username, password, nama, family_role, generasi, birth_date } = await c.req.json() as {
+  const { username, password, nama, nickname, family_role, generasi, birth_date } = await c.req.json() as {
     username: string; password: string; nama: string;
-    family_role?: string; generasi?: string; birth_date?: string;
+    nickname?: string; family_role?: string; generasi?: string; birth_date?: string;
   };
   if (!username || !password || !nama) {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Field wajib: username, password, nama' } }, 400);
@@ -41,9 +41,10 @@ authRoutes.post('/register', async (c) => {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   try {
-    await c.env.DB.prepare('INSERT INTO users (id, username, password_hash, nama, role, family_role, generasi, birth_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, username, hash, nama, 'user', role, gen, birth, now, now).run();
-    return c.json({ ok: true, data: { id, username, nama, role: 'user', family_role: role, generasi: gen, birth_date: birth }, error: null });
+    const nick = typeof nickname === 'string' && nickname.trim() ? nickname.trim().slice(0, 40) : null;
+    await c.env.DB.prepare('INSERT INTO users (id, username, password_hash, nama, nickname, role, family_role, generasi, birth_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, username, hash, nama, nick, 'user', role, gen, birth, now, now).run();
+    return c.json({ ok: true, data: { id, username, nama, nickname: nick, role: 'user', family_role: role, generasi: gen, birth_date: birth }, error: null });
   } catch (e: any) {
     if (e.message.includes('UNIQUE')) {
       return c.json({ ok: false, data: null, error: { code: 'CONFLICT', message: 'Username sudah ada' } }, 409);
@@ -56,7 +57,7 @@ authRoutes.post('/register', async (c) => {
 // Master account disembunyikan (hanya untuk admin/register, bukan anggota).
 authRoutes.get('/users', async (c) => {
   const results = await c.env.DB.prepare(
-    "SELECT id, username, nama, family_role, generasi, birth_date, avatar_url, created_at FROM users WHERE void IS NULL AND username != 'baytmustaqbal@gmail.com' ORDER BY created_at ASC"
+    "SELECT id, username, nama, nickname, family_role, generasi, birth_date, avatar_url, created_at FROM users WHERE void IS NULL AND username != 'baytmustaqbal@gmail.com' ORDER BY created_at ASC"
   ).all();
   return c.json({ ok: true, data: results.results || [], error: null });
 });
@@ -78,7 +79,7 @@ authRoutes.post('/login', async (c) => {
   }
   const token = signToken({ userId: user.id, role: user.role }, c.env.JWT_SECRET);
   c.header('Set-Cookie', `token=${token}; HttpOnly; Secure; SameSite=Lax; Max-Age=604800; Path=/`);
-  return c.json({ ok: true, data: { token, user: { id: user.id, username: user.username, nama: user.nama, role: user.role, family_role: user.family_role || 'anak', generasi: user.generasi || 'orangtua', birth_date: user.birth_date || null, avatar_url: user.avatar_url || null } }, error: null });
+  return c.json({ ok: true, data: { token, user: { id: user.id, username: user.username, nama: user.nama, nickname: user.nickname || null, role: user.role, family_role: user.family_role || 'anak', generasi: user.generasi || 'orangtua', birth_date: user.birth_date || null, avatar_url: user.avatar_url || null } }, error: null });
 });
 
 // POST /api/auth/logout
@@ -90,7 +91,7 @@ authRoutes.post('/logout', (c) => {
 // GET /api/auth/me
 authRoutes.get('/me', async (c) => {
   const userId = c.get('userId');
-  const user = await c.env.DB.prepare('SELECT id, username, nama, avatar_url, role, family_role, generasi, birth_date FROM users WHERE id = ? AND void IS NULL')
+  const user = await c.env.DB.prepare('SELECT id, username, nama, nickname, avatar_url, role, family_role, generasi, birth_date FROM users WHERE id = ? AND void IS NULL')
     .bind(userId).first();
   if (!user) {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } }, 404);
@@ -101,9 +102,9 @@ authRoutes.get('/me', async (c) => {
 // PUT /api/auth/me — update profil sendiri (nama + tanggal lahir)
 authRoutes.put('/me', async (c) => {
   const userId = c.get('userId');
-  const { nama, birth_date, avatar_url } = await c.req.json() as { nama?: string; birth_date?: string | null; avatar_url?: string | null };
+  const { nama, nickname, birth_date, avatar_url } = await c.req.json() as { nama?: string; nickname?: string | null; birth_date?: string | null; avatar_url?: string | null };
 
-  const existing = await c.env.DB.prepare('SELECT id, nama, birth_date, avatar_url FROM users WHERE id = ? AND void IS NULL')
+  const existing = await c.env.DB.prepare('SELECT id, nama, nickname, birth_date, avatar_url FROM users WHERE id = ? AND void IS NULL')
     .bind(userId).first() as any;
   if (!existing) {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } }, 404);
@@ -111,6 +112,9 @@ authRoutes.put('/me', async (c) => {
 
   // Partial update: hanya field yang dikirim yang diubah (guard tipe: null/angka → pakai nilai lama)
   const newNama = (typeof nama === 'string' && nama.trim()) ? nama.trim() : existing.nama;
+  const newNick = nickname !== undefined
+    ? (typeof nickname === 'string' && nickname.trim() ? nickname.trim().slice(0, 40) : null)
+    : existing.nickname;
   const newBirth = birth_date !== undefined
     ? (birth_date && /^\d{4}-\d{2}-\d{2}$/.test(birth_date) ? birth_date : null)
     : existing.birth_date;
@@ -122,10 +126,10 @@ authRoutes.put('/me', async (c) => {
     else if (typeof avatar_url === 'string' && avatar_url.length <= 500_000) newAvatar = avatar_url || null;
   }
   const now = new Date().toISOString();
-  await c.env.DB.prepare('UPDATE users SET nama = ?, birth_date = ?, avatar_url = ?, updated_at = ? WHERE id = ? AND void IS NULL')
-    .bind(newNama, newBirth, newAvatar, now, userId).run();
+  await c.env.DB.prepare('UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, updated_at = ? WHERE id = ? AND void IS NULL')
+    .bind(newNama, newNick, newBirth, newAvatar, now, userId).run();
 
-  const user = await c.env.DB.prepare('SELECT id, username, nama, avatar_url, role, family_role, generasi, birth_date FROM users WHERE id = ? AND void IS NULL')
+  const user = await c.env.DB.prepare('SELECT id, username, nama, nickname, avatar_url, role, family_role, generasi, birth_date FROM users WHERE id = ? AND void IS NULL')
     .bind(userId).first();
   return c.json({ ok: true, data: user, error: null });
 });
