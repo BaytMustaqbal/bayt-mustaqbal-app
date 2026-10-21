@@ -301,7 +301,7 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
                   aria-controls={`${item.id}-menu-mobile`}
                   data-dropdown-trigger=""
                   aria-current={active && openKey !== item.id ? 'page' : undefined}
-                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-all duration-150 ${active ? 'text-brandfg ring-2 ring-brand ring-offset-2 ring-offset-canvas bg-brand/5 active:scale-95' : 'text-mutedfg hover:bg-surface/5 active:scale-95'}`}
+                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-all duration-150 ${active ? 'text-brandfg bg-brand/10' : 'text-mutedfg hover:bg-surface/5'}`}
                 >
                   <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint shadow-glow' : ''}`}>
                     <Icon name={item.icon} size={19} />
@@ -339,7 +339,7 @@ export function Navigation({ activeSection, onSectionChange, user, onOpenAccount
                   aria-controls={`${item.id}-menu-mobile`}
                   data-dropdown-trigger=""
                   aria-current={active && openKey !== item.id ? 'page' : undefined}
-                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-all duration-150 ${active ? 'text-brandfg ring-2 ring-brand ring-offset-2 ring-offset-canvas bg-brand/5 active:scale-95' : 'text-mutedfg hover:bg-surface/5 active:scale-95'}`}
+                  className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-all duration-150 ${active ? 'text-brandfg bg-brand/10' : 'text-mutedfg hover:bg-surface/5'}`}
                 >
                   <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint shadow-glow' : ''}`}>
                     <Icon name={item.icon} size={19} />
