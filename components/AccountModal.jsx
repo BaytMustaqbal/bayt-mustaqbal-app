@@ -112,6 +112,7 @@ export function AccountModal({
   const istriTaken = takenRoles.includes('istri');
   const [regUsername, setRegUsername] = useState('');
   const [regNama, setRegNama] = useState('');
+  const [regNickname, setRegNickname] = useState('');
   const [regFamilyRole, setRegFamilyRole] = useState('anak');
   const [regBirthDate, setRegBirthDate] = useState('');
   const [regGenerasi, setRegGenerasi] = useState('orangtua');
@@ -120,25 +121,33 @@ export function AccountModal({
   const [regErrors, setRegErrors] = useState({});
   const [regSuccess, setRegSuccess] = useState('');
 
-  /* ---- Profil sendiri: tanggal lahir ---- */
+  /* ---- Profil sendiri: panggilan + tanggal lahir ---- */
+  const [profileNickname, setProfileNickname] = useState('');
   const [profileBirthDate, setProfileBirthDate] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState('');
 
   // Preset posisi silsilah ditangani di efek reset modal (sumber tunggal, hindari race).
 
-  // Isi field tanggal lahir dari data user saat modal dibuka
+  // Isi field profil (panggilan + tanggal lahir) dari data user saat modal dibuka
   useEffect(() => {
-    if (open) setProfileBirthDate(user?.birthDate || '');
-  }, [open, user?.birthDate]);
+    if (open) {
+      setProfileNickname(user?.nickname || '');
+      setProfileBirthDate(user?.birthDate || '');
+    }
+  }, [open, user?.nickname, user?.birthDate]);
 
   // Simpan tanggal lahir profil sendiri (PUT /auth/me)
   const handleProfileSave = async () => {
     setProfileSaving(true);
     setProfileSaved('');
     try {
-      const result = await auth.updateProfile({ birthDate: profileBirthDate || null });
-      setProfileSaved('Tanggal lahir tersimpan.');
+      const result = await auth.updateProfile({
+        nama: user?.name,
+        nickname: profileNickname.trim() || null,
+        birthDate: profileBirthDate || null,
+      });
+      setProfileSaved('Profil tersimpan.');
       // Teruskan user terbaru supaya induk bisa update currentUser (hindari field basi)
       onSaved?.(result);
     } catch (err) {
@@ -171,11 +180,12 @@ export function AccountModal({
     }
     setRegErrors({});
     try {
-      const result = await auth.register(regUsername.trim().toLowerCase(), regPassword, regNama.trim(), regFamilyRole, regGenerasi, regBirthDate || null);
+      const result = await auth.register(regUsername.trim().toLowerCase(), regPassword, regNama.trim(), regFamilyRole, regGenerasi, regBirthDate || null, regNickname.trim() || null);
       setRegSuccess(`Akun "${result.username}" (${result.nama}) berhasil didaftarkan!`);
       onSaved?.(); // refresh daftar anggota (tree ikut terbaru)
       setRegUsername('');
       setRegNama('');
+      setRegNickname('');
       setRegFamilyRole('anak');
       setRegBirthDate('');
       setRegGenerasi('anak');
@@ -214,6 +224,7 @@ export function AccountModal({
     // Default selalu berpasangan konsisten: status 'anak' ↔ posisi 'anak'.
     setRegUsername('');
     setRegNama('');
+    setRegNickname('');
     setRegBirthDate('');
     setRegFamilyRole(initialGenerasi === 'orangtua' ? 'suami' : 'anak');
     setRegGenerasi(initialGenerasi || 'anak');
@@ -644,6 +655,21 @@ export function AccountModal({
               )}
             </div>
 
+            {/* Nama panggilan (opsional) — tampil sebagai nama utama di silsilah */}
+            <div>
+              <label htmlFor="reg-nickname" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Nama panggilan (opsional)
+              </label>
+              <input
+                id="reg-nickname"
+                type="text"
+                value={regNickname}
+                onChange={(e) => setRegNickname(e.target.value)}
+                placeholder="mis. Eki"
+                className={inputCls}
+              />
+            </div>
+
             {/* Tanggal lahir (opsional) — tampil di kotak silsilah */}
             <div>
               <label htmlFor="reg-birth-date" className="mb-1 block text-xs font-semibold text-mutedfg">
@@ -759,31 +785,51 @@ export function AccountModal({
           </div>
         )}
 
-        {/* ---------- Tanggal lahir (profil sendiri, simpan langsung ke server) ---------- */}
-        <div className="mt-4">
-          <label htmlFor="profile-birth-date" className="mb-1 block text-xs font-semibold text-mutedfg">
-            Tanggal lahir saya
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              id="profile-birth-date"
-              type="date"
-              value={profileBirthDate}
-              onChange={(e) => { setProfileBirthDate(e.target.value); setProfileSaved(''); }}
-              className={`${inputCls} min-h-[44px] flex-1 rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
-            />
-            <button
-              type="button"
-              onClick={handleProfileSave}
-              disabled={profileSaving}
-              className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl border border-line px-3 text-xs font-semibold text-mutedfg transition-colors hover:text-ink disabled:opacity-50"
-            >
-              {profileSaving ? <Icon name="loader" size={14} /> : <Icon name="check" size={14} />}
-              Simpan
-            </button>
+        {/* ---------- Nama panggilan + tanggal lahir (simpan langsung ke server) ---------- */}
+        <div className="mt-4 space-y-3">
+          <div>
+            <label htmlFor="profile-nickname" className="mb-1 block text-xs font-semibold text-mutedfg">
+              Nama panggilan
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="profile-nickname"
+                type="text"
+                value={profileNickname}
+                onChange={(e) => { setProfileNickname(e.target.value); setProfileSaved(''); }}
+                placeholder="mis. Eki"
+                className={`${inputCls} min-h-[44px] flex-1 rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
+              />
+            </div>
           </div>
+
+          <div>
+            <label htmlFor="profile-birth-date" className="mb-1 block text-xs font-semibold text-mutedfg">
+              Tanggal lahir saya
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="profile-birth-date"
+                type="date"
+                value={profileBirthDate}
+                onChange={(e) => { setProfileBirthDate(e.target.value); setProfileSaved(''); }}
+                className={`${inputCls} min-h-[44px] flex-1 rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand`}
+              />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleProfileSave}
+            disabled={profileSaving}
+            className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-line px-3 text-xs font-semibold text-mutedfg transition-colors hover:text-ink disabled:opacity-50"
+          >
+            {profileSaving ? <Icon name="loader" size={14} /> : <Icon name="check" size={14} />}
+            Simpan profil
+          </button>
+
           {profileSaved && (
-            <p className={`mt-1.5 text-xs font-medium ${profileSaved.startsWith('Gagal') ? 'text-danger' : 'text-green'}`}>
+            <p className={`text-xs font-medium ${profileSaved.startsWith('Gagal') ? 'text-danger' : 'text-green'}`}>
               {profileSaved}
             </p>
           )}

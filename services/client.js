@@ -86,7 +86,7 @@ export const auth = {
   me: async () => {
     return apiFetch('/auth/me');
   },
-  register: async (username, password, nama, familyRole = 'anak', generasi = 'orangtua', birthDate = null) => {
+  register: async (username, password, nama, familyRole = 'anak', generasi = 'orangtua', birthDate = null, nickname = null) => {
     return apiFetch('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
@@ -94,13 +94,15 @@ export const auth = {
         family_role: familyRole,
         generasi,
         birth_date: birthDate,
+        nickname,
       }),
     });
   },
-  // Update profil sendiri (nama, tanggal lahir, avatar) — PUT /auth/me
-  updateProfile: async ({ nama, birthDate, avatarUrl }) => {
+  // Update profil sendiri (nama, panggilan, tanggal lahir, avatar) — PUT /auth/me
+  updateProfile: async ({ nama, nickname, birthDate, avatarUrl }) => {
     const body = {};
     if (nama !== undefined) body.nama = nama;
+    if (nickname !== undefined) body.nickname = nickname;
     if (birthDate !== undefined) body.birth_date = birthDate;
     if (avatarUrl !== undefined) body.avatar_url = avatarUrl;
     return apiFetch('/auth/me', { method: 'PUT', body: JSON.stringify(body) });

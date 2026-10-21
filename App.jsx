@@ -434,9 +434,10 @@ const mapUsersToFamily = (users) =>
   (users || []).map((u) => ({
     id: u.id,
     name: u.nama,
+    nickname: u.nickname || null,
     email: u.username || null,
     role: FAMILY_ROLE_LABEL[u.family_role] || 'Anak',
-    initials: initialsOf(u.nama),
+    initials: initialsOf(u.nickname || u.nama),
     avatar: u.avatar_url || undefined,
     // Normalisasi generasi tak dikenal (mis. typo dari SQL manual) → 'orangtua'
     // supaya anggota tak "hilang" dari pohon.
@@ -556,7 +557,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const stored = getUser();
   const transformedUser = stored
-    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, avatar: stored.avatar || stored.avatar_url || null, initials: initialsOf(stored.nama || stored.name) }
+    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, nickname: stored.nickname || null, avatar: stored.avatar || stored.avatar_url || null, initials: initialsOf(stored.nickname || stored.nama || stored.name) }
     : null;
   const [currentUser, setCurrentUser] = useState(transformedUser);
   // Splash screen: tampil setiap app dibuka, lepas setelah fade-out.
@@ -806,9 +807,9 @@ export default function App() {
       }),
     });
     // Cache lokal (optimistic) supaya modal langsung terisi
-    storeUser({ id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, birth_date: currentUser.birthDate, avatar_url: patch.avatar });
+    storeUser({ id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, nickname: currentUser.nickname, birth_date: currentUser.birthDate, avatar_url: patch.avatar });
     // Simpan nama + avatar ke server (PUT /auth/me) supaya tampil di semua perangkat
-    auth.updateProfile({ nama: patch.name, avatarUrl: patch.avatar || null })
+    auth.updateProfile({ nama: patch.name, nickname: currentUser.nickname, avatarUrl: patch.avatar || null })
       .then((updated) => {
         setCurrentUser((prev) => (prev
           ? { ...prev, name: updated.nama, avatar: updated.avatar_url || null }
@@ -1154,12 +1155,13 @@ export default function App() {
       const merged = {
         ...currentUser,
         name: updatedUser.nama || currentUser.name,
+        nickname: updatedUser.nickname ?? currentUser.nickname ?? null,
         birthDate: updatedUser.birth_date ?? currentUser.birthDate,
       };
       setCurrentUser(merged);
       storeUser({
         id: merged.id, nama: merged.name, username: merged.username, role: merged.role,
-        family_role: merged.family_role, generasi: merged.generasi,
+        family_role: merged.family_role, generasi: merged.generasi, nickname: merged.nickname,
         birth_date: merged.birthDate, avatar_url: merged.avatar_url,
       });
     }
@@ -1275,8 +1277,9 @@ export default function App() {
       family_role: user.family_role || 'anak',
       generasi: user.generasi || 'orangtua',
       birthDate: user.birth_date || null,
+      nickname: user.nickname || null,
       avatar: user.avatar_url || null,
-      initials: initialsOf(user.nama),
+      initials: initialsOf(user.nickname || user.nama),
     };
     storeUser(frontendUser);
     setCurrentUser(frontendUser);

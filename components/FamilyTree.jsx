@@ -56,7 +56,10 @@ function MemberBox({ member, onSelect }) {
           : (member.initials || '?')}
       </span>
       <span className="min-w-0">
-        <span className="block truncate font-semibold text-ink">{member.name}</span>
+        <span className="block truncate font-semibold text-ink">{member.nickname || member.name}</span>
+        {member.nickname && member.nickname !== member.name && (
+          <span className="block truncate text-[11px] text-mutedfg">{member.name}</span>
+        )}
         <span className="mt-1 block">
           <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-mutedfg">
             {member.role}
@@ -67,6 +70,8 @@ function MemberBox({ member, onSelect }) {
 
       {open && (
         <span className="mt-1 w-full space-y-1 border-t border-line pt-2 text-left text-[11px] text-mutedfg">
+          <span className="block truncate">Nama: {member.name}</span>
+          {member.nickname && <span className="block truncate">Panggilan: {member.nickname}</span>}
           <span className="block truncate">Email: {member.email || '—'}</span>
           <span className="block">Status: {member.role} · Posisi: {LABEL_GENERASI[member.generasi] || 'Orangtua'}</span>
           <span className="block">Tanggal lahir: {birth || 'belum diisi'}</span>
