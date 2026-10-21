@@ -355,7 +355,7 @@ export function Navigation({
               <li key={item.id} className="min-w-0 flex-1">
                 <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${active ? (isDashboard ? 'text-brandfg' : 'bg-brand/10 text-brandfg') : 'text-mutedfg'} ${isDashboard ? 'rounded-xl bg-brandtint' : ''}`}>
                   <span className={`grid h-7 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp ${active ? 'bg-brandtint' : ''} ${isDashboard ? 'h-12 w-12 rounded-xl bg-brand' : ''}`}>
-                    {isDashboard ? <img src="/brand/logo-mark-square.png" alt="Dashboard" className="h-6 w-6 object-contain" /> : <Icon name={IconComp?.icon} size={19} />}
+                    {isDashboard ? <img src="/icons/icon-mark-square.png" alt="Dashboard" className="h-6 w-6 object-contain" /> : <Icon name={IconComp?.icon} size={19} />}
                   </span>
                   {!isDashboard && (
                     <span className="flex w-full items-center justify-center gap-0.5">
