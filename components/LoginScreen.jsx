@@ -5,44 +5,78 @@ import { auth } from '../services/client';
 
 /**
  * LoginScreen — ganti WelcomeGate.
- * Hanya login (username + password); registrasi dilakukan oleh Kakang via akun master di AccountModal.
+ * Hanya login (email + password); registrasi dilakukan oleh Kakang via akun master di AccountModal.
  *
  * Props:
  *   onLogin(user)  — dipanggil setelah login sukses (token sudah tersimpan)
  *   onReset        — reset data ke seed (opsional, untuk dev)
  */
+/* Cek cepat format email (cukup ketat untuk menangkap salah ketik;
+   aturan final tetap di backend). */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function LoginScreen({ onLogin, onReset, pushToast }) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  /* Naik setiap kali error muncul → memicu ulang animasi getar walau
+     pesan errornya sama (mis. salah password dua kali berturut-turut). */
+  const [errorTick, setErrorTick] = useState(0);
   const firstFieldRef = useRef(null);
+  const passwordRef = useRef(null);
+  const formRef = useRef(null);
 
-  // Fokus ke field username saat mount
+  // Fokus ke field email saat mount
   useEffect(() => {
     firstFieldRef.current?.focus();
   }, []);
 
+  // Getar form sekali setiap error baru. Kelas dilepas lalu dipasang ulang
+  // (dipaksa reflow) supaya animasi bisa berjalan berulang.
+  useEffect(() => {
+    if (!errorTick) return;
+    const el = formRef.current;
+    if (!el) return;
+    el.classList.remove('form-shake');
+    void el.offsetWidth;
+    el.classList.add('form-shake');
+  }, [errorTick]);
+
+  const fail = (msg) => {
+    setError(msg);
+    setErrorTick((t) => t + 1);
+    pushToast?.({ message: msg, duration: 4000, tone: 'danger' });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError('Username dan password wajib diisi.');
+    if (submitting) return;
+    if (!email.trim() || !password) {
+      fail('Email dan password wajib diisi.');
+      return;
+    }
+    // Cek format email di HP dulu — hemat round-trip ke server
+    if (!EMAIL_RE.test(email.trim())) {
+      fail('Format email belum benar.');
       return;
     }
     setSubmitting(true);
     setError('');
     try {
-      const data = await auth.login(username.trim(), password);
+      const data = await auth.login(email.trim(), password);
       onReset && localStorage.removeItem('bayt-mustaqbal-data-v2'); // bersih cache lama
       onLogin(data.user);
     } catch (err) {
-      const msg = err.message === 'UNAUTHORIZED'
-        ? 'Username atau password salah.'
-        : err.message === 'NETWORK_ERROR'
-        ? 'Tidak dapat menghubungkan ke server. Periksa koneksi.'
-        : err.message || 'Login gagal. Coba lagi.';
-      setError(msg);
-      pushToast?.({ message: msg, duration: 4000, tone: 'danger' });
+      if (err.message === 'UNAUTHORIZED') {
+        setPassword('');
+        fail('Email atau password salah.');
+        passwordRef.current?.focus();
+      } else if (err.message === 'NETWORK_ERROR') {
+        fail('Tidak dapat menghubungkan ke server. Periksa koneksi.');
+      } else {
+        fail(err.message || 'Login gagal. Coba lagi.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -68,24 +102,31 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
         </div>
 
         {/* Form login */}
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          noValidate
+          onAnimationEnd={() => formRef.current?.classList.remove('form-shake')}
+          className="space-y-4"
+        >
           <div>
-            <label htmlFor="login-username" className="mb-1 block text-xs font-semibold text-mutedfg">
-              Username
+            <label htmlFor="login-email" className="mb-1 block text-xs font-semibold text-mutedfg">
+              Email
             </label>
             <input
-              id="login-username"
+              id="login-email"
               ref={firstFieldRef}
-              type="text"
-              autoComplete="username"
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); setError(''); }}
-              placeholder="Username"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(''); }}
+              placeholder="email@contoh.com"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
               aria-invalid={!!error}
-              className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand"
+              className={`input-field min-h-[48px] w-full rounded-xl border bg-canvas px-3.5 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand ${error ? 'border-danger' : 'border-line'}`}
             />
           </div>
 
@@ -95,13 +136,14 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
             </label>
             <input
               id="login-password"
+              ref={passwordRef}
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(''); }}
               placeholder="••••••"
               aria-invalid={!!error}
-              className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand"
+              className={`input-field min-h-[48px] w-full rounded-xl border bg-canvas px-3.5 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand ${error ? 'border-danger' : 'border-line'}`}
             />
           </div>
 
@@ -117,13 +159,14 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
 
           <button
             type="submit"
-            disabled={submitting || !username || !password}
-            className={`inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-5 text-sm font-semibold text-white shadow-glow transition-transform text-base`}
+            disabled={submitting || !email || !password}
+            aria-busy={submitting}
+            className={`inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-5 text-base font-semibold text-white shadow-glow transition duration-fast ease-crisp ${submitting ? 'cursor-progress opacity-75' : 'active:scale-95 hover:brightness-110'}`}
           >
             {submitting ? (
               <>
-                <Icon name="loader" size={18} />
-                Masuk…
+                <Icon name="loader" size={18} className="animate-spin" />
+                Memeriksa…
               </>
             ) : (
               <>
