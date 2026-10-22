@@ -351,7 +351,7 @@ export function Navigation({
             const navItem = NAV_ITEMS.find((n) => n.id === item.id);
             return (
               <li key={item.id} className="min-w-0 flex-1">
-                <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition duration-fast ease-crisp ${isDashboard ? 'justify-end pb-2.5' : 'justify-center'} ${isDashboard ? (active ? 'text-brandfg' : 'text-mutedfg') : active || openKey === item.id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'} ${isDashboard ? '' : 'active:scale-95 active:bg-brand/10'}`}>
+                <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${isDashboard ? 'justify-end pb-2.5' : 'justify-center'} ${isDashboard ? (active ? 'text-brandfg' : 'text-mutedfg') : active || openKey === item.id ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}>
                   {isDashboard ? (
                     /* FAB tengah: lingkaran setengah di luar bar, ber-cincin warna
                        canvas supaya terbaca "meloncat" dari papan.
@@ -371,7 +371,14 @@ export function Navigation({
                       />
                     </span>
                   ) : (
-                    <span className="grid h-7 w-11 shrink-0 place-items-center">
+                    /* Ikon 4 tombol — gerak khas (beda dari FAB Dashboard):
+                       tekan : ikon naik 3px + membesar 8% + halo glow, masuk 120ms
+                       lepas : kembali melenting halus 320ms (easing spring)
+                       hover : senyap — ikon naik 1px + opacity 0.9
+                       aktif : blob tint permanen di belakang ikon (penanda tab) */
+                    <span
+                      className={`grid h-8 w-11 shrink-0 place-items-center rounded-full transition duration-slow ease-spring hover:-translate-y-[1px] hover:opacity-90 active:-translate-y-[3px] active:scale-[1.08] active:shadow-glow active:duration-fast active:ease-crisp ${active ? 'bg-brandtint' : ''}`}
+                    >
                       <Icon name={navItem?.icon} size={19} />
                     </span>
                   )}
