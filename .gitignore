@@ -19,3 +19,6 @@ Thumbs.db
 
 # Scratch workspace alur kerja agent (ledger/brief) — bukan bagian aplikasi
 .superpowers/
+
+# Backend Cloudflare Worker — REPO & deploy terpisah (api.baytmustaqbal.my.id)
+worker/
