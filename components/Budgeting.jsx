@@ -43,6 +43,15 @@ export function Budgeting({
   const alokasi = useMemo(() => allocate(budget.income, budget.ratios), [budget]);
   const ringkas = useMemo(() => summarize(data.expenses, budget), [data.expenses, budget]);
 
+  // Pemasukan NYATA tercatat bulan berjalan vs angka rencana di atas.
+  const incomeActual = useMemo(() => {
+    const now = new Date();
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return (data.income || [])
+      .filter((i) => (i.date || '').startsWith(monthPrefix))
+      .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+  }, [data.income]);
+
   const setField = (key, value) => setDraft((prev) => ({ ...prev, [key]: value }));
 
   const openEditor = () => {
@@ -110,6 +119,22 @@ export function Budgeting({
               Dibagi {budget.ratios.needs}% Kebutuhan · {budget.ratios.wants}% Keinginan ·{' '}
               {budget.ratios.savings}% Tabungan &amp; Utang
             </p>
+            {incomeActual > 0 && (
+              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs leading-snug text-mutedfg sm:text-sm">
+                <Icon
+                  name={incomeActual >= budget.income ? 'circleCheck' : 'alertTriangle'}
+                  size={14}
+                  className={incomeActual >= budget.income ? 'shrink-0 text-success' : 'shrink-0 text-toneamberfg'}
+                />
+                <span>
+                  Tercatat bulan ini{' '}
+                  <span className="font-mono font-semibold text-ink">{formatCurrency(incomeActual)}</span>
+                  {incomeActual >= budget.income
+                    ? ' (sesuai atau di atas rencana)'
+                    : ` (di bawah rencana ${formatCurrency(budget.income)})`}
+                </span>
+              </p>
+            )}
           </div>
           <button
             type="button"

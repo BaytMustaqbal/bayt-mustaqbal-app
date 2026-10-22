@@ -9,7 +9,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { AccountModal } from './components/AccountModal';
-import { Card, SectionHeader, EmptyState, ExpenseCard, FamilyList, initialsOf } from './components/ui';
+import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, FamilyList, initialsOf } from './components/ui';
 import { FamilyCalendar } from './components/Calendar';
 import { Timeline } from './components/Timeline';
 import { FormSheet } from './components/FormSheet';
@@ -20,6 +20,7 @@ import {
   AGENDA_CATEGORIES,
   BUCKETS,
   FINANCE_CATEGORIES,
+  INCOME_CATEGORIES,
   FAMILY_CATEGORIES,
   TASK_FILTERS,
   NOTE_CATEGORIES,
@@ -82,9 +83,19 @@ const computeWeekly = (expenses) => {
   }));
 };
 
-// Donut chart: agregat pengeluaran per kategori
-const computeCategories = (expenses) => {
-  const COLOR_MAP = {
+// Donut chart: agregat per kategori. Dipakai pengeluaran (default) & pemasukan
+// (lewat parameter daftar kategori + peta warna).
+const INCOME_COLOR_MAP = {
+  gaji: 'rgb(var(--chart2))',
+  bonus: 'rgb(var(--chart5))',
+  sidejob: 'rgb(var(--chart3))',
+  investasi: 'rgb(var(--chart6))',
+  pemberian: 'rgb(var(--chart4))',
+  lainnya: 'rgb(var(--chart9))',
+};
+
+const computeCategories = (items, categories = FINANCE_CATEGORIES, colorMap) => {
+  const COLOR_MAP = colorMap || {
     rumah: 'rgb(var(--chart8))',
     hiburan: 'rgb(var(--chart7))',
     belanja: 'rgb(var(--chart1))',
@@ -96,12 +107,12 @@ const computeCategories = (expenses) => {
     kesehatan: 'rgb(var(--chart6))',
   };
   const totals = {};
-  expenses.forEach((e) => {
+  items.forEach((e) => {
     const cat = e.category || 'lainnya';
     totals[cat] = (totals[cat] || 0) + (Number(e.amount) || 0);
   });
   const LABEL_MAP = {};
-  FINANCE_CATEGORIES.forEach((c) => { if (c.id !== 'semua') LABEL_MAP[c.id] = c.label; });
+  categories.forEach((c) => { if (c.id !== 'semua') LABEL_MAP[c.id] = c.label; });
   return Object.entries(totals)
     .map(([cat]) => ({
       label: LABEL_MAP[cat] || cat,
@@ -118,6 +129,7 @@ const monthName = (d) => new Intl.DateTimeFormat('id-ID', { month: 'long', year:
 const buildDataBundle = (apiData, currentUser) => {
   const budget = apiData?.budget || {};
   const expenses = apiData?.expenses || [];
+  const income = apiData?.income || [];
   // Anggota keluarga = semua akun aktif dari backend (master sudah disembunyikan backend).
   // Fallback ke currentUser saja bila daftar users tidak tersedia (offline).
   const apiUsers = apiData?.users || [];
@@ -134,6 +146,7 @@ const buildDataBundle = (apiData, currentUser) => {
     familyDocuments: LOCAL_SEED.familyDocuments,
     familyContacts: LOCAL_SEED.familyContacts,
     expenses,
+    income,
     tasks: LOCAL_SEED.tasks,
     notes: apiData?.notes || [],
     budget: {
@@ -149,6 +162,8 @@ const buildDataBundle = (apiData, currentUser) => {
     monthlyTrend: computeMonthlyTrend(expenses),
     weekly: computeWeekly(expenses),
     categories: computeCategories(expenses),
+    incomeTrend: computeMonthlyTrend(income),
+    incomeCategories: computeCategories(income, INCOME_CATEGORIES, INCOME_COLOR_MAP),
   };
 };
 
@@ -203,6 +218,16 @@ const SHEET_CONFIG = {
           { value: 'savings', label: 'Tabungan & Utang' },
         ],
       },
+    ],
+  },
+  income: {
+    title: 'Tambah Pemasukan',
+    icon: 'wallet',
+    fields: [
+      { key: 'description', label: 'Sumber / Keterangan', type: 'text', required: true, placeholder: 'contoh: Gaji bulan ini, Projek desain' },
+      { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 8000000' },
+      { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
+      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(INCOME_CATEGORIES)[0].value, options: catOptions(INCOME_CATEGORIES) },
     ],
   },
   tasks: {
@@ -278,8 +303,8 @@ const SHEET_CONFIG = {
 
 // ---- Pemetaan section → kunci array data & label Indonesia ----------------
 // Dipakai seragam oleh tambah / ubah / hapus agar App tidak penuh if-else.
-const SECTION_KEY = { agenda: 'schedule', expenses: 'expenses', tasks: 'tasks', notes: 'notes' };
-const SECTION_LABEL = { agenda: 'Agenda', expenses: 'Pengeluaran', tasks: 'Tugas', notes: 'Catatan', family: 'Keluarga' };
+const SECTION_KEY = { agenda: 'schedule', expenses: 'expenses', income: 'income', tasks: 'tasks', notes: 'notes' };
+const SECTION_LABEL = { agenda: 'Agenda', expenses: 'Pengeluaran', income: 'Pemasukan', tasks: 'Tugas', notes: 'Catatan', family: 'Keluarga' };
 const sectionItemLabel = (item) => item.title || item.description || item.name || 'Item';
 
 // Nilai awal form ubah: bentuknya persis seperti `values` yang dikirim FormSheet
@@ -290,6 +315,9 @@ const toFormValues = (section, item) => {
   }
   if (section === 'expenses') {
     return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category, bucket: item.bucket || 'auto' };
+  }
+  if (section === 'income') {
+    return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category };
   }
   if (section === 'tasks') {
     return { title: item.title, dueDate: item.dueDate, priority: item.priority, assignedTo: item.assignedTo };
@@ -393,11 +421,12 @@ const buildMergedData = (apiData, currentUser) => {
   return bundle;
 };
 
-// Fetch all API data (schedule, expenses, notes, budget settings)
+// Fetch all API data (schedule, expenses, income, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, notes, settings, users] = await Promise.all([
+  const [schedule, expenses, income, notes, settings, users] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
+    txn.fetchIncome().catch(() => []),
     notesApi.fetch(null).catch(() => []),
     settingsApi.fetchAll().catch(() => []),
     auth.users().catch(() => []),
@@ -423,7 +452,7 @@ const fetchApiData = async () => {
     try { budget.pos = JSON.parse(budgetSettings.budget_pos); } catch {}
   }
 
-  return { schedule, expenses, notes, budget, users };
+  return { schedule, expenses, income, notes, budget, users };
 };
 
 /* Label status keluarga dari kolom family_role backend */
@@ -572,6 +601,7 @@ export default function App() {
   const [agendaMode, setAgendaMode] = useState('jadwal');
   // Filter kategori pengeluaran (default: semua) — pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
+  const [incomeFilter, setIncomeFilter] = useState('semua');
   // Sub-tampilan Keuangan: daftar pengeluaran | halaman Anggaran (50/30/20)
   const [financeMode, setFinanceMode] = useState('pengeluaran');
   // Filter bagian keluarga (default: semua) — pola sama dengan agenda & keuangan
@@ -833,6 +863,12 @@ export default function App() {
     return { trend, weekly, categories };
   };
 
+  // Helper: recompute derived data pemasukan (tren + komposisi kategori)
+  const recomputeIncomeDerived = (income) => ({
+    incomeTrend: computeMonthlyTrend(income),
+    incomeCategories: computeCategories(income, INCOME_CATEGORIES, INCOME_COLOR_MAP),
+  });
+
   // Helper: update state + persist (sama seperti saveData tapi juga recompute derived data)
   const updateData = (updater) => {
     const current = dataRef.current;
@@ -853,6 +889,11 @@ export default function App() {
       next.monthlyTrend = d.trend;
       next.weekly = d.weekly;
       next.categories = d.categories;
+    } else if (section === 'income') {
+      next = { ...current, income: [...(current.income || []), item] };
+      const d = recomputeIncomeDerived(next.income);
+      next.incomeTrend = d.incomeTrend;
+      next.incomeCategories = d.incomeCategories;
     } else if (section === 'tasks') {
       next = { ...current, tasks: [...(current.tasks || []), item] };
     } else if (section === 'notes') {
@@ -879,6 +920,7 @@ export default function App() {
     const applyEdit = (item) => {
       if (section === 'agenda') return { ...item, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
       if (section === 'expenses') return { ...item, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' };
+      if (section === 'income') return { ...item, type: 'in', description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category };
       if (section === 'tasks') return { ...item, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo };
       if (section === 'notes') return { ...item, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned, updatedAt: todayKey() };
       return item;
@@ -890,6 +932,11 @@ export default function App() {
       next.monthlyTrend = d.trend;
       next.weekly = d.weekly;
       next.categories = d.categories;
+    }
+    if (section === 'income') {
+      const d = recomputeIncomeDerived(updated);
+      next.incomeTrend = d.incomeTrend;
+      next.incomeCategories = d.incomeCategories;
     }
     saveData(next);
   };
@@ -904,6 +951,11 @@ export default function App() {
       next.monthlyTrend = d.trend;
       next.weekly = d.weekly;
       next.categories = d.categories;
+    }
+    if (section === 'income') {
+      const d = recomputeIncomeDerived(next.income);
+      next.incomeTrend = d.incomeTrend;
+      next.incomeCategories = d.incomeCategories;
     }
     saveData(next);
   };
@@ -927,6 +979,9 @@ export default function App() {
       } else if (section === 'expenses') {
         const result = await txn.create({ category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto' });
         addItemToState(section, result);
+      } else if (section === 'income') {
+        const result = await txn.create({ type: 'in', category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date });
+        addItemToState(section, result);
       } else if (section === 'notes') {
         const result = await notesApi.create({ title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned }, currentUser);
         addItemToState(section, result);
@@ -946,6 +1001,7 @@ export default function App() {
   const buildLocalItem = (section, values, id) => {
     if (section === 'agenda') return { id, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
     if (section === 'expenses') return { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' };
+    if (section === 'income') return { id, type: 'in', description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category };
     if (section === 'tasks') return { id, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo, completed: false };
     if (section === 'notes') return { id, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned, author: currentUser?.name || '', updatedAt: todayKey() };
     if (section === 'family') {
@@ -985,6 +1041,15 @@ export default function App() {
         next.monthlyTrend = d.trend;
         next.weekly = d.weekly;
         next.categories = d.categories;
+        saveData(next);
+      } else if (section === 'income') {
+        const result = await txn.update(id, txnTransform.toPayload({ type: 'in', category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date }));
+        const updated = txnTransform.toTxn(result);
+        const list = current[key] || [];
+        const next = { ...current, [key]: list.map((it) => (it.id === id ? updated : it)) };
+        const d = recomputeIncomeDerived(next.income);
+        next.incomeTrend = d.incomeTrend;
+        next.incomeCategories = d.incomeCategories;
         saveData(next);
       } else if (section === 'notes') {
         const result = await notesApi.update(id, noteTransform.toPayload({ title: values.title, body: values.body, category: values.category, pinned: !!values.pinned }), currentUser);
@@ -1100,6 +1165,8 @@ export default function App() {
           await cal.delete(item.id);
         } else if (section === 'expenses') {
           await txn.delete(item.id);
+        } else if (section === 'income') {
+          await txn.delete(item.id);
         } else if (section === 'notes') {
           await notesApi.delete(item.id);
         }
@@ -1125,6 +1192,7 @@ export default function App() {
         if (isOnline) {
           if (section === 'agenda') cal.create(item).catch(() => {});
           else if (section === 'expenses') txn.create(item).catch(() => {});
+          else if (section === 'income') txn.create(item).catch(() => {});
           else if (section === 'notes') notesApi.create(item, currentUser).catch(() => {});
         }
       },
@@ -1264,8 +1332,10 @@ export default function App() {
     if (t.agendaFilter) setAgendaFilter(t.agendaFilter);
     if (t.taskFilter) setTaskFilter(t.taskFilter);
     if (t.financeFilter) setFinanceFilter(t.financeFilter);
+    if (t.financeMode) setFinanceMode(t.financeMode);
     if (t.noteFilter) setNoteFilter(t.noteFilter);
     if (t.section) setActiveSection(t.section);
+    if (t.openForm) openAdd(t.openForm);
   };
 
   // Called by LoginScreen setelah login sukses
@@ -1502,6 +1572,21 @@ export default function App() {
             : data.expenses.filter((item) => item.category === financeFilter);
         const filteredTotal = filtered.reduce((sum, item) => sum + item.amount, 0);
         const budget = getBudget(data);
+
+        // ---- Pemasukan (mode ketiga) ----
+        const incomeMeta = INCOME_CATEGORIES.find((c) => c.id === incomeFilter) || INCOME_CATEGORIES[0];
+        const incomeList = data.income || [];
+        const filteredIncome =
+          incomeFilter === 'semua'
+            ? incomeList
+            : incomeList.filter((item) => item.category === incomeFilter);
+        const incomeTotal = filteredIncome.reduce((sum, item) => sum + item.amount, 0);
+
+        // Bulan berjalan — dipakai header & notifikasi pengingat
+        const monthKey = `${new Date().getFullYear()}-${pad2(new Date().getMonth() + 1)}`;
+        const incomeThisMonth = incomeList
+          .filter((i) => (i.date || '').startsWith(monthKey))
+          .reduce((sum, i) => sum + i.amount, 0);
         return (
           <section className="app-fade-in">
             {financeMode === 'anggaran' ? (
@@ -1509,6 +1594,15 @@ export default function App() {
                 icon="pieChart"
                 title="Anggaran"
                 subtitle={`Gaji ${formatCurrencyShort(budget.income)} · ${budget.month}`}
+              />
+            ) : financeMode === 'pemasukan' ? (
+              <SectionHeader
+                icon="trendingUp"
+                title={incomeMeta.label}
+                subtitle={`Total: ${formatCurrency(incomeTotal)} · bulan ini ${formatCurrency(incomeThisMonth)}`}
+                actionLabel="Tambah"
+                actionTone="accent"
+                onAction={() => openAdd('income')}
               />
             ) : (
               <SectionHeader
@@ -1521,9 +1615,9 @@ export default function App() {
               />
             )}
 
-            {/* Sub-tampilan Keuangan: Pengeluaran (daftar) | Anggaran (50/30/20) */}
+            {/* Sub-tampilan Keuangan: Pengeluaran (daftar) | Anggaran (50/30/20) | Pemasukan */}
             <div
-              className="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
+              className="mb-5 grid grid-cols-3 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
               role="group"
               aria-label="Mode tampilan keuangan"
             >
@@ -1551,7 +1645,40 @@ export default function App() {
                 <Icon name="pieChart" size={16} />
                 Anggaran
               </button>
+              <button
+                type="button"
+                onClick={() => setFinanceMode('pemasukan')}
+                aria-pressed={financeMode === 'pemasukan'}
+                className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+                  financeMode === 'pemasukan' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                }`}
+              >
+                <Icon name="trendingUp" size={16} />
+                Pemasukan
+              </button>
             </div>
+
+            {/* Chip filter kategori pemasukan (pola sama dengan chip tugas) */}
+            {financeMode === 'pemasukan' && (
+              <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter kategori pemasukan">
+                {INCOME_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setIncomeFilter(cat.id)}
+                    aria-pressed={incomeFilter === cat.id}
+                    className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors ${
+                      incomeFilter === cat.id
+                        ? 'border-brand/25 bg-brandtint text-brandfg'
+                        : 'border-line text-mutedfg hover:bg-muted hover:text-ink'
+                    }`}
+                  >
+                    <Icon name={cat.icon} size={14} />
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {financeMode === 'anggaran' ? (
               <Budgeting
@@ -1563,6 +1690,26 @@ export default function App() {
                 onEditPos={(bucket, pos) => openEdit('budgetPos', { ...pos, bucket })}
                 onDeletePos={(bucket, pos) => deletePos(bucket, pos)}
               />
+            ) : financeMode === 'pemasukan' ? (
+              filteredIncome.length === 0 ? (
+                <EmptyState
+                  icon="trendingUp"
+                  title="Belum ada pemasukan"
+                  message="Catat gaji, bonus, side job, atau pemasukan lain lewat tombol Tambah."
+                />
+              ) : (
+                <div className="stagger grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredIncome.map((item) => (
+                    <IncomeCard
+                      key={item.id}
+                      item={item}
+                      formatCurrency={formatCurrency}
+                      onEdit={(it) => openEdit('income', it)}
+                      onDelete={(it) => deleteItem('income', it)}
+                    />
+                  ))}
+                </div>
+              )
             ) : filtered.length === 0 ? (
               <EmptyState
                 icon="wallet"

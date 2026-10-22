@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icon } from './Icon';
 import { Sparkline } from './charts';
-import { FINANCE_CATEGORIES, getCategoryMeta } from './categories';
+import { FINANCE_CATEGORIES, INCOME_CATEGORIES, getCategoryMeta } from './categories';
 
 /* Tombol utama (CTA) — gradasi cobalt dengan teks putih (kontras 5,2:1).
    Ditulis sekali di sini supaya semua tombol utama konsisten. */
@@ -228,6 +228,38 @@ export function ExpenseCard({ item, formatCurrency, onEdit, onDelete }) {
         </div>
         <p className="shrink-0 pt-0.5 text-right font-mono text-sm font-bold text-brandfg sm:text-base">
           {formatCurrency(item.amount)}
+        </p>
+      </div>
+
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-2.5">
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-mutedfg">
+          <Icon name="clock" size={13} />
+          {item.date}
+        </span>
+        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} />
+      </div>
+    </Card>
+  );
+}
+
+/* Kartu pemasukan — kembaran ExpenseCard dengan nuansa hijau (emas/positif)
+   supaya tidak tertukar dengan pengeluaran saat digulir. */
+export function IncomeCard({ item, formatCurrency, onEdit, onDelete }) {
+  const meta = getCategoryMeta(INCOME_CATEGORIES, item.category);
+  return (
+    <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-success/50 sm:p-5`}>
+      <div className="flex items-start justify-between gap-3 pb-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-success/25 bg-success/15 text-success" aria-hidden="true">
+            <Icon name={meta?.icon || 'wallet'} size={19} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-ink">{meta?.label || item.category}</p>
+            <p className="mt-0.5 truncate text-sm text-mutedfg">{item.description}</p>
+          </div>
+        </div>
+        <p className="shrink-0 pt-0.5 text-right font-mono text-sm font-bold text-success sm:text-base">
+          +{formatCurrency(item.amount)}
         </p>
       </div>
 

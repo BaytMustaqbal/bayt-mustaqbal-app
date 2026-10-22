@@ -113,21 +113,24 @@ export const auth = {
   },
 };
 
-/* ---- Data transform: Transaction (backend) ↔ Expense (frontend) ---- */
+/* ---- Data transform: Transaction (backend) ↔ Expense/Income (frontend) ---- */
 export const txnTransform = {
-  // API response → frontend expense
-  toExpense: (txn) => ({
+  // API response → frontend transaction (`type` = 'out' pengeluaran | 'in' pemasukan)
+  toTxn: (txn) => ({
     id: txn.id,
+    type: txn.type === 'in' ? 'in' : 'out',
     category: txn.category_id || 'lainnya',
     description: txn.description || '',
     amount: Number(txn.amount) || 0,
     date: txn.date,
     bucket: 'auto',
   }),
-  // Frontend expense → API payload
+  // Alias kompatibilitas (bentuk lama tanpa `type`)
+  toExpense: (txn) => txnTransform.toTxn(txn),
+  // Frontend item → API payload. `type` ikut dari item (default 'out')
   toPayload: (item) => ({
     amount: Number(item.amount) || 0,
-    type: 'out',
+    type: item.type === 'in' ? 'in' : 'out',
     date: item.date,
     category_id: item.category,
     description: item.description || null,
@@ -175,26 +178,33 @@ export const noteTransform = {
 
 /* ---- API modules ---- */
 
-// Transactions (expenses only — type === 'out')
+// Transactions — dua arah: 'out' (pengeluaran) & 'in' (pemasukan).
+// Backend menyimpan keduanya di tabel `transactions`; modul ini memisahkannya.
 export const txn = {
-  fetch: async () => {
+  // Semua transaksi, dipetakan ke bentuk frontend (ada `type`)
+  fetchAll: async () => {
     const results = await apiFetch('/txn');
-    // Backend returns ALL types; frontend only wants expenses (type='out')
-    return results.filter((t) => t.type === 'out').map(txnTransform.toExpense);
+    return results.map(txnTransform.toTxn);
+  },
+  fetch: async () => {
+    return (await txn.fetchAll()).filter((t) => t.type === 'out');
+  },
+  fetchIncome: async () => {
+    return (await txn.fetchAll()).filter((t) => t.type === 'in');
   },
   create: async (item) => {
     const result = await apiFetch('/txn', {
       method: 'POST',
       body: JSON.stringify(txnTransform.toPayload(item)),
     });
-    return txnTransform.toExpense(result);
+    return txnTransform.toTxn(result);
   },
   update: async (id, item) => {
     const result = await apiFetch(`/txn/${id}`, {
       method: 'PUT',
       body: JSON.stringify(txnTransform.toPayload(item)),
     });
-    return txnTransform.toExpense(result);
+    return txnTransform.toTxn(result);
   },
   delete: async (id) => {
     return apiFetch(`/txn/${id}`, { method: 'DELETE' });

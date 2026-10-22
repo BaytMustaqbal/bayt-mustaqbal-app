@@ -26,6 +26,18 @@ export const FINANCE_CATEGORIES = [
   { id: 'tabungan', label: 'Tabungan & Utang', icon: 'trendingUp' },
 ];
 
+/* Kategori pemasukan (transaksi type 'in') — dipakai sub-tab Pemasukan,
+   dropdown filter, form "Tambah Pemasukan", donat komposisi sumber. */
+export const INCOME_CATEGORIES = [
+  { id: 'semua', label: 'Semua Pemasukan', icon: 'wallet' },
+  { id: 'gaji', label: 'Gaji', icon: 'wallet' },
+  { id: 'bonus', label: 'Bonus / THR', icon: 'sparkles' },
+  { id: 'sidejob', label: 'Side Job', icon: 'wrench' },
+  { id: 'investasi', label: 'Hasil Investasi', icon: 'trendingUp' },
+  { id: 'pemberian', label: 'Pemberian / Hadiah', icon: 'handCoins' },
+  { id: 'lainnya', label: 'Lainnya', icon: 'inbox' },
+];
+
 // --- Tiga keranjang anggaran (rumus 50/30/20) ---
 // Dipakai halaman Anggaran (sub-tab Keuangan). Murni label + ikon: nominalnya
 // dihitung dari `budget.ratios`, bukan disimpan (lihat components/budget.js).

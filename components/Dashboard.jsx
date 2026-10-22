@@ -44,6 +44,14 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
 
   const totals = useMemo(() => {
     const totalExpense = data.expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const incomeList = data.income || [];
+    const totalIncome = incomeList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    // Bulan berjalan — dipakai kartu "Pemasukan Bulan Ini" & "Selisih"
+    const now = new Date();
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const inMonth = (list) => list.filter((i) => (i.date || '').startsWith(monthPrefix));
+    const incomeMonth = inMonth(incomeList).reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+    const expenseMonth = inMonth(data.expenses).reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
     const tasksDone = data.tasks.filter((t) => t.completed).length;
     const budgetLeft = budget.income - totalExpense;
     const monthCount = data.monthlyTrend.length;
@@ -52,7 +60,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
     const avgMonth = Math.round(
       data.monthlyTrend.reduce((sum, m) => sum + m.value, 0) / (monthCount || 1)
     );
-    return { totalExpense, tasksDone, budgetLeft, delta, avgMonth };
+    return { totalExpense, totalIncome, incomeMonth, expenseMonth, net: incomeMonth - expenseMonth, tasksDone, budgetLeft, delta, avgMonth };
   }, [data]);
 
   const hour = new Date().getHours();
@@ -176,9 +184,17 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
       </div>
 
       {/* ---------- KPI ---------- */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         <StatCard icon="calendar" tone="cyan" value={data.schedule.length} label="Agenda" hint="Jadwal aktif" />
         <StatCard icon="users" tone="blue" value={data.family.length} label="Anggota" hint="Terdaftar" />
+        <StatCard
+          icon="trendingUp"
+          tone="emerald"
+          value={formatCurrencyShort(totals.incomeMonth)}
+          valueTitle={formatCurrency(totals.incomeMonth)}
+          label="Pemasukan Bulan Ini"
+          hint="Gaji, side job & lainnya"
+        />
         <StatCard
           icon="tasks"
           tone="violet"
@@ -194,6 +210,14 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           label={totals.budgetLeft >= 0 ? 'Sisa anggaran' : 'Lebih dari anggaran'}
           hint={`dari ${formatCurrencyShort(budget.income)}`}
         />
+        <StatCard
+          icon="wallet"
+          tone={totals.net >= 0 ? 'emerald' : 'rose'}
+          value={`${totals.net >= 0 ? '+' : '−'}${formatCurrencyShort(Math.abs(totals.net))}`}
+          valueTitle={`${totals.net >= 0 ? '+' : '−'}${formatCurrency(Math.abs(totals.net))}`}
+          label="Selisih Bulan Ini"
+          hint="Pemasukan − Pengeluaran"
+        />
       </div>
 
       {/* ---------- Tren 6 bulan ---------- */}
@@ -208,6 +232,18 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           </span>
         </div>
         <LineChart data={data.monthlyTrend} formatValue={formatCurrencyShort} />
+      </Card>
+
+      {/* ---------- Tren pemasukan 6 bulan (kembaran tren pengeluaran) ---------- */}
+      <Card className="p-4 sm:p-5 md:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Icon name="trendingUp" size={18} className="shrink-0 text-success" />
+            <h2 className="truncate font-bold text-ink">Tren Pemasukan</h2>
+          </div>
+          <span className="shrink-0 text-xs text-mutedfg">6 bulan terakhir</span>
+        </div>
+        <LineChart data={data.incomeTrend || []} formatValue={formatCurrencyShort} />
       </Card>
 
       {/* ---------- Donat ---------- */}

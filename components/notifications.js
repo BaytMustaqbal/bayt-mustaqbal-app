@@ -1,7 +1,7 @@
 // Notifikasi turunan data — satu sumber kebenaran.
 //
 // Belum ada backend, jadi TIDAK ADA pesan yang "dikirim" dari luar: semua
-// dihitung dari data yang sudah ada (anggaran, tugas, agenda, pengeluaran).
+// dihitung dari data yang sudah ada (anggaran, pemasukan, tugas, agenda, pengeluaran).
 // Keuntungannya isi selalu ikut berubah saat data berubah — tidak pernah basi.
 //
 // Dipakai App (menghitung + menyimpan status "sudah dibaca") dan Navigation
@@ -34,7 +34,7 @@ const AGENDA_WINDOW = 14;
 const BIG_EXPENSE_SHARE = 20;
 
 /* Susun daftar notifikasi dari data. Urutannya sudah dari yang paling perlu
-   ditindak (anggaran → tugas → agenda → pengeluaran).
+   ditindak (anggaran → pemasukan → tugas → agenda → pengeluaran).
 
    `formatShort` = pemformat rupiah ringkas milik App ("Rp 4,7 jt"), sengaja
    dioper agar tidak ada rumus format yang digandakan di dua tempat.
@@ -74,6 +74,24 @@ export function buildNotifications(data, formatShort, now = new Date()) {
       title: 'Anggaran hampir habis',
       message: `Terpakai ${fmt(spent)} dari ${fmt(budget)} (${usedPct}%).`,
       target: { section: 'expenses', financeFilter: 'semua' },
+    });
+  }
+
+  // ---- 1b) Pemasukan bulan ini belum dicatat ----
+  // Pengingat ringan: kalau bulan berjalan masih kosong, lonceng menawarkan
+  // satu klik langsung ke form "Tambah Pemasukan". Hilang sendiri begitu ada
+  // pemasukan tercatat di bulan ini.
+  const incomeThisMonth = (data.income || [])
+    .filter((i) => (i.date || '').startsWith(month))
+    .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+  if (incomeThisMonth === 0) {
+    out.push({
+      id: `pemasukan-kosong:${month}`,
+      tone: 'blue',
+      icon: 'wallet',
+      title: 'Belum ada pemasukan bulan ini',
+      message: 'Catat gaji, side job, atau pemasukan lain supaya arus kas lengkap.',
+      target: { section: 'expenses', financeMode: 'pemasukan', openForm: 'income' },
     });
   }
 
