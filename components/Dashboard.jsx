@@ -176,7 +176,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
       <div>
         <h2 className="mb-2.5 text-sm font-semibold text-ink">Aksi Cepat</h2>
         <div className="grid grid-cols-4 gap-2.5 sm:gap-3">
-          <QuickAction icon="wallet" label="Pengeluaran" tone="cyan" onClick={() => onNavigate('expenses')} />
+          <QuickAction icon="wallet" label="Keuangan" tone="cyan" onClick={() => onNavigate('expenses')} />
           <QuickAction icon="calendar" label="Agenda" tone="blue" onClick={() => onNavigate('agenda')} />
           <QuickAction icon="note" label="Catatan" tone="violet" onClick={() => onNavigate('notes')} />
           <QuickAction icon="users" label="Keluarga" tone="emerald" onClick={() => onNavigate('family')} />
