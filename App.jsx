@@ -9,7 +9,8 @@ import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { AccountModal } from './components/AccountModal';
-import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, FamilyList, initialsOf } from './components/ui';
+import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, FamilyList, initialsOf } from './components/ui';
+import { GroupedBarChart, DonutChart, BarChart } from './components/charts';
 import { FamilyCalendar } from './components/Calendar';
 import { Timeline } from './components/Timeline';
 import { FormSheet } from './components/FormSheet';
@@ -124,6 +125,45 @@ const computeCategories = (items, categories = FINANCE_CATEGORIES, colorMap) => 
 
 // Month label for budget
 const monthName = (d) => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d);
+
+/* ---- Helper tab Ringkasan (halaman Keuangan) ---- */
+const monthKeyOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+const monthNameLong = (key) => {
+  const [y, m] = String(key).split('-').map(Number);
+  if (!y || !m) return monthName(new Date());
+  return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(y, m - 1, 1));
+};
+// Tren berpasangan 6 bulan TERAKHIR dari bulan acuan (bukan selalu bulan ini),
+// supaya Kakang bisa meninjau bulan lalu lengkap dengan konteks 6 bulannya.
+const buildPairedTrend = (expenses, income, endKey) => {
+  const [y, m] = String(endKey).split('-').map(Number);
+  const sumBy = (list) => {
+    const t = {};
+    (list || []).forEach((i) => {
+      const k = (i.date || '').slice(0, 7);
+      if (k) t[k] = (t[k] || 0) + (Number(i.amount) || 0);
+    });
+    return t;
+  };
+  const te = sumBy(expenses);
+  const ti = sumBy(income);
+  const out = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(y, m - 1 - i, 1);
+    const key = monthKeyOf(d);
+    out.push({ label: monthLabel(d), key, income: ti[key] || 0, expense: te[key] || 0 });
+  }
+  return out;
+};
+// Status anggaran: aman (<80%), hati-hati (80-100%), lewat (>100%).
+// Anggaran belum diisi → 'belum' (bukan 0% yang menyesatkan).
+const budgetStatus = (expense, budgetIncome) => {
+  const total = Number(budgetIncome) || 0;
+  if (total <= 0) return { level: 'belum', pct: 0, sisa: 0 };
+  const pct = Math.round((expense / total) * 100);
+  const level = expense > total ? 'lewat' : pct >= 80 ? 'hati-hati' : 'aman';
+  return { level, pct, sisa: total - expense };
+};
 
 // Gabungkan API data + local seed → data state penuh
 const buildDataBundle = (apiData, currentUser) => {
@@ -602,8 +642,12 @@ export default function App() {
   // Filter kategori pengeluaran (default: semua) — pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
   const [incomeFilter, setIncomeFilter] = useState('semua');
+  // Sub-tampilan Keuangan: 'ringkasan' (default) | 'pengeluaran' | 'anggaran' | 'pemasukan'
+  const [financeMode, setFinanceMode] = useState('ringkasan');
+  // Bulan yang ditinjau di tab Ringkasan (YYYY-MM). Tidak bisa maju dari bulan berjalan.
+  const [summaryMonth, setSummaryMonth] = useState(() => monthKeyOf(new Date()));
   // Sub-tampilan Keuangan: daftar pengeluaran | halaman Anggaran (50/30/20)
-  const [financeMode, setFinanceMode] = useState('pengeluaran');
+  // (financeMode dideklarasikan di atas bersama financeFilter/incomeFilter)
   // Filter bagian keluarga (default: semua) — pola sama dengan agenda & keuangan
   const [familyFilter, setFamilyFilter] = useState('semua');
   // Filter tugas: status (semua/belum/selesai) & prioritas (tinggi/sedang/rendah)
@@ -1383,9 +1427,12 @@ export default function App() {
     setActiveSection('agenda');
   };
 
-  // Dipanggil dropdown kategori keuangan di navigasi → buka section + set filter
+  // Dipanggil dropdown kategori keuangan di navigasi → buka section + set filter.
+  // Kategori selalu milik daftar pengeluaran, jadi mode diarahkan ke sana
+  // (default tab kini Ringkasan).
   const handleFinanceSelect = (categoryId) => {
     setFinanceFilter(categoryId);
+    setFinanceMode('pengeluaran');
     setActiveSection('expenses');
   };
 
@@ -1587,6 +1634,27 @@ export default function App() {
         const incomeThisMonth = incomeList
           .filter((i) => (i.date || '').startsWith(monthKey))
           .reduce((sum, i) => sum + i.amount, 0);
+
+        // ---- Tab Ringkasan: agregat bulan terpilih + status anggaran ----
+        const inSummaryMonth = (i) => (i.date || '').startsWith(summaryMonth);
+        const monthExpenses = data.expenses.filter(inSummaryMonth);
+        const monthIncomeList = incomeList.filter(inSummaryMonth);
+        const expenseMonth = monthExpenses.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+        const incomeMonth = monthIncomeList.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+        const netMonth = incomeMonth - expenseMonth;
+        const anggaranStatus = budgetStatus(expenseMonth, budget.income);
+        const pairedTrend = buildPairedTrend(data.expenses, incomeList, summaryMonth);
+        const monthCategories = computeCategories(monthExpenses);
+        const monthWeekly = computeWeekly(monthExpenses);
+        const atCurrentMonth = summaryMonth >= monthKey;
+        const shiftSummaryMonth = (delta) => {
+          setSummaryMonth((prev) => {
+            const [y, m] = prev.split('-').map(Number);
+            const d = new Date(y, m - 1 + delta, 1);
+            const key = monthKeyOf(d);
+            return key > monthKey ? prev : key;
+          });
+        };
         return (
           <section className="app-fade-in">
             {financeMode === 'anggaran' ? (
@@ -1595,6 +1663,8 @@ export default function App() {
                 title="Anggaran"
                 subtitle={`Gaji ${formatCurrencyShort(budget.income)} · ${budget.month}`}
               />
+            ) : financeMode === 'ringkasan' ? (
+              <SectionHeader icon="barChart" title="Ringkasan" subtitle={`Periode ${monthNameLong(summaryMonth)}`} />
             ) : financeMode === 'pemasukan' ? (
               <SectionHeader
                 icon="trendingUp"
@@ -1615,17 +1685,28 @@ export default function App() {
               />
             )}
 
-            {/* Sub-tampilan Keuangan: Pengeluaran (daftar) | Anggaran (50/30/20) | Pemasukan */}
+            {/* Sub-tampilan Keuangan: Ringkasan | Pengeluaran | Anggaran | Pemasukan */}
             <div
-              className="mb-5 grid grid-cols-3 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
+              className="mb-5 grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
               role="group"
               aria-label="Mode tampilan keuangan"
             >
               <button
                 type="button"
+                onClick={() => setFinanceMode('ringkasan')}
+                aria-pressed={financeMode === 'ringkasan'}
+                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                  financeMode === 'ringkasan' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                }`}
+              >
+                <Icon name="barChart" size={16} />
+                Ringkasan
+              </button>
+              <button
+                type="button"
                 onClick={() => setFinanceMode('pengeluaran')}
                 aria-pressed={financeMode === 'pengeluaran'}
-                className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
                   financeMode === 'pengeluaran'
                     ? 'bg-brandtint text-brandfg'
                     : 'text-mutedfg hover:text-ink'
@@ -1638,7 +1719,7 @@ export default function App() {
                 type="button"
                 onClick={() => setFinanceMode('anggaran')}
                 aria-pressed={financeMode === 'anggaran'}
-                className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
                   financeMode === 'anggaran' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
                 }`}
               >
@@ -1649,7 +1730,7 @@ export default function App() {
                 type="button"
                 onClick={() => setFinanceMode('pemasukan')}
                 aria-pressed={financeMode === 'pemasukan'}
-                className={`flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
                   financeMode === 'pemasukan' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
                 }`}
               >
@@ -1690,6 +1771,144 @@ export default function App() {
                 onEditPos={(bucket, pos) => openEdit('budgetPos', { ...pos, bucket })}
                 onDeletePos={(bucket, pos) => deletePos(bucket, pos)}
               />
+            ) : financeMode === 'ringkasan' ? (
+              <>
+                {/* Navigator bulan: mundur bebas, maju berhenti di bulan berjalan */}
+                <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-2 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => shiftSummaryMonth(-1)}
+                    aria-label="Bulan sebelumnya"
+                    className="grid h-11 w-11 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+                  >
+                    <Icon name="chevronLeft" size={18} />
+                  </button>
+                  <p className="text-sm font-semibold text-ink">{monthNameLong(summaryMonth)}</p>
+                  <button
+                    type="button"
+                    onClick={() => shiftSummaryMonth(1)}
+                    disabled={atCurrentMonth}
+                    aria-label="Bulan berikutnya"
+                    className={`grid h-11 w-11 place-items-center rounded-lg transition-colors ${
+                      atCurrentMonth ? 'cursor-not-allowed text-mutedfg/40' : 'text-mutedfg hover:bg-muted hover:text-ink'
+                    }`}
+                  >
+                    <Icon name="chevronRight" size={18} />
+                  </button>
+                </div>
+
+                {/* Banner status anggaran — ikon + teks + warna (bukan warna saja) */}
+                {anggaranStatus.level === 'belum' ? (
+                  <p className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-muted px-3 py-2.5 text-sm text-mutedfg">
+                    <Icon name="target" size={16} className="shrink-0" />
+                    Isi angka pemasukan rencana di tab Anggaran supaya perbandingan di sini aktif.
+                  </p>
+                ) : anggaranStatus.level === 'lewat' ? (
+                  <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-tonerose/40 bg-tonerose/10 px-3 py-2.5 text-sm text-tonerosefg">
+                    <Icon name="alertTriangle" size={16} className="mt-0.5 shrink-0" />
+                    <span>
+                      Pengeluaran {formatCurrency(expenseMonth)} melewati anggaran {formatCurrency(budget.income)} ({anggaranStatus.pct}%).
+                    </span>
+                  </div>
+                ) : anggaranStatus.level === 'hati-hati' ? (
+                  <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-toneamber/40 bg-toneamber/10 px-3 py-2.5 text-sm text-toneamberfg">
+                    <Icon name="alertTriangle" size={16} className="mt-0.5 shrink-0" />
+                    <span>
+                      Pengeluaran sudah memakai {anggaranStatus.pct}% anggaran bulan ini — hati-hati.
+                    </span>
+                  </div>
+                ) : (
+                  <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 px-3 py-2.5 text-sm text-success">
+                    <Icon name="circleCheck" size={16} className="mt-0.5 shrink-0" />
+                    <span>
+                      Pengeluaran {anggaranStatus.pct}% dari anggaran — masih aman.
+                    </span>
+                  </div>
+                )}
+
+                {/* 5 kartu KPI bulan terpilih */}
+                <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
+                  <StatCard
+                    icon="trendingUp"
+                    tone="emerald"
+                    value={formatCurrencyShort(incomeMonth)}
+                    valueTitle={formatCurrency(incomeMonth)}
+                    label="Pemasukan"
+                    hint="Gaji, side job & lainnya"
+                  />
+                  <StatCard
+                    icon="wallet"
+                    tone="cyan"
+                    value={formatCurrencyShort(expenseMonth)}
+                    valueTitle={formatCurrency(expenseMonth)}
+                    label="Pengeluaran"
+                    hint="Semua kategori"
+                  />
+                  <StatCard
+                    icon={netMonth >= 0 ? 'arrowUpRight' : 'arrowDownRight'}
+                    tone={netMonth >= 0 ? 'emerald' : 'rose'}
+                    value={`${netMonth >= 0 ? '+' : '−'}${formatCurrencyShort(Math.abs(netMonth))}`}
+                    valueTitle={`${netMonth >= 0 ? '+' : '−'}${formatCurrency(Math.abs(netMonth))}`}
+                    label="Selisih"
+                    hint="Pemasukan − Pengeluaran"
+                  />
+                  <StatCard
+                    icon="target"
+                    tone={anggaranStatus.level === 'lewat' ? 'rose' : anggaranStatus.level === 'hati-hati' ? 'amber' : anggaranStatus.level === 'aman' ? 'emerald' : 'cyan'}
+                    value={anggaranStatus.level === 'belum' ? '—' : `${anggaranStatus.pct}%`}
+                    label="Anggaran terpakai"
+                    hint={budget.income > 0 ? `dari ${formatCurrencyShort(budget.income)}` : 'Anggaran belum diisi'}
+                  />
+                  <StatCard
+                    icon={anggaranStatus.sisa >= 0 ? 'circleCheck' : 'alertTriangle'}
+                    tone={anggaranStatus.sisa >= 0 ? 'emerald' : 'rose'}
+                    value={anggaranStatus.level === 'belum' ? '—' : formatCurrencyShort(Math.abs(anggaranStatus.sisa))}
+                    valueTitle={anggaranStatus.level === 'belum' ? undefined : formatCurrency(Math.abs(anggaranStatus.sisa))}
+                    label={anggaranStatus.sisa >= 0 ? 'Sisa anggaran' : 'Melewati anggaran'}
+                    hint="Dari angka rencana"
+                  />
+                </div>
+
+                {/* Chart: tren 6 bulan pemasukan vs pengeluaran (batang berpasangan) */}
+                <Card className="mb-4 p-4 sm:p-5 md:p-6">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Icon name="barChart" size={18} className="shrink-0 text-brandfg" />
+                      <h2 className="truncate font-bold text-ink">Tren 6 Bulan</h2>
+                    </div>
+                    <span className="shrink-0 text-xs text-mutedfg">Pemasukan vs pengeluaran</span>
+                  </div>
+                  <GroupedBarChart data={pairedTrend} formatValue={formatCurrencyShort} />
+                </Card>
+
+                {/* Chart: komposisi kategori + distribusi mingguan (bulan terpilih) */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Card className="p-4 sm:p-5">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Icon name="pieChart" size={18} className="shrink-0 text-brandfg" />
+                        <h2 className="truncate font-bold text-ink">Komposisi Pengeluaran</h2>
+                      </div>
+                      <span className="shrink-0 text-xs text-mutedfg">{monthNameLong(summaryMonth)}</span>
+                    </div>
+                    {monthCategories.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-mutedfg">Belum ada pengeluaran di bulan ini.</p>
+                    ) : (
+                      <DonutChart data={monthCategories} formatValue={formatCurrencyShort} centerLabel="Total" />
+                    )}
+                  </Card>
+                  <Card className="p-4 sm:p-5">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Icon name="clock" size={18} className="shrink-0 text-brandfg" />
+                        <h2 className="truncate font-bold text-ink">Distribusi Mingguan</h2>
+                      </div>
+                      <span className="shrink-0 text-xs text-mutedfg">per hari</span>
+                    </div>
+                    <BarChart data={monthWeekly} formatValue={formatCurrencyShort} color="rgb(var(--chart4))" />
+                  </Card>
+                </div>
+              </>
             ) : financeMode === 'pemasukan' ? (
               filteredIncome.length === 0 ? (
                 <EmptyState

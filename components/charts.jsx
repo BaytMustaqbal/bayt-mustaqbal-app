@@ -184,6 +184,119 @@ export function BarChart({ data, height = 160, color = 'rgb(var(--chart1))', for
   );
 }
 
+/* ---------------- Batang berpasangan (dua seri per label) ----------------
+   Dipakai tab Ringkasan: tren pemasukan vs pengeluaran per bulan. Pola &
+   aksesibilitas sama dengan BarChart (satu area sentuh besar, nilai lewat
+   ValueTag, ringkasan lengkap di figcaption sr-only). data: [{ label,
+   income, expense }]. */
+export function GroupedBarChart({
+  data,
+  height = 180,
+  inColor = 'rgb(var(--success))',
+  outColor = 'rgb(var(--danger))',
+  formatValue = (v) => v,
+}) {
+  const max = Math.max(...data.flatMap((d) => [d.income || 0, d.expense || 0]), 1);
+  const maxIdx = data.reduce(
+    (best, d, i) => ((d.income || 0) + (d.expense || 0) > (data[best].income || 0) + (data[best].expense || 0) ? i : best),
+    0
+  );
+  const { activeIdx, handlers } = useChartPick(data.length, maxIdx);
+  const active = data[activeIdx];
+  const summary = data
+    .map((d) => `${d.label}: masuk ${formatValue(d.income || 0)}, keluar ${formatValue(d.expense || 0)}`)
+    .join('; ');
+
+  return (
+    <figure className="m-0" aria-label="Grafik tren pemasukan dan pengeluaran per bulan">
+      {/* Legenda — warna + teks, jangan hanya warna */}
+      <div className="mb-2 flex items-center gap-4 text-[11px] text-mutedfg" aria-hidden="true">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-3 rounded-sm" style={{ background: inColor }} />
+          Pemasukan
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-3 rounded-sm" style={{ background: outColor }} />
+          Pengeluaran
+        </span>
+      </div>
+
+      <div className="relative" style={{ height }}>
+        <div
+          className="grid-lines pointer-events-none absolute inset-0 overflow-hidden rounded-xl border border-line/70"
+          aria-hidden="true"
+        >
+          {[0, 25, 50, 75].map((t) => (
+            <span key={t} className="absolute inset-x-0 border-t border-line/60" style={{ top: `${t}%` }} />
+          ))}
+        </div>
+
+        <div className="absolute inset-0 flex items-end gap-1.5 px-3 pt-8" aria-hidden="true">
+          {data.map((d, i) => {
+            const isActive = i === activeIdx;
+            const hi = Math.max(4, ((d.income || 0) / max) * 84);
+            const he = Math.max(4, ((d.expense || 0) / max) * 84);
+            return (
+              <div key={d.label} className="relative flex h-full flex-1 items-end justify-center gap-1">
+                <div className="flex h-full flex-1 items-end justify-center">
+                  <div
+                    className="w-full max-w-[15px] rounded-t-md transition-[height,opacity] duration-300"
+                    style={{
+                      height: `${hi}%`,
+                      background: `linear-gradient(180deg, ${inColor}, transparent)`,
+                      opacity: isActive ? 1 : 0.6,
+                      boxShadow: isActive ? `0 0 14px ${inColor}` : undefined,
+                    }}
+                  />
+                </div>
+                <div className="flex h-full flex-1 items-end justify-center">
+                  <div
+                    className="w-full max-w-[15px] rounded-t-md transition-[height,opacity] duration-300"
+                    style={{
+                      height: `${he}%`,
+                      background: `linear-gradient(180deg, ${outColor}, transparent)`,
+                      opacity: isActive ? 1 : 0.6,
+                      boxShadow: isActive ? `0 0 14px ${outColor}` : undefined,
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {active && (
+          <ValueTag className="-top-6 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
+            <span style={{ color: inColor }}>{formatValue(active.income || 0)}</span>
+            <span className="opacity-50">/</span>
+            <span style={{ color: outColor }}>{formatValue(active.expense || 0)}</span>
+          </ValueTag>
+        )}
+
+        <ChartTapLayer
+          label="Ketuk kelompok batang, atau pakai tombol panah kiri/kanan, untuk melihat nilai pemasukan dan pengeluaran tiap bulan."
+          handlers={handlers}
+        />
+      </div>
+
+      <div className="mt-1.5 flex gap-1.5 text-[11px] text-mutedfg" aria-hidden="true">
+        {data.map((d, i) => (
+          <span key={d.label} className={`flex-1 truncate text-center ${i === activeIdx ? 'font-semibold text-brandfg' : ''}`}>
+            {d.label}
+          </span>
+        ))}
+      </div>
+
+      {/* Nilai yang sedang dipilih dibacakan (untuk pengguna pembaca layar) */}
+      <p className="sr-only" aria-live="polite">
+        {active ? `${active.label}: pemasukan ${formatValue(active.income || 0)}, pengeluaran ${formatValue(active.expense || 0)}` : ''}
+      </p>
+
+      <figcaption className="sr-only">{summary}</figcaption>
+    </figure>
+  );
+}
+
 /* ---------------- Donat (komposisi) ---------------- */
 
 export function DonutChart({
