@@ -351,12 +351,24 @@ export function Navigation({
             const navItem = NAV_ITEMS.find((n) => n.id === item.id);
             return (
               <li key={item.id} className="min-w-0 flex-1">
-                <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition duration-fast ease-crisp ${isDashboard ? 'justify-end pb-2.5' : 'justify-center'} ${active || openKey === item.id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'} active:scale-95 active:bg-brand/10`}>
+                <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition duration-fast ease-crisp ${isDashboard ? 'justify-end pb-2.5' : 'justify-center'} ${active || openKey === item.id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'} ${isDashboard ? '' : 'active:scale-95'} active:bg-brand/10`}>
                   {isDashboard ? (
                     /* FAB tengah: lingkaran setengah di luar bar, ber-cincin warna
-                       canvas supaya terbaca "meloncat" dari papan. */
-                    <span aria-hidden="true" className="absolute left-1/2 top-0 grid h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition-transform duration-fast ease-crisp active:scale-95 active:bg-ctahover">
-                      <img src="/icons/icon-mark-square.png" alt="" className="h-auto w-11 object-contain drop-shadow-md" />
+                       canvas supaya terbaca "meloncat" dari papan.
+                       Gerak khas FAB (beda dari 4 tombol lain):
+                       - tekan : lingkaran mengecil 0.92 cepat (120ms) + glow mati
+                       - lepas : kembali melenting halus (300ms, easing spring)
+                       - hover : hanya LOGO yang bergerak (naik + membesar 110%)
+                       - aktif : ring aksen + glow redup sebagai penanda lokasi */
+                    <span
+                      aria-hidden="true"
+                      className={`group absolute left-1/2 top-0 grid h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition duration-slow ease-spring active:scale-[0.92] active:bg-ctahover active:shadow-e2 active:duration-fast active:ease-crisp ${active ? 'shadow-glow ring-brand/40' : ''}`}
+                    >
+                      <img
+                        src="/icons/icon-mark-square.png"
+                        alt=""
+                        className="h-auto w-11 object-contain drop-shadow-md transition-transform duration-base ease-crisp group-hover:-translate-y-0.5 group-hover:scale-110"
+                      />
                     </span>
                   ) : (
                     <span className="grid h-7 w-11 shrink-0 place-items-center">

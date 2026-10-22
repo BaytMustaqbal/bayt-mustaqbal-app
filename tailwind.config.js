@@ -87,6 +87,9 @@ module.exports = {
       transitionTimingFunction: {
         smooth: 'cubic-bezier(0.22, 1, 0.36, 1)', // masuk (decelerate)
         crisp: 'cubic-bezier(0.4, 0, 0.2, 1)',    // umum
+        /* Spring halus (overshoot kecil) — dipakai FAB Dashboard saat
+           dilepas: tekan masuk cepat (crisp), keluar melenting (spring). */
+        spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
     },
   },
