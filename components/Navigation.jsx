@@ -217,8 +217,25 @@ export function Navigation({
 
   // Kepala naik elevasi begitu konten mulai bergulir di bawahnya
   const [scrolled, setScrolled] = useState(false);
+  /* Auto-hide: header menyembunyi saat scroll ke BAWAH dan muncul lagi saat
+     scroll ke ATAS. Transform-only (tak menggeser layout konten). Ambang 8px
+     menahan gerakan kecil/jitter; header hanya disembunyikan setelah melewati
+     tinggi header supaya scroll pendek di puncak tak mengganggu. */
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const lastScrollY = useRef(0);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 6);
+    const onScroll = () => {
+      const y = Math.max(0, window.scrollY);
+      setScrolled(y > 6);
+      if (Math.abs(y - lastScrollY.current) < 8) return; // abaikan gerakan riwil
+      const goingDown = y > lastScrollY.current;
+      lastScrollY.current = y;
+      // Sembunyikan hanya kalau sudah jauh dari puncak; tampilkan saat naik.
+      // Saat menyembunyi, tutup menu/panel yang tergantung pada header
+      // supaya tak ada panel melayang tanpa induknya.
+      setHeaderHidden(goingDown && y > 96);
+      if (goingDown && y > 96) closeMenu();
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -252,7 +269,7 @@ export function Navigation({
 
   return (
     <>
-      <header className={`sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-base ease-crisp ${scrolled ? 'border-line bg-canvas/90 shadow-e2' : 'border-transparent bg-canvas/80'}`}>
+      <header className={`sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-[transform,background-color,border-color,box-shadow] duration-base ease-crisp ${headerHidden ? '-translate-y-full' : 'translate-y-0'} ${scrolled ? 'border-line bg-canvas/90 shadow-e2' : 'border-transparent bg-canvas/80'}`}>
         <div className="relative mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-4 sm:h-16 sm:gap-3 sm:px-6">
           <button type="button" onClick={() => handleSection('dashboard')} className="flex min-w-0 items-center gap-2.5 rounded-xl p-1 text-left transition-colors hover:bg-muted">
             <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-brand/25 bg-brandtint p-1 shadow-glow sm:h-10 sm:w-10" aria-hidden="true">
