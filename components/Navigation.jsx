@@ -355,8 +355,8 @@ export function Navigation({
                   {isDashboard ? (
                     /* FAB tengah: lingkaran setengah di luar bar, ber-cincin warna
                        canvas supaya terbaca "meloncat" dari papan. */
-                    <span aria-hidden="true" className="absolute left-1/2 top-0 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-brand shadow-e2 ring-4 ring-canvas transition-transform duration-fast ease-crisp active:scale-95">
-                      <img src="/icons/icon-mark-square.png" alt="" className="h-7 w-7 object-contain" />
+                    <span aria-hidden="true" className="absolute left-1/2 top-0 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition-transform duration-fast ease-crisp active:scale-95 active:bg-ctahover">
+                      <img src="/icons/icon-mark-square.png" alt="" className="h-auto w-10 object-contain" />
                     </span>
                   ) : (
                     <span className="grid h-7 w-11 shrink-0 place-items-center">
