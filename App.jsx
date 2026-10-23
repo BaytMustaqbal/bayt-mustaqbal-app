@@ -506,7 +506,9 @@ const mapUsersToFamily = (users) =>
     name: u.nama,
     nickname: u.nickname || null,
     email: u.username || null,
-    role: FAMILY_ROLE_LABEL[u.family_role] || 'Anak',
+    // Peran grup menang atas status keluarga: Kepala Keluarga tampil sebagai
+    // "Kepala Keluarga" (bukan "Suami") di papan keluarga.
+    role: u.group_role === 'kepala_keluarga' ? 'Kepala Keluarga' : FAMILY_ROLE_LABEL[u.family_role] || 'Anak',
     initials: initialsOf(u.nickname || u.nama),
     avatar: u.avatar_url || undefined,
     // Normalisasi generasi tak dikenal (mis. typo dari SQL manual) → 'orangtua'

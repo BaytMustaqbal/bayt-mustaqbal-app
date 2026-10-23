@@ -18,7 +18,13 @@ export function RegisterScreen({ onLogin, onBack }) {
   const [password2, setPassword2] = useState('');
   // Status keluarga (silsilah) + peran akses grup (tulis/baca) — dipilih master.
   const [familyRole, setFamilyRole] = useState('anak');
+  // "Suami" di keluarga = Kepala Keluarga: status itu otomatis memilih peran
+  // kepala_keluarga (bukan "suami") supaya konsisten dengan DB.
   const [groupRole, setGroupRole] = useState('anak');
+  const pickFamilyRole = (value) => {
+    setFamilyRole(value);
+    if (value === 'suami') setGroupRole('kepala_keluarga');
+  };
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const firstFieldRef = useRef(null);
@@ -135,7 +141,7 @@ export function RegisterScreen({ onLogin, onBack }) {
             <select
               id="reg-family-role"
               value={familyRole}
-              onChange={(e) => setFamilyRole(e.target.value)}
+              onChange={(e) => pickFamilyRole(e.target.value)}
               className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand"
             >
               <option value="suami">Suami</option>
@@ -156,13 +162,13 @@ export function RegisterScreen({ onLogin, onBack }) {
               onChange={(e) => setGroupRole(e.target.value)}
               className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand"
             >
-              <option value="suami">Suami — boleh tulis</option>
+              <option value="kepala_keluarga">Kepala Keluarga — boleh tulis & kelola</option>
               <option value="istri">Istri — boleh tulis</option>
               <option value="anak">Anak — hanya lihat</option>
               <option value="cucu">Cucu — hanya lihat</option>
             </select>
             <p className="mt-1 text-[11px] leading-snug text-mutedfg">
-              Kepala Keluarga, Suami &amp; Istri bisa menambah/mengubah data; Anak &amp; Cucu hanya melihat.
+              Kepala Keluarga (Suami) &amp; Istri bisa menambah/mengubah data; Anak &amp; Cucu hanya melihat.
             </p>
           </div>
 
