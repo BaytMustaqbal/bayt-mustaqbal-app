@@ -13,5 +13,8 @@ declare module 'hono' {
   interface ContextVariableMap {
     userId: string;
     role: string;
+    // Grup keluarga (isolasi data antar-keluarga) + peran anggota (hak tulis)
+    groupId: string | null;
+    groupRole: string | null;
   }
 }

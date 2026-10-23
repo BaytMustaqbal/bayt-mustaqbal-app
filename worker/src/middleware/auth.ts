@@ -19,5 +19,13 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
   }
   c.set('userId', payload.userId);
   c.set('role', payload.role);
+
+  // Konteks grup keluarga: data aplikasi dipisah per grup, hak tulis per peran.
+  const row = await c.env.DB.prepare(
+    'SELECT group_id, group_role FROM users WHERE id = ?'
+  ).bind(payload.userId).first() as { group_id: string | null; group_role: string | null } | null;
+  c.set('groupId', row?.group_id ?? null);
+  c.set('groupRole', row?.group_role ?? 'anak');
+
   await next();
 }
