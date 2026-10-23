@@ -181,7 +181,7 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
         <div className="flex items-center justify-center gap-3">
           {/* Facebook */}
           <a
-            href="https://facebook.com"
+            href="https://www.facebook.com/rezkiyuditriana"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Facebook"
@@ -200,7 +200,7 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
 
           {/* Instagram */}
           <a
-            href="https://instagram.com"
+            href="https://www.instagram.com/yt_rezki"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Instagram"
@@ -219,7 +219,7 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
 
           {/* TikTok */}
           <a
-            href="https://tiktok.com/@rezkiyt"
+            href="https://www.tiktok.com/@hildaapriyani_"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="TikTok"
@@ -238,7 +238,7 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
 
           {/* Website */}
           <a
-            href="https://baytmustaqbal.my.id"
+            href="https://www.baytmustaqbal.my.id"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Website baytmustaqbal.my.id"
