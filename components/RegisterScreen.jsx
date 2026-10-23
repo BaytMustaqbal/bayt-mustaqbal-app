@@ -16,6 +16,9 @@ export function RegisterScreen({ onLogin, onBack }) {
   const [nama, setNama] = useState('');
   const [nickname, setNickname] = useState('');
   const [password2, setPassword2] = useState('');
+  // Status keluarga (silsilah) + peran akses grup (tulis/baca) — dipilih master.
+  const [familyRole, setFamilyRole] = useState('anak');
+  const [groupRole, setGroupRole] = useState('anak');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const firstFieldRef = useRef(null);
@@ -37,9 +40,10 @@ export function RegisterScreen({ onLogin, onBack }) {
         username.trim().toLowerCase(),
         password,
         nama.trim(),
-        'user',          // family_role: semua user baru = 'user'
-        'anak',          // generasi: default anak
-        nickname.trim() || null
+        familyRole,      // status keluarga: suami | istri | anak | lainnya
+        familyRole === 'anak' ? 'anak' : 'orangtua', // generasi
+        nickname.trim() || null,
+        groupRole        // peran grup: suami | istri | anak | cucu
       );
       onLogin?.(result.user);
     } catch (err) {
@@ -121,6 +125,45 @@ export function RegisterScreen({ onLogin, onBack }) {
               placeholder="mis. Eki"
               className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand"
             />
+          </div>
+
+          {/* Status keluarga (silsilah) — Suami/Istri hanya satu per keluarga */}
+          <div>
+            <label htmlFor="reg-family-role" className="mb-1 block text-xs font-semibold text-mutedfg">
+              Status Keluarga
+            </label>
+            <select
+              id="reg-family-role"
+              value={familyRole}
+              onChange={(e) => setFamilyRole(e.target.value)}
+              className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand"
+            >
+              <option value="suami">Suami</option>
+              <option value="istri">Istri</option>
+              <option value="anak">Anak</option>
+              <option value="lainnya">Lainnya</option>
+            </select>
+          </div>
+
+          {/* Peran akses data keluarga — menentukan boleh tulis atau baca saja */}
+          <div>
+            <label htmlFor="reg-group-role" className="mb-1 block text-xs font-semibold text-mutedfg">
+              Peran Akses Data
+            </label>
+            <select
+              id="reg-group-role"
+              value={groupRole}
+              onChange={(e) => setGroupRole(e.target.value)}
+              className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand"
+            >
+              <option value="suami">Suami — boleh tulis</option>
+              <option value="istri">Istri — boleh tulis</option>
+              <option value="anak">Anak — hanya lihat</option>
+              <option value="cucu">Cucu — hanya lihat</option>
+            </select>
+            <p className="mt-1 text-[11px] leading-snug text-mutedfg">
+              Kepala Keluarga, Suami &amp; Istri bisa menambah/mengubah data; Anak &amp; Cucu hanya melihat.
+            </p>
           </div>
 
           <div>

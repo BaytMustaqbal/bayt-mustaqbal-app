@@ -34,6 +34,7 @@ export function Budgeting({
   onAddPos,
   onEditPos,
   onDeletePos,
+  readOnly = false,
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ income: '', needs: '', wants: '', savings: '' });
@@ -136,15 +137,17 @@ export function Budgeting({
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={openEditor}
-            aria-expanded={editing}
-            className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border border-line px-4 text-sm font-semibold text-brandfg transition-colors hover:bg-brandtint"
-          >
-            <Icon name="edit" size={16} />
-            Ubah
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={openEditor}
+              aria-expanded={editing}
+              className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border border-line px-4 text-sm font-semibold text-brandfg transition-colors hover:bg-brandtint"
+            >
+              <Icon name="edit" size={16} />
+              Ubah
+            </button>
+          )}
         </div>
 
         {budget.income === 0 && !editing && (

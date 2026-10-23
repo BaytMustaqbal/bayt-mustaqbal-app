@@ -86,7 +86,7 @@ export const auth = {
   me: async () => {
     return apiFetch('/auth/me');
   },
-  register: async (username, password, nama, familyRole = 'anak', generasi = 'orangtua', birthDate = null, nickname = null) => {
+  register: async (username, password, nama, familyRole = 'anak', generasi = 'orangtua', birthDate = null, nickname = null, groupRole = 'anak') => {
     return apiFetch('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
@@ -95,6 +95,7 @@ export const auth = {
         generasi,
         birth_date: birthDate,
         nickname,
+        group_role: groupRole,
       }),
     });
   },

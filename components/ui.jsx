@@ -188,7 +188,9 @@ export function EmptyState({ icon = 'inbox', title, message }) {
 /* Tombol aksi per kartu data (edit + hapus). Dua kotak sentuh 44px agar
    nyaman di jari; dipakai seragam oleh kartu agenda, pengeluaran, tugas,
    dan catatan supaya pola "ubah/buang" konsisten. */
-export function ItemActions({ onEdit, onDelete, label = 'item' }) {
+export function ItemActions({ onEdit, onDelete, label = 'item', readOnly = false }) {
+  // Peran baca-saja (anak/cucu): aksi disembunyikan, kartu jadi informatif.
+  if (readOnly) return null;
   return (
     <div className="flex shrink-0 items-center gap-0.5">
       <button
@@ -212,7 +214,7 @@ export function ItemActions({ onEdit, onDelete, label = 'item' }) {
 }
 
 /* Kartu pengeluaran (tile ikon mengikuti kategori) */
-export function ExpenseCard({ item, formatCurrency, onEdit, onDelete }) {
+export function ExpenseCard({ item, formatCurrency, onEdit, onDelete, readOnly = false }) {
   const meta = getCategoryMeta(FINANCE_CATEGORIES, item.category);
   return (
     <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-brand/50 sm:p-5`}>
@@ -236,7 +238,7 @@ export function ExpenseCard({ item, formatCurrency, onEdit, onDelete }) {
           <Icon name="clock" size={13} />
           {item.date}
         </span>
-        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} />
+        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} readOnly={readOnly} />
       </div>
     </Card>
   );
@@ -244,7 +246,7 @@ export function ExpenseCard({ item, formatCurrency, onEdit, onDelete }) {
 
 /* Kartu pemasukan — kembaran ExpenseCard dengan nuansa hijau (emas/positif)
    supaya tidak tertukar dengan pengeluaran saat digulir. */
-export function IncomeCard({ item, formatCurrency, onEdit, onDelete }) {
+export function IncomeCard({ item, formatCurrency, onEdit, onDelete, readOnly = false }) {
   const meta = getCategoryMeta(INCOME_CATEGORIES, item.category);
   return (
     <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-success/50 sm:p-5`}>
@@ -268,7 +270,7 @@ export function IncomeCard({ item, formatCurrency, onEdit, onDelete }) {
           <Icon name="clock" size={13} />
           {item.date}
         </span>
-        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} />
+        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} readOnly={readOnly} />
       </div>
     </Card>
   );

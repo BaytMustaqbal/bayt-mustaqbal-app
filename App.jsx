@@ -628,9 +628,12 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const stored = getUser();
   const transformedUser = stored
-    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, nickname: stored.nickname || null, avatar: stored.avatar || stored.avatar_url || null, initials: initialsOf(stored.nickname || stored.nama || stored.name) }
+    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, nickname: stored.nickname || null, avatar: stored.avatar || stored.avatar_url || null, initials: initialsOf(stored.nickname || stored.nama || stored.name), group_id: stored.group_id || null, group_role: stored.group_role || 'anak', group_name: stored.group_name || null }
     : null;
   const [currentUser, setCurrentUser] = useState(transformedUser);
+  // Hak tulis data keluarga: kepala_keluarga, suami, istri. anak & cucu = baca saja
+  // (backend juga menolak 403; UI hanya menyembunyikan jalur tulis).
+  const canWrite = ['kepala_keluarga', 'suami', 'istri'].includes(currentUser?.group_role);
   // Splash screen: tampil setiap app dibuka, lepas setelah fade-out.
   const [splashDone, setSplashDone] = useState(false);
   // entered = pengguna sudah melewati splash & berada di app (atau login screen)
@@ -704,7 +707,27 @@ export default function App() {
     setAuthChecking(true);
     auth.me()
       .then((user) => {
-        // Token valid — user sudah terautentikasi
+        // Token valid — user sudah terautentikasi.
+        // Segarkan currentUser dari server: grup & peran bisa berubah
+        // (mis. Kepala Keluarga menurunkan peran anggota) — jangan pakai
+        // snapshot localStorage yang mungkin basi.
+        const fresh = {
+          id: user.id,
+          name: user.nama,
+          username: user.username,
+          role: user.role,
+          family_role: user.family_role || 'anak',
+          generasi: user.generasi || 'orangtua',
+          birthDate: user.birth_date || null,
+          nickname: user.nickname || null,
+          avatar: user.avatar_url || null,
+          initials: initialsOf(user.nickname || user.nama),
+          group_id: user.group_id || null,
+          group_role: user.group_role || 'anak',
+          group_name: user.group_name || null,
+        };
+        setCurrentUser((prev) => (prev && prev.id === fresh.id ? { ...prev, ...fresh } : fresh));
+        storeUser(fresh);
         setIsLoggedIn(true);
         setAuthError('');
         // Auto-enter: tidak perlu login lagi kalau token masih valid
@@ -1194,6 +1217,10 @@ export default function App() {
 
   // Hapus item + tawarkan "Urungkan"
   const deleteItem = async (section, item) => {
+    if (!canWrite) {
+      pushToast({ message: 'Peran Anda hanya boleh melihat data keluarga.', duration: 3500, tone: 'danger' });
+      return;
+    }
     const key = SECTION_KEY[section];
     const list = dataRef.current[key] || [];
     const index = list.findIndex((it) => it.id === item.id);
@@ -1296,6 +1323,11 @@ export default function App() {
   // Kirim dari FormSheet: mode ubah → perbarui item, mode tambah → tambah baru.
   // Pos anggaran punya jalur sendiri (bukan array di `data`, tapi `budget.pos`).
   const submitSheet = (section, values) => {
+    // Penjaga pusat: peran baca-saja (anak/cucu) tak bisa menulis data keluarga.
+    if (!canWrite) {
+      pushToast({ message: 'Peran Anda hanya boleh melihat data keluarga.', duration: 3500, tone: 'danger' });
+      return;
+    }
     if (section === 'budgetPos') {
       savePos(values, editing && editing.section === 'budgetPos' ? editing.id : null);
       return;
@@ -1384,7 +1416,7 @@ export default function App() {
 
   // Called by LoginScreen setelah login sukses
   const handleLogin = (user) => {
-    // user = { id, username, nama, role, family_role } from backend
+    // user = { id, username, nama, role, family_role, group_id, group_role } from backend
     const frontendUser = {
       id: user.id,
       name: user.nama,
@@ -1396,6 +1428,9 @@ export default function App() {
       nickname: user.nickname || null,
       avatar: user.avatar_url || null,
       initials: initialsOf(user.nickname || user.nama),
+      group_id: user.group_id || null,
+      group_role: user.group_role || 'anak',
+      group_name: user.group_name || null,
     };
     storeUser(frontendUser);
     setCurrentUser(frontendUser);
@@ -1670,7 +1705,7 @@ export default function App() {
                 icon="trendingUp"
                 title={incomeMeta.label}
                 subtitle={`Total: ${formatCurrency(incomeTotal)} · bulan ini ${formatCurrency(incomeThisMonth)}`}
-                actionLabel="Tambah"
+                actionLabel={canWrite ? 'Tambah' : undefined}
                 actionTone="accent"
                 onAction={() => openAdd('income')}
               />
@@ -1679,7 +1714,7 @@ export default function App() {
                 icon="wallet"
                 title={activeMeta.label}
                 subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
-                actionLabel="Tambah"
+                actionLabel={canWrite ? 'Tambah' : undefined}
                 actionTone="accent"
                 onAction={() => openAdd('expenses')}
               />
@@ -1770,6 +1805,7 @@ export default function App() {
                 onAddPos={(bucket) => openAdd('budgetPos', { bucket })}
                 onEditPos={(bucket, pos) => openEdit('budgetPos', { ...pos, bucket })}
                 onDeletePos={(bucket, pos) => deletePos(bucket, pos)}
+                readOnly={!canWrite}
               />
             ) : financeMode === 'ringkasan' ? (
               <>
@@ -1925,6 +1961,7 @@ export default function App() {
                       formatCurrency={formatCurrency}
                       onEdit={(it) => openEdit('income', it)}
                       onDelete={(it) => deleteItem('income', it)}
+                      readOnly={!canWrite}
                     />
                   ))}
                 </div>
@@ -1944,6 +1981,7 @@ export default function App() {
                     formatCurrency={formatCurrency}
                     onEdit={(it) => openEdit('expenses', it)}
                     onDelete={(it) => deleteItem('expenses', it)}
+                    readOnly={!canWrite}
                   />
                 ))}
               </div>
@@ -1965,7 +2003,7 @@ export default function App() {
               icon="users"
               title={activeMeta.label}
               subtitle={`${bagianCount} data keluarga`}
-              actionLabel="Tambah"
+              actionLabel={canWrite ? 'Tambah' : undefined}
               onAction={() => openAdd('family')}
             />
 
@@ -1995,7 +2033,7 @@ export default function App() {
               icon={activeMeta.icon}
               title={activeMeta.label}
               subtitle={`${filteredNotes.length} dari ${data.notes.length} catatan`}
-              actionLabel="Tambah"
+              actionLabel={canWrite ? 'Tambah' : undefined}
               onAction={() => openAdd('notes')}
             />
 
@@ -2138,6 +2176,15 @@ export default function App() {
           >
             <Icon name="wifiOff" size={16} />
             <span>Mode offline — perubahan akan disinkronkan saat online.</span>
+          </div>
+        )}
+        {!canWrite && (
+          <div
+            role="status"
+            className="mb-4 flex items-center gap-2.5 rounded-xl border border-toneamber/40 bg-toneamber/10 px-4 py-3 text-sm text-toneamberfg"
+          >
+            <Icon name="eye" size={16} />
+            <span>Mode baca-saja — hanya Kepala Keluarga, Suami &amp; Istri yang bisa menambah atau mengubah data keluarga.</span>
           </div>
         )}
         {renderSection()}
