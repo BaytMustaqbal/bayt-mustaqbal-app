@@ -18,6 +18,7 @@ export function RegisterScreen({ onLogin, onBack }) {
   const [password2, setPassword2] = useState('');
   // Status keluarga (silsilah) + peran akses grup (tulis/baca) — dipilih master.
   const [familyRole, setFamilyRole] = useState('anak');
+  const [birthDate, setBirthDate] = useState('');
   // "Suami" di keluarga = Kepala Keluarga: status itu otomatis memilih peran
   // kepala_keluarga (bukan "suami") supaya konsisten dengan DB.
   const [groupRole, setGroupRole] = useState('anak');
@@ -49,7 +50,8 @@ export function RegisterScreen({ onLogin, onBack }) {
         familyRole,      // status keluarga: suami | istri | anak | lainnya
         familyRole === 'anak' ? 'anak' : 'orangtua', // generasi
         nickname.trim() || null,
-        groupRole        // peran grup: suami | istri | anak | cucu
+        groupRole,       // peran grup: kepala_keluarga | istri | anak | cucu
+        birthDate || null // tanggal lahir (YYYY-MM-DD) — tampil di kartu silsilah
       );
       onLogin?.(result.user);
     } catch (err) {
@@ -131,6 +133,23 @@ export function RegisterScreen({ onLogin, onBack }) {
               placeholder="mis. Eki"
               className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand"
             />
+          </div>
+
+          {/* Tanggal lahir (tampil di kartu silsilah keluarga) */}
+          <div>
+            <label htmlFor="reg-birth" className="mb-1 block text-xs font-semibold text-mutedfg">
+              Tanggal Lahir
+            </label>
+            <input
+              id="reg-birth"
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand"
+            />
+            <p className="mt-1 text-[11px] leading-snug text-mutedfg">
+              Dipakai di kartu anggota keluarga. Boleh dikosongkan.
+            </p>
           </div>
 
           {/* Status keluarga (silsilah) — Suami/Istri hanya satu per keluarga */}
