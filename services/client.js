@@ -12,17 +12,25 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://api.baytmustaqbal.my.i
 
 const TOKEN_KEY = 'bm-api-token';
 
-/* ---- Token management ---- */
+/* ---- Token management ----
+   "Ingat saya" di halaman login menentukan tempat simpan:
+   - dicentang  → localStorage  (tetap login meski browser/aplikasi ditutup)
+   - tidak      → sessionStorage (login ulang tiap kali aplikasi dibuka)
+   getToken membaca keduanya; clearToken membersihkan keduanya. */
 export const getToken = () => {
   try {
-    return localStorage.getItem(TOKEN_KEY) || null;
+    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || null;
   } catch {
     return null;
   }
 };
-export const setToken = (token) => {
+export const setToken = (token, remember = true) => {
   try {
-    localStorage.setItem(TOKEN_KEY, token);
+    // Selalu bersihkan satu sisi dulu supaya tak ada sisa dari sesi sebelumnya.
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    if (remember) localStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.setItem(TOKEN_KEY, token);
   } catch {
     /* kuota penuh / mode privat */
   }
@@ -30,6 +38,7 @@ export const setToken = (token) => {
 export const clearToken = () => {
   try {
     localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
   } catch {
     /* abaikan */
   }
@@ -66,13 +75,14 @@ export async function apiFetch(path, options = {}) {
 
 /* ---- Auth ---- */
 export const auth = {
-  login: async (username, password) => {
+  login: async (username, password, remember = true) => {
     const data = await apiFetch('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
     // data = { token, user: { id, username, nama, role } }
-    setToken(data.token);
+    // remember=false → token hanya di sessionStorage (habis saat ditutup)
+    setToken(data.token, remember);
     return data;
   },
   logout: async () => {

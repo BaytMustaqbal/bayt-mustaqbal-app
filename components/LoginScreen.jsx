@@ -18,6 +18,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function LoginScreen({ onLogin, onReset, pushToast }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  /* "Ingat saya": dicontang (default) → token permanen, tetap login meski
+     aplikasi ditutup. Tidak dicontang → token hanya sesi ini. */
+  const [remember, setRemember] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   /* Naik setiap kali error muncul → memicu ulang animasi getar walau
@@ -64,7 +67,7 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
     setSubmitting(true);
     setError('');
     try {
-      const data = await auth.login(email.trim(), password);
+      const data = await auth.login(email.trim(), password, remember);
       onReset && localStorage.removeItem('bayt-mustaqbal-data-v2'); // bersih cache lama
       onLogin(data.user);
     } catch (err) {
@@ -156,6 +159,18 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
               <span>{error}</span>
             </div>
           )}
+
+          {/* Ingat saya — mengontrol tempat simpan token (permanen vs sesi) */}
+          <label htmlFor="login-remember" className="flex min-h-[44px] cursor-pointer items-center gap-2.5 text-sm text-mutedfg">
+            <input
+              id="login-remember"
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-5 w-5 shrink-0 cursor-pointer rounded border-line bg-canvas accent-[#2563EB]"
+            />
+            Ingat saya
+          </label>
 
           <button
             type="submit"

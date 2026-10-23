@@ -426,10 +426,10 @@ const readApiCache = () => {
   }
 };
 
-// Auth token helpers
+// Auth token helpers (dua penyimpanan: localStorage = "Ingat saya", sessionStorage = sesi)
 const tokenExists = () => {
   try {
-    return !!localStorage.getItem(TOKEN_KEY);
+    return !!(localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY));
   } catch {
     return false;
   }
@@ -437,6 +437,7 @@ const tokenExists = () => {
 const clearAuthToken = () => {
   try {
     localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
   } catch {
     /* abaikan */
   }
@@ -539,9 +540,11 @@ const formatCurrencyShort = (value) => {
    `getUser()` mengembalikan user object dari login response (bukan mockData). */
 const USER_KEY = 'bm-user';
 
+/* Token bisa berada di localStorage ("Ingat saya" dicentang) atau
+   sessionStorage (tidak dicentang) — baca keduanya. */
 const storedToken = () => {
   try {
-    return localStorage.getItem(TOKEN_KEY) || null;
+    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || null;
   } catch {
     return null;
   }
@@ -567,6 +570,7 @@ const storeUser = (user) => {
 const clearUser = () => {
   try {
     localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
   } catch {
     /* diabaikan */
@@ -878,6 +882,7 @@ export default function App() {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(API_CACHE_KEY);
       localStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
     } catch (e) {
       /* abaikan */
