@@ -50,7 +50,9 @@ authRoutes.post('/register', async (c) => {
   let groupRole: string;
   if (callerIsMaster) {
     groupId = await masterGroupId(c.env.DB);
-    const allowed: string[] = ['suami', 'istri', 'anak', 'cucu'];
+    // 'kepala_keluarga' diizinkan (Suami di keluarga) — master tetap satu-satunya
+    // pemilik grup; peran ini hanya menambah hak tulis + kelola.
+    const allowed: string[] = ['kepala_keluarga', 'suami', 'istri', 'anak', 'cucu'];
     groupRole = group_role && allowed.includes(group_role) ? group_role : 'anak';
   } else {
     // Registrasi mandiri: grup baru untuk pendaftar
