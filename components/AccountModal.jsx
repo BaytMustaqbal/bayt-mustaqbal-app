@@ -6,6 +6,9 @@ import { auth } from '../services/client';
 /* Username master — bisa daftarkan akun baru dari sini */
 const MASTER_USER = 'baytmustaqbal@gmail.com';
 
+/* Username wajib email (aturan backend) — pola sama dengan LoginScreen/RegisterScreen */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /* ============================================================================
    Modal "Akun saya" — ganti nama, username, avatar, dan password.
 
@@ -209,8 +212,9 @@ export function AccountModal({
     else if (trimmedName.length < 2) errs.name = 'Nama minimal 2 karakter';
     else if (trimmedName.length > 40) errs.name = 'Nama maksimal 40 karakter';
 
-    if (normalizedUsername && !/^[a-z0-9._-]{3,20}$/.test(normalizedUsername)) {
-      errs.username = '3–20 karakter: huruf kecil, angka, titik, garis bawah, atau strip';
+    // Username = alamat email (aturan backend). Pola sama dengan layar login.
+    if (normalizedUsername && !EMAIL_RE.test(normalizedUsername)) {
+      errs.username = 'Username harus berupa alamat email yang valid';
     } else if (
       normalizedUsername &&
       users.some((u) => u.id !== user?.id && (u.username || '').toLowerCase() === normalizedUsername)
@@ -391,10 +395,11 @@ export function AccountModal({
             ref={(el) => {
               fieldRefs.current.username = el;
             }}
-            type="text"
+            type="email"
+            inputMode="email"
             value={username}
             onChange={(e) => setField('username', e.target.value)}
-            placeholder="mis. rezki"
+            placeholder="mis. nama@email.com"
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
@@ -408,7 +413,7 @@ export function AccountModal({
             </p>
           ) : (
             <p id="acc-username-help" className="mt-1 text-[11px] text-mutedfg">
-              Dipakai sebagai nama masuk saat login sungguhan siap. Boleh dikosongkan.
+              Dipakai sebagai nama masuk saat login. Kalau diisi, harus alamat email yang valid.
             </p>
           )}
         </div>
