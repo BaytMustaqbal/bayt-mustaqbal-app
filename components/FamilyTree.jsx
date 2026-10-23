@@ -55,10 +55,13 @@ function MemberBox({ member, onSelect }) {
           ? <img src={member.avatar} alt="" className="h-full w-full object-cover" />
           : (member.initials || '?')}
       </span>
-      <span className="min-w-0">
-        <span className="block truncate font-semibold text-ink">{member.nickname || member.name}</span>
+      {/* w-full + break-words: nama panjang mengikuti lebar kartu dan
+          membungkus (bukan terpotong/keluar kartu). items-center di atas
+          membuat anak flex menyusut sesuai isi — w-full menegaskannya. */}
+      <span className="w-full min-w-0">
+        <span className="block break-words font-semibold text-ink">{member.nickname || member.name}</span>
         {member.nickname && member.nickname !== member.name && (
-          <span className="block truncate text-[11px] text-mutedfg">{member.name}</span>
+          <span className="mt-0.5 block break-words text-[11px] text-mutedfg">{member.name}</span>
         )}
         <span className="mt-1 block">
           <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-mutedfg">
@@ -70,9 +73,9 @@ function MemberBox({ member, onSelect }) {
 
       {open && (
         <span className="mt-1 w-full space-y-1 border-t border-line pt-2 text-left text-[11px] text-mutedfg">
-          <span className="block truncate">Nama: {member.name}</span>
-          {member.nickname && <span className="block truncate">Panggilan: {member.nickname}</span>}
-          <span className="block truncate">Email: {member.email || '—'}</span>
+          <span className="block break-words">Nama: {member.name}</span>
+          {member.nickname && <span className="block break-words">Panggilan: {member.nickname}</span>}
+          <span className="block break-words">Email: {member.email || '—'}</span>
           <span className="block">Status: {member.role} · Posisi: {LABEL_GENERASI[member.generasi] || 'Orangtua'}</span>
           <span className="block">Tanggal lahir: {birth || 'belum diisi'}</span>
         </span>
@@ -131,7 +134,9 @@ export function FamilyTree({ members = [], isMaster = false, onAdd = () => {}, o
   const anak = members.filter((m) => m.generasi === 'anak');
   const cucu = members.filter((m) => m.generasi === 'cucu');
 
-  const suami = orantua.find((m) => m.role === 'Suami');
+  // "Kepala Keluarga" = posisi Suami di pohon (nama peran berubah, posisinya
+  // tetap di kiri) — keduanya dicarikan supaya tak jatuh ke grid "lainnya".
+  const suami = orantua.find((m) => m.role === 'Suami' || m.role === 'Kepala Keluarga');
   const istri = orantua.find((m) => m.role === 'Istri');
   const orantuaLain = orantua.filter((m) => m !== suami && m !== istri);
 
@@ -148,7 +153,7 @@ export function FamilyTree({ members = [], isMaster = false, onAdd = () => {}, o
         {orantua.length === 0 ? (
           <AddPlaceholder generasi="orangtua" isMaster={isMaster} onAdd={onAdd} />
         ) : (
-          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[1fr_auto_1fr]">
+          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
             {/* Kiri: Suami */}
             <div className="flex justify-center">
               {suami
