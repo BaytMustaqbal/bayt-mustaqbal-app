@@ -167,5 +167,27 @@ export function buildNotifications(data, formatShort, now = new Date()) {
     });
   }
 
+  // ---- 4b) Jadwal pengeluaran terjadwal: notifikasi 3 hari sebelum ----
+  const scheduled = data.scheduledExpenses || [];
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  scheduled
+    .filter((t) => t.active)
+    .forEach((t) => {
+      const dueDate = new Date(today.getFullYear(), t.day - 1, 1);
+      const timeDiff = dueDate - today;
+      const daysDiff = Math.round(timeDiff / 86400000);
+      if (daysDiff === 3 || daysDiff === 0) {
+        out.push({
+          id: `scheduled-expense:${t.id}:${todayKey}`,
+          tone: 'amber',
+          icon: 'bell',
+          title: `Jadwal: ${t.name}`,
+          message: `Transaksi "${t.name}" sebesar ${fmt(t.amount)} jatuh tempo ${daysDiff === 0 ? 'hari ini' : '3 hari lagi'} (${t.day} ${dayLabel(today.getMonth() + 1)}).`,
+          target: { section: 'expenses', financeFilter: t.category || 'semua' },
+        });
+      }
+    });
+
   return out;
 }

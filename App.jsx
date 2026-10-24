@@ -197,6 +197,8 @@ const buildDataBundle = (apiData, currentUser) => {
         needs: [{ id: 'n1', label: 'Cicilan rumah/sewa' }, { id: 'n2', label: 'Belanja bahan makanan & beras' }, { id: 'n3', label: 'Tagihan utilitas (listrik/air/internet)' }, { id: 'n4', label: 'Transportasi (BBM/angkutan umum)' }, { id: 'n5', label: 'Sekolah anak' }, { id: 'n6', label: 'Asuransi kesehatan' }],
         wants: [{ id: 'w1', label: 'Makan di luar/hangout' }, { id: 'w2', label: 'Hobi & hiburan' }, { id: 'w3', label: 'Langganan streaming' }, { id: 'w4', label: 'Liburan/travelling' }],
         savings: [{ id: 's1', label: 'Dana darurat (target 3–6× pengeluaran bulanan)' }, { id: 's2', label: 'Tabungan' }, { id: 's3', label: 'Investasi' }, { id: 's4', label: 'Pembayaran cicilan/utang' }],
+        // Scheduled expenses dari API (atau array kosong kalau belum ada)
+        scheduledExpenses: apiData?.scheduledExpenses || [],
       },
     },
     monthlyTrend: computeMonthlyTrend(expenses),
@@ -798,6 +800,62 @@ export default function App() {
     }
   }, [isLoggedIn]);
 
+  // Effect: auto-create scheduled expenses saat app mount
+  // Cek template → buat transaksi jika tanggal jatuh tempo belum dibuat bulan ini (hanya sekali per bulan)
+  useEffect(() => {
+    if (!isLoggedIn || !data) return;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // 1-12
+    const day = now.getDate(); // 1-31
+
+    // Cek tiap scheduled expense template
+    data.scheduledExpenses.forEach((tpl) => {
+      if (!tpl.active) return;
+
+      // Normalisasi day jika 31 → dipangkas ke hari terakhir bulan itu
+      const normalizedDay = tpl.day > 28 ? 
+        new Date(year, month, 0).getDate() : tpl.day;
+
+      // Cek apakah transaksi sudah dibuat bulan ini (lihat lastRunMonth)
+      const alreadyCreated = data.expenses.some((e) => 
+        e.bucket === 'scheduled' && 
+        e.description === tpl.name && 
+        ((e.date || '').startsWith(`${year}-${pad2(month)}`))
+      );
+
+      if (!alreadyCreated && normalizedDay === day) {
+        // Buat transaksi otomatis
+        const amount = Number(tpl.amount) || 0;
+        const category = tpl.category || 'lainnya';
+        const date = `${year}-${pad2(month)}-${pad2(normalizedDay)}`;
+
+        txn.create({ amount, type: 'out', category, description: tpl.name, date, bucket: 'scheduled' })
+          .then((result) => {
+            // Tambahkan ke state setelah berhasil
+            const resultTxn = txnTransform.toTxn(result);
+            saveData({
+              ...data,
+              expenses: [...(data.expenses || []), resultTxn],
+            });
+            // Update lastRunMonth untuk template ini
+            const tplIndex = data.scheduledExpenses.findIndex((t) => t.id === tpl.id);
+            if (tplIndex >= 0) {
+              const updatedTemplates = [...data.scheduledExpenses];
+              updatedTemplates[tplIndex].lastRunMonth = monthKeyOf(new Date(date));
+              saveData({
+                ...data,
+                scheduledExpenses: updatedTemplates,
+              });
+            }
+          })
+          .catch((err) => {
+            console.error('Gagal membuat transaksi scheduled:', err.message);
+          });
+      }
+    });
+  }, [isLoggedIn, data, scheduledExpenses]);
+
   // Effect: reload data ketika online kembali
   useEffect(() => {
     if (isOnline && isLoggedIn && data) {
@@ -1290,13 +1348,75 @@ export default function App() {
     setSheetInitial(nilaiAwal);
     setSheetOpen(section);
   };
+
+  // Buka form tambah template pengeluaran terjadwal
+  const openAddScheduledTemplate = () => {
+    setEditing(null);
+    setSheetInitial(null);
+    setSheetOpen('scheduledTemplate');
+  };
   // Klik placeholder "+ Tambah" di FamilyTree → buka AccountModal dengan generasi preset
   const handleTreeAdd = (generasi) => {
     setAccountInitialGenerasi(generasi);
     setAccountOpen(true);
   };
 
-  // Setelah daftar akun / simpan profil: segarkan data + perbarui currentUser
+  // Simpan template pengeluaran terjadwal
+  const saveScheduledTemplate = async (values) => {
+    const { name, amount, category, day, bucket, active } = values;
+    const template = {
+      id: Date.now(),
+      name,
+      amount: Number(amount) || 0,
+      category: category || 'lainnya',
+      day: Number(day) || 1,
+      bucket: bucket || 'auto',
+      active: active !== false,
+      lastRunMonth: null,
+    };
+
+    // Simpan ke settings API
+    const key = 'scheduled_expenses';
+    const existingValue = (await settingsApi.fetchAll()).find((s) => s.key === key);
+    let value = existingValue ? existingValue.value : '[]';
+
+    // Parse existing dan tambahkan template baru
+    let templates = [];
+    try {
+      templates = JSON.parse(value);
+    } catch {}
+
+    // Cek apakah template dengan nama sama sudah ada
+    const exists = templates.some((t) => t.name === name);
+    if (exists) {
+      pushToast({ message: `Template "${name}" sudah ada`, duration: 3000, tone: 'warning' });
+      return;
+    }
+
+    templates.push(template);
+    value = JSON.stringify(templates);
+
+    // Simpan ke settings API
+    if (isOnline) {
+      try {
+        await settingsApi.upsert(key, value);
+        pushToast({ message: 'Template pengeluaran terjadwal disimpan', duration: 2500 });
+      } catch (err) {
+        pushToast({ message: 'Template disimpan Lokal (gagal sinkron)', duration: 4000, tone: 'warning' });
+      }
+    } else {
+      pushToast({ message: 'Template disimpan Lokal (tidak ada koneksi)', duration: 3000 });
+    }
+
+    // Update state lokal
+    const templatesRef = data?.scheduledExpenses || [];
+    saveData({
+      ...data,
+      scheduledExpenses: [...templatesRef, template],
+    });
+  };
+
+// Setelah daftar akun / simpan profil: segarkan data + perbarui currentUser
   // (hindari field tanggal lahir basi) + reset preset agar bisa trigger lagi.
   const handleProfileSaved = (updatedUser) => {
     if (updatedUser) {
@@ -1337,6 +1457,10 @@ export default function App() {
     }
     if (section === 'budgetPos') {
       savePos(values, editing && editing.section === 'budgetPos' ? editing.id : null);
+      return;
+    }
+    if (section === 'scheduledTemplate') {
+      saveScheduledTemplate(values);
       return;
     }
     if (editing && editing.section === section) updateItem(section, editing.id, values);
@@ -1717,14 +1841,28 @@ export default function App() {
                 onAction={() => openAdd('income')}
               />
             ) : (
-              <SectionHeader
-                icon="wallet"
-                title={activeMeta.label}
-                subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
-                actionLabel={canWrite ? 'Tambah' : undefined}
-                actionTone="accent"
-                onAction={() => openAdd('expenses')}
-              />
+              <>
+                {/* Panel Pengeluaran Terjadwal */}
+                <SectionHeader
+                  icon="repeat"
+                  title="Pengeluaran Terjadwal"
+                  subtitle={data.scheduledExpenses.length > 0 
+                    ? `${data.scheduledExpenses.filter((t) => t.active).length} template aktif` 
+                    : 'Belum ada template'}
+                  actionLabel={canWrite ? 'Tambah template' : undefined}
+                  actionTone="accent"
+                  onAction={() => openAdd('scheduledTemplate')}
+                />
+                <hr className="my-2 border-border" />
+                <SectionHeader
+                  icon="wallet"
+                  title={activeMeta.label}
+                  subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
+                  actionLabel={canWrite ? 'Tambah' : undefined}
+                  actionTone="accent"
+                  onAction={() => openAdd('expenses')}
+                />
+              </>
             )}
 
             {/* Sub-tampilan Keuangan: Ringkasan | Pengeluaran | Anggaran | Pemasukan */}
