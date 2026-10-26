@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { CTA_CLASS } from './ui';
-import { saranDariTeks } from './receiptOcr';
+import { saranDariTeks, daftarItemDariTeks, jumlahItemDariTeks } from './receiptOcr';
 
 /* Pemindai struk: mode semi-auto.
    Foto (JPEG/PNG) hanya dibaca lewat OCR di browser, TIDAK pernah disimpan.
@@ -13,6 +13,9 @@ const INPUT_CLS =
 
 const PICKER_CLS =
   'inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-3 text-sm font-medium text-ink transition-colors hover:bg-muted disabled:opacity-50';
+
+// Format rupiah ringkas untuk rincian item (mis. Rp11.500)
+const rp = (n) => `Rp${Number(n).toLocaleString('id-ID')}`;
 
 export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onSave }) {
   const titleId = useId();
@@ -34,6 +37,8 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
   // Teks mentah hasil OCR (bukan teks struk yang disimpan, hanya untuk
   // diperiksa pengguna & membantu diagnosis bila hasil bacaan tidak jelas)
   const [rawText, setRawText] = useState('');
+  // Rincian item terbaca dari struk (read-only, untuk verifikasi pengguna)
+  const [items, setItems] = useState([]);
 
   // Tutup dengan Escape (kecuali sedang OCR) + kunci scroll body
   useEffect(() => {
@@ -71,6 +76,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
     setErr('');
     setProgress(0);
     setRawText('');
+    setItems([]);
   };
 
   const jalankanOCR = async () => {
@@ -92,6 +98,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
 
       const saran = saranDariTeks(hasil?.data?.text || '');
       setRawText(hasil?.data?.text || '');
+      setItems(daftarItemDariTeks(hasil?.data?.text || ''));
       setForm((f) => ({
         ...f,
         description: saran.description || f.description,
@@ -285,6 +292,26 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
             </p>
           )}
         </div>
+
+        {/* ---------- Rincian item terbaca (read-only, untuk verifikasi) ---------- */}
+        {items.length > 0 && (
+          <div className="mt-3.5 rounded-2xl border border-line bg-canvas p-3.5">
+            <h3 className="mb-2 text-xs font-semibold text-mutedfg">Rincian terbaca</h3>
+            <ul className="space-y-1.5">
+              {items.map((it, idx) => (
+                <li key={idx} className="flex justify-between text-sm">
+                  <span className="text-mutedfg truncate">{it.nama}</span>
+                  <span className="text-ink">{rp(it.harga)}</span>
+                </li>
+              ))}
+            </ul>
+            {items.reduce((s, i) => s + i.harga, 0) > 0 && (
+              <div className="mt-2 border-t border-line pt-2 text-right text-sm font-semibold text-ink">
+                Total item: {rp(items.reduce((s, i) => s + i.harga, 0))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ---------- Teks mentah hasil OCR (untuk diperiksa / diagnosis) ---------- */}
         {rawText && !busy && (
