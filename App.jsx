@@ -2340,16 +2340,6 @@ const [goals, setGoals] = useState([]);
                     onAction={() => openAdd('expenses')}
                     className="mb-0"
                   />
-                  {canWrite && (
-                    <button
-                      type="button"
-                      onClick={() => setScanOpen(true)}
-                      className="inline-flex min-h-[44px] shrink-0 items-center gap-2 self-start rounded-xl border border-brand/25 bg-brandtint px-3.5 text-sm font-semibold text-brandfg transition-colors hover:bg-brand/10 sm:ml-auto"
-                    >
-                      <Icon name="camera" size={17} />
-                      Foto Struk
-                    </button>
-                  )}
                 </div>
               </>
             )}
@@ -2727,6 +2717,7 @@ const [goals, setGoals] = useState([]);
             onNavigate={setActiveSection}
             onOpenTimeline={handleOpenAgendaTimeline}
             onEditItem={openEdit}
+            onScanReceipt={canWrite ? () => setScanOpen(true) : null}
           />
         );
     }

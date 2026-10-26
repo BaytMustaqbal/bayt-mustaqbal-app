@@ -30,7 +30,7 @@ function Panel({ icon, title, action, children }) {
   );
 }
 
-export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem }) {
+export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem, onScanReceipt }) {
   // Jumlah uang di kartu hero disembunyikan secara default (privasi saat
   // orang lain melirik layar). Tombol mata menampilkannya sementara —
   // sengaja TIDAK disimpan, supaya tiap kali app dibuka kembali tersembunyi.
@@ -174,7 +174,19 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
 
       {/* ---------- Aksi cepat ---------- */}
       <div>
-        <h2 className="mb-2.5 text-sm font-semibold text-ink">Aksi Cepat</h2>
+        <div className="mb-2.5 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-ink">Aksi Cepat</h2>
+          {onScanReceipt && (
+            <button
+              type="button"
+              onClick={onScanReceipt}
+              className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border border-brand/25 bg-brandtint px-3.5 text-sm font-semibold text-brandfg transition-colors hover:bg-brand/10"
+            >
+              <Icon name="camera" size={17} />
+              Foto Struk
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-4 gap-2.5 sm:gap-3">
           <QuickAction icon="wallet" label="Keuangan" tone="cyan" onClick={() => onNavigate('expenses')} />
           <QuickAction icon="calendar" label="Agenda" tone="blue" onClick={() => onNavigate('agenda')} />
