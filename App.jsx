@@ -9,6 +9,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { AccountModal } from './components/AccountModal';
+import { ReceiptScanner } from './components/ReceiptScanner';
 import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, FamilyList, initialsOf } from './components/ui';
 import { GroupedBarChart, DonutChart, BarChart } from './components/charts';
 import { FamilyCalendar } from './components/Calendar';
@@ -571,9 +572,8 @@ export default function App() {
 // Setiap goal: { id, nama, targetAmount, currentAmount, targetDate, achieved, createdAt }
 const [goals, setGoals] = useState([]);
 
-  // Struk belanja & receipt — dikelola pengguna, hanya teks (tidak simpan foto)
-  // Setiap receipt: { id, nama, amount, kategori, date, confirmed, createdAt }
-  const [receipts, setReceipts] = useState([]);
+  // Pemindai struk: foto dibaca OCR di perangkat, disimpan sebagai pengeluaran biasa
+  const [scanOpen, setScanOpen] = useState(false);
 
   // ---- Fitur budget, tagihan & SHEET_CONFIG: WAJIB di dalam component ----
   // (sebelumnya salah tempat di module scope -> "Invalid hook call")
@@ -1824,6 +1824,13 @@ const [goals, setGoals] = useState([]);
     setSheetInitial(null);
     setSheetOpen('scheduledTemplate');
   };
+
+  // Hasil pemindaian struk disimpan lewat jalur yang sama dengan form
+  // "Tambah Pengeluaran", supaya ikut hitungan anggaran, daftar & total.
+  const simpanStruk = async (values) => {
+    await addItem('expenses', { ...values, bucket: 'auto' });
+    setScanOpen(false);
+  };
   // Klik placeholder "+ Tambah" di FamilyTree ? buka AccountModal dengan generasi preset
   const handleTreeAdd = (generasi) => {
     setAccountInitialGenerasi(generasi);
@@ -2333,6 +2340,16 @@ const [goals, setGoals] = useState([]);
                     onAction={() => openAdd('expenses')}
                     className="mb-0"
                   />
+                  {canWrite && (
+                    <button
+                      type="button"
+                      onClick={() => setScanOpen(true)}
+                      className="inline-flex min-h-[44px] shrink-0 items-center gap-2 self-start rounded-xl border border-brand/25 bg-brandtint px-3.5 text-sm font-semibold text-brandfg transition-colors hover:bg-brand/10 sm:ml-auto"
+                    >
+                      <Icon name="camera" size={17} />
+                      Foto Struk
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -2806,6 +2823,16 @@ const [goals, setGoals] = useState([]);
         )}
         {renderSection()}
       </main>
+
+      {/* Pemindai struk: foto dibaca OCR, hasilnya jadi pengeluaran biasa */}
+      {scanOpen && (
+        <ReceiptScanner
+          categories={getBudgetCategoryOptions().filter((c) => c.value !== 'semua')}
+          defaultDate={todayKey()}
+          onClose={() => setScanOpen(false)}
+          onSave={simpanStruk}
+        />
+      )}
 
       {/* Bottom sheet "Tambah/Ubah" � form per section (mode edit = nilai terisi) */}
       <FormSheet
