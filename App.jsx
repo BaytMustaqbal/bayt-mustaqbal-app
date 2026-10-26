@@ -249,490 +249,6 @@ const saveBudgetCategories = (categories) => {
   }
 };
 
-// Inisialisasi state dari localStorage saat komponen pertama kali render
-// (Sudah dilakukan di useState di bawah, tapi fungsi ini tersedia untuk dipakai lagi)
-const initBudgetCategories = () => {
-  const loaded = loadBudgetCategories();
-  // Konversi format: pastikan setiap kategori punya id, name, limit
-  const normalized = loaded.map((c) => ({
-    id: c.id || `cat-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    name: c.name || 'Kategori Baru',
-    limit: c.limit !== undefined ? Number(c.limit) : 0,
-  }));
-  setBudgetCategories(normalized);
-  saveBudgetCategories(normalized);
-};
-
-// Buat kategori baru
-const addBudgetCategory = (name, limit) => {
-  const newCategory = {
-    id: `cat-${Date.now()}`, // ID unik
-    name: name.toLowerCase().trim() || 'belum nama',
-    limit: Number(limit) || 0,
-  };
-  setBudgetCategories(prev => {
-    // Cek apakah kategori sudah ada (case-insensitive)
-    const exists = prev.some((c) => c.name === newCategory.name);
-    if (exists) {
-      alert('Kategori sudah ada! Gunakan nama yang berbeda.');
-      return prev;
-    }
-    return [...prev, newCategory];
-  });
-  saveBudgetCategories(prev => [...prev, newCategory]);
-};
-
-// Edit kategori existente
-const editBudgetCategory = (categoryId, newName, newLimit) => {
-  setBudgetCategories(prev =>
-    prev.map((c) =>
-      c.id === categoryId
-        ? { ...c, name: newName.toLowerCase().trim() || c.name, limit: Number(newLimit) || c.limit }
-        : c
-    )
-  );
-  saveBudgetCategories(prev =>
-    prev.map((c) =>
-      c.id === categoryId ? { ...c, name: newName.toLowerCase().trim() || c.name, limit: Number(newLimit) || c.limit } : c
-    )
-  );
-};
-
-// Hapus kategori
-const deleteBudgetCategory = (categoryId) => {
-  // Cek apakah kategori sedang digunakan di transaksi expenses
-  // Jika ada, tampilkan warning
-  const isUsed = expenses.some((e) => e.category === categoryId);
-  if (isUsed) {
-    alert('Tidak bisa menghapus kategori ini karena masih ada transaksi yang menggunakan kategori ini.');
-    return;
-  }
-  
-  setBudgetCategories(prev => prev.filter((c) => c.id !== categoryId));
-  saveBudgetCategories(prev => prev.filter((c) => c.id !== categoryId));
-};
-
-// Konversi budgetCategories ke options select
-const getBudgetCategoryOptions = () => {
-  if (!budgetCategories || budgetCategories.length === 0) {
-    // Fallback ke FINANCE_CATEGORIES jika belum ada budget categories
-    return catOptions(FINANCE_CATEGORIES);
-  }
-  // Convert budgetCategories {id, name, limit} ke format select options
-  return budgetCategories
-    .filter((c) => c.id !== 'semua' && c.id) // filter invalid
-    .map((c) => ({ value: c.id, label: c.name }))
-    .concat([{ value: 'semua', label: 'Semua' }]); // tambahkan "semua" option
-};
-
-// --- Fungsi CRUD Tagihan & Utang-Piutang ---
-
-// Simpan tagihan ke localStorage
-const STORAGE_KEY_TAGIHAN = 'bayt-mustaqbal-tagihans';
-
-const loadTagihans = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_TAGIHAN);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error('Gagal load tagihans', e);
-    return [];
-  }
-};
-
-const saveTagihans = (tagihans) => {
-  try {
-    localStorage.setItem(STORAGE_KEY_TAGIHAN, JSON.stringify(tagihans));
-  } catch (e) {
-    console.error('Gagal save tagihans', e);
-  }
-};
-
-// Inisialisasi tagihans dari localStorage saat komponen render
-useEffect(() => {
-  const loaded = loadTagihans();
-  const normalized = loaded.map((t) => ({
-    id: t.id || `tag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    nama: t.nama || 'Tagihan Baru',
-    kategori: t.kategori || 'lainnya',
-    amount: t.amount !== undefined ? Number(t.amount) : 0,
-    dueDate: t.dueDate || '',
-    dibayar: t.dibayar !== undefined ? Number(t.dibayar) : 0,
-    lastPaidDate: t.lastPaidDate || null,
-    lastNotified: t.lastNotified || null,
-    createdAt: t.createdAt || new Date().toISOString(),
-  }));
-  setTagihans(normalized);
-}, []);
-
-// Tambah tagihan baru
-const addTagihan = (nama, kategori, amount, dueDate) => {
-  const newTagihan = {
-    id: `tag-${Date.now()}`,
-    nama: nama.toLowerCase().trim() || 'belum nama',
-    kategori: kategori || 'lainnya',
-    amount: Number(amount) || 0,
-    dueDate: dueDate || '',
-    dibayar: 0,
-    lastPaidDate: null,
-    lastNotified: null,
-    createdAt: new Date().toISOString(),
-  };
-  setTagihans(prev => {
-    const exists = prev.some((t) => t.nama === newTagihan.name);
-    if (exists) {
-      alert('Tagihan sudah ada! Gunakan nama yang berbeda.');
-      return prev;
-    }
-    return [...prev, newTagihan];
-  });
-  saveTagihans(prev => [...prev, newTagihan]);
-};
-
-// Edit tagihan existente
-const editTagihan = (tagihanId, newNama, newKategori, newAmount, newDueDate) => {
-  setTagihans(prev =>
-    prev.map((t) =>
-      t.id === tagihanId
-        ? { ...t, nama: newNama.toLowerCase().trim() || t.nama, kategori: newKategori || t.kategori, amount: Number(newAmount) || t.amount, dueDate: newDueDate || t.dueDate }
-        : t
-    )
-  );
-  saveTagihans(prev =>
-    prev.map((t) =>
-      t.id === tagihanId ? { ...t, nama: newNama.toLowerCase().trim() || t.nama, kategori: newKategori || t.kategori, amount: Number(newAmount) || t.amount, dueDate: newDueDate || t.dueDate } : t
-    )
-  );
-};
-
-// Hapus tagihan
-const deleteTagihan = (tagihanId) => {
-  const toDelete = tagihans.find((t) => t.id === tagihanId);
-  if (toDelete && toDelete.dibayar > 0) {
-    alert('Tidak bisa menghapus tagihan ini karena masih ada pembayaran yang tercatat.');
-    return;
-  }
-  
-  setTagihans(prev => prev.filter((t) => t.id !== tagihanId));
-  saveTagihans(prev => prev.filter((t) => t.id !== tagihanId));
-};
-
-// Catat pembayaran tagihan
-const catatPembayaran = (tagihanId, amount) => {
-  const tagihan = tagihans.find((t) => t.id === tagihanId);
-  if (!tagihan) return;
-  
-  const newDibayar = (tagihan.dibayar || 0) + Number(amount);
-  const newLastPaidDate = new Date().toISOString().split('T')[0];
-  
-  setTagihans(prev =>
-    prev.map((t) =>
-      t.id === tagihanId
-        ? { ...t, dibayar: newDibayar, lastPaidDate: newLastPaidDate }
-        : t
-    )
-  );
-  saveTagihans(prev =>
-    prev.map((t) =>
-      t.id === tagihanId ? { ...t, dibayar: newDibayar, lastPaidDate: newLastPaidDate } : t
-    )
-  );
-};
-
-// Reset lastNotified saat ada pembayaran baru
-const resetLastNotified = (tagihanId) => {
-  setTagihans(prev =>
-    prev.map((t) =>
-      t.id === tagihanId ? { ...t, lastNotified: null } : t
-    )
-  );
-};
-
-// UseEffect: Cek pengingat tagihan setiap hari (pukul 09:00 sore)
-useEffect(() => {
-  // Fungsi format tanggal untuk perbandingan (hanya date part)
-  const formatDate = (dateStr) => {
-    if (!dateStr) return null;
-    return new Date(dateStr).toISOString().split('T')[0];
-  };
-
-  // Fungsi kirim ke Fonnte
-  const kirimFonnte = async (message, target) => {
-    try {
-      const result = await fetch('https://api.fonnte.net/v1/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_FONNTE_TOKEN}`,
-        },
-        body: JSON.stringify({ message, target }),
-      });
-      const data = await result.json();
-      return data;
-    } catch (err) {
-      console.error('Gagal kirim Fonnte:', err.message);
-      return null;
-    }
-  };
-
-  // Fungsi cek dan kirim pengingat
-  const cekPengingat = async () => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    
-    tagihans.forEach((tagihan) => {
-      if (!tagihan.dueDate) return;
-      
-      const dueDate = new Date(tagihan.dueDate);
-      const dueDateStr = dueDate.toISOString().split('T')[0];
-      
-      // Hitung selisih hari
-      const diffTime = Math.abs(dueDate - today) / 86400000;
-      const daysDiff = Math.round(diffTime);
-      
-      // Cek apakah sudah diberitahu hari ini
-      const alreadyNotifiedToday = tagihan.lastNotified === todayStr;
-      
-      // Jika tenggat hari ini (0 hari selisih) dan belum dikirim
-      if (daysDiff === 0 && !alreadyNotifiedToday) {
-        const message = `⚠️ *Hari Ini Tenggat Bayar!*\nTagihan *${tagihan.nama}* sebesar *Rp ${formatCurrencyShort(tagihan.amount)}* tenggat bayar hari ini. Segera lakukan pembayaran!`;
-        kirimFonnte(message, import.meta.env.VITE_FONNTE_TARGET || '').then(() => {
-          resetLastNotified(tagihan.id);
-        });
-        return;
-      }
-      
-      // Jika 7 hari sebelum tenggat dan belum dikirim
-      if (daysDiff === 7 && !alreadyNotifiedToday) {
-        const message = `⚠️ *Pengingat Bayar 7 Hari!*\nTagihan *${tagihan.nama}* sebesar *Rp ${formatCurrencyShort(tagihan.amount)}* tenggat bayar ${tagihan.dueDate}. Silakan segera bayar!`;
-        kirimFonnte(message, import.meta.env.VITE_FONNTE_TARGET || '').then(() => {
-          resetLastNotified(tagihan.id);
-        });
-        return;
-      }
-    });
-  };
-
-  // Jalankan cek setiap hari pukul 09:00 WIB
-  // Set timer untuk 9:00 sore setiap hari
-  const runOnce = async () => {
-    await cekPengingat();
-  };
-
-  // Set interval cek harian - cek setiap hari pada pukul 09:00
-  const intervalId = setInterval(async () => {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    
-    // Cek apakah sudah lewat 09:00 sore (17:00)
-    // Atau cek pagi 09:00
-    if (hours >= 9 && hours < 10) {
-      await cekPengingat();
-    }
-  }, 60000); // Cek setiap menit, tapi hanya jalan pada jam 09:00-09:01
-
-  // Jalankan sekali saat component mount
-  runOnce();
-
-  // Bersihkan interval saat component unmount
-  return () => clearInterval(intervalId);
-}, [tagihans]);
-
-// Hitung status tagihan (persentase, sisa, warna)
-const hitungStatusTagihan = (tagihan) => {
-  const persentase = tagihan.amount > 0 ? Math.round((tagihan.dibayar / tagihan.amount) * 100) : 0;
-  const sisa = tagihan.amount - (tagihan.dibayar || 0);
-  let warna = 'green';
-  if (persentase >= 100) warna = 'red';
-  else if (persentase >= 80) warna = 'orange';
-  return { persentase, sisa, warna };
-};
-
-// Hitung total tagihan per kategori
-const hitungTotalTagihanPerKategori = () => {
-  const total = {};
-  
-  tagihans.forEach((t) => {
-    const kategori = t.kategori || 'lainnya';
-    if (!total[kategori]) {
-      total[kategori] = { amount: 0, dibayar: 0 };
-    }
-    total[kategori].amount += t.amount;
-    total[kategori].dibayar += t.dibayar || 0;
-  });
-  
-  return total;
-};
-
-// Hitung budget terintegrasi (budget kategori + tagihan rutin)
-const hitungBudgetTerintegrasi = () => {
-  // 1. Budget dasar dari kategori yang dikonfigurasi
-  const budgetDasar = {};
-  budgetCategories.forEach((cat) => {
-    budgetDasar[cat.name] = cat.limit || 0;
-  });
-  
-  // 2. Total tagihan per kategori
-  const tagihanTotal = hitungTotalTagihanPerKategori();
-  
-  // 3. Gabungkan: limit budget + spent dari tagihan
-  const terintegrasi = {};
-  Object.keys(budgetDasar).forEach((kategori) => {
-    const tagihanKategori = tagihanTotal[kategori] || { amount: 0, dibayar: 0 };
-    terintegrasi[kategori] = {
-      limit: budgetDasar[kategori],
-      spent: tagihanKategori.dibayar,
-      remaining: budgetDasar[kategori] - tagihanKategori.dibayar,
-      persentase: tagihanKategori.dibayar > 0 
-        ? Math.round((tagihanKategori.dibayar / budgetDasar[kategori]) * 100) 
-        : 0,
-    };
-  });
-  
-  return terintegrasi;
-};
-
-// Konversi tagihans ke options select kategori
-const getTagihanCategoryOptions = () => {
-  if (!tagihans || tagihans.length === 0) {
-    return catOptions(FINANCE_CATEGORIES);
-  }
-  return tagihans
-    .filter((t) => t.kategori && t.kategori !== 'semua')
-    .map((t) => ({ value: t.kategori, label: t.kategori }))
-    .concat([{ value: 'semua', label: 'Semua' }]);
-};
-
-const SHEET_CONFIG = {
-  agenda: {
-    title: 'Tambah Agenda',
-    icon: 'calendar',
-    fields: [
-      { key: 'title', label: 'Judul agenda', type: 'text', required: true, placeholder: 'contoh: Piknik Keluarga' },
-      { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
-      { key: 'time', label: 'Jam', type: 'time', defaultValue: '08:00' },
-      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(AGENDA_CATEGORIES)[0].value, options: catOptions(AGENDA_CATEGORIES) },
-      { key: 'member', label: 'Anggota', type: 'select', required: true, defaultValue: MEMBER_ALL[0], options: memberOptions(MEMBER_ALL) },
-    ],
-  },
-  expenses: {
-    title: 'Tambah Pengeluaran',
-    icon: 'wallet',
-    fields: [
-      { key: 'description', label: 'Deskripsi', type: 'text', required: true, placeholder: 'contoh: Bahan masakan mingguan' },
-      { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 150000' },
-      { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
-      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: getBudgetCategoryOptions()[0].value, options: getBudgetCategoryOptions() },
-      // Keranjang anggaran: "Otomatis" = ikut kategori (lihat CATEGORY_BUCKET
-      // di components/categories.js); pilihan lain menimpanya untuk item ini.
-      {
-        key: 'bucket',
-        label: 'Keranjang',
-        type: 'select',
-        defaultValue: 'auto',
-        options: [
-          { value: 'auto', label: 'Otomatis (ikut kategori)' },
-          { value: 'needs', label: 'Kebutuhan' },
-          { value: 'wants', label: 'Keinginan' },
-          { value: 'savings', label: 'Tabungan & Utang' },
-        ],
-      },
-    ],
-  },
-  income: {
-    title: 'Tambah Pemasukan',
-    icon: 'wallet',
-    fields: [
-      { key: 'description', label: 'Sumber / Keterangan', type: 'text', required: true, placeholder: 'contoh: Gaji bulan ini, Projek desain' },
-      { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 8000000' },
-      { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
-      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(INCOME_CATEGORIES)[0].value, options: catOptions(INCOME_CATEGORIES) },
-    ],
-  },
-  tasks: {
-    title: 'Tambah Tugas',
-    icon: 'tasks',
-    fields: [
-      { key: 'title', label: 'Judul tugas', type: 'text', required: true, placeholder: 'contoh: Rapikan lemari' },
-      { key: 'dueDate', label: 'Jatuh tempo', type: 'date', required: true, defaultValue: todayKey() },
-      {
-        key: 'priority',
-        label: 'Prioritas',
-        type: 'select',
-        required: true,
-        defaultValue: 'medium',
-        options: [
-          { value: 'high', label: 'Tinggi' },
-          { value: 'medium', label: 'Sedang' },
-          { value: 'low', label: 'Rendah' },
-        ],
-      },
-      { key: 'assignedTo', label: 'Penanggung jawab', type: 'select', required: true, defaultValue: MEMBER_PEOPLE[0], options: memberOptions(MEMBER_PEOPLE) },
-    ],
-  },
-  notes: {
-    title: 'Tambah Catatan',
-    icon: 'note',
-    fields: [
-      { key: 'title', label: 'Judul catatan', type: 'text', required: true, placeholder: 'contoh: Daftar belanja mingguan' },
-      { key: 'body', label: 'Isi catatan', type: 'textarea', rows: 3, placeholder: 'tulis detail catatan di sini�' },
-      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'info', options: catOptions(NOTE_CATEGORIES) },
-      { key: 'pinned', label: 'Tandai penting', type: 'checkbox', help: 'Muncul di filter "Penting"' },
-    ],
-  },
-  family: {
-    title: 'Tambah ke Keluarga',
-    icon: 'users',
-    fields: [
-      {
-        key: 'bagian',
-        label: 'Simpan ke bagian',
-        type: 'select',
-        required: true,
-        defaultValue: 'anggota',
-        options: [
-          { value: 'anggota', label: 'Anggota keluarga' },
-          { value: 'medis', label: 'Info Medis' },
-          { value: 'kontak', label: 'Kontak & Darurat' },
-          { value: 'dokumen', label: 'Dokumen Penting' },
-        ],
-      },
-      { key: 'title', label: 'Nama / Judul', type: 'text', required: true, placeholder: 'nama anggota, dokter, kontak, atau dokumen' },
-      { key: 'meta', label: 'Info singkat (opsional)', type: 'text', placeholder: 'contoh: 0812-3456-7890 atau Berlaku s/d 2030-05-12' },
-    ],
-  },
-  // Pos saran di halaman Anggaran. Sama seperti section lain, hanya label +
-  // keranjang (tanpa nominal): nominalnya tetap turunan dari rasio.
-  budgetPos: {
-    title: 'Tambah Pos Anggaran',
-    icon: 'target',
-    fields: [
-      { key: 'label', label: 'Nama pos', type: 'text', required: true, placeholder: 'contoh: Cicilan motor' },
-      {
-        key: 'bucket',
-        label: 'Keranjang',
-        type: 'select',
-        required: true,
-        defaultValue: BUCKETS[0].id,
-        options: BUCKETS.map((b) => ({ value: b.id, label: b.label })),
-      },
-    ],
-  },
-  scheduledTemplate: {
-    title: 'Tambah Template Pengeluaran Terjadwal',
-    icon: 'repeat',
-    fields: [
-      { key: 'name', label: 'Nama template', type: 'text', required: true, placeholder: 'contoh: Bulanan listrik' },
-      { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 50000' },
-      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'lainnya', options: [{ value: 'lainnya', label: 'Lainnya' }] },
-      { key: 'day', label: 'Hari jatuh tempo', type: 'number', required: true, min: 1, max: 31, defaultValue: 1, placeholder: '1-31' },
-      { key: 'bucket', label: 'Keranjang', type: 'select', required: true, defaultValue: 'auto', options: [{ value: 'auto', label: 'Otomatis' }, { value: 'needs', label: 'Kebutuhan' }, { value: 'wants', label: 'Keinginan' }, { value: 'savings', label: 'Tabungan & Utang' }] },
-      { key: 'active', label: 'Aktif', type: 'checkbox', help: 'Nonaktifkan template jika tidak digunakan' },
-    ],
-  },
-};
-
 // ---- Pemetaan section ? kunci array data & label Indonesia ----------------
 // Dipakai seragam oleh tambah / ubah / hapus agar App tidak penuh if-else.
 const SECTION_KEY = { agenda: 'schedule', expenses: 'expenses', income: 'income', tasks: 'tasks', notes: 'notes' };
@@ -959,10 +475,6 @@ const storeUser = (user) => {
   }
 };
 
-useEffect(() => {
-  // Inisialisasi budget categories dari localStorage saat app dimulai
-  initBudgetCategories();
-}, []);
 
 const clearUser = () => {
   try {
@@ -1058,6 +570,502 @@ export default function App() {
 // Perencanaan Impian & Tabungan — dikelola pengguna, terpisah dari budget kategori
 // Setiap goal: { id, nama, targetAmount, currentAmount, targetDate, achieved, createdAt }
 const [goals, setGoals] = useState([]);
+
+  // Struk belanja & receipt — dikelola pengguna, hanya teks (tidak simpan foto)
+  // Setiap receipt: { id, nama, amount, kategori, date, confirmed, createdAt }
+  const [receipts, setReceipts] = useState([]);
+
+  // ---- Fitur budget, tagihan & SHEET_CONFIG: WAJIB di dalam component ----
+  // (sebelumnya salah tempat di module scope -> "Invalid hook call")
+  // Inisialisasi state dari localStorage saat komponen pertama kali render
+  // (Sudah dilakukan di useState di bawah, tapi fungsi ini tersedia untuk dipakai lagi)
+  const initBudgetCategories = () => {
+    const loaded = loadBudgetCategories();
+    // Konversi format: pastikan setiap kategori punya id, name, limit
+    const normalized = loaded.map((c) => ({
+      id: c.id || `cat-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: c.name || 'Kategori Baru',
+      limit: c.limit !== undefined ? Number(c.limit) : 0,
+    }));
+    setBudgetCategories(normalized);
+    saveBudgetCategories(normalized);
+  };
+
+  // Buat kategori baru
+  const addBudgetCategory = (name, limit) => {
+    const newCategory = {
+      id: `cat-${Date.now()}`, // ID unik
+      name: name.toLowerCase().trim() || 'belum nama',
+      limit: Number(limit) || 0,
+    };
+    setBudgetCategories(prev => {
+      // Cek apakah kategori sudah ada (case-insensitive)
+      const exists = prev.some((c) => c.name === newCategory.name);
+      if (exists) {
+        alert('Kategori sudah ada! Gunakan nama yang berbeda.');
+        return prev;
+      }
+      return [...prev, newCategory];
+    });
+    saveBudgetCategories(prev => [...prev, newCategory]);
+  };
+
+  // Edit kategori existente
+  const editBudgetCategory = (categoryId, newName, newLimit) => {
+    setBudgetCategories(prev =>
+      prev.map((c) =>
+        c.id === categoryId
+          ? { ...c, name: newName.toLowerCase().trim() || c.name, limit: Number(newLimit) || c.limit }
+          : c
+      )
+    );
+    saveBudgetCategories(prev =>
+      prev.map((c) =>
+        c.id === categoryId ? { ...c, name: newName.toLowerCase().trim() || c.name, limit: Number(newLimit) || c.limit } : c
+      )
+    );
+  };
+
+  // Hapus kategori
+  const deleteBudgetCategory = (categoryId) => {
+    // Cek apakah kategori sedang digunakan di transaksi expenses
+    // (state `data` berisi seluruh data keluarga; `expenses` bukan variabel sendiri)
+    const isUsed = (data?.expenses || []).some((e) => e.category === categoryId);
+    if (isUsed) {
+      alert('Tidak bisa menghapus kategori ini karena masih ada transaksi yang menggunakan kategori ini.');
+      return;
+    }
+    
+    setBudgetCategories(prev => prev.filter((c) => c.id !== categoryId));
+    saveBudgetCategories(prev => prev.filter((c) => c.id !== categoryId));
+  };
+
+  // Konversi budgetCategories ke options select
+  const getBudgetCategoryOptions = () => {
+    if (!budgetCategories || budgetCategories.length === 0) {
+      // Fallback ke FINANCE_CATEGORIES jika belum ada budget categories
+      return catOptions(FINANCE_CATEGORIES);
+    }
+    // Convert budgetCategories {id, name, limit} ke format select options
+    return budgetCategories
+      .filter((c) => c.id !== 'semua' && c.id) // filter invalid
+      .map((c) => ({ value: c.id, label: c.name }))
+      .concat([{ value: 'semua', label: 'Semua' }]); // tambahkan "semua" option
+  };
+
+  // --- Fungsi CRUD Tagihan & Utang-Piutang ---
+
+  // Simpan tagihan ke localStorage
+  const STORAGE_KEY_TAGIHAN = 'bayt-mustaqbal-tagihans';
+
+  const loadTagihans = () => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_TAGIHAN);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error('Gagal load tagihans', e);
+      return [];
+    }
+  };
+
+  const saveTagihans = (tagihans) => {
+    try {
+      localStorage.setItem(STORAGE_KEY_TAGIHAN, JSON.stringify(tagihans));
+    } catch (e) {
+      console.error('Gagal save tagihans', e);
+    }
+  };
+
+  // Inisialisasi tagihans dari localStorage saat komponen render
+  useEffect(() => {
+    const loaded = loadTagihans();
+    const normalized = loaded.map((t) => ({
+      id: t.id || `tag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      nama: t.nama || 'Tagihan Baru',
+      kategori: t.kategori || 'lainnya',
+      amount: t.amount !== undefined ? Number(t.amount) : 0,
+      dueDate: t.dueDate || '',
+      dibayar: t.dibayar !== undefined ? Number(t.dibayar) : 0,
+      lastPaidDate: t.lastPaidDate || null,
+      lastNotified: t.lastNotified || null,
+      createdAt: t.createdAt || new Date().toISOString(),
+    }));
+    setTagihans(normalized);
+  }, []);
+
+  // Tambah tagihan baru
+  const addTagihan = (nama, kategori, amount, dueDate) => {
+    const newTagihan = {
+      id: `tag-${Date.now()}`,
+      nama: nama.toLowerCase().trim() || 'belum nama',
+      kategori: kategori || 'lainnya',
+      amount: Number(amount) || 0,
+      dueDate: dueDate || '',
+      dibayar: 0,
+      lastPaidDate: null,
+      lastNotified: null,
+      createdAt: new Date().toISOString(),
+    };
+    setTagihans(prev => {
+      const exists = prev.some((t) => t.nama === newTagihan.name);
+      if (exists) {
+        alert('Tagihan sudah ada! Gunakan nama yang berbeda.');
+        return prev;
+      }
+      return [...prev, newTagihan];
+    });
+    saveTagihans(prev => [...prev, newTagihan]);
+  };
+
+  // Edit tagihan existente
+  const editTagihan = (tagihanId, newNama, newKategori, newAmount, newDueDate) => {
+    setTagihans(prev =>
+      prev.map((t) =>
+        t.id === tagihanId
+          ? { ...t, nama: newNama.toLowerCase().trim() || t.nama, kategori: newKategori || t.kategori, amount: Number(newAmount) || t.amount, dueDate: newDueDate || t.dueDate }
+          : t
+      )
+    );
+    saveTagihans(prev =>
+      prev.map((t) =>
+        t.id === tagihanId ? { ...t, nama: newNama.toLowerCase().trim() || t.nama, kategori: newKategori || t.kategori, amount: Number(newAmount) || t.amount, dueDate: newDueDate || t.dueDate } : t
+      )
+    );
+  };
+
+  // Hapus tagihan
+  const deleteTagihan = (tagihanId) => {
+    const toDelete = tagihans.find((t) => t.id === tagihanId);
+    if (toDelete && toDelete.dibayar > 0) {
+      alert('Tidak bisa menghapus tagihan ini karena masih ada pembayaran yang tercatat.');
+      return;
+    }
+    
+    setTagihans(prev => prev.filter((t) => t.id !== tagihanId));
+    saveTagihans(prev => prev.filter((t) => t.id !== tagihanId));
+  };
+
+  // Catat pembayaran tagihan
+  const catatPembayaran = (tagihanId, amount) => {
+    const tagihan = tagihans.find((t) => t.id === tagihanId);
+    if (!tagihan) return;
+    
+    const newDibayar = (tagihan.dibayar || 0) + Number(amount);
+    const newLastPaidDate = new Date().toISOString().split('T')[0];
+    
+    setTagihans(prev =>
+      prev.map((t) =>
+        t.id === tagihanId
+          ? { ...t, dibayar: newDibayar, lastPaidDate: newLastPaidDate }
+          : t
+      )
+    );
+    saveTagihans(prev =>
+      prev.map((t) =>
+        t.id === tagihanId ? { ...t, dibayar: newDibayar, lastPaidDate: newLastPaidDate } : t
+      )
+    );
+  };
+
+  // Reset lastNotified saat ada pembayaran baru
+  const resetLastNotified = (tagihanId) => {
+    setTagihans(prev =>
+      prev.map((t) =>
+        t.id === tagihanId ? { ...t, lastNotified: null } : t
+      )
+    );
+  };
+
+  // UseEffect: Cek pengingat tagihan setiap hari (pukul 09:00 sore)
+  useEffect(() => {
+    // Fungsi format tanggal untuk perbandingan (hanya date part)
+    const formatDate = (dateStr) => {
+      if (!dateStr) return null;
+      return new Date(dateStr).toISOString().split('T')[0];
+    };
+
+    // Fungsi kirim ke Fonnte
+    const kirimFonnte = async (message, target) => {
+      try {
+        const result = await fetch('https://api.fonnte.net/v1/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_FONNTE_TOKEN}`,
+          },
+          body: JSON.stringify({ message, target }),
+        });
+        const data = await result.json();
+        return data;
+      } catch (err) {
+        console.error('Gagal kirim Fonnte:', err.message);
+        return null;
+      }
+    };
+
+    // Fungsi cek dan kirim pengingat
+    const cekPengingat = async () => {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      tagihans.forEach((tagihan) => {
+        if (!tagihan.dueDate) return;
+        
+        const dueDate = new Date(tagihan.dueDate);
+        const dueDateStr = dueDate.toISOString().split('T')[0];
+        
+        // Hitung selisih hari
+        const diffTime = Math.abs(dueDate - today) / 86400000;
+        const daysDiff = Math.round(diffTime);
+        
+        // Cek apakah sudah diberitahu hari ini
+        const alreadyNotifiedToday = tagihan.lastNotified === todayStr;
+        
+        // Jika tenggat hari ini (0 hari selisih) dan belum dikirim
+        if (daysDiff === 0 && !alreadyNotifiedToday) {
+          const message = `⚠️ *Hari Ini Tenggat Bayar!*\nTagihan *${tagihan.nama}* sebesar *Rp ${formatCurrencyShort(tagihan.amount)}* tenggat bayar hari ini. Segera lakukan pembayaran!`;
+          kirimFonnte(message, import.meta.env.VITE_FONNTE_TARGET || '').then(() => {
+            resetLastNotified(tagihan.id);
+          });
+          return;
+        }
+        
+        // Jika 7 hari sebelum tenggat dan belum dikirim
+        if (daysDiff === 7 && !alreadyNotifiedToday) {
+          const message = `⚠️ *Pengingat Bayar 7 Hari!*\nTagihan *${tagihan.nama}* sebesar *Rp ${formatCurrencyShort(tagihan.amount)}* tenggat bayar ${tagihan.dueDate}. Silakan segera bayar!`;
+          kirimFonnte(message, import.meta.env.VITE_FONNTE_TARGET || '').then(() => {
+            resetLastNotified(tagihan.id);
+          });
+          return;
+        }
+      });
+    };
+
+    // Jalankan cek setiap hari pukul 09:00 WIB
+    // Set timer untuk 9:00 sore setiap hari
+    const runOnce = async () => {
+      await cekPengingat();
+    };
+
+    // Set interval cek harian - cek setiap hari pada pukul 09:00
+    const intervalId = setInterval(async () => {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      
+      // Cek apakah sudah lewat 09:00 sore (17:00)
+      // Atau cek pagi 09:00
+      if (hours >= 9 && hours < 10) {
+        await cekPengingat();
+      }
+    }, 60000); // Cek setiap menit, tapi hanya jalan pada jam 09:00-09:01
+
+    // Jalankan sekali saat component mount
+    runOnce();
+
+    // Bersihkan interval saat component unmount
+    return () => clearInterval(intervalId);
+  }, [tagihans]);
+
+  // Hitung status tagihan (persentase, sisa, warna)
+  const hitungStatusTagihan = (tagihan) => {
+    const persentase = tagihan.amount > 0 ? Math.round((tagihan.dibayar / tagihan.amount) * 100) : 0;
+    const sisa = tagihan.amount - (tagihan.dibayar || 0);
+    let warna = 'green';
+    if (persentase >= 100) warna = 'red';
+    else if (persentase >= 80) warna = 'orange';
+    return { persentase, sisa, warna };
+  };
+
+  // Hitung total tagihan per kategori
+  const hitungTotalTagihanPerKategori = () => {
+    const total = {};
+    
+    tagihans.forEach((t) => {
+      const kategori = t.kategori || 'lainnya';
+      if (!total[kategori]) {
+        total[kategori] = { amount: 0, dibayar: 0 };
+      }
+      total[kategori].amount += t.amount;
+      total[kategori].dibayar += t.dibayar || 0;
+    });
+    
+    return total;
+  };
+
+  // Hitung budget terintegrasi (budget kategori + tagihan rutin)
+  const hitungBudgetTerintegrasi = () => {
+    // 1. Budget dasar dari kategori yang dikonfigurasi
+    const budgetDasar = {};
+    budgetCategories.forEach((cat) => {
+      budgetDasar[cat.name] = cat.limit || 0;
+    });
+    
+    // 2. Total tagihan per kategori
+    const tagihanTotal = hitungTotalTagihanPerKategori();
+    
+    // 3. Gabungkan: limit budget + spent dari tagihan
+    const terintegrasi = {};
+    Object.keys(budgetDasar).forEach((kategori) => {
+      const tagihanKategori = tagihanTotal[kategori] || { amount: 0, dibayar: 0 };
+      terintegrasi[kategori] = {
+        limit: budgetDasar[kategori],
+        spent: tagihanKategori.dibayar,
+        remaining: budgetDasar[kategori] - tagihanKategori.dibayar,
+        persentase: tagihanKategori.dibayar > 0 
+          ? Math.round((tagihanKategori.dibayar / budgetDasar[kategori]) * 100) 
+          : 0,
+      };
+    });
+    
+    return terintegrasi;
+  };
+
+  // Konversi tagihans ke options select kategori
+  const getTagihanCategoryOptions = () => {
+    if (!tagihans || tagihans.length === 0) {
+      return catOptions(FINANCE_CATEGORIES);
+    }
+    return tagihans
+      .filter((t) => t.kategori && t.kategori !== 'semua')
+      .map((t) => ({ value: t.kategori, label: t.kategori }))
+      .concat([{ value: 'semua', label: 'Semua' }]);
+  };
+
+  const SHEET_CONFIG = {
+    agenda: {
+      title: 'Tambah Agenda',
+      icon: 'calendar',
+      fields: [
+        { key: 'title', label: 'Judul agenda', type: 'text', required: true, placeholder: 'contoh: Piknik Keluarga' },
+        { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
+        { key: 'time', label: 'Jam', type: 'time', defaultValue: '08:00' },
+        { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(AGENDA_CATEGORIES)[0].value, options: catOptions(AGENDA_CATEGORIES) },
+        { key: 'member', label: 'Anggota', type: 'select', required: true, defaultValue: MEMBER_ALL[0], options: memberOptions(MEMBER_ALL) },
+      ],
+    },
+    expenses: {
+      title: 'Tambah Pengeluaran',
+      icon: 'wallet',
+      fields: [
+        { key: 'description', label: 'Deskripsi', type: 'text', required: true, placeholder: 'contoh: Bahan masakan mingguan' },
+        { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 150000' },
+        { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
+        { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: getBudgetCategoryOptions()[0].value, options: getBudgetCategoryOptions() },
+        // Keranjang anggaran: "Otomatis" = ikut kategori (lihat CATEGORY_BUCKET
+        // di components/categories.js); pilihan lain menimpanya untuk item ini.
+        {
+          key: 'bucket',
+          label: 'Keranjang',
+          type: 'select',
+          defaultValue: 'auto',
+          options: [
+            { value: 'auto', label: 'Otomatis (ikut kategori)' },
+            { value: 'needs', label: 'Kebutuhan' },
+            { value: 'wants', label: 'Keinginan' },
+            { value: 'savings', label: 'Tabungan & Utang' },
+          ],
+        },
+      ],
+    },
+    income: {
+      title: 'Tambah Pemasukan',
+      icon: 'wallet',
+      fields: [
+        { key: 'description', label: 'Sumber / Keterangan', type: 'text', required: true, placeholder: 'contoh: Gaji bulan ini, Projek desain' },
+        { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 8000000' },
+        { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
+        { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(INCOME_CATEGORIES)[0].value, options: catOptions(INCOME_CATEGORIES) },
+      ],
+    },
+    tasks: {
+      title: 'Tambah Tugas',
+      icon: 'tasks',
+      fields: [
+        { key: 'title', label: 'Judul tugas', type: 'text', required: true, placeholder: 'contoh: Rapikan lemari' },
+        { key: 'dueDate', label: 'Jatuh tempo', type: 'date', required: true, defaultValue: todayKey() },
+        {
+          key: 'priority',
+          label: 'Prioritas',
+          type: 'select',
+          required: true,
+          defaultValue: 'medium',
+          options: [
+            { value: 'high', label: 'Tinggi' },
+            { value: 'medium', label: 'Sedang' },
+            { value: 'low', label: 'Rendah' },
+          ],
+        },
+        { key: 'assignedTo', label: 'Penanggung jawab', type: 'select', required: true, defaultValue: MEMBER_PEOPLE[0], options: memberOptions(MEMBER_PEOPLE) },
+      ],
+    },
+    notes: {
+      title: 'Tambah Catatan',
+      icon: 'note',
+      fields: [
+        { key: 'title', label: 'Judul catatan', type: 'text', required: true, placeholder: 'contoh: Daftar belanja mingguan' },
+        { key: 'body', label: 'Isi catatan', type: 'textarea', rows: 3, placeholder: 'tulis detail catatan di sini�' },
+        { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'info', options: catOptions(NOTE_CATEGORIES) },
+        { key: 'pinned', label: 'Tandai penting', type: 'checkbox', help: 'Muncul di filter "Penting"' },
+      ],
+    },
+    family: {
+      title: 'Tambah ke Keluarga',
+      icon: 'users',
+      fields: [
+        {
+          key: 'bagian',
+          label: 'Simpan ke bagian',
+          type: 'select',
+          required: true,
+          defaultValue: 'anggota',
+          options: [
+            { value: 'anggota', label: 'Anggota keluarga' },
+            { value: 'medis', label: 'Info Medis' },
+            { value: 'kontak', label: 'Kontak & Darurat' },
+            { value: 'dokumen', label: 'Dokumen Penting' },
+          ],
+        },
+        { key: 'title', label: 'Nama / Judul', type: 'text', required: true, placeholder: 'nama anggota, dokter, kontak, atau dokumen' },
+        { key: 'meta', label: 'Info singkat (opsional)', type: 'text', placeholder: 'contoh: 0812-3456-7890 atau Berlaku s/d 2030-05-12' },
+      ],
+    },
+    // Pos saran di halaman Anggaran. Sama seperti section lain, hanya label +
+    // keranjang (tanpa nominal): nominalnya tetap turunan dari rasio.
+    budgetPos: {
+      title: 'Tambah Pos Anggaran',
+      icon: 'target',
+      fields: [
+        { key: 'label', label: 'Nama pos', type: 'text', required: true, placeholder: 'contoh: Cicilan motor' },
+        {
+          key: 'bucket',
+          label: 'Keranjang',
+          type: 'select',
+          required: true,
+          defaultValue: BUCKETS[0].id,
+          options: BUCKETS.map((b) => ({ value: b.id, label: b.label })),
+        },
+      ],
+    },
+    scheduledTemplate: {
+      title: 'Tambah Template Pengeluaran Terjadwal',
+      icon: 'repeat',
+      fields: [
+        { key: 'name', label: 'Nama template', type: 'text', required: true, placeholder: 'contoh: Bulanan listrik' },
+        { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 50000' },
+        { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'lainnya', options: [{ value: 'lainnya', label: 'Lainnya' }] },
+        { key: 'day', label: 'Hari jatuh tempo', type: 'number', required: true, min: 1, max: 31, defaultValue: 1, placeholder: '1-31' },
+        { key: 'bucket', label: 'Keranjang', type: 'select', required: true, defaultValue: 'auto', options: [{ value: 'auto', label: 'Otomatis' }, { value: 'needs', label: 'Kebutuhan' }, { value: 'wants', label: 'Keinginan' }, { value: 'savings', label: 'Tabungan & Utang' }] },
+        { key: 'active', label: 'Aktif', type: 'checkbox', help: 'Nonaktifkan template jika tidak digunakan' },
+      ],
+    },
+  };
+
+  useEffect(() => {
+    // Inisialisasi budget categories dari localStorage saat app dimulai
+    initBudgetCategories();
+  }, []);
+
 
   // Sub-tampilan Keuangan: 'ringkasan' (default) | 'pengeluaran' | 'anggaran' | 'pemasukan' | 'tagihan'
   const [financeMode, setFinanceMode] = useState('ringkasan');
@@ -1808,19 +1816,6 @@ const [goals, setGoals] = useState([]);
     setEditing(null);
     setSheetInitial(nilaiAwal);
     setSheetOpen(section);
-  };
-  
-  // Get category options from budget categories (user-managed)
-  const getBudgetCategoryOptions = () => {
-    if (!budgetCategories || budgetCategories.length === 0) {
-      // Fallback ke FINANCE_CATEGORIES jika belum ada budget categories
-      return catOptions(FINANCE_CATEGORIES);
-    }
-    // Convert budgetCategories {id, name, limit} ke format select options
-    return budgetCategories
-      .filter((c) => c.id !== 'semua' && c.id) // filter invalid
-      .map((c) => ({ value: c.id, label: c.name }))
-      .concat([{ value: 'semua', label: 'Semua' }]); // tambahkan "semua" option
   };
 
   // Buka form tambah template pengeluaran terjadwal
