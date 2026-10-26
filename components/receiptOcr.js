@@ -10,6 +10,9 @@ const BULAN = {
 // Kata kunci baris TOTAL: di sana nominal paling bisa dipercaya
 const KUNCI_TOTAL = /\b(total|jumlah|grand\s*total|total\s*bayar|tagihan|harus\s*bayar|belanja|subtotal|sub\s*total)\b/i;
 
+// Baris yang mirip pola item tapi sebenarnya bukan (tanggal/jam, nomor struk)
+const KUNCI_BUKAN_ITEM = /(\d{1,2}:\d{2}|\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}|check\s*no|no\s*:|npwp|invoice|struk)/i;
+
 // Baris ini biasanya bukan nama toko (harga / layanan / pajak)
 const KUNCI_BUKAN_NAMA = /\b(total|jumlah|bayar|tunai|kartu|debit|kredit|kembali|terima|penerimaan|invoice|struk|no\.|npwp|ppn|pajak|item|qty|harga|subtotal|sub\s*total|kasir|tanggal|waktu|jam|alamat|telp|telpon)\b/i;
 
@@ -52,6 +55,24 @@ export const tanggalDariTeks = (teks) => {
   return '';
 };
 
+// Satu baris item belanja: "1 Bread Butter Pudding 11,500"
+// Pola: qty kecil di awal + nama (ada huruf) + harga (angka) di akhir baris.
+// Kembalikan harga (Rp) atau 0 kalau bukan baris item.
+export const barisItem = (b) => {
+  if (KUNCI_BUKAN_ITEM.test(b)) return 0; // tanggal / nomor struk / invoice
+  const m = b.match(/^\d{1,2}\s+\S.*?(\d[\d.,]*)\s*$/);
+  if (!m) return 0; // harus diawali qty lalu ada angka di akhir
+  if (!/[A-Za-z]{2,}/.test(b)) return 0; // nama item harus mengandung huruf
+  const harga = angkaKeRp(m[1]);
+  return harga >= 100 && harga <= 10000000 ? harga : 0;
+};
+
+// Jumlah harga semua item terbaca. Sumber nominal paling andal untuk struk
+// yang baris Total-nya tipis/blur (sering salah baca), karena nama+harga item
+// biasanya terbaca lebih jelas.
+export const jumlahItemDariTeks = (teks) =>
+  String(teks).split('\n').map((b) => b.trim()).filter(Boolean).reduce((s, b) => s + barisItem(b), 0);
+
 // Nominal: utamakan baris berlabel TOTAL; kalau tidak ada, pakai angka terbesar
 export const nominalDariTeks = (teks) => {
   const baris = String(teks).split('\n').map((b) => b.trim()).filter(Boolean);
@@ -60,11 +81,25 @@ export const nominalDariTeks = (teks) => {
     return kandidat.length ? Math.max(...kandidat) : 0;
   };
 
-  const barisTotal = baris.filter((b) => KUNCI_TOTAL.test(b));
-  for (const b of barisTotal) {
+  // Kandidat dari baris berlabel Total/Subtotal (nilai terbesarnya)
+  let kandidatTotal = 0;
+  for (const b of baris) {
+    if (!KUNCI_TOTAL.test(b)) continue;
     const n = nilaiDariBaris(b);
-    if (n > 0) return n;
+    if (n > kandidatTotal) kandidatTotal = n;
   }
+
+  // Jumlah item: cadangan kuat bila baris Total tidak terbaca jelas.
+  // Kalau baris Total jauh lebih kecil dari jumlah item (mis. "Total: 350"
+  // padahal struk 43.500), kemungkinan salah baca -> pakai jumlah item.
+  const jumlahItem = jumlahItemDariTeks(teks);
+  if (jumlahItem > 0) {
+    if (kandidatTotal === 0) return jumlahItem;
+    if (kandidatTotal >= jumlahItem * 0.5) return kandidatTotal; // total wajar
+    return jumlahItem;
+  }
+
+  if (kandidatTotal > 0) return kandidatTotal;
 
   // Cadangan: angka terbesar, kecuali angka tahun (19xx/20xx) di baris tanggal
   let terbesar = 0;

@@ -31,6 +31,9 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
   const [progress, setProgress] = useState(0);
   const [note, setNote] = useState('');
   const [err, setErr] = useState('');
+  // Teks mentah hasil OCR (bukan teks struk yang disimpan, hanya untuk
+  // diperiksa pengguna & membantu diagnosis bila hasil bacaan tidak jelas)
+  const [rawText, setRawText] = useState('');
 
   // Tutup dengan Escape (kecuali sedang OCR) + kunci scroll body
   useEffect(() => {
@@ -67,6 +70,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
     setNote('Foto siap. Tekan "Baca struk".');
     setErr('');
     setProgress(0);
+    setRawText('');
   };
 
   const jalankanOCR = async () => {
@@ -87,6 +91,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
       await worker.terminate();
 
       const saran = saranDariTeks(hasil?.data?.text || '');
+      setRawText(hasil?.data?.text || '');
       setForm((f) => ({
         ...f,
         description: saran.description || f.description,
@@ -280,6 +285,21 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
             </p>
           )}
         </div>
+
+        {/* ---------- Teks mentah hasil OCR (untuk diperiksa / diagnosis) ---------- */}
+        {rawText && !busy && (
+          <details className="mt-3 rounded-2xl border border-line bg-canvas">
+            <summary className="cursor-pointer list-none px-3.5 py-2.5 text-xs font-semibold text-mutedfg transition-colors hover:text-ink">
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="chevronDown" size={14} aria-hidden="true" />
+                Lihat teks hasil baca
+              </span>
+            </summary>
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap border-t border-line px-3.5 py-2.5 text-[11px] leading-relaxed text-mutedfg">
+              {rawText}
+            </pre>
+          </details>
+        )}
 
         {err && (
           <p className="mt-3 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">
