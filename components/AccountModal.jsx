@@ -388,7 +388,7 @@ export function AccountModal({
 
         <div className="mt-3.5">
           <label htmlFor="acc-username" className="mb-1 block text-xs font-semibold text-mutedfg">
-            Username
+            Email
           </label>
           <input
             id="acc-username"

@@ -36,7 +36,7 @@ import './App.css';
 
 /* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
    Fitur yang ada pasangan backend (schedule, expenses, notes, budget)
-   dimuat dari API. Yang tidak ada pasangannya — mulai dari kosong;
+   dimuat dari API. Yang tidak ada pasangannya � mulai dari kosong;
    Kakang menambah lewat UI (mis. tombol "+ Data" di halaman Keluarga). */
 const LOCAL_SEED = {
   family: [],
@@ -80,7 +80,7 @@ const computeWeekly = (expenses) => {
   const now = new Date();
   return ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((label, i) => ({
     label: label,
-    value: days[(i + 1) % 7], // Minggu=0, Senin=1, ... → susun Senin—Minggu
+    value: days[(i + 1) % 7], // Minggu=0, Senin=1, ... ? susun Senin�Minggu
   }));
 };
 
@@ -156,7 +156,7 @@ const buildPairedTrend = (expenses, income, endKey) => {
   return out;
 };
 // Status anggaran: aman (<80%), hati-hati (80-100%), lewat (>100%).
-// Anggaran belum diisi → 'belum' (bukan 0% yang menyesatkan).
+// Anggaran belum diisi ? 'belum' (bukan 0% yang menyesatkan).
 const budgetStatus = (expense, budgetIncome) => {
   const total = Number(budgetIncome) || 0;
   if (total <= 0) return { level: 'belum', pct: 0, sisa: 0 };
@@ -165,7 +165,7 @@ const budgetStatus = (expense, budgetIncome) => {
   return { level, pct, sisa: total - expense };
 };
 
-// Gabungkan API data + local seed → data state penuh
+// Gabungkan API data + local seed ? data state penuh
 const buildDataBundle = (apiData, currentUser) => {
   const budget = apiData?.budget || {};
   const expenses = apiData?.expenses || [];
@@ -196,7 +196,7 @@ const buildDataBundle = (apiData, currentUser) => {
       pos: budget.pos || {
         needs: [{ id: 'n1', label: 'Cicilan rumah/sewa' }, { id: 'n2', label: 'Belanja bahan makanan & beras' }, { id: 'n3', label: 'Tagihan utilitas (listrik/air/internet)' }, { id: 'n4', label: 'Transportasi (BBM/angkutan umum)' }, { id: 'n5', label: 'Sekolah anak' }, { id: 'n6', label: 'Asuransi kesehatan' }],
         wants: [{ id: 'w1', label: 'Makan di luar/hangout' }, { id: 'w2', label: 'Hobi & hiburan' }, { id: 'w3', label: 'Langganan streaming' }, { id: 'w4', label: 'Liburan/travelling' }],
-        savings: [{ id: 's1', label: 'Dana darurat (target 3–6× pengeluaran bulanan)' }, { id: 's2', label: 'Tabungan' }, { id: 's3', label: 'Investasi' }, { id: 's4', label: 'Pembayaran cicilan/utang' }],
+        savings: [{ id: 's1', label: 'Dana darurat (target 3�6� pengeluaran bulanan)' }, { id: 's2', label: 'Tabungan' }, { id: 's3', label: 'Investasi' }, { id: 's4', label: 'Pembayaran cicilan/utang' }],
         // Scheduled expenses dari API (atau array kosong kalau belum ada)
         scheduledExpenses: apiData?.scheduledExpenses || [],
       },
@@ -226,6 +226,384 @@ const catOptions = (cats) =>
     .filter((c) => c.id !== 'semua')
     .map((c) => ({ value: c.id, label: c.label }));
 
+// --- Fungsi CRUD Kategori Budget (dimanage pengguna) ---
+
+// Simpan kategori ke localStorage agar bertahan setelah refresh
+const STORAGE_KEY_BUDGET_CAT = 'bayt-mustaqbal-budget-categories';
+
+const loadBudgetCategories = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_BUDGET_CAT);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Gagal load budget categories', e);
+    return [];
+  }
+};
+
+const saveBudgetCategories = (categories) => {
+  try {
+    localStorage.setItem(STORAGE_KEY_BUDGET_CAT, JSON.stringify(categories));
+  } catch (e) {
+    console.error('Gagal save budget categories', e);
+  }
+};
+
+// Inisialisasi state dari localStorage saat komponen pertama kali render
+// (Sudah dilakukan di useState di bawah, tapi fungsi ini tersedia untuk dipakai lagi)
+const initBudgetCategories = () => {
+  const loaded = loadBudgetCategories();
+  // Konversi format: pastikan setiap kategori punya id, name, limit
+  const normalized = loaded.map((c) => ({
+    id: c.id || `cat-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    name: c.name || 'Kategori Baru',
+    limit: c.limit !== undefined ? Number(c.limit) : 0,
+  }));
+  setBudgetCategories(normalized);
+  saveBudgetCategories(normalized);
+};
+
+// Buat kategori baru
+const addBudgetCategory = (name, limit) => {
+  const newCategory = {
+    id: `cat-${Date.now()}`, // ID unik
+    name: name.toLowerCase().trim() || 'belum nama',
+    limit: Number(limit) || 0,
+  };
+  setBudgetCategories(prev => {
+    // Cek apakah kategori sudah ada (case-insensitive)
+    const exists = prev.some((c) => c.name === newCategory.name);
+    if (exists) {
+      alert('Kategori sudah ada! Gunakan nama yang berbeda.');
+      return prev;
+    }
+    return [...prev, newCategory];
+  });
+  saveBudgetCategories(prev => [...prev, newCategory]);
+};
+
+// Edit kategori existente
+const editBudgetCategory = (categoryId, newName, newLimit) => {
+  setBudgetCategories(prev =>
+    prev.map((c) =>
+      c.id === categoryId
+        ? { ...c, name: newName.toLowerCase().trim() || c.name, limit: Number(newLimit) || c.limit }
+        : c
+    )
+  );
+  saveBudgetCategories(prev =>
+    prev.map((c) =>
+      c.id === categoryId ? { ...c, name: newName.toLowerCase().trim() || c.name, limit: Number(newLimit) || c.limit } : c
+    )
+  );
+};
+
+// Hapus kategori
+const deleteBudgetCategory = (categoryId) => {
+  // Cek apakah kategori sedang digunakan di transaksi expenses
+  // Jika ada, tampilkan warning
+  const isUsed = expenses.some((e) => e.category === categoryId);
+  if (isUsed) {
+    alert('Tidak bisa menghapus kategori ini karena masih ada transaksi yang menggunakan kategori ini.');
+    return;
+  }
+  
+  setBudgetCategories(prev => prev.filter((c) => c.id !== categoryId));
+  saveBudgetCategories(prev => prev.filter((c) => c.id !== categoryId));
+};
+
+// Konversi budgetCategories ke options select
+const getBudgetCategoryOptions = () => {
+  if (!budgetCategories || budgetCategories.length === 0) {
+    // Fallback ke FINANCE_CATEGORIES jika belum ada budget categories
+    return catOptions(FINANCE_CATEGORIES);
+  }
+  // Convert budgetCategories {id, name, limit} ke format select options
+  return budgetCategories
+    .filter((c) => c.id !== 'semua' && c.id) // filter invalid
+    .map((c) => ({ value: c.id, label: c.name }))
+    .concat([{ value: 'semua', label: 'Semua' }]); // tambahkan "semua" option
+};
+
+// --- Fungsi CRUD Tagihan & Utang-Piutang ---
+
+// Simpan tagihan ke localStorage
+const STORAGE_KEY_TAGIHAN = 'bayt-mustaqbal-tagihans';
+
+const loadTagihans = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_TAGIHAN);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Gagal load tagihans', e);
+    return [];
+  }
+};
+
+const saveTagihans = (tagihans) => {
+  try {
+    localStorage.setItem(STORAGE_KEY_TAGIHAN, JSON.stringify(tagihans));
+  } catch (e) {
+    console.error('Gagal save tagihans', e);
+  }
+};
+
+// Inisialisasi tagihans dari localStorage saat komponen render
+useEffect(() => {
+  const loaded = loadTagihans();
+  const normalized = loaded.map((t) => ({
+    id: t.id || `tag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    nama: t.nama || 'Tagihan Baru',
+    kategori: t.kategori || 'lainnya',
+    amount: t.amount !== undefined ? Number(t.amount) : 0,
+    dueDate: t.dueDate || '',
+    dibayar: t.dibayar !== undefined ? Number(t.dibayar) : 0,
+    lastPaidDate: t.lastPaidDate || null,
+    lastNotified: t.lastNotified || null,
+    createdAt: t.createdAt || new Date().toISOString(),
+  }));
+  setTagihans(normalized);
+}, []);
+
+// Tambah tagihan baru
+const addTagihan = (nama, kategori, amount, dueDate) => {
+  const newTagihan = {
+    id: `tag-${Date.now()}`,
+    nama: nama.toLowerCase().trim() || 'belum nama',
+    kategori: kategori || 'lainnya',
+    amount: Number(amount) || 0,
+    dueDate: dueDate || '',
+    dibayar: 0,
+    lastPaidDate: null,
+    lastNotified: null,
+    createdAt: new Date().toISOString(),
+  };
+  setTagihans(prev => {
+    const exists = prev.some((t) => t.nama === newTagihan.name);
+    if (exists) {
+      alert('Tagihan sudah ada! Gunakan nama yang berbeda.');
+      return prev;
+    }
+    return [...prev, newTagihan];
+  });
+  saveTagihans(prev => [...prev, newTagihan]);
+};
+
+// Edit tagihan existente
+const editTagihan = (tagihanId, newNama, newKategori, newAmount, newDueDate) => {
+  setTagihans(prev =>
+    prev.map((t) =>
+      t.id === tagihanId
+        ? { ...t, nama: newNama.toLowerCase().trim() || t.nama, kategori: newKategori || t.kategori, amount: Number(newAmount) || t.amount, dueDate: newDueDate || t.dueDate }
+        : t
+    )
+  );
+  saveTagihans(prev =>
+    prev.map((t) =>
+      t.id === tagihanId ? { ...t, nama: newNama.toLowerCase().trim() || t.nama, kategori: newKategori || t.kategori, amount: Number(newAmount) || t.amount, dueDate: newDueDate || t.dueDate } : t
+    )
+  );
+};
+
+// Hapus tagihan
+const deleteTagihan = (tagihanId) => {
+  const toDelete = tagihans.find((t) => t.id === tagihanId);
+  if (toDelete && toDelete.dibayar > 0) {
+    alert('Tidak bisa menghapus tagihan ini karena masih ada pembayaran yang tercatat.');
+    return;
+  }
+  
+  setTagihans(prev => prev.filter((t) => t.id !== tagihanId));
+  saveTagihans(prev => prev.filter((t) => t.id !== tagihanId));
+};
+
+// Catat pembayaran tagihan
+const catatPembayaran = (tagihanId, amount) => {
+  const tagihan = tagihans.find((t) => t.id === tagihanId);
+  if (!tagihan) return;
+  
+  const newDibayar = (tagihan.dibayar || 0) + Number(amount);
+  const newLastPaidDate = new Date().toISOString().split('T')[0];
+  
+  setTagihans(prev =>
+    prev.map((t) =>
+      t.id === tagihanId
+        ? { ...t, dibayar: newDibayar, lastPaidDate: newLastPaidDate }
+        : t
+    )
+  );
+  saveTagihans(prev =>
+    prev.map((t) =>
+      t.id === tagihanId ? { ...t, dibayar: newDibayar, lastPaidDate: newLastPaidDate } : t
+    )
+  );
+};
+
+// Reset lastNotified saat ada pembayaran baru
+const resetLastNotified = (tagihanId) => {
+  setTagihans(prev =>
+    prev.map((t) =>
+      t.id === tagihanId ? { ...t, lastNotified: null } : t
+    )
+  );
+};
+
+// UseEffect: Cek pengingat tagihan setiap hari (pukul 09:00 sore)
+useEffect(() => {
+  // Fungsi format tanggal untuk perbandingan (hanya date part)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return null;
+    return new Date(dateStr).toISOString().split('T')[0];
+  };
+
+  // Fungsi kirim ke Fonnte
+  const kirimFonnte = async (message, target) => {
+    try {
+      const result = await fetch('https://api.fonnte.net/v1/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_FONNTE_TOKEN}`,
+        },
+        body: JSON.stringify({ message, target }),
+      });
+      const data = await result.json();
+      return data;
+    } catch (err) {
+      console.error('Gagal kirim Fonnte:', err.message);
+      return null;
+    }
+  };
+
+  // Fungsi cek dan kirim pengingat
+  const cekPengingat = async () => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    tagihans.forEach((tagihan) => {
+      if (!tagihan.dueDate) return;
+      
+      const dueDate = new Date(tagihan.dueDate);
+      const dueDateStr = dueDate.toISOString().split('T')[0];
+      
+      // Hitung selisih hari
+      const diffTime = Math.abs(dueDate - today) / 86400000;
+      const daysDiff = Math.round(diffTime);
+      
+      // Cek apakah sudah diberitahu hari ini
+      const alreadyNotifiedToday = tagihan.lastNotified === todayStr;
+      
+      // Jika tenggat hari ini (0 hari selisih) dan belum dikirim
+      if (daysDiff === 0 && !alreadyNotifiedToday) {
+        const message = `⚠️ *Hari Ini Tenggat Bayar!*\nTagihan *${tagihan.nama}* sebesar *Rp ${formatCurrencyShort(tagihan.amount)}* tenggat bayar hari ini. Segera lakukan pembayaran!`;
+        kirimFonnte(message, import.meta.env.VITE_FONNTE_TARGET || '').then(() => {
+          resetLastNotified(tagihan.id);
+        });
+        return;
+      }
+      
+      // Jika 7 hari sebelum tenggat dan belum dikirim
+      if (daysDiff === 7 && !alreadyNotifiedToday) {
+        const message = `⚠️ *Pengingat Bayar 7 Hari!*\nTagihan *${tagihan.nama}* sebesar *Rp ${formatCurrencyShort(tagihan.amount)}* tenggat bayar ${tagihan.dueDate}. Silakan segera bayar!`;
+        kirimFonnte(message, import.meta.env.VITE_FONNTE_TARGET || '').then(() => {
+          resetLastNotified(tagihan.id);
+        });
+        return;
+      }
+    });
+  };
+
+  // Jalankan cek setiap hari pukul 09:00 WIB
+  // Set timer untuk 9:00 sore setiap hari
+  const runOnce = async () => {
+    await cekPengingat();
+  };
+
+  // Set interval cek harian - cek setiap hari pada pukul 09:00
+  const intervalId = setInterval(async () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    
+    // Cek apakah sudah lewat 09:00 sore (17:00)
+    // Atau cek pagi 09:00
+    if (hours >= 9 && hours < 10) {
+      await cekPengingat();
+    }
+  }, 60000); // Cek setiap menit, tapi hanya jalan pada jam 09:00-09:01
+
+  // Jalankan sekali saat component mount
+  runOnce();
+
+  // Bersihkan interval saat component unmount
+  return () => clearInterval(intervalId);
+}, [tagihans]);
+
+// Hitung status tagihan (persentase, sisa, warna)
+const hitungStatusTagihan = (tagihan) => {
+  const persentase = tagihan.amount > 0 ? Math.round((tagihan.dibayar / tagihan.amount) * 100) : 0;
+  const sisa = tagihan.amount - (tagihan.dibayar || 0);
+  let warna = 'green';
+  if (persentase >= 100) warna = 'red';
+  else if (persentase >= 80) warna = 'orange';
+  return { persentase, sisa, warna };
+};
+
+// Hitung total tagihan per kategori
+const hitungTotalTagihanPerKategori = () => {
+  const total = {};
+  
+  tagihans.forEach((t) => {
+    const kategori = t.kategori || 'lainnya';
+    if (!total[kategori]) {
+      total[kategori] = { amount: 0, dibayar: 0 };
+    }
+    total[kategori].amount += t.amount;
+    total[kategori].dibayar += t.dibayar || 0;
+  });
+  
+  return total;
+};
+
+// Hitung budget terintegrasi (budget kategori + tagihan rutin)
+const hitungBudgetTerintegrasi = () => {
+  // 1. Budget dasar dari kategori yang dikonfigurasi
+  const budgetDasar = {};
+  budgetCategories.forEach((cat) => {
+    budgetDasar[cat.name] = cat.limit || 0;
+  });
+  
+  // 2. Total tagihan per kategori
+  const tagihanTotal = hitungTotalTagihanPerKategori();
+  
+  // 3. Gabungkan: limit budget + spent dari tagihan
+  const terintegrasi = {};
+  Object.keys(budgetDasar).forEach((kategori) => {
+    const tagihanKategori = tagihanTotal[kategori] || { amount: 0, dibayar: 0 };
+    terintegrasi[kategori] = {
+      limit: budgetDasar[kategori],
+      spent: tagihanKategori.dibayar,
+      remaining: budgetDasar[kategori] - tagihanKategori.dibayar,
+      persentase: tagihanKategori.dibayar > 0 
+        ? Math.round((tagihanKategori.dibayar / budgetDasar[kategori]) * 100) 
+        : 0,
+    };
+  });
+  
+  return terintegrasi;
+};
+
+// Konversi tagihans ke options select kategori
+const getTagihanCategoryOptions = () => {
+  if (!tagihans || tagihans.length === 0) {
+    return catOptions(FINANCE_CATEGORIES);
+  }
+  return tagihans
+    .filter((t) => t.kategori && t.kategori !== 'semua')
+    .map((t) => ({ value: t.kategori, label: t.kategori }))
+    .concat([{ value: 'semua', label: 'Semua' }]);
+};
+
 const SHEET_CONFIG = {
   agenda: {
     title: 'Tambah Agenda',
@@ -245,7 +623,7 @@ const SHEET_CONFIG = {
       { key: 'description', label: 'Deskripsi', type: 'text', required: true, placeholder: 'contoh: Bahan masakan mingguan' },
       { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 150000' },
       { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
-      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(FINANCE_CATEGORIES)[0].value, options: catOptions(FINANCE_CATEGORIES) },
+      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: getBudgetCategoryOptions()[0].value, options: getBudgetCategoryOptions() },
       // Keranjang anggaran: "Otomatis" = ikut kategori (lihat CATEGORY_BUCKET
       // di components/categories.js); pilihan lain menimpanya untuk item ini.
       {
@@ -298,7 +676,7 @@ const SHEET_CONFIG = {
     icon: 'note',
     fields: [
       { key: 'title', label: 'Judul catatan', type: 'text', required: true, placeholder: 'contoh: Daftar belanja mingguan' },
-      { key: 'body', label: 'Isi catatan', type: 'textarea', rows: 3, placeholder: 'tulis detail catatan di sini…' },
+      { key: 'body', label: 'Isi catatan', type: 'textarea', rows: 3, placeholder: 'tulis detail catatan di sini�' },
       { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'info', options: catOptions(NOTE_CATEGORIES) },
       { key: 'pinned', label: 'Tandai penting', type: 'checkbox', help: 'Muncul di filter "Penting"' },
     ],
@@ -341,9 +719,21 @@ const SHEET_CONFIG = {
       },
     ],
   },
+  scheduledTemplate: {
+    title: 'Tambah Template Pengeluaran Terjadwal',
+    icon: 'repeat',
+    fields: [
+      { key: 'name', label: 'Nama template', type: 'text', required: true, placeholder: 'contoh: Bulanan listrik' },
+      { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 50000' },
+      { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'lainnya', options: [{ value: 'lainnya', label: 'Lainnya' }] },
+      { key: 'day', label: 'Hari jatuh tempo', type: 'number', required: true, min: 1, max: 31, defaultValue: 1, placeholder: '1-31' },
+      { key: 'bucket', label: 'Keranjang', type: 'select', required: true, defaultValue: 'auto', options: [{ value: 'auto', label: 'Otomatis' }, { value: 'needs', label: 'Kebutuhan' }, { value: 'wants', label: 'Keinginan' }, { value: 'savings', label: 'Tabungan & Utang' }] },
+      { key: 'active', label: 'Aktif', type: 'checkbox', help: 'Nonaktifkan template jika tidak digunakan' },
+    ],
+  },
 };
 
-// ---- Pemetaan section → kunci array data & label Indonesia ----------------
+// ---- Pemetaan section ? kunci array data & label Indonesia ----------------
 // Dipakai seragam oleh tambah / ubah / hapus agar App tidak penuh if-else.
 const SECTION_KEY = { agenda: 'schedule', expenses: 'expenses', income: 'income', tasks: 'tasks', notes: 'notes' };
 const SECTION_LABEL = { agenda: 'Agenda', expenses: 'Pengeluaran', income: 'Pemasukan', tasks: 'Tugas', notes: 'Catatan', family: 'Keluarga' };
@@ -385,7 +775,7 @@ const persist = (next) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch (e) {
-    /* kuota penuh / mode privat → abaikan */
+    /* kuota penuh / mode privat ? abaikan */
   }
 };
 
@@ -406,7 +796,7 @@ const loadSnapshot = () => {
       }
     }
   } catch (e) {
-    /* storage rusak → turun ke cache kosong */
+    /* storage rusak ? turun ke cache kosong */
   }
   return null;
 };
@@ -445,7 +835,7 @@ const clearAuthToken = () => {
   }
 };
 
-// Merge API data + local seed → full data bundle
+// Merge API data + local seed ? full data bundle
 const buildMergedData = (apiData, currentUser) => {
   const bundle = buildDataBundle(apiData, currentUser);
   // Overlay localStorage-only data yang sudah dimodifikasi (tasks, family)
@@ -501,7 +891,7 @@ const fetchApiData = async () => {
 /* Label status keluarga dari kolom family_role backend */
 const FAMILY_ROLE_LABEL = { suami: 'Suami', istri: 'Istri', anak: 'Anak', lainnya: 'Lainnya' };
 
-/* Map akun backend → format anggota keluarga (FamilyTree) */
+/* Map akun backend ? format anggota keluarga (FamilyTree) */
 const VALID_GENERASI = ['orangtua', 'anak', 'cucu'];
 const mapUsersToFamily = (users) =>
   (users || []).map((u) => ({
@@ -514,7 +904,7 @@ const mapUsersToFamily = (users) =>
     role: u.group_role === 'kepala_keluarga' ? 'Kepala Keluarga' : FAMILY_ROLE_LABEL[u.family_role] || 'Anak',
     initials: initialsOf(u.nickname || u.nama),
     avatar: u.avatar_url || undefined,
-    // Normalisasi generasi tak dikenal (mis. typo dari SQL manual) → 'orangtua'
+    // Normalisasi generasi tak dikenal (mis. typo dari SQL manual) ? 'orangtua'
     // supaya anggota tak "hilang" dari pohon.
     generasi: VALID_GENERASI.includes(u.generasi) ? u.generasi : 'orangtua',
     birthDate: u.birth_date || null,
@@ -527,7 +917,7 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
-// Versi ringkas untuk KPI & label chart: 2.780.000 → "Rp 2,8 jt"
+// Versi ringkas untuk KPI & label chart: 2.780.000 ? "Rp 2,8 jt"
 const formatCurrencyShort = (value) => {
   const n = Number(value) || 0;
   const short = (v, unit) => `Rp ${v.toFixed(1).replace('.', ',').replace(',0', '')} ${unit}`;
@@ -543,7 +933,7 @@ const formatCurrencyShort = (value) => {
 const USER_KEY = 'bm-user';
 
 /* Token bisa berada di localStorage ("Ingat saya" dicentang) atau
-   sessionStorage (tidak dicentang) — baca keduanya. */
+   sessionStorage (tidak dicentang) � baca keduanya. */
 const storedToken = () => {
   try {
     return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || null;
@@ -569,6 +959,11 @@ const storeUser = (user) => {
   }
 };
 
+useEffect(() => {
+  // Inisialisasi budget categories dari localStorage saat app dimulai
+  initBudgetCategories();
+}, []);
+
 const clearUser = () => {
   try {
     localStorage.removeItem(TOKEN_KEY);
@@ -579,7 +974,7 @@ const clearUser = () => {
   }
 };
 
-// Status "sudah dibaca" notifikasi — kunci terpisah dari snapshot data karena
+// Status "sudah dibaca" notifikasi � kunci terpisah dari snapshot data karena
 // ini keadaan tampilan, bukan data keluarga. Isinya daftar `id` notifikasi.
 const NOTIF_STORAGE_KEY = 'bayt-mustaqbal-notif-read-v1';
 
@@ -617,7 +1012,7 @@ const readStoredTheme = () => {
   }
 };
 
-/* Perangkat sedang memakai tema terang? (kalau API tak ada → anggap gelap) */
+/* Perangkat sedang memakai tema terang? (kalau API tak ada ? anggap gelap) */
 const systemPrefersLight = () => {
   try {
     return window.matchMedia(LIGHT_MEDIA).matches;
@@ -646,36 +1041,47 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false);
   // entered = pengguna sudah melewati splash & berada di app (atau login screen)
   const [entered, setEntered] = useState(false);
-  // Filter kategori agenda (default: semua) — sinkron antara dropdown nav & chip di section
+  // Filter kategori agenda (default: semua) � sinkron antara dropdown nav & chip di section
   const [agendaFilter, setAgendaFilter] = useState('semua');
   // Sub-tampilan Agenda: jadwal (daftar) | tugas | kalender keluarga
   const [agendaMode, setAgendaMode] = useState('jadwal');
-  // Filter kategori pengeluaran (default: semua) — pola sama dengan agenda
+  // Filter kategori pengeluaran (default: semua) � pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
   const [incomeFilter, setIncomeFilter] = useState('semua');
-  // Sub-tampilan Keuangan: 'ringkasan' (default) | 'pengeluaran' | 'anggaran' | 'pemasukan'
+  // Kategori budget yang dikelola pengguna (ditetapkan di menu Budget)
+  // Setiap kategori: { id, name, limit }
+  const [budgetCategories, setBudgetCategories] = useState([]);
+  // Tagihan & Utang-Piutang yang dikelola pengguna
+  // Setiap tagihan: { id, nama, kategori, amount, dueDate, dibayar, lastPaidDate, lastNotified, createdAt }
+  const [tagihans, setTagihans] = useState([]);
+
+// Perencanaan Impian & Tabungan — dikelola pengguna, terpisah dari budget kategori
+// Setiap goal: { id, nama, targetAmount, currentAmount, targetDate, achieved, createdAt }
+const [goals, setGoals] = useState([]);
+
+  // Sub-tampilan Keuangan: 'ringkasan' (default) | 'pengeluaran' | 'anggaran' | 'pemasukan' | 'tagihan'
   const [financeMode, setFinanceMode] = useState('ringkasan');
   // Bulan yang ditinjau di tab Ringkasan (YYYY-MM). Tidak bisa maju dari bulan berjalan.
   const [summaryMonth, setSummaryMonth] = useState(() => monthKeyOf(new Date()));
   // Sub-tampilan Keuangan: daftar pengeluaran | halaman Anggaran (50/30/20)
   // (financeMode dideklarasikan di atas bersama financeFilter/incomeFilter)
-  // Filter bagian keluarga (default: semua) — pola sama dengan agenda & keuangan
+  // Filter bagian keluarga (default: semua) � pola sama dengan agenda & keuangan
   const [familyFilter, setFamilyFilter] = useState('semua');
   // Filter tugas: status (semua/belum/selesai) & prioritas (tinggi/sedang/rendah)
   const [taskFilter, setTaskFilter] = useState('semua');
   // Filter catatan: semua | penting (disematkan) | kategori
   const [noteFilter, setNoteFilter] = useState('semua');
-  // Pencarian catatan (judul + isi) — hanya berlaku di tab Catatan
+  // Pencarian catatan (judul + isi) � hanya berlaku di tab Catatan
   const [noteQuery, setNoteQuery] = useState('');
   // Notifikasi ringkas + tombol "Urungkan" (undo hapus)
   const [toast, setToast] = useState(null);
   // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
   const [notifRead, setNotifRead] = useState(readNotifRead);
-  // Modal "Akun saya" (nama, username, avatar, password) — dibuka dari chip pengguna
+  // Modal "Akun saya" (nama, username, avatar, password) � dibuka dari chip pengguna
   const [accountOpen, setAccountOpen] = useState(false);
   // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
   const [accountInitialGenerasi, setAccountInitialGenerasi] = useState(null);
-  // Data state — dimuat dari API + localStorage cache
+  // Data state � dimuat dari API + localStorage cache
   const [data, setData] = useState(null);
   // Loading state untuk data API
   const [dataLoading, setDataLoading] = useState(false);
@@ -698,7 +1104,7 @@ export default function App() {
 
   // ---- Auth check on mount ----
   // Jika ada token di localStorage, verifikasi dengan /auth/me.
-  // Jika valid → mark logged in + fetch data. Jika invalid → clear & show login.
+  // Jika valid ? mark logged in + fetch data. Jika invalid ? clear & show login.
   useEffect(() => {
     // Dev: clear token lama agar auto-login pakai akun dari .env
     if (import.meta.env.DEV) {
@@ -715,9 +1121,9 @@ export default function App() {
     setAuthChecking(true);
     auth.me()
       .then((user) => {
-        // Token valid — user sudah terautentikasi.
+        // Token valid � user sudah terautentikasi.
         // Segarkan currentUser dari server: grup & peran bisa berubah
-        // (mis. Kepala Keluarga menurunkan peran anggota) — jangan pakai
+        // (mis. Kepala Keluarga menurunkan peran anggota) � jangan pakai
         // snapshot localStorage yang mungkin basi.
         const fresh = {
           id: user.id,
@@ -742,7 +1148,7 @@ export default function App() {
         setEntered(true);
       })
       .catch((err) => {
-        // Token invalid/expired → clear & show login
+        // Token invalid/expired ? clear & show login
         clearUser();
         setIsLoggedIn(false);
         setAuthError(err.message === 'UNAUTHORIZED'
@@ -755,16 +1161,16 @@ export default function App() {
   // ---- Fetch data from API when logged in ----
   const loadFromAPI = async () => {
     if (!isOnline) {
-      // Offline → gunakan cache
+      // Offline ? gunakan cache
       const cached = readApiCache();
       if (cached) {
         const merged = buildMergedData(cached, currentUser);
         saveData(merged);
       } else {
-        // Tidak ada cache → tetap tampilkan app dengan data lokal saja
+        // Tidak ada cache ? tetap tampilkan app dengan data lokal saja
         const merged = buildDataBundle({}, currentUser);
         saveData(merged);
-        pushToast({ message: 'Offline — hanya data lokal yang tersedia.', duration: 4000, tone: 'warning' });
+        pushToast({ message: 'Offline � hanya data lokal yang tersedia.', duration: 4000, tone: 'warning' });
       }
       return;
     }
@@ -776,14 +1182,14 @@ export default function App() {
       saveData(merged);
       setAuthError('');
     } catch (err) {
-      // API fail → fallback ke cache, tampilkan notif
+      // API fail ? fallback ke cache, tampilkan notif
       const cached = readApiCache();
       if (cached) {
         const merged = buildMergedData(cached, currentUser);
         saveData(merged);
         setAuthError('Tidak dapat memuat data dari server. Menampilkan cache lokal.');
       } else {
-        // Tidak ada cache sama sekali → tampilkan app dengan data lokal
+        // Tidak ada cache sama sekali ? tampilkan app dengan data lokal
         const merged = buildDataBundle({}, currentUser);
         saveData(merged);
         setAuthError('Gagal memuat data dari server. Menampilkan data lokal.');
@@ -801,9 +1207,9 @@ export default function App() {
   }, [isLoggedIn]);
 
   // Effect: auto-create scheduled expenses saat app mount
-  // Cek template → buat transaksi jika tanggal jatuh tempo belum dibuat bulan ini (hanya sekali per bulan)
+  // Cek template ? buat transaksi jika tanggal jatuh tempo belum dibuat bulan ini (hanya sekali per bulan)
   useEffect(() => {
-    if (!isLoggedIn || !data) return;
+    if (!isLoggedIn || !data || !data.scheduledExpenses) return;
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1; // 1-12
@@ -813,7 +1219,7 @@ export default function App() {
     data.scheduledExpenses.forEach((tpl) => {
       if (!tpl.active) return;
 
-      // Normalisasi day jika 31 → dipangkas ke hari terakhir bulan itu
+      // Normalisasi day jika 31 ? dipangkas ke hari terakhir bulan itu
       const normalizedDay = tpl.day > 28 ? 
         new Date(year, month, 0).getDate() : tpl.day;
 
@@ -854,7 +1260,62 @@ export default function App() {
           });
       }
     });
-  }, [isLoggedIn, data, scheduledExpenses]);
+  }, [isLoggedIn, data]);
+
+  // Effect: kirim notifikasi WA ke Fonnte jika scheduled expense due date tiba
+  useEffect(() => {
+    if (!isLoggedIn || !data || !data.scheduledExpenses) return;
+
+    const fetchFonnte = async (token, message, target) => {
+      try {
+        const result = await fetch('https://api.fonnte.net/v1/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ message, target }),
+        });
+        const data = await result.json();
+        return data;
+      } catch (err) {
+        console.error('Gagal kirim Fonnte:', err.message);
+        return null;
+      }
+    };
+
+    const sendFonnteNotifications = async () => {
+      const fonnteToken = import.meta.env.VITE_FONNTE_TOKEN;
+      const fonnteTarget = import.meta.env.VITE_FONNTE_TARGET || '';
+
+      if (!fonnteToken) {
+        console.error('VITE_FONNTE_TOKEN not set');
+        return;
+      }
+
+      data.scheduledExpenses
+        .filter((t) => t.active)
+        .forEach((t) => {
+          const dueDate = new Date(today.getFullYear(), t.day - 1, 1);
+          const timeDiff = dueDate - today;
+          const daysDiff = Math.round(timeDiff / 86400000);
+
+          // Hanya kirim jika 3 hari sebelum atau hari due date
+          if (daysDiff === 3 || daysDiff === 0) {
+            const amountFmt = typeof formatCurrencyShort === 'function' ? formatCurrencyShort(t.amount) : String(t.amount);
+            const message = `*Jadwal Pengeluaran*\nTransaksi "${t.name}" sebesar ${amountFmt} jatuh tempo ${daysDiff === 0 ? 'hari ini' : '3 hari lagi'} (${t.day} ${dayLabel(today.getMonth() + 1)}).`;
+            const target = fonnteTarget;
+
+            fetchFonnte(fonnteToken, message, target).catch(() => {
+              console.error(`Fonnte gagal kirim untuk ${t.name}`);
+            });
+          }
+        });
+    };
+
+    const today = new Date();
+    sendFonnteNotifications();
+  }, [isLoggedIn, data, formatCurrencyShort]);
 
   // Effect: reload data ketika online kembali
   useEffect(() => {
@@ -896,7 +1357,7 @@ export default function App() {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch (e) {
-      /* localStorage dilarang → tema tetap jalan untuk sesi ini */
+      /* localStorage dilarang ? tema tetap jalan untuk sesi ini */
     }
   }, [theme, resolvedTheme]);
 
@@ -919,14 +1380,14 @@ export default function App() {
   }, [entered]);
 
   // Tombol tema di header: lompat ke kebalikan tema yang sedang terlihat
-  // (dari 'system' pun jadi pilihan tegas light/dark — tidak membingungkan).
+  // (dari 'system' pun jadi pilihan tegas light/dark � tidak membingungkan).
   const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
 
   // Toast: tambah/ubah = konfirmasi singkat; hapus = tawarkan "Urungkan".
   const pushToast = (t) => setToast({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...t });
   const dismissToast = (id) => setToast((prev) => (prev && prev.id === id ? null : prev));
 
-  // Toggle selesai tugas → disimpan (tasks = localStorage-only, tidak ada backend)
+  // Toggle selesai tugas ? disimpan (tasks = localStorage-only, tidak ada backend)
   const toggleTask = (taskId) => {
     saveData({
       ...dataRef.current,
@@ -934,7 +1395,7 @@ export default function App() {
     });
   };
 
-  // Reset data ke seed (tombol di LoginScreen — hanya untuk dev)
+  // Reset data ke seed (tombol di LoginScreen � hanya untuk dev)
   const resetData = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -950,7 +1411,7 @@ export default function App() {
   };
 
   /* Simpan perubahan profil akun yang sedang aktif (nama, username, avatar,
-     password). Backend belum punya endpoint PUT /users → semua perubahan
+     password). Backend belum punya endpoint PUT /users ? semua perubahan
      tetap lokal (snapshot). Ini untuk data lokal saja. */
   const saveAccount = (patch) => {
     if (!currentUser) return;
@@ -1032,7 +1493,7 @@ export default function App() {
       next = { ...current, notes: [...(current.notes || []), item] };
     } else if (section === 'family') {
       if (item.bagian === 'anggota') {
-        next = { ...current, family: [...(current.family || []), { id: item.id, name: item.title, role: 'Anggota', initials: item.initials, status: 'active', birthDate: '', blood: '—', allergy: '—', phone: item.meta || '—' }] };
+        next = { ...current, family: [...(current.family || []), { id: item.id, name: item.title, role: 'Anggota', initials: item.initials, status: 'active', birthDate: '', blood: '�', allergy: '�', phone: item.meta || '�' }] };
       } else if (item.bagian === 'medis') {
         next = { ...current, familyMedical: [...(current.familyMedical || []), { id: item.id, title: item.title, meta: item.meta, badge: 'Catatan', tone: 'gray' }] };
       } else if (item.bagian === 'dokumen') {
@@ -1092,11 +1553,11 @@ export default function App() {
     saveData(next);
   };
 
-  // Tambah item — untuk section yang terhubung API, panggil API dulu,
+  // Tambah item � untuk section yang terhubung API, panggil API dulu,
   // lalu update state. Untuk section lokal (tasks, family), update state langsung.
   const addItem = async (section, values) => {
     if (!isOnline) {
-      // Offline → tambah lokal saja
+      // Offline ? tambah lokal saja
       const id = Date.now();
       const item = buildLocalItem(section, values, id);
       addItemToState(section, item);
@@ -1146,13 +1607,13 @@ export default function App() {
     return { id };
   };
 
-  // Ubah item — untuk section yang terhubung API, panggil API.
+  // Ubah item � untuk section yang terhubung API, panggil API.
   const updateItem = async (section, id, values) => {
     const key = SECTION_KEY[section];
     const current = dataRef.current;
 
     if (!isOnline) {
-      // Offline → update lokal
+      // Offline ? update lokal
       updateItemInState(section, id, values);
       pushToast({ message: `${SECTION_LABEL[section]} diperbarui (offline)`, duration: 2500 });
       return;
@@ -1198,7 +1659,7 @@ export default function App() {
     }
   };
 
-  // Simpan gaji & rasio anggaran (keuangan → settings API)
+  // Simpan gaji & rasio anggaran (keuangan ? settings API)
   const handleSaveBudget = async ({ income, ratios }) => {
     const current = dataRef.current;
     // Update state langsung (optimistic)
@@ -1218,7 +1679,7 @@ export default function App() {
     }
   };
 
-  // Simpan pos anggaran (tambah/ubah) — keuangan settings
+  // Simpan pos anggaran (tambah/ubah) � keuangan settings
   const savePos = async (values, posId) => {
     const current = dataRef.current;
     const label = String(values.label || '').trim();
@@ -1240,7 +1701,7 @@ export default function App() {
       try {
         await settingsApi.upsert('budget_pos', JSON.stringify(pos));
       } catch (err) {
-        /* gagal sinkron — tetap tersimpan di localStorage */
+        /* gagal sinkron � tetap tersimpan di localStorage */
       }
     }
   };
@@ -1307,7 +1768,7 @@ export default function App() {
           await notesApi.delete(item.id);
         }
       } catch (err) {
-        // API gagal → restore ke state, tampilkan error
+        // API gagal ? restore ke state, tampilkan error
         const restored = [...(dataRef.current[key] || [])];
         restored.splice(Math.min(index, restored.length), 0, item);
         saveData({ ...dataRef.current, [key]: restored });
@@ -1335,18 +1796,31 @@ export default function App() {
     });
   };
 
-  // Bottom sheet "Tambah/Ubah" — null = tertutup, selain itu = kunci section.
+  // Bottom sheet "Tambah/Ubah" � null = tertutup, selain itu = kunci section.
   const [sheetOpen, setSheetOpen] = useState(null);
   // Mode ubah: { section, id } item yang sedang diedit + nilai awal formnya.
   const [editing, setEditing] = useState(null);
   const [sheetInitial, setSheetInitial] = useState(null);
 
   // `nilaiAwal` dipakai untuk form yang datang dengan konteks terisi
-  // (mis. "Tambah pos" dari salah satu kartu keranjang → keranjang sudah dipilih).
+  // (mis. "Tambah pos" dari salah satu kartu keranjang ? keranjang sudah dipilih).
   const openAdd = (section, nilaiAwal = null) => {
     setEditing(null);
     setSheetInitial(nilaiAwal);
     setSheetOpen(section);
+  };
+  
+  // Get category options from budget categories (user-managed)
+  const getBudgetCategoryOptions = () => {
+    if (!budgetCategories || budgetCategories.length === 0) {
+      // Fallback ke FINANCE_CATEGORIES jika belum ada budget categories
+      return catOptions(FINANCE_CATEGORIES);
+    }
+    // Convert budgetCategories {id, name, limit} ke format select options
+    return budgetCategories
+      .filter((c) => c.id !== 'semua' && c.id) // filter invalid
+      .map((c) => ({ value: c.id, label: c.name }))
+      .concat([{ value: 'semua', label: 'Semua' }]); // tambahkan "semua" option
   };
 
   // Buka form tambah template pengeluaran terjadwal
@@ -1355,7 +1829,7 @@ export default function App() {
     setSheetInitial(null);
     setSheetOpen('scheduledTemplate');
   };
-  // Klik placeholder "+ Tambah" di FamilyTree → buka AccountModal dengan generasi preset
+  // Klik placeholder "+ Tambah" di FamilyTree ? buka AccountModal dengan generasi preset
   const handleTreeAdd = (generasi) => {
     setAccountInitialGenerasi(generasi);
     setAccountOpen(true);
@@ -1433,7 +1907,7 @@ export default function App() {
         birth_date: merged.birthDate, avatar_url: merged.avatar_url,
       });
     }
-    setAccountInitialGenerasi(null); // reset preset → klik "+" berikutnya tetap bekerja
+    setAccountInitialGenerasi(null); // reset preset ? klik "+" berikutnya tetap bekerja
     loadFromAPI();
   };
   const openEdit = (section, item) => {
@@ -1447,7 +1921,7 @@ export default function App() {
     setSheetInitial(null);
   };
 
-  // Kirim dari FormSheet: mode ubah → perbarui item, mode tambah → tambah baru.
+  // Kirim dari FormSheet: mode ubah ? perbarui item, mode tambah ? tambah baru.
   // Pos anggaran punya jalur sendiri (bukan array di `data`, tapi `budget.pos`).
   const submitSheet = (section, values) => {
     // Penjaga pusat: peran baca-saja (anak/cucu) tak bisa menulis data keluarga.
@@ -1515,12 +1989,12 @@ export default function App() {
     return base.filter((n) => `${n.title} ${n.body || ''}`.toLowerCase().includes(q));
   }, [data, noteFilter, noteQuery]);
 
-  // Notifikasi turunan data (tanpa backend) — lihat components/notifications.js.
+  // Notifikasi turunan data (tanpa backend) � lihat components/notifications.js.
   // Dihitung ulang tiap data berubah, jadi isinya ikut berubah, tidak basi.
   const notifications = useMemo(() => data ? buildNotifications(data, formatCurrencyShort) : [], [data]);
 
   // Simpan status "sudah dibaca" sekaligus buang id notifikasi yang sudah tidak
-  // ada — supaya daftarnya tidak menumpuk selamanya di localStorage.
+  // ada � supaya daftarnya tidak menumpuk selamanya di localStorage.
   const saveNotifRead = (ids) => {
     const alive = new Set(notifications.map((n) => n.id));
     const next = ids.filter((id) => alive.has(id));
@@ -1530,7 +2004,7 @@ export default function App() {
 
   const markAllNotifRead = () => saveNotifRead(notifications.map((n) => n.id));
 
-  // Ketuk notifikasi → tandai terbaca + lompat ke bagian terkait, dengan filter
+  // Ketuk notifikasi ? tandai terbaca + lompat ke bagian terkait, dengan filter
   // ikut disetel supaya yang dimaksud langsung terlihat.
   const openNotification = (notif) => {
     saveNotifRead(notifRead.includes(notif.id) ? notifRead : [...notifRead, notif.id]);
@@ -1570,7 +2044,7 @@ export default function App() {
     setEntered(true);
   };
 
-  // Logout — clear token + kembali ke login screen
+  // Logout � clear token + kembali ke login screen
   const handleLogout = () => {
     if (isOnline) auth.logout().catch(() => {});
     clearUser();
@@ -1580,20 +2054,20 @@ export default function App() {
     setActiveSection('dashboard');
   };
 
-  // Dipanggil dropdown kategori agenda di navigasi → buka section + set filter
+  // Dipanggil dropdown kategori agenda di navigasi ? buka section + set filter
   const handleAgendaSelect = (categoryId) => {
     setAgendaFilter(categoryId);
     setActiveSection('agenda');
   };
 
-  // Dipanggil tombol "Lihat semua" pada kartu Timeline di Dashboard →
+  // Dipanggil tombol "Lihat semua" pada kartu Timeline di Dashboard ?
   // buka halaman Agenda langsung di sub-tab Timeline (tampilan penuh).
   const handleOpenAgendaTimeline = () => {
     setAgendaMode('timeline');
     setActiveSection('agenda');
   };
 
-  // Dipanggil dropdown kategori keuangan di navigasi → buka section + set filter.
+  // Dipanggil dropdown kategori keuangan di navigasi ? buka section + set filter.
   // Kategori selalu milik daftar pengeluaran, jadi mode diarahkan ke sana
   // (default tab kini Ringkasan).
   const handleFinanceSelect = (categoryId) => {
@@ -1602,13 +2076,13 @@ export default function App() {
     setActiveSection('expenses');
   };
 
-  // Dipanggil dropdown bagian keluarga di navigasi → buka section + set filter
+  // Dipanggil dropdown bagian keluarga di navigasi ? buka section + set filter
   const handleFamilySelect = (categoryId) => {
     setFamilyFilter(categoryId);
     setActiveSection('family');
   };
 
-  // Dipanggil dropdown catatan di navigasi → buka section + set filter
+  // Dipanggil dropdown catatan di navigasi ? buka section + set filter
   const handleNoteSelect = (filterId) => {
     setNoteFilter(filterId);
     setActiveSection('notes');
@@ -1706,7 +2180,7 @@ export default function App() {
 
             {agendaMode === 'tugas' ? (
               <>
-                {/* Filter tugas — status & prioritas (chip di dalam sub-tampilan Tugas) */}
+                {/* Filter tugas � status & prioritas (chip di dalam sub-tampilan Tugas) */}
                 <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter tugas">
                   {TASK_FILTERS.map((cat) => {
                     const active = taskFilter === cat.id;
@@ -1795,7 +2269,7 @@ export default function App() {
             : incomeList.filter((item) => item.category === incomeFilter);
         const incomeTotal = filteredIncome.reduce((sum, item) => sum + item.amount, 0);
 
-        // Bulan berjalan — dipakai header & notifikasi pengingat
+        // Bulan berjalan � dipakai header & notifikasi pengingat
         const monthKey = `${new Date().getFullYear()}-${pad2(new Date().getMonth() + 1)}`;
         const incomeThisMonth = incomeList
           .filter((i) => (i.date || '').startsWith(monthKey))
@@ -1827,7 +2301,7 @@ export default function App() {
               <SectionHeader
                 icon="pieChart"
                 title="Anggaran"
-                subtitle={`Gaji ${formatCurrencyShort(budget.income)} · ${budget.month}`}
+                subtitle={`Gaji ${formatCurrencyShort(budget.income)} � ${budget.month}`}
               />
             ) : financeMode === 'ringkasan' ? (
               <SectionHeader icon="barChart" title="Ringkasan" subtitle={`Periode ${monthNameLong(summaryMonth)}`} />
@@ -1835,33 +2309,36 @@ export default function App() {
               <SectionHeader
                 icon="trendingUp"
                 title={incomeMeta.label}
-                subtitle={`Total: ${formatCurrency(incomeTotal)} · bulan ini ${formatCurrency(incomeThisMonth)}`}
+                subtitle={`Total: ${formatCurrency(incomeTotal)} � bulan ini ${formatCurrency(incomeThisMonth)}`}
                 actionLabel={canWrite ? 'Tambah' : undefined}
                 actionTone="accent"
                 onAction={() => openAdd('income')}
               />
             ) : (
               <>
-                {/* Panel Pengeluaran Terjadwal */}
-                <SectionHeader
-                  icon="repeat"
-                  title="Pengeluaran Terjadwal"
-                  subtitle={data.scheduledExpenses.length > 0 
-                    ? `${data.scheduledExpenses.filter((t) => t.active).length} template aktif` 
-                    : 'Belum ada template'}
-                  actionLabel={canWrite ? 'Tambah template' : undefined}
-                  actionTone="accent"
-                  onAction={() => openAdd('scheduledTemplate')}
-                />
-                <hr className="my-2 border-border" />
-                <SectionHeader
-                  icon="wallet"
-                  title={activeMeta.label}
-                  subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
-                  actionLabel={canWrite ? 'Tambah' : undefined}
-                  actionTone="accent"
-                  onAction={() => openAdd('expenses')}
-                />
+                {/* Panel Pengeluaran Terjadwal & Tambah button - responsive: stacked on mobile, side-by-side on desktop */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:items-start sm:gap-6">
+                  <SectionHeader
+                    icon="repeat"
+                    title="Pengeluaran Terjadwal"
+                    subtitle={((data.scheduledExpenses || []).length > 0 
+                      ? `${(data.scheduledExpenses || []).filter((t) => t.active).length} template aktif` 
+                      : 'Belum ada template')}
+                    actionLabel={canWrite ? 'Tambah template' : undefined}
+                    actionTone="accent"
+                    onAction={() => openAdd('scheduledTemplate')}
+                    className="mb-0"
+                  />
+                  <SectionHeader
+                    icon="wallet"
+                    title={activeMeta.label}
+                    subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
+                    actionLabel={canWrite ? 'Tambah' : undefined}
+                    actionTone="accent"
+                    onAction={() => openAdd('expenses')}
+                    className="mb-0"
+                  />
+                </div>
               </>
             )}
 
@@ -1978,7 +2455,7 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* Banner status anggaran — ikon + teks + warna (bukan warna saja) */}
+                {/* Banner status anggaran � ikon + teks + warna (bukan warna saja) */}
                 {anggaranStatus.level === 'belum' ? (
                   <p className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-muted px-3 py-2.5 text-sm text-mutedfg">
                     <Icon name="target" size={16} className="shrink-0" />
@@ -1995,14 +2472,14 @@ export default function App() {
                   <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-toneamber/40 bg-toneamber/10 px-3 py-2.5 text-sm text-toneamberfg">
                     <Icon name="alertTriangle" size={16} className="mt-0.5 shrink-0" />
                     <span>
-                      Pengeluaran sudah memakai {anggaranStatus.pct}% anggaran bulan ini — hati-hati.
+                      Pengeluaran sudah memakai {anggaranStatus.pct}% anggaran bulan ini � hati-hati.
                     </span>
                   </div>
                 ) : (
                   <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 px-3 py-2.5 text-sm text-success">
                     <Icon name="circleCheck" size={16} className="mt-0.5 shrink-0" />
                     <span>
-                      Pengeluaran {anggaranStatus.pct}% dari anggaran — masih aman.
+                      Pengeluaran {anggaranStatus.pct}% dari anggaran � masih aman.
                     </span>
                   </div>
                 )}
@@ -2028,22 +2505,22 @@ export default function App() {
                   <StatCard
                     icon={netMonth >= 0 ? 'arrowUpRight' : 'arrowDownRight'}
                     tone={netMonth >= 0 ? 'emerald' : 'rose'}
-                    value={`${netMonth >= 0 ? '+' : '−'}${formatCurrencyShort(Math.abs(netMonth))}`}
-                    valueTitle={`${netMonth >= 0 ? '+' : '−'}${formatCurrency(Math.abs(netMonth))}`}
+                    value={`${netMonth >= 0 ? '+' : '-'}${formatCurrencyShort(Math.abs(netMonth))}`}
+                    valueTitle={`${netMonth >= 0 ? '+' : '-'}${formatCurrency(Math.abs(netMonth))}`}
                     label="Selisih"
-                    hint="Pemasukan − Pengeluaran"
+                    hint="Pemasukan - Pengeluaran"
                   />
                   <StatCard
                     icon="target"
                     tone={anggaranStatus.level === 'lewat' ? 'rose' : anggaranStatus.level === 'hati-hati' ? 'amber' : anggaranStatus.level === 'aman' ? 'emerald' : 'cyan'}
-                    value={anggaranStatus.level === 'belum' ? '—' : `${anggaranStatus.pct}%`}
+                    value={anggaranStatus.level === 'belum' ? '�' : `${anggaranStatus.pct}%`}
                     label="Anggaran terpakai"
                     hint={budget.income > 0 ? `dari ${formatCurrencyShort(budget.income)}` : 'Anggaran belum diisi'}
                   />
                   <StatCard
                     icon={anggaranStatus.sisa >= 0 ? 'circleCheck' : 'alertTriangle'}
                     tone={anggaranStatus.sisa >= 0 ? 'emerald' : 'rose'}
-                    value={anggaranStatus.level === 'belum' ? '—' : formatCurrencyShort(Math.abs(anggaranStatus.sisa))}
+                    value={anggaranStatus.level === 'belum' ? '�' : formatCurrencyShort(Math.abs(anggaranStatus.sisa))}
                     valueTitle={anggaranStatus.level === 'belum' ? undefined : formatCurrency(Math.abs(anggaranStatus.sisa))}
                     label={anggaranStatus.sisa >= 0 ? 'Sisa anggaran' : 'Melewati anggaran'}
                     hint="Dari angka rencana"
@@ -2182,7 +2659,7 @@ export default function App() {
               onAction={() => openAdd('notes')}
             />
 
-            {/* Pencarian catatan (judul + isi) — kotak cari 48px, ikon di kiri */}
+            {/* Pencarian catatan (judul + isi) � kotak cari 48px, ikon di kiri */}
             <div className="relative mb-4">
               <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-mutedfg" aria-hidden="true">
                 <Icon name="search" size={17} />
@@ -2191,7 +2668,7 @@ export default function App() {
                 type="search"
                 value={noteQuery}
                 onChange={(e) => setNoteQuery(e.target.value)}
-                placeholder="Cari judul atau isi catatan…"
+                placeholder="Cari judul atau isi catatan�"
                 aria-label="Cari catatan"
                 className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas py-2 pl-11 pr-12 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand"
               />
@@ -2247,7 +2724,7 @@ export default function App() {
   if (authChecking || !isLoggedIn || !entered) {
     return (
       <>
-        {/* Splash tetap muncul — berada sebelum early-return */}
+        {/* Splash tetap muncul � berada sebelum early-return */}
         {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
         {authChecking ? null : (
           <LoginScreen
@@ -2277,7 +2754,7 @@ export default function App() {
           <div className="fixed inset-0 z-[90] flex items-center justify-center bg-canvas/90">
             <div className="text-center">
               <Icon name="loader" size={32} className="animate-spin text-brand" />
-              <p className="mt-3 text-sm text-mutedfg">Memuat data…</p>
+              <p className="mt-3 text-sm text-mutedfg">Memuat data�</p>
             </div>
           </div>
         )}
@@ -2320,7 +2797,7 @@ export default function App() {
             className="mb-4 flex items-center gap-2.5 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-tonerosefg"
           >
             <Icon name="wifiOff" size={16} />
-            <span>Mode offline — perubahan akan disinkronkan saat online.</span>
+            <span>Mode offline � perubahan akan disinkronkan saat online.</span>
           </div>
         )}
         {!canWrite && (
@@ -2329,13 +2806,13 @@ export default function App() {
             className="mb-4 flex items-center gap-2.5 rounded-xl border border-toneamber/40 bg-toneamber/10 px-4 py-3 text-sm text-toneamberfg"
           >
             <Icon name="eye" size={16} />
-            <span>Mode baca-saja — hanya Kepala Keluarga, Suami &amp; Istri yang bisa menambah atau mengubah data keluarga.</span>
+            <span>Mode baca-saja � hanya Kepala Keluarga, Suami &amp; Istri yang bisa menambah atau mengubah data keluarga.</span>
           </div>
         )}
         {renderSection()}
       </main>
 
-      {/* Bottom sheet "Tambah/Ubah" — form per section (mode edit = nilai terisi) */}
+      {/* Bottom sheet "Tambah/Ubah" � form per section (mode edit = nilai terisi) */}
       <FormSheet
         open={!!sheetOpen}
         title={
@@ -2353,7 +2830,7 @@ export default function App() {
         onSubmit={(values) => submitSheet(sheetOpen, values)}
       />
 
-      {/* Modal "Akun saya" — dibuka dari chip pengguna di header */}
+      {/* Modal "Akun saya" � dibuka dari chip pengguna di header */}
       <AccountModal
         open={accountOpen}
         user={currentUser}
@@ -2369,7 +2846,7 @@ export default function App() {
         onThemeChange={setTheme}
       />
 
-      {/* RegisterScreen — hanya bisa diakses dari AccountModal (master only) */}
+      {/* RegisterScreen � hanya bisa diakses dari AccountModal (master only) */}
       {registerOpen && (
         <RegisterScreen
           onLogin={handleLogin}
@@ -2380,8 +2857,9 @@ export default function App() {
       {/* Toast: konfirmasi ringkas + "Urungkan" untuk hapus */}
       <Toast toast={toast} onDismiss={dismissToast} />
 
-      {/* Splash screen — tampil setiap buka app, lepas setelah fade-out */}
+      {/* Splash screen � tampil setiap buka app, lepas setelah fade-out */}
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
     </div>
   );
 }
+
