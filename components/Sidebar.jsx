@@ -9,6 +9,11 @@ import {
   countByNoteFilter,
 } from './categories';
 
+const TERJADWAL_ITEMS = [
+  { id: 'pengeluaran-terjadwal', label: 'Pengeluaran Terjadwal', icon: 'receipt' },
+  { id: 'target-tabungan', label: 'Target Tabungan', icon: 'piggyBank' },
+];
+
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'home', dropdown: null },
   { id: 'agenda', label: 'Agenda', icon: 'calendar', dropdown: AGENDA_CATEGORIES },
@@ -16,11 +21,6 @@ const NAV_ITEMS = [
   { id: 'terjadwal', label: 'Tugas Terjadwal', icon: 'clock', dropdown: TERJADWAL_ITEMS },
   { id: 'family', label: 'Keluarga', icon: 'users', dropdown: FAMILY_CATEGORIES },
   { id: 'notes', label: 'Catatan', icon: 'note', dropdown: NOTES_FILTERS },
-];
-
-const TERJADWAL_ITEMS = [
-  { id: 'pengeluaran-terjadwal', label: 'Pengeluaran Terjadwal', icon: 'receipt' },
-  { id: 'target-tabungan', label: 'Target Tabungan', icon: 'piggyBank' },
 ];
 
 export function Sidebar({
@@ -65,21 +65,22 @@ export function Sidebar({
   };
 
   const handleSection = (id) => {
-    if (id === 'dashboard') closeMenu();
-    else setOpenKey(null);
+    setOpenKey(null);
     onSectionChange(id);
+    onClose();
   };
 
   const handleDropdownSelect = (key, itemId) => {
-    closeMenu();
-    if (key === 'agenda') onAgendaSelect(itemId);
-    else if (key === 'expenses') onFinanceSelect(itemId);
-    else if (key === 'terjadwal') {
+    if (key === 'terjadwal') {
       if (itemId === 'pengeluaran-terjadwal') onSectionChange('expenses');
       else if (itemId === 'target-tabungan') onSectionChange('tabungan');
     }
+    closeMenu();
+    if (key === 'agenda') onAgendaSelect(itemId);
+    else if (key === 'expenses') onFinanceSelect(itemId);
     else if (key === 'family') onFamilySelect(itemId);
     else onNoteSelect(itemId);
+    onClose();
   };
 
   const dropdownData = { agenda: schedule, expenses, terjadwal: [], family, notes };
