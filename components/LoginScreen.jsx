@@ -124,7 +124,7 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
               autoComplete="email"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError(''); }}
-              placeholder="email@contoh.com"
+              placeholder=" Masukan email "
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}

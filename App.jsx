@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon } from './components/Icon';
 import { Navigation } from './components/Navigation';
+import { Sidebar } from './components/Sidebar';
 import { ScheduleItem } from './components/ScheduleItem';
 import { TaskList } from './components/TaskList';
 import { NoteList } from './components/NoteList';
@@ -574,6 +575,9 @@ const [goals, setGoals] = useState([]);
 
   // Pemindai struk: foto dibaca OCR di perangkat, disimpan sebagai pengeluaran biasa
   const [scanOpen, setScanOpen] = useState(false);
+
+  // Sidebar navigasi (desktop-trigger header, mobile-tetap bottom navbar)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ---- Fitur budget, tagihan & SHEET_CONFIG: WAJIB di dalam component ----
   // (sebelumnya salah tempat di module scope -> "Invalid hook call")
@@ -2707,6 +2711,51 @@ const [goals, setGoals] = useState([]);
         );
       }
 
+      case 'terjadwal': {
+        // Pengeluaran terjadwal + Target Tabungan (placeholder)
+        return (
+          <section className="app-fade-in">
+            <SectionHeader
+              icon="clock"
+              title="Tugas Terjadwal"
+              subtitle="Pengeluaran yang jatuh tempo & target tabungan"
+            />
+            <div className="mt-6 grid grid-cols-1 gap-4">
+              <div className="rounded-xl border border-line bg-surface p-4 text-center">
+                <Icon name="receipt" size={24} className="text-brandfg/50" />
+                <h3 className="mt-2 text-sm font-semibold text-ink">Pengeluaran Terjadwal</h3>
+                <p className="mt-1 text-xs text-mutedfg">Lihat di tab Keuaran → filter terjangkau</p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface p-4 text-center">
+                <Icon name="piggyBank" size={24} className="text-brandfg/50" />
+                <h3 className="mt-2 text-sm font-semibold text-ink">Target Tabungan</h3>
+                <p className="mt-1 text-xs text-mutedfg">Built next • fitur baru</p>
+              </div>
+            </div>
+          </section>
+        );
+      }
+
+      case 'tabungan': {
+        // Target tabungan - placeholder
+        return (
+          <section className="app-fade-in">
+            <SectionHeader
+              icon="piggyBank"
+              title="Target Tabungan"
+              subtitle="Dana liburan, darurat, kurban, dll"
+              actionLabel={canWrite ? 'Tambah' : undefined}
+              onAction={canWrite ? () => openAdd('tabungan') : undefined}
+            />
+            <EmptyState
+              icon="piggyBank"
+              title="Belum ada target tabungan"
+              message="Buat target baru atau aktifkan dulu dari settings."
+            />
+          </section>
+        );
+      }
+
       default:
         return (
           <Dashboard
@@ -2788,6 +2837,28 @@ const [goals, setGoals] = useState([]);
         notifReadIds={notifRead}
         onNotificationOpen={openNotification}
         onMarkAllNotificationsRead={markAllNotifRead}
+        onOpenSidebar={() => setSidebarOpen(true)}
+      />
+
+      {/* Sidebar desktop (trigger: klik header) */}
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        schedule={data.schedule}
+        expenses={data.expenses}
+        family={familyAll}
+        notes={data.notes}
+        agendaFilter={agendaFilter}
+        onAgendaSelect={handleAgendaSelect}
+        financeFilter={financeFilter}
+        onFinanceSelect={handleFinanceSelect}
+        familyFilter={familyFilter}
+        onFamilySelect={handleFamilySelect}
+        noteFilter={noteFilter}
+        onNoteSelect={handleNoteSelect}
+        theme={theme}
       />
 
       <main

@@ -14,28 +14,33 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
   { id: 'agenda', label: 'Agenda', icon: 'calendar' },
   { id: 'expenses', label: 'Keuangan', icon: 'wallet' },
+  { id: 'terjadwal', label: 'Tugas Terjadwal', icon: 'clock' },
   { id: 'family', label: 'Keluarga', icon: 'users' },
   { id: 'notes', label: 'Catatan', icon: 'note' },
 ];
 
-/* Urutan di bottom navbar: dashboard di tengah */
 const BOTTOM_NAV_ITEMS = [
   { id: 'agenda' },
   { id: 'expenses' },
   { id: 'dashboard' },
+  { id: 'terjadwal' },
   { id: 'family' },
   { id: 'notes' },
 ];
 
-/* Tab yang membuka dropdown kategori + sumber jumlah itemnya. */
 const DROPDOWNS = {
   agenda: { items: AGENDA_CATEGORIES, ariaLabel: 'Kategori agenda' },
   expenses: { items: FINANCE_CATEGORIES, ariaLabel: 'Kategori pengeluaran' },
+  terjadwal: { items: [], ariaLabel: 'Tugas terjadwal' }, // placeholder
   family: { items: FAMILY_CATEGORIES, ariaLabel: 'Bagian keluarga' },
   notes: { items: NOTES_FILTERS, ariaLabel: 'Filter catatan' },
 };
 
-/* Panel dropdown kategori (dipakai 2x per tab: bawah HP + atas desktop). */
+const TERJADWAL_ITEMS = [
+  { id: 'pengeluaran-terjadwal', label: 'Pengeluaran Terjadwal', icon: 'receipt' },
+  { id: 'target-tabungan', label: 'Target Tabungan', icon: 'piggyBank' },
+];
+
 function CategoryMenu({ items, data, activeId, closing, menuId, onSelect, ariaLabel, count = countByCategory }) {
   return (
     <div
@@ -73,7 +78,6 @@ function CategoryMenu({ items, data, activeId, closing, menuId, onSelect, ariaLa
   );
 }
 
-/* Warna tile ikon notifikasi — sama dengan peta tone di ui.jsx (StatCard). */
 const NOTIF_TONES = {
   rose: 'bg-tonerose/15 text-tonerosefg',
   amber: 'bg-toneamber/15 text-toneamberfg',
@@ -82,7 +86,6 @@ const NOTIF_TONES = {
   cyan: 'bg-tonecyan/15 text-tonecyanfg',
 };
 
-/* Panel notifikasi (lonceng pojok kanan atas). Isinya turunan data — lihat components/notifications.js. Animasi memakai pola menu kategori; item yang belum dibaca tampil penuh + titik cyan, yang sudah dibaca redup. Sengaja TANPA role="menu": isinya bukan pilihan radio, tapi daftar tautan aksi — cukup dijangkau Tab dari tombol lonceng. */
 function NotificationMenu({ items, readIds, closing, onSelect, onMarkAll }) {
   const unreadCount = items.filter((n) => !readIds.includes(n.id)).length;
 
@@ -156,13 +159,16 @@ export function Navigation({
   notifReadIds = [],
   onNotificationOpen,
   onMarkAllNotificationsRead,
+  onOpenSidebar,
 }) {
   const [openKey, setOpenKey] = useState(null);
   const [closingKey, setClosingKey] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [headerHidden, setHeaderHidden] = useState(false);
   const closeTimerRef = useRef(null);
   const lastTriggerRef = useRef(null);
-  const desktopMenuRef = useRef(null);
   const notifMenuRef = useRef(null);
+  const lastScrollY = useRef(0);
 
   const closeMenu = () => {
     if (!openKey) return;
@@ -183,7 +189,22 @@ export function Navigation({
 
   const toggleMenu = (key, e) => (openKey === key ? closeMenu() : openMenu(key, e.currentTarget));
 
-  // Tutup saat: klik/ketuk di luar menu & trigger, atau tekan Escape
+  // Auto-hide header saat scroll ke bawah
+  useEffect(() => {
+    const onScroll = () => {
+      const y = Math.max(0, window.scrollY);
+      setScrolled(y > 6);
+      if (Math.abs(y - lastScrollY.current) < 8) return;
+      const goingDown = y > lastScrollY.current;
+      lastScrollY.current = y;
+      setHeaderHidden(goingDown && y > 96);
+      if (goingDown && y > 96) closeMenu();
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   useEffect(() => {
     if (!openKey) return undefined;
     const onPointerDown = (e) => {
@@ -206,42 +227,6 @@ export function Navigation({
     };
   }, [openKey]);
 
-  useEffect(() => {
-    if (!openKey) return;
-    if (!window.matchMedia('(min-width: 1024px)').matches) return;
-    if (openKey === 'notif') notifMenuRef.current?.querySelector('[data-notif-item]')?.focus();
-    else desktopMenuRef.current?.querySelector('[role="menuitemradio"]')?.focus();
-  }, [openKey]);
-
-  useEffect(() => () => clearTimeout(closeTimerRef.current), []);
-
-  // Kepala naik elevasi begitu konten mulai bergulir di bawahnya
-  const [scrolled, setScrolled] = useState(false);
-  /* Auto-hide: header menyembunyi saat scroll ke BAWAH dan muncul lagi saat
-     scroll ke ATAS. Transform-only (tak menggeser layout konten). Ambang 8px
-     menahan gerakan kecil/jitter; header hanya disembunyikan setelah melewati
-     tinggi header supaya scroll pendek di puncak tak mengganggu. */
-  const [headerHidden, setHeaderHidden] = useState(false);
-  const lastScrollY = useRef(0);
-  useEffect(() => {
-    const onScroll = () => {
-      const y = Math.max(0, window.scrollY);
-      setScrolled(y > 6);
-      if (Math.abs(y - lastScrollY.current) < 8) return; // abaikan gerakan riwil
-      const goingDown = y > lastScrollY.current;
-      lastScrollY.current = y;
-      // Sembunyikan hanya kalau sudah jauh dari puncak; tampilkan saat naik.
-      // Saat menyembunyi, tutup menu/panel yang tergantung pada header
-      // supaya tak ada panel melayang tanpa induknya.
-      setHeaderHidden(goingDown && y > 96);
-      if (goingDown && y > 96) closeMenu();
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const activeId = openKey && DROPDOWNS[openKey] ? openKey : activeSection;
   const notifUnread = notifications.filter((n) => !notifReadIds.includes(n.id)).length;
 
   const handleNotification = (item) => {
@@ -257,12 +242,6 @@ export function Navigation({
     else onFamilySelect(categoryId);
   };
 
-  const handleSection = (id) => {
-    if (DROPDOWNS[id]) return; // tab dropdown ditangani trigger-nya sendiri
-    closeMenu();
-    onSectionChange(id);
-  };
-
   const dropdownData = { agenda: schedule, expenses, family, notes };
   const dropdownCount = { agenda: countByCategory, expenses: countByCategory, family: countByCategory, notes: countByNoteFilter };
   const activeFilter = (key) => (key === 'agenda' ? agendaFilter : key === 'expenses' ? financeFilter : key === 'family' ? familyFilter : noteFilter);
@@ -271,8 +250,14 @@ export function Navigation({
     <>
       <header className={`sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-[transform,background-color,border-color,box-shadow] duration-base ease-crisp ${headerHidden ? '-translate-y-full' : 'translate-y-0'} ${scrolled ? 'border-line bg-canvas/90 shadow-e2' : 'border-transparent bg-canvas/80'}`}>
         <div className="relative mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-4 sm:h-16 sm:gap-3 sm:px-6">
-          <button type="button" onClick={() => handleSection('dashboard')} className="flex min-w-0 items-center gap-2.5 rounded-xl p-1 text-left transition-colors hover:bg-muted">
-            <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-brand/25 bg-brandtint p-1 shadow-glow sm:h-10 sm:w-10" aria-hidden="true">
+          {/* Logo - trigger buka sidebar di desktop */}
+          <button
+            type="button"
+            onClick={onOpenSidebar}
+            className="flex min-w-0 items-center gap-2.5 rounded-xl p-1 text-left transition-colors hover:bg-muted lg:pointer-events-auto lg:cursor-pointer"
+            aria-label="Buka menu"
+          >
+            <span className="grid h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-brand/25 bg-brandtint p-1 shadow-glow sm:h-10 sm:w-10" aria-hidden="true">
               <img src="/brand/logo.png" alt="" className="h-full w-full object-contain" />
             </span>
             <span className="min-w-0 leading-tight">
@@ -281,52 +266,15 @@ export function Navigation({
             </span>
           </button>
 
-          <nav aria-label="Navigasi utama" className="hidden lg:block">
-            <ul className="flex items-center gap-1">
-              {NAV_ITEMS.map((item) => {
-                const isDropdown = !!DROPDOWNS[item.id];
-                const active = activeSection === item.id || (isDropdown && openKey === item.id);
-                return (
-                  <li key={item.id} className={isDropdown ? 'relative' : ''}>
-                    <button
-                      type="button"
-                      onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)}
-                      aria-haspopup={isDropdown ? 'menu' : undefined}
-                      aria-expanded={isDropdown ? openKey === item.id : undefined}
-                      aria-controls={isDropdown ? `${item.id}-menu-desktop` : undefined}
-                      data-dropdown-trigger={isDropdown ? '' : undefined}
-                      aria-current={active && openKey !== item.id ? 'page' : undefined}
-                      className={`flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors ${active ? 'border-brand/25 bg-brandtint text-brandfg' : 'border-transparent text-mutedfg hover:bg-muted hover:text-ink'}`}
-                    >
-                      <Icon name={item.icon} size={18} />
-                      {item.label}
-                      {isDropdown && (
-                        <Icon name="chevronDown" size={14} className={`transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />
-                      )}
-                    </button>
-
-                    {isDropdown && openKey === item.id && (
-                      <div ref={desktopMenuRef} className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2">
-                        <CategoryMenu items={DROPDOWNS[item.id].items} data={dropdownData[item.id]} count={dropdownCount[item.id]} activeId={activeFilter(item.id)} closing={closingKey === item.id} menuId={`${item.id}-menu-desktop`} onSelect={(cat) => handleDropdownSelect(item.id, cat)} ariaLabel={DROPDOWNS[item.id].ariaLabel} />
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
+          {/* Notifikasi + Akun di kanan */}
           <div className="flex shrink-0 items-center gap-2">
-            {/* Notifikasi (lonceng) — panel dibuka di bawah header, rata kanan.
-                Badge TIDAK dibacakan sebagai angka telanjang: hitungannya
-                masuk ke aria-label tombol + live region di bawah. */}
+            {/* Notifikasi (lonceng) */}
             <button
               type="button"
-              onClick={(e) => toggleMenu('notif', e)}
+              onClick={() => { if (!openKey || openKey !== 'notif') openMenu('notif',); }}
               aria-expanded={openKey === 'notif'}
               aria-controls="notif-menu"
               aria-label={notifUnread > 0 ? `Notifikasi, ${notifUnread} belum dibaca` : 'Notifikasi'}
-              data-dropdown-trigger=""
               className={`relative grid h-11 w-11 place-items-center rounded-full border transition-colors ${openKey === 'notif' ? 'border-brand/30 bg-brandtint text-brandfg' : 'border-line text-mutedfg hover:bg-muted hover:text-ink'}`}
             >
               <Icon name="bell" size={19} />
@@ -338,16 +286,14 @@ export function Navigation({
             </button>
             <span role="status" aria-atomic="true" className="sr-only">{notifUnread > 0 ? `${notifUnread} notifikasi belum dibaca` : 'Semua notifikasi sudah dibaca'}</span>
 
-            {/* Buka modal "Akun saya" (nama, username, avatar, password) */}
+            {/* Buka modal "Akun saya" */}
             <button type="button" id="account-trigger" onClick={onOpenAccount} aria-label={`Pengaturan akun (sekarang ${user.name})`} className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line px-1.5 text-sm transition-colors hover:bg-muted sm:px-3">
               <Avatar user={user} className="h-8 w-8 rounded-lg bg-brandtint text-xs font-bold text-brandfg" />
               <span className="hidden max-w-[7rem] truncate text-mutedfg sm:inline">{user.name}</span>
             </button>
           </div>
 
-          {/* Panel notifikasi: menempel di bawah header, rata kanan konten
-              (anchor-nya baris header, bukan tombol — supaya di layar 320px
-              panel tidak menjulur keluar tepi kiri). */}
+          {/* Panel notifikasi: menempel di bawah header */}
           {openKey === 'notif' && (
             <div ref={notifMenuRef} className="absolute right-4 top-full z-50 mt-2 sm:right-6">
               <NotificationMenu items={notifications} readIds={notifReadIds} closing={closingKey === 'notif'} onSelect={handleNotification} onMarkAll={onMarkAllNotificationsRead} />
@@ -356,27 +302,22 @@ export function Navigation({
         </div>
       </header>
 
-      {/* Bar bawah: mobile & tablet — gaya "tray": papan rounded-top dengan FAB
-          lingkaran di tengah yang MENONJOL keluar dari tepi atas bar. */}
+      {/* Bottom navbar - tanpa dropdown, semua tombol buka langsung halamannya */}
       <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-40 rounded-t-[26px] border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-xl lg:hidden">
-        {/* Tinggi dikunci 68px agar banner install bisa diposisikan tepat di atasnya */}
         <ul className="relative mx-auto flex h-[68px] max-w-md items-stretch px-2 lg:max-w-6xl">
           {BOTTOM_NAV_ITEMS.map((item) => {
             const isDashboard = item.id === 'dashboard';
-            const isDropdown = !!DROPDOWNS[item.id];
-            const active = activeSection === item.id || (isDropdown && openKey === item.id);
+            const active = activeSection === item.id;
             const navItem = NAV_ITEMS.find((n) => n.id === item.id);
             return (
               <li key={item.id} className="min-w-0 flex-1">
-                <button type="button" onClick={isDropdown ? (e) => toggleMenu(item.id, e) : () => handleSection(item.id)} aria-haspopup={isDropdown ? 'menu' : undefined} aria-expanded={isDropdown ? openKey === item.id : undefined} aria-controls={isDropdown ? `${item.id}-menu-mobile` : undefined} data-dropdown-trigger={isDropdown ? '' : undefined} aria-current={active && openKey !== item.id ? 'page' : undefined} className={`relative flex h-full w-full flex-col items-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${isDashboard ? 'justify-end pb-2.5' : 'justify-center'} ${isDashboard ? (active ? 'text-brandfg' : 'text-mutedfg') : active || openKey === item.id ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}>
+                <button
+                  type="button"
+                  onClick={() => onSectionChange(item.id)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`relative flex h-full w-full flex-col items-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${isDashboard ? 'justify-end pb-2.5' : 'justify-center'} ${isDashboard ? (active ? 'text-brandfg' : 'text-mutedfg') : active ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
+                >
                   {isDashboard ? (
-                    /* FAB tengah: lingkaran setengah di luar bar, ber-cincin warna
-                       canvas supaya terbaca "meloncat" dari papan.
-                       Gerak khas FAB (beda dari 4 tombol lain):
-                       - tekan : lingkaran mengecil 0.92 cepat (120ms) + glow mati
-                       - lepas : kembali melenting halus (300ms, easing spring)
-                       - hover : hanya LOGO yang bergerak (naik + membesar 110%)
-                       - aktif : ring aksen + glow redup sebagai penanda lokasi */
                     <span
                       aria-hidden="true"
                       className={`group absolute left-1/2 top-0 grid h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition duration-slow ease-spring active:scale-[0.92] active:bg-ctahover active:shadow-e2 active:duration-fast active:ease-crisp ${active ? 'shadow-glow ring-brand/40' : ''}`}
@@ -388,11 +329,6 @@ export function Navigation({
                       />
                     </span>
                   ) : (
-                    /* Ikon 4 tombol — gerak khas (beda dari FAB Dashboard):
-                       tekan : ikon naik 3px + membesar 8% + halo glow, masuk 120ms
-                       lepas : kembali melenting halus 320ms (easing spring)
-                       hover : senyap — ikon naik 1px + opacity 0.9
-                       aktif : blob tint permanen di belakang ikon (penanda tab) */
                     <span
                       className={`grid h-8 w-11 shrink-0 place-items-center rounded-full transition duration-slow ease-spring hover:-translate-y-[1px] hover:opacity-90 active:-translate-y-[3px] active:scale-[1.08] active:shadow-glow active:duration-fast active:ease-crisp ${active ? 'bg-brandtint' : ''}`}
                     >
@@ -401,21 +337,12 @@ export function Navigation({
                   )}
                   <span className="flex w-full items-center justify-center gap-0.5">
                     <span className="truncate">{navItem?.label}</span>
-                    {isDropdown && (<Icon name="chevronDown" size={12} className={`shrink-0 transition-transform duration-200 ${openKey === item.id ? 'rotate-180' : ''}`} />)}
                   </span>
                 </button>
               </li>
             );
           })}
         </ul>
-
-        {/* Menu kategori aktif: menggantung di atas tab bar (hanya satu terbuka).
-            Panel notifikasi tidak di sini — ia menempel di header. */}
-        {DROPDOWNS[openKey] && (
-          <div className="absolute bottom-full left-1/2 mb-3 -translate-x-1/2 lg:hidden">
-            <CategoryMenu items={DROPDOWNS[openKey].items} data={dropdownData[openKey]} count={dropdownCount[openKey]} activeId={activeFilter(openKey)} closing={closingKey === openKey} menuId={`${openKey}-menu-mobile`} onSelect={(cat) => handleDropdownSelect(openKey, cat)} ariaLabel={DROPDOWNS[openKey].ariaLabel} />
-          </div>
-        )}
       </nav>
     </>
   );

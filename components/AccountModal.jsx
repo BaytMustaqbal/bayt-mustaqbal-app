@@ -399,7 +399,7 @@ export function AccountModal({
             inputMode="email"
             value={username}
             onChange={(e) => setField('username', e.target.value)}
-            placeholder="mis. nama@email.com"
+            placeholder=" Masukan email "
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
