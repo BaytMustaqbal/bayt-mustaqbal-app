@@ -8,10 +8,13 @@ import {
   countByCategory,
   countByNoteFilter,
 } from './categories';
+import { SHOPPING_CATEGORY } from './shoppingList';
 
 const TERJADWAL_ITEMS = [
   { id: 'pengeluaran-terjadwal', label: 'Pengeluaran Terjadwal', icon: 'receipt' },
   { id: 'target-tabungan', label: 'Target Tabungan', icon: 'piggyBank' },
+  { id: 'belanja', label: 'Daftar Belanja', icon: 'shoppingBag' },
+  { id: 'service', label: 'Services', icon: 'wrench' },
 ];
 
 const NAV_ITEMS = [
@@ -74,6 +77,8 @@ export function Sidebar({
     if (key === 'terjadwal') {
       if (itemId === 'pengeluaran-terjadwal') onSectionChange('expenses');
       else if (itemId === 'target-tabungan') onSectionChange('tabungan');
+      else if (itemId === 'belanja') onSectionChange('belanja');
+      else if (itemId === 'service') onSectionChange('service');
     }
     closeMenu();
     if (key === 'agenda') onAgendaSelect(itemId);
@@ -83,13 +88,14 @@ export function Sidebar({
     onClose();
   };
 
-  const dropdownData = { agenda: schedule, expenses, terjadwal: [], family, notes };
+  const dropdownData = { agenda: schedule, expenses, terjadwal: [], family, notes, service: [] };
   const dropdownCount = {
     agenda: countByCategory,
     expenses: countByCategory,
-    terjadwal: () => 0,
+    terjadwal: (items, catId) => catId === 'belanja' ? 0 : 0,
     family: countByCategory,
     notes: countByNoteFilter,
+    service: () => {},
   };
   const activeFilter = (key) =>
     key === 'agenda' ? agendaFilter : key === 'expenses' ? financeFilter : key === 'family' ? familyFilter : key === 'notes' ? noteFilter : null;

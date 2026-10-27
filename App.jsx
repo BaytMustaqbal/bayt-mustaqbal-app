@@ -12,6 +12,11 @@ import { RegisterScreen } from './components/RegisterScreen';
 import { AccountModal } from './components/AccountModal';
 import { ReceiptScanner } from './components/ReceiptScanner';
 import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, FamilyList, initialsOf } from './components/ui';
+import ShoppingList from './components/ShoppingListComp';
+import Service from './components/ServiceComp';
+import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
+import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
+import { toCalendarEvents } from './components/calendarEvents';
 import { GroupedBarChart, DonutChart, BarChart } from './components/charts';
 import { FamilyCalendar } from './components/Calendar';
 import { Timeline } from './components/Timeline';
@@ -46,6 +51,8 @@ const LOCAL_SEED = {
   familyDocuments: [],
   familyContacts: [],
   tasks: [],
+  serviceInventory: [],
+  serviceHistory: [],
 };
 
 /* ---- Computed data (derived from expenses, NOT stored) ---- */
@@ -278,6 +285,16 @@ const toFormValues = (section, item) => {
   if (section === 'budgetPos') {
     return { label: item.label, bucket: item.bucket };
   }
+  if (section === 'shopping') {
+    return { nama: item.nama || '', qty: String(item.qty || 1), harga: String(item.harga || 0) };
+  }
+  if (section === 'service') {
+    return {
+      nama: item.nama || '',
+      intervalType: item.intervalType || 'km',
+      intervalValue: String(item.intervalValue || 3000),
+    };
+  }
   return {};
 };
 
@@ -308,7 +325,9 @@ const loadSnapshot = () => {
         Array.isArray(parsed.expenses) &&
         Array.isArray(parsed.tasks) &&
         Array.isArray(parsed.family) &&
-        Array.isArray(parsed.notes)
+        Array.isArray(parsed.notes) &&
+        Array.isArray(parsed.serviceInventory) &&
+        Array.isArray(parsed.serviceHistory)
       ) {
         return parsed;
       }
@@ -356,7 +375,7 @@ const clearAuthToken = () => {
 // Merge API data + local seed ? full data bundle
 const buildMergedData = (apiData, currentUser) => {
   const bundle = buildDataBundle(apiData, currentUser);
-  // Overlay localStorage-only data yang sudah dimodifikasi (tasks, family)
+  // Overlay localStorage-only data yang sudah dimodifikasi (tasks, family, service)
   const snapshot = loadSnapshot();
   if (snapshot) {
     return {
@@ -367,6 +386,8 @@ const buildMergedData = (apiData, currentUser) => {
       familyMedical: snapshot.familyMedical || bundle.familyMedical,
       familyDocuments: snapshot.familyDocuments || bundle.familyDocuments,
       familyContacts: snapshot.familyContacts || bundle.familyContacts,
+      serviceInventory: snapshot.serviceInventory || [],
+      serviceHistory: snapshot.serviceHistory || [],
     };
   }
   return bundle;
@@ -1063,6 +1084,29 @@ const [goals, setGoals] = useState([]);
         { key: 'active', label: 'Aktif', type: 'checkbox', help: 'Nonaktifkan template jika tidak digunakan' },
       ],
     },
+    // Shopping list - item ditambah lewat form inline di ShoppingList.jsx,
+    // form ini untuk buka catatan baru bila need (saat ini tidak dipakai)
+    shopping: {
+      title: 'Tambah Item Belanja',
+      icon: 'shoppingBag',
+      fields: [
+        { key: 'nama', label: 'Nama item', type: 'text', required: true, placeholder: 'contoh: Beras 5 kg' },
+        { key: 'qty', label: 'Jumlah', type: 'number', required: true, min: 1, defaultValue: 1, placeholder: '1' },
+        { key: 'harga', label: 'Harga per unit (Rp)', type: 'number', min: 0, defaultValue: 0, placeholder: '0' },
+      ],
+    },
+    service: {
+      title: 'Tambah Perawatan',
+      icon: 'wrench',
+      fields: [
+        { key: 'nama', label: 'Nama perawatan', type: 'text', required: true, placeholder: 'contoh: Ganti oli' },
+        { key: 'intervalType', label: 'Jenis interval', type: 'select', options: [
+          { value: 'km', label: 'KM' },
+          { value: 'month', label: 'Bulan' },
+        ]},
+        { key: 'intervalValue', label: 'Interval', type: 'number', min: 1, defaultValue: 3000 },
+      ],
+    },
   };
 
   useEffect(() => {
@@ -1085,6 +1129,8 @@ const [goals, setGoals] = useState([]);
   const [noteFilter, setNoteFilter] = useState('semua');
   // Pencarian catatan (judul + isi) � hanya berlaku di tab Catatan
   const [noteQuery, setNoteQuery] = useState('');
+  // Tab aktif Service (inventory/history)
+  const [serviceActiveTab, setServiceActiveTab] = useState('inventory');
   // Notifikasi ringkas + tombol "Urungkan" (undo hapus)
   const [toast, setToast] = useState(null);
   // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
@@ -1943,6 +1989,14 @@ const [goals, setGoals] = useState([]);
       saveScheduledTemplate(values);
       return;
     }
+    if (section === 'shopping') {
+      addShoppingItem(values);
+      return;
+    }
+    if (section === 'service') {
+      addSparepart(values);
+      return;
+    }
     if (editing && editing.section === section) updateItem(section, editing.id, values);
     else addItem(section, values);
   };
@@ -1982,18 +2036,82 @@ const [goals, setGoals] = useState([]);
   }, [data, taskFilter]);
 
   // Catatan sesuai filter aktif (semua | penting | kategori) + pencarian.
+  // Note kategori `belanja` (template + bulan) disembunyikan dari tab Catatan.
   const filteredNotes = useMemo(() => {
     if (!data) return [];
     const base =
       noteFilter === 'semua'
-        ? data.notes
+        ? (data.notes || []).filter((n) => n.category !== SHOPPING_CATEGORY && n.category !== SERVICE_CATEGORY)
         : noteFilter === 'penting'
-          ? data.notes.filter((n) => n.pinned)
-          : data.notes.filter((n) => n.category === noteFilter);
+          ? (data.notes || []).filter((n) => n.pinned && n.category !== SHOPPING_CATEGORY && n.category !== SERVICE_CATEGORY)
+          : (data.notes || []).filter((n) => n.category === noteFilter && n.category !== SHOPPING_CATEGORY && n.category !== SERVICE_CATEGORY);
     const q = noteQuery.trim().toLowerCase();
     if (!q) return base;
     return base.filter((n) => `${n.title} ${n.body || ''}`.toLowerCase().includes(q));
   }, [data, noteFilter, noteQuery]);
+
+  /* ---- Service motor helpers ---- */
+  const serviceInventory = data?.serviceInventory || [];
+  const serviceHistory = data?.serviceHistory || [];
+
+  const addSparepart = async (vals) => {
+    if (!canWrite) return;
+    const item = sparepartToPayload(newSparepart(vals));
+    const currentInv = dataRef.current?.serviceInventory || [];
+    saveData({ ...dataRef.current, serviceInventory: [...currentInv, item] });
+    pushToast({ message: 'Perawatan ditambahkan', duration: 2500 });
+  };
+
+  const updateSparepart = async (sparepartId) => {
+    if (!canWrite) return;
+    const sparepart = serviceInventory.find((s) => s.id === sparepartId);
+    if (!sparepart) return;
+    const record = serviceHistory[0];
+    const updated = { ...sparepart };
+    const currentInv = dataRef.current?.serviceInventory || [];
+    saveData({
+      ...dataRef.current,
+      serviceInventory: currentInv.map((s) => (s.id === sparepartId ? updated : s)),
+    });
+  };
+
+  const removeSparepart = async (sparepartId) => {
+    if (!canWrite) return;
+    const currentInv = dataRef.current?.serviceInventory || [];
+    saveData({ ...dataRef.current, serviceInventory: currentInv.filter((s) => s.id !== sparepartId) });
+    pushToast({ message: 'Perawatan dihapus', duration: 2500 });
+  };
+
+  const addServiceRecord = async (vals) => {
+    if (!canWrite) return;
+    const record = serviceRecordToPayload(vals);
+    const currentHistory = dataRef.current?.serviceHistory || [];
+    const currentInv = dataRef.current?.serviceInventory || [];
+    // Update sparepart service dates
+    const updatedInv = vals.items.reduce((inv, item) => {
+      const sp = currentInv.find((s) => s.id === item.sparepartId);
+      if (!sp) return inv;
+      return inv.map((s) =>
+        s.id === item.sparepartId
+          ? { ...s, lastServiceKm: Math.max(s.lastServiceKm || 0, vals.odometer), lastServiceDate: vals.date }
+          : s
+      );
+    }, currentInv);
+    saveData({
+      ...dataRef.current,
+      serviceHistory: [...currentHistory, { ...record, id: `service-${Date.now()}` }],
+      serviceInventory: updatedInv,
+    });
+    // Also save to notes for sync
+    if (isOnline) {
+      try {
+        await notesApi.create(record, currentUser);
+      } catch (err) {
+        /* sync gagal - tetap tersimpan local */
+      }
+    }
+    pushToast({ message: `Service ${vals.date} dicatat`, duration: 2500 });
+  };
 
   // Notifikasi turunan data (tanpa backend) � lihat components/notifications.js.
   // Dihitung ulang tiap data berubah, jadi isinya ikut berubah, tidak basi.
@@ -2103,6 +2221,10 @@ const [goals, setGoals] = useState([]);
           agendaFilter === 'semua'
             ? data.schedule
             : data.schedule.filter((item) => item.category === agendaFilter);
+
+        // Generate calendar events from all data types
+        const calendarEvents = useMemo(() => toCalendarEvents(data), [data]);
+
         return (
           <section className="app-fade-in">
             <SectionHeader
@@ -2126,7 +2248,7 @@ const [goals, setGoals] = useState([]);
                   : {
                       icon: 'calendar',
                       title: activeMeta.label,
-                      subtitle: `${filtered.length} dari ${data.schedule.length} jadwal`,
+                      subtitle: `${filtered.length} jadwal • ${calendarEvents.length} aktivitas`,
                       actionLabel: 'Tambah',
                       onAction: () => openAdd('agenda'),
                     })}
@@ -2248,7 +2370,12 @@ const [goals, setGoals] = useState([]);
                     </div>
                   )
                 ) : (
-                  <FamilyCalendar items={filtered} tasks={data.tasks} />
+                  <FamilyCalendar 
+                    items={filtered} 
+                    tasks={data.tasks} 
+                    events={calendarEvents} 
+                    onEventClick={(event) => openEdit(event.data.type, event.data.item)} 
+                  />
                 )}
               </>
             )}
@@ -2655,12 +2782,13 @@ const [goals, setGoals] = useState([]);
       case 'notes': {
         const activeMeta = NOTES_FILTERS.find((c) => c.id === noteFilter) || NOTES_FILTERS[0];
         const searching = noteQuery.trim().length > 0;
+        const totalNonShopping = (data.notes || []).filter((n) => n.category !== SHOPPING_CATEGORY).length;
         return (
           <section className="app-fade-in">
             <SectionHeader
               icon={activeMeta.icon}
               title={activeMeta.label}
-              subtitle={`${filteredNotes.length} dari ${data.notes.length} catatan`}
+              subtitle={`${filteredNotes.length} dari ${totalNonShopping} catatan`}
               actionLabel={canWrite ? 'Tambah' : undefined}
               onAction={() => openAdd('notes')}
             />
@@ -2712,24 +2840,34 @@ const [goals, setGoals] = useState([]);
       }
 
       case 'terjadwal': {
-        // Pengeluaran terjadwal + Target Tabungan (placeholder)
+        // Pengeluaran terjadwal + Target Tabungan + Daftar Belanja + Services
         return (
           <section className="app-fade-in">
             <SectionHeader
               icon="clock"
               title="Tugas Terjadwal"
-              subtitle="Pengeluaran yang jatuh tempo & target tabungan"
+              subtitle="Pengeluaran jatuh tempo, target tabungan, daftar belanja, service motor"
             />
-            <div className="mt-6 grid grid-cols-1 gap-4">
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
               <div className="rounded-xl border border-line bg-surface p-4 text-center">
                 <Icon name="receipt" size={24} className="text-brandfg/50" />
                 <h3 className="mt-2 text-sm font-semibold text-ink">Pengeluaran Terjadwal</h3>
-                <p className="mt-1 text-xs text-mutedfg">Lihat di tab Keuaran → filter terjangkau</p>
+                <p className="mt-1 text-xs text-mutedfg">Lihat di tab Keuangan → filter terjangkau</p>
               </div>
               <div className="rounded-xl border border-line bg-surface p-4 text-center">
                 <Icon name="piggyBank" size={24} className="text-brandfg/50" />
                 <h3 className="mt-2 text-sm font-semibold text-ink">Target Tabungan</h3>
                 <p className="mt-1 text-xs text-mutedfg">Built next • fitur baru</p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface p-4 text-center cursor-pointer hover:bg-muted" onClick={() => setActiveSection('belanja')}>
+                <Icon name="shoppingBag" size={24} className="text-brandfg/50" />
+                <h3 className="mt-2 text-sm font-semibold text-ink">Daftar Belanja</h3>
+                <p className="mt-1 text-xs text-mutedfg">Belanja bulanan otomatis</p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface p-4 text-center cursor-pointer hover:bg-muted" onClick={() => setActiveSection('service')}>
+                <Icon name="wrench" size={24} className="text-brandfg/50" />
+                <h3 className="mt-2 text-sm font-semibold text-ink">Services</h3>
+                <p className="mt-1 text-xs text-mutedfg">Perawatan motor</p>
               </div>
             </div>
           </section>
@@ -2751,6 +2889,57 @@ const [goals, setGoals] = useState([]);
               icon="piggyBank"
               title="Belum ada target tabungan"
               message="Buat target baru atau aktifkan dulu dari settings."
+            />
+          </section>
+        );
+      }
+
+      case 'belanja': {
+        const { note, state } = getOrCreateShoppingNote();
+        return (
+          <section className="app-fade-in">
+            <SectionHeader
+              icon="shoppingBag"
+              title="Daftar Belanja"
+              subtitle={`${state.items.length} item • ${getCurrentMonthKey()}`}
+              actionLabel={canWrite ? 'Tambah' : undefined}
+              onAction={canWrite ? () => openAdd('shopping') : undefined}
+            />
+            <ShoppingList
+              state={state}
+              formatCurrency={formatCurrency}
+              canWrite={canWrite}
+              onAddItem={addShoppingItem}
+              onToggle={toggleShoppingItem}
+              onRemove={removeShoppingItem}
+              onSaveTemplate={saveShoppingAsTemplate}
+              onFinish={finishShopping}
+            />
+          </section>
+        );
+      }
+
+      case 'service': {
+        return (
+          <section className="app-fade-in">
+            <SectionHeader
+              icon="wrench"
+              title="Services"
+              subtitle={`${serviceHistory.length} catatan • ${serviceInventory.length} perawatan`}
+              actionLabel={canWrite ? 'Tambah' : undefined}
+              onAction={canWrite ? () => openAdd('service') : undefined}
+            />
+            <Service
+              inventory={serviceInventory}
+              history={serviceHistory}
+              formatCurrency={formatCurrency}
+              canWrite={canWrite}
+              onAddSparepart={addSparepart}
+              onUpdateSparepart={updateSparepart}
+              onRemoveSparepart={removeSparepart}
+              onAddService={addServiceRecord}
+              activeTab={serviceActiveTab}
+              onTabChange={setServiceActiveTab}
             />
           </section>
         );
@@ -2858,6 +3047,7 @@ const [goals, setGoals] = useState([]);
         onFamilySelect={handleFamilySelect}
         noteFilter={noteFilter}
         onNoteSelect={handleNoteSelect}
+        service={serviceInventory}
         theme={theme}
       />
 

@@ -45,10 +45,14 @@ const formatLong = (d) =>
   `${WEEKDAY_LONG[(d.getDay() + 6) % 7]}, ${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
 
 // Ambil warna member dengan fallback aman (member baru di luar daftar).
-const memberColor = (member) => MEMBER_COLORS[member] || 'bg-brand';
+// Untuk events dengan category, gunakan color yang sudah diset.
+const memberColor = (member, categoryColor) => {
+  if (categoryColor) return categoryColor;
+  return MEMBER_COLORS[member] || 'bg-brand';
+};
 
 // ============================================================================
-export function FamilyCalendar({ items, tasks }) {
+export function FamilyCalendar({ items, tasks, events, onEventClick }) {
   const today = useMemo(() => toDate(new Date()), []);
   const [view, setView] = useState('month'); // 'week' | 'month' | 'year'
   const [cursor, setCursor] = useState(today);
@@ -57,12 +61,48 @@ export function FamilyCalendar({ items, tasks }) {
   // Indeks jadwal & tugas per tanggal ('YYYY-MM-DD').
   const dayMap = useMemo(() => {
     const map = {};
-    items.forEach((it) => {
+    
+    // Add schedule items (date is already YYYY-MM-DD string)
+    items?.forEach((it) => {
       if (!it.date) return;
-      (map[it.date] = map[it.date] || []).push(it);
+      (map[it.date] = map[it.date] || []).push({
+        ...it,
+        category: it.category || 'agenda',
+        color: it.color || EVENT_COLORS[it.category || 'agenda'],
+      });
     });
+    
+    // Add events (expenses, service, etc.) with category colors
+    events?.forEach((e) => {
+      if (!e.date) return;
+      // Normalize date to YYYY-MM-DD string
+      const dateStr = typeof e.date === 'string' ? e.date : e.date.split('T')[0];
+      (map[dateStr] = map[dateStr] || []).push({
+        ...e,
+        member: e.category,
+        ...e.color && { color: e.color },
+        onClick: () => onEventClick?.(e),
+      });
+    });
+    
+    // Add tasks with due dates
+    tasks?.forEach((t) => {
+      if (!t.dueDate) return;
+      const dateStr = typeof t.dueDate === 'string' ? t.dueDate : t.dueDate.split('T')[0];
+      (map[dateStr] = map[dateStr] || []).push({
+        id: `task-${t.id}`,
+        title: t.title || 'Tugas',
+        date: t.dueDate,
+        category: 'task',
+        color: t.completed ? 'bg-gray-400' : 'bg-amber-500',
+        completed: t.completed,
+        priority: t.priority,
+        onClick: () => onEventClick?.({ type: 'task', item: t }),
+      });
+    });
+    
     return map;
-  }, [items]);
+  }, [items, events, tasks]);
 
   const tasksByKey = useMemo(() => {
     const map = {};
@@ -182,7 +222,7 @@ export function FamilyCalendar({ items, tasks }) {
         />
       )}
 
-      {view === 'month' && <DayList date={selected} dayMap={dayMap} tasksByKey={tasksByKey} />}
+      {view === 'month' && <DayList date={selected} dayMap={dayMap} tasksByKey={tasksByKey} onEventClick={onEventClick} />}
 
       <Legend />
     </section>
@@ -262,11 +302,23 @@ function DayCell({ date, today, selected, dayMap, taskKeys, onPickDay }) {
   const members = [...new Set(items.map((i) => i.member).filter(Boolean))];
   const hasTask = taskKeys.has(key);
   const desc = `${formatLong(date)}${
-    items.length ? ' — ' + items.map((i) => `${i.title} (${i.member || 'Keluarga'})`).join(', ') : ''
+    items.length ? ' — ' + items.map((i) => `${i.title}`).join(', ') : ''
   }${hasTask ? '; ada tugas jatuh tempo' : ''}`;
+
+  // Check if any item has a click handler
+  const itemWithClick = items.find((i) => i.onClick);
 
   const isToday = isSameDay(date, today);
   const isSelected = isSameDay(date, selected);
+
+  const handleClick = (e) => {
+    if (itemWithClick) {
+      e.stopPropagation();
+      itemWithClick.onClick?.();
+    } else {
+      onPickDay(date);
+    }
+  };
 
   return (
     /* Satu kelas latar untuk tiap keadaan — bukan "latar dasar + tambahan".
@@ -274,7 +326,7 @@ function DayCell({ date, today, selected, dayMap, taskKeys, onPickDay }) {
        membuat sorotan "hari ini"/"terpilih" tidak pernah terlihat. */
     <button
       type="button"
-      onClick={() => onPickDay(date)}
+      onClick={handleClick}
       aria-label={desc}
       aria-pressed={isSelected}
       className={`relative flex aspect-square w-full min-w-0 flex-col items-center justify-center gap-[3px] rounded-md text-sm transition-colors hover:border-brand/40 ${
@@ -287,8 +339,12 @@ function DayCell({ date, today, selected, dayMap, taskKeys, onPickDay }) {
     >
       <span className="font-mono leading-none">{date.getDate()}</span>
       <span className="flex items-center gap-[3px]">
-        {members.map((m) => (
-          <span key={m} className={`h-1.5 w-1.5 rounded-full ${memberColor(m)}`} aria-hidden="true" />
+        {items.map((item) => (
+          <span 
+            key={item.id} 
+            className={`h-1.5 w-1.5 rounded-full ${item.color || memberColor(item.member)}`} 
+            aria-hidden="true" 
+          />
         ))}
       </span>
       {hasTask && (
@@ -327,8 +383,8 @@ function WeekList({ cursor, today, dayMap, tasksByKey }) {
               <ul className="space-y-1.5">
                 {items.map((it) => (
                   <li key={`s${it.id}`} className="flex min-w-0 items-center gap-2 text-sm">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${memberColor(it.member)}`} aria-hidden="true" />
-                    <span className="shrink-0 font-mono text-xs text-mutedfg">{it.time}</span>
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${it.color || memberColor(it.member)}`} aria-hidden="true" />
+                    <span className="shrink-0 font-mono text-xs text-mutedfg">{it.time || ''}</span>
                     <span className="truncate font-medium text-ink">{it.title}</span>
                   </li>
                 ))}
@@ -421,7 +477,7 @@ function MiniMonthDots({ year, month, dayMap, taskKeys }) {
 // ============================================================================
 // Daftar agenda hari terpilih (view Bulan).
 // ============================================================================
-function DayList({ date, dayMap, tasksByKey }) {
+function DayList({ date, dayMap, tasksByKey, onEventClick }) {
   const key = fmtKey(date);
   const items = dayMap[key] || [];
   const ttasks = tasksByKey[key] || [];
@@ -439,11 +495,17 @@ function DayList({ date, dayMap, tasksByKey }) {
           <p className="text-sm text-mutedfg">Tidak ada agenda di hari ini.</p>
         )}
         {items.map((it) => (
-          <div key={`s${it.id}`} className="flex min-w-0 items-center gap-2 text-sm">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${memberColor(it.member)}`} aria-hidden="true" />
-            <span className="shrink-0 font-mono text-xs text-mutedfg">{it.time}</span>
+          <div 
+            key={`s${it.id}`} 
+            className={`flex min-w-0 items-center gap-2 cursor-pointer rounded-lg p-2 text-sm transition-colors hover:bg-muted ${
+              it.onClick ? 'cursor-pointer' : ''
+            }`}
+            onClick={it.onClick || (onEventClick ? () => onEventClick(it) : undefined)}
+          >
+            <span className={`h-2 w-2 shrink-0 rounded-full ${it.color || memberColor(it.member)}`} aria-hidden="true" />
+            <span className="shrink-0 font-mono text-xs text-mutedfg">{it.time || ''}</span>
             <span className="truncate font-medium text-ink">{it.title}</span>
-            <Badge tone="gray" >{it.member || 'Keluarga'}</Badge>
+            <Badge tone="gray">{it.category || it.member || 'Keluarga'}</Badge>
           </div>
         ))}
         {ttasks.map((t) => (

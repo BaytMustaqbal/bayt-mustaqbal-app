@@ -319,6 +319,30 @@ const PATHS = {
       <path d="M19.5 8.5c.7-.7 1.5-1.6 1.5-2.7A2.73 2.73 0 0 0 16 4a2.78 2.78 0 0 0-5 1.8c0 1.2.8 2 1.5 2.8L16 12Z" />
     </>
   ),
+  repeat: (
+    <>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5" />
+      <polyline points="7,10 12,5 17,10" />
+      <path d="M17 10V5a2 2 0 0 0-2-2H5" />
+      <polyline points="7,14 12,19 17,14" />
+    </>
+  ),
+  piggyBank: (
+    <>
+      <path d="M7 8a5 5 0 0 1 10 0v6.5A1.5 1.5 0 0 1 13.5 16h-3A1.5 1.5 0 0 1 9 14.5v-6.5Z" />
+      <path d="M5 22h14a2 2 0 0 0 2-2v-4a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2v4a2 2 0 0 0 2 2Z" />
+      <path d="M12 2v4M12 6v2" />
+    </>
+  ),
+  receipt: (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" />
+      <line x1="4" y1="8" x2="20" y2="8" />
+      <line x1="4" y1="12" x2="12" y2="12" />
+      <line x1="16" y1="12" x2="20" y2="12" />
+      <path d="M16 16H8" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 20, strokeWidth = 1.75, className = '', title }) {
