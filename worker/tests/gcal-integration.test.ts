@@ -77,7 +77,7 @@ console.log('\n=== GET /api/gcal/login ===');
 res = await fetch(`${BASE}/api/gcal/status`, { headers: { Authorization: `Bearer invalid` } });
 assert('token invalid → 401', res.status === 401, res.status);
 
-res = await fetch(`${BASE}/api/gcal/login?origin=http://localhost:5173`, {
+res = await fetch(`${BASE}/api/gcal/login?origin=http://localhost:3000`, {
   headers: { Authorization: `Bearer ${token}` },
 });
 json = (await res.json()) as any;
@@ -94,11 +94,11 @@ if (configured) {
   assert('login → arah ke accounts.google.com', parsed.hostname === 'accounts.google.com', url.slice(0, 60));
   assert(
     'login → redirect_uri localhost (dev)',
-    parsed.searchParams.get('redirect_uri') === 'http://localhost:5173/api/gcal/callback',
+    parsed.searchParams.get('redirect_uri') === 'http://localhost:3000/api/gcal/callback',
     parsed.searchParams.get('redirect_uri')
   );
   const state = decodeState(url);
-  assert('login → state origin = origin yang diminta', state?.origin === 'http://localhost:5173', JSON.stringify(state));
+  assert('login → state origin = origin yang diminta', state?.origin === 'http://localhost:3000', JSON.stringify(state));
   assert('login → state kind = gcal', state?.kind === 'gcal', JSON.stringify(state));
 
   // Origin asing harus jatuh ke default (allowlist)

@@ -118,12 +118,12 @@ assert('consent → state ikut', consent.includes('state=signed-state-token'), c
 
 const consentDev = buildConsentUrl(
   { GOOGLE_CLIENT_ID: 'cid-123', GOOGLE_CLIENT_SECRET: 'sec' } as any,
-  'http://localhost:5173',
+  'http://localhost:3000',
   'st'
 );
 assert(
-  'consent dev → redirect_uri localhost (proxy Vite)',
-  consentDev.includes(encodeURIComponent('http://localhost:5173/api/gcal/callback')),
+  'consent dev → redirect_uri localhost:3000 (Vite dev, proxy /api)',
+  consentDev.includes(encodeURIComponent('http://localhost:3000/api/gcal/callback')),
   consentDev
 );
 

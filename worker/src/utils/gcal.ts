@@ -22,6 +22,8 @@ const TIMEZONE = 'Asia/Jakarta';
 /** Origin frontend yang boleh dipakai sebagai tujuan balik setelah OAuth. */
 export const APP_ORIGINS = [
   'https://app.baytmustaqbal.my.id',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
 ];
