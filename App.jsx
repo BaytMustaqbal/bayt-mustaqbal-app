@@ -14,6 +14,7 @@ import { ReceiptScanner } from './components/ReceiptScanner';
 import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, FamilyList, initialsOf } from './components/ui';
 import ShoppingList from './components/ShoppingListComp';
 import Service from './components/ServiceComp';
+import SettingsComp from './components/SettingsComp';
 import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
@@ -38,7 +39,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi } from './services/client';
 import './App.css';
 
 /* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
@@ -54,6 +55,11 @@ const LOCAL_SEED = {
   serviceInventory: [],
   serviceHistory: [],
 };
+
+/* Guard migrasi tagihan localStorage → API: React StrictMode (dev) menjalankan
+   effect dua kali; flag sinkron ini memastikan migrasi hanya berjalan sekali
+   per muat halaman, bahkan sebelum await pertama selesai. */
+let tagihanMigrationStarted = false;
 
 /* ---- Computed data (derived from expenses, NOT stored) ---- */
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -589,6 +595,15 @@ export default function App() {
   // Tagihan & Utang-Piutang yang dikelola pengguna
   // Setiap tagihan: { id, nama, kategori, amount, dueDate, dibayar, lastPaidDate, lastNotified, createdAt }
   const [tagihans, setTagihans] = useState([]);
+  // Status integrasi Google Calendar (dipakai halaman Pengaturan)
+  const [gcal, setGcal] = useState({
+    loading: false,
+    connecting: false,
+    connected: false,
+    email: null,
+    error: null,
+    notConfigured: false,
+  });
 
 // Perencanaan Impian & Tabungan — dikelola pengguna, terpisah dari budget kategori
 // Setiap goal: { id, nama, targetAmount, currentAmount, targetDate, achieved, createdAt }
@@ -678,10 +693,14 @@ const [goals, setGoals] = useState([]);
       .concat([{ value: 'semua', label: 'Semua' }]); // tambahkan "semua" option
   };
 
-  // --- Fungsi CRUD Tagihan & Utang-Piutang ---
-
-  // Simpan tagihan ke localStorage
+  // --- Fungsi CRUD Tagihan & Utang-Piutang (sumber data: API /api/bill) ---
+  //
+  // Data lama di localStorage ('bayt-mustaqbal-tagihans') dimigrasi SEKALI ke
+  // API saat load pertama (bila API masih kosong), lalu ditandai selesai.
+  // localStorage lama TIDAK dihapus dan TIDAK ditulis lagi — hanya dipakai
+  // sebagai cadangan baca saat API tidak terjangkau.
   const STORAGE_KEY_TAGIHAN = 'bayt-mustaqbal-tagihans';
+  const STORAGE_MIGRATED_TAGIHAN = 'bayt-mustaqbal-tagihans-migrated';
 
   const loadTagihans = () => {
     try {
@@ -693,36 +712,141 @@ const [goals, setGoals] = useState([]);
     }
   };
 
-  const saveTagihans = (tagihans) => {
+  // Samakan bentuk entri (baik dari API maupun cadangan lokal)
+  const normalizeTagihan = (t) => ({
+    id: t.id || `tag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    nama: t.nama || 'Tagihan Baru',
+    kategori: t.kategori || 'lainnya',
+    amount: t.amount !== undefined ? Number(t.amount) : 0,
+    dueDate: t.dueDate || '',
+    dibayar: t.dibayar !== undefined ? Number(t.dibayar) : 0,
+    lastPaidDate: t.lastPaidDate || null,
+    lastNotified: t.lastNotified || null,
+    createdAt: t.createdAt || new Date().toISOString(),
+  });
+
+  // Muat tagihan dari API + migrasi sekali-jalan dari localStorage.
+  // Berjalan setelah login (sebelum login API menjawab 401).
+  useEffect(() => {
+    if (!isLoggedIn || tagihanMigrationStarted) return;
+    tagihanMigrationStarted = true;
+    let alive = true;
+    (async () => {
+      try {
+        let rows = await billsApi.fetch();
+        if (rows.length === 0) {
+          const legacy = loadTagihans();
+          if (legacy.length > 0 && !localStorage.getItem(STORAGE_MIGRATED_TAGIHAN)) {
+            const created = [];
+            for (const t of legacy) {
+              try {
+                created.push(await billsApi.create(t));
+              } catch (e) {
+                console.error('Migrasi tagihan gagal:', t.nama, e.message);
+              }
+            }
+            if (created.length > 0) {
+              localStorage.setItem(STORAGE_MIGRATED_TAGIHAN, new Date().toISOString());
+            }
+            rows = created;
+          }
+        }
+        if (alive) setTagihans(rows.map(normalizeTagihan));
+      } catch (e) {
+        // API tidak terjangkau → pakai cadangan lokal (baca saja) supaya
+        // pengingat & anggaran tetap punya data.
+        console.warn('Tagihan pakai cadangan lokal:', e.message);
+        if (alive) setTagihans(loadTagihans().map(normalizeTagihan));
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isLoggedIn]);
+
+  // ---- Status & aksi integrasi Google Calendar (halaman Pengaturan) ----
+  const refreshGcalStatus = async () => {
+    setGcal((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      localStorage.setItem(STORAGE_KEY_TAGIHAN, JSON.stringify(tagihans));
+      const s = await gcalApi.status();
+      setGcal({
+        loading: false,
+        connecting: false,
+        connected: !!s.connected,
+        email: s.email || null,
+        calendarId: s.calendar_id || null,
+        error: null,
+        notConfigured: false,
+      });
     } catch (e) {
-      console.error('Gagal save tagihans', e);
+      setGcal((prev) => ({
+        ...prev,
+        loading: false,
+        error: e.message === 'NETWORK_ERROR' ? 'Tidak dapat menghubungi server.' : e.message,
+      }));
     }
   };
 
-  // Inisialisasi tagihans dari localStorage saat komponen render
+  // Pergi ke halaman consent Google; balikannya lewat ?gcal=connected / ?gcal=error
+  const connectGoogleCalendar = async () => {
+    setGcal((prev) => ({ ...prev, connecting: true, error: null }));
+    try {
+      const { url } = await gcalApi.login(window.location.origin);
+      window.location.href = url;
+    } catch (e) {
+      const notConfigured = e.message.includes('belum di-set');
+      setGcal((prev) => ({
+        ...prev,
+        connecting: false,
+        notConfigured,
+        error: notConfigured ? null : `Gagal memulai: ${e.message}`,
+      }));
+    }
+  };
+
+  const disconnectGoogleCalendar = async () => {
+    try {
+      await gcalApi.disconnect();
+      setGcal((prev) => ({ ...prev, connected: false, email: null }));
+      pushToast({
+        message: 'Google Calendar diputus. Event yang sudah terlanjur dikirim tetap tersimpan di Google.',
+        duration: 4500,
+      });
+    } catch (e) {
+      pushToast({ message: `Gagal memutus koneksi: ${e.message}`, duration: 3500, tone: 'danger' });
+    }
+  };
+
+  // Hasil OAuth Google: ?gcal=connected atau ?gcal=error&reason=…
   useEffect(() => {
-    const loaded = loadTagihans();
-    const normalized = loaded.map((t) => ({
-      id: t.id || `tag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      nama: t.nama || 'Tagihan Baru',
-      kategori: t.kategori || 'lainnya',
-      amount: t.amount !== undefined ? Number(t.amount) : 0,
-      dueDate: t.dueDate || '',
-      dibayar: t.dibayar !== undefined ? Number(t.dibayar) : 0,
-      lastPaidDate: t.lastPaidDate || null,
-      lastNotified: t.lastNotified || null,
-      createdAt: t.createdAt || new Date().toISOString(),
-    }));
-    setTagihans(normalized);
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('gcal');
+    if (!result) return;
+    const reason = params.get('reason');
+    params.delete('gcal');
+    params.delete('reason');
+    const qs = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
+
+    if (result === 'connected') {
+      pushToast({
+        message: 'Google Calendar tersambung. Agenda & tagihan otomatis ikut ter-push.',
+        duration: 4500,
+      });
+    } else {
+      pushToast({
+        message: `Gagal menyambungkan Google Calendar${reason ? ` (${reason})` : ''}. Coba lagi dari menu Pengaturan.`,
+        duration: 5500,
+        tone: 'danger',
+      });
+    }
+    refreshGcalStatus();
   }, []);
 
-  // Tambah tagihan baru
-  const addTagihan = (nama, kategori, amount, dueDate) => {
+  // Tambah tagihan baru (API dulu, lalu state)
+  const addTagihan = async (nama, kategori, amount, dueDate) => {
     const newTagihan = {
-      id: `tag-${Date.now()}`,
-      nama: nama.toLowerCase().trim() || 'belum nama',
+      nama: (nama || '').toLowerCase().trim() || 'belum nama',
       kategori: kategori || 'lainnya',
       amount: Number(amount) || 0,
       dueDate: dueDate || '',
@@ -731,74 +855,82 @@ const [goals, setGoals] = useState([]);
       lastNotified: null,
       createdAt: new Date().toISOString(),
     };
-    setTagihans(prev => {
-      const exists = prev.some((t) => t.nama === newTagihan.name);
-      if (exists) {
-        alert('Tagihan sudah ada! Gunakan nama yang berbeda.');
-        return prev;
-      }
-      return [...prev, newTagihan];
-    });
-    saveTagihans(prev => [...prev, newTagihan]);
+    if (tagihans.some((t) => t.nama === newTagihan.nama)) {
+      alert('Tagihan sudah ada! Gunakan nama yang berbeda.');
+      return null;
+    }
+    try {
+      const created = await billsApi.create(newTagihan);
+      setTagihans((prev) => [...prev, normalizeTagihan(created)]);
+      return created;
+    } catch (e) {
+      alert(`Gagal menyimpan tagihan: ${e.message === 'NETWORK_ERROR' ? 'tanpa koneksi' : e.message}`);
+      return null;
+    }
   };
 
-  // Edit tagihan existente
-  const editTagihan = (tagihanId, newNama, newKategori, newAmount, newDueDate) => {
-    setTagihans(prev =>
-      prev.map((t) =>
-        t.id === tagihanId
-          ? { ...t, nama: newNama.toLowerCase().trim() || t.nama, kategori: newKategori || t.kategori, amount: Number(newAmount) || t.amount, dueDate: newDueDate || t.dueDate }
-          : t
-      )
-    );
-    saveTagihans(prev =>
-      prev.map((t) =>
-        t.id === tagihanId ? { ...t, nama: newNama.toLowerCase().trim() || t.nama, kategori: newKategori || t.kategori, amount: Number(newAmount) || t.amount, dueDate: newDueDate || t.dueDate } : t
-      )
-    );
+  // Edit tagihan
+  const editTagihan = async (tagihanId, newNama, newKategori, newAmount, newDueDate) => {
+    const current = tagihans.find((t) => t.id === tagihanId);
+    if (!current) return;
+    const patch = {
+      ...current,
+      nama: (newNama || '').toLowerCase().trim() || current.nama,
+      kategori: newKategori || current.kategori,
+      amount: Number(newAmount) || current.amount,
+      dueDate: newDueDate || current.dueDate,
+    };
+    try {
+      const updated = await billsApi.update(tagihanId, patch);
+      setTagihans((prev) => prev.map((t) => (t.id === tagihanId ? normalizeTagihan(updated) : t)));
+    } catch (e) {
+      alert(`Gagal mengubah tagihan: ${e.message === 'NETWORK_ERROR' ? 'tanpa koneksi' : e.message}`);
+    }
   };
 
   // Hapus tagihan
-  const deleteTagihan = (tagihanId) => {
+  const deleteTagihan = async (tagihanId) => {
     const toDelete = tagihans.find((t) => t.id === tagihanId);
     if (toDelete && toDelete.dibayar > 0) {
       alert('Tidak bisa menghapus tagihan ini karena masih ada pembayaran yang tercatat.');
       return;
     }
-    
-    setTagihans(prev => prev.filter((t) => t.id !== tagihanId));
-    saveTagihans(prev => prev.filter((t) => t.id !== tagihanId));
+    try {
+      await billsApi.delete(tagihanId);
+      setTagihans((prev) => prev.filter((t) => t.id !== tagihanId));
+    } catch (e) {
+      alert(`Gagal menghapus tagihan: ${e.message === 'NETWORK_ERROR' ? 'tanpa koneksi' : e.message}`);
+    }
   };
 
-  // Catat pembayaran tagihan
-  const catatPembayaran = (tagihanId, amount) => {
+  // Catat pembayaran tagihan (bisa parsial → status lunas bila sudah penuh)
+  const catatPembayaran = async (tagihanId, amount) => {
     const tagihan = tagihans.find((t) => t.id === tagihanId);
     if (!tagihan) return;
-    
-    const newDibayar = (tagihan.dibayar || 0) + Number(amount);
-    const newLastPaidDate = new Date().toISOString().split('T')[0];
-    
-    setTagihans(prev =>
-      prev.map((t) =>
-        t.id === tagihanId
-          ? { ...t, dibayar: newDibayar, lastPaidDate: newLastPaidDate }
-          : t
-      )
-    );
-    saveTagihans(prev =>
-      prev.map((t) =>
-        t.id === tagihanId ? { ...t, dibayar: newDibayar, lastPaidDate: newLastPaidDate } : t
-      )
-    );
+
+    const patch = {
+      ...tagihan,
+      dibayar: (tagihan.dibayar || 0) + Number(amount),
+      lastPaidDate: new Date().toISOString().split('T')[0],
+    };
+    try {
+      const updated = await billsApi.update(tagihanId, patch);
+      setTagihans((prev) => prev.map((t) => (t.id === tagihanId ? normalizeTagihan(updated) : t)));
+    } catch (e) {
+      alert(`Gagal mencatat pembayaran: ${e.message === 'NETWORK_ERROR' ? 'tanpa koneksi' : e.message}`);
+    }
   };
 
   // Reset lastNotified saat ada pembayaran baru
-  const resetLastNotified = (tagihanId) => {
-    setTagihans(prev =>
-      prev.map((t) =>
-        t.id === tagihanId ? { ...t, lastNotified: null } : t
-      )
-    );
+  const resetLastNotified = async (tagihanId) => {
+    const tagihan = tagihans.find((t) => t.id === tagihanId);
+    if (!tagihan) return;
+    try {
+      const updated = await billsApi.update(tagihanId, { ...tagihan, lastNotified: null });
+      setTagihans((prev) => prev.map((t) => (t.id === tagihanId ? normalizeTagihan(updated) : t)));
+    } catch {
+      /* pengingat terkirim; penanda lokal tidak wajib tersimpan */
+    }
   };
 
   // UseEffect: Cek pengingat tagihan setiap hari (pukul 09:00 sore)
@@ -1261,6 +1393,7 @@ const [goals, setGoals] = useState([]);
   useEffect(() => {
     if (isLoggedIn) {
       loadFromAPI();
+      refreshGcalStatus();
     }
   }, [isLoggedIn]);
 
@@ -2212,6 +2345,14 @@ const [goals, setGoals] = useState([]);
     setActiveSection('notes');
   };
 
+  // Generate calendar events from all data types — WAJIB di body component,
+  // bukan di dalam case switch: hook conditional bikin React crash
+  // ("Rendered more hooks") saat pengguna berpindah section dari Agenda.
+  const calendarEvents = useMemo(
+    () => toCalendarEvents({ ...data, bills: tagihans }),
+    [data, tagihans]
+  );
+
   const renderSection = () => {
     switch (activeSection) {
       case 'agenda': {
@@ -2222,8 +2363,8 @@ const [goals, setGoals] = useState([]);
             ? data.schedule
             : data.schedule.filter((item) => item.category === agendaFilter);
 
-        // Generate calendar events from all data types
-        const calendarEvents = useMemo(() => toCalendarEvents(data), [data]);
+        // calendarEvents sudah dihitung di body component (lihat useMemo di
+        // atas renderSection) — hook tidak boleh di dalam case switch.
 
         return (
           <section className="app-fade-in">
@@ -2374,12 +2515,37 @@ const [goals, setGoals] = useState([]);
                     items={filtered} 
                     tasks={data.tasks} 
                     events={calendarEvents} 
-                    onEventClick={(event) => openEdit(event.data.type, event.data.item)} 
+                    onEventClick={(event) => {
+                const { type, item } = event.data;
+                if (type === 'tagihan') {
+                  // Tagihan belum punya FormSheet sendiri → ringkasan singkat dulu.
+                  const lunas = item.amount > 0 && (Number(item.dibayar) || 0) >= item.amount;
+                  pushToast({
+                    message: `${item.nama} • jatuh tempo ${item.dueDate} • ${
+                      lunas ? 'sudah lunas' : `sisa ${formatCurrency(item.amount - (item.dibayar || 0))}`
+                    }`,
+                    duration: 4000,
+                  });
+                  return;
+                }
+                openEdit(type, item);
+              }} 
                   />
                 )}
               </>
             )}
           </section>
+        );
+      }
+
+      case 'pengaturan': {
+        return (
+          <SettingsComp
+            gcal={gcal}
+            onConnect={connectGoogleCalendar}
+            onDisconnect={disconnectGoogleCalendar}
+            onRetry={refreshGcalStatus}
+          />
         );
       }
 

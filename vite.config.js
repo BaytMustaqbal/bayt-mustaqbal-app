@@ -54,7 +54,9 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'https://api.baytmustaqbal.my.id',
+        // Pengujian lokal: VITE_PROXY_TARGET=http://127.0.0.1:8788 npm run dev
+        // (default tetap API produksi)
+        target: process.env.VITE_PROXY_TARGET || 'https://api.baytmustaqbal.my.id',
         changeOrigin: true,
       },
     },

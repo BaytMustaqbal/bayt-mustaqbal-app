@@ -9,6 +9,7 @@ export const EVENT_COLORS = {
   shopping: 'bg-amber-500',
   service: 'bg-red-500',
   tabungan: 'bg-violet-500',
+  tagihan: 'bg-orange-500',
 };
 
 /* ---- Konversi semua data ke calendar events ----
@@ -106,6 +107,26 @@ export const toCalendarEvents = (data) => {
           priority: t.priority,
           color: t.completed ? 'bg-gray-400' : (EVENT_COLORS.agenda),
           data: { type: 'task', item: t },
+        });
+      }
+    });
+  }
+
+  // Tagihan / utang-piutang (jatuh tempo) — dari state tagihans (API /api/bill)
+  if (data?.bills) {
+    data.bills.forEach((b) => {
+      if (b.dueDate) {
+        const lunas = b.amount > 0 && (Number(b.dibayar) || 0) >= b.amount;
+        events.push({
+          id: `tagihan-${b.id}`,
+          title: b.nama || 'Tagihan',
+          date: b.dueDate,
+          time: null,
+          category: 'tagihan',
+          lunas,
+          amount: b.amount,
+          color: lunas ? 'bg-orange-300' : EVENT_COLORS.tagihan,
+          data: { type: 'tagihan', item: b },
         });
       }
     });

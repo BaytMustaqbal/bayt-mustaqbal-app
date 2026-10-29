@@ -301,3 +301,70 @@ export const settingsApi = {
     }
   },
 };
+
+/* ---- Bills / Tagihan (backend /api/bill) ----
+   Bentuk frontend (dipakai state tagihans & pengingat):
+     { id, nama, kategori, amount, dueDate, dibayar, lastPaidDate, lastNotified, createdAt }
+   Konversi ke kolom bills: name, kategori, amount, due_date, status (lunas bila
+   dibayar >= amount), paid_at, paid_amount, last_notified. */
+const billTransform = {
+  toTagihan: (row) => ({
+    id: row.id,
+    nama: row.name,
+    kategori: row.kategori || 'lainnya',
+    amount: Number(row.amount) || 0,
+    dueDate: row.due_date || '',
+    dibayar: Number(row.paid_amount) || 0,
+    lastPaidDate: row.paid_at || null,
+    lastNotified: row.last_notified || null,
+    createdAt: row.created_at,
+  }),
+  toPayload: (t) => ({
+    name: t.nama,
+    amount: Number(t.amount) || 0,
+    due_date: t.dueDate || '',
+    kategori: t.kategori || 'lainnya',
+    status: t.amount > 0 && (Number(t.dibayar) || 0) >= t.amount ? 'paid' : 'unpaid',
+    paid_at: t.lastPaidDate || null,
+    paid_amount: Number(t.dibayar) || 0,
+    last_notified: t.lastNotified || null,
+  }),
+};
+
+export const billsApi = {
+  fetch: async () => {
+    const results = await apiFetch('/bill');
+    return results.map(billTransform.toTagihan);
+  },
+  create: async (item) => {
+    const result = await apiFetch('/bill', {
+      method: 'POST',
+      body: JSON.stringify(billTransform.toPayload(item)),
+    });
+    return billTransform.toTagihan(result);
+  },
+  update: async (id, item) => {
+    const result = await apiFetch(`/bill/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(billTransform.toPayload(item)),
+    });
+    return billTransform.toTagihan(result);
+  },
+  delete: async (id) => {
+    return apiFetch(`/bill/${id}`, { method: 'DELETE' });
+  },
+};
+
+/* ---- Google Calendar (backend /api/gcal) ---- */
+export const gcalApi = {
+  status: async () => {
+    return apiFetch('/gcal/status');
+  },
+  // Origin dikirim supaya callback tahu ke mana harus mengembalikan browser.
+  login: async (origin) => {
+    return apiFetch(`/gcal/login?origin=${encodeURIComponent(origin)}`);
+  },
+  disconnect: async () => {
+    return apiFetch('/gcal/disconnect', { method: 'POST' });
+  },
+};
