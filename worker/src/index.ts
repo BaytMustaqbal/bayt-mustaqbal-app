@@ -14,6 +14,7 @@ import { noteRoutes } from './routes/note';
 import { reviewRoutes } from './routes/review';
 import { dashRoutes } from './routes/dash';
 import { auditRoutes } from './routes/audit';
+import { gcalRoutes } from './routes/gcal';
 import { authMiddleware } from './middleware/auth';
 import { handleCron } from './cron';
 
@@ -46,6 +47,7 @@ app.route('/api/note', noteRoutes);
 app.route('/api/review', reviewRoutes);
 app.route('/api/dash', dashRoutes);
 app.route('/api/audit', auditRoutes);
+app.route('/api/gcal', gcalRoutes);
 
 app.get('/', (c) => c.json({ ok: true, message: 'Bayt Mustaqbal API' }));
 

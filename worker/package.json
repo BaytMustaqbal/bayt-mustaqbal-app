@@ -10,7 +10,9 @@
     "migrations:new": "wrangler d1 migrations new bayt-mustaqbal-db",
     "migrations:apply": "wrangler d1 migrations apply bayt-mustaqbal-db",
     "typecheck": "tsc --noEmit",
-    "test:integration": "tsx tests/integration.test.ts"
+    "test:unit": "tsx tests/gcal-unit.test.ts",
+    "test:integration": "tsx tests/integration.test.ts",
+    "test:gcal": "tsx tests/gcal-integration.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

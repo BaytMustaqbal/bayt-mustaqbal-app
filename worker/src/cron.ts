@@ -1,5 +1,6 @@
 import { Env } from './types/env';
 import { sendWA } from './utils/fonnte'; // fonnte WA utility (Task 7)
+import { processOutbox, syncToGcal } from './utils/gcal';
 
 // Daily digest: summarize today's transactions
 async function sendDailyDigest(env: Env): Promise<void> {
@@ -82,6 +83,8 @@ async function generateMonthlyBills(env: Env): Promise<void> {
       ).bind(id, entry.user_id, entry.name, entry.amount, dueDate, 'unpaid', null, entry.id, 1, now, now).run();
 
       generated++;
+      // Tagihan hasil generate juga ikut sinkron ke Google Calendar.
+      await syncToGcal(env, { writerUserId: entry.user_id, groupId: null, entityType: 'bill', entityId: id, action: 'upsert' });
     }
   }
 
@@ -101,9 +104,10 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
     await sendDailyDigest(env);
   }
 
-  // Every hour — bill reminder
+  // Every hour — bill reminder + retry antrean sinkron Google Calendar
   if (event.cron === '0 * * * *') {
     await sendBillReminder(env);
+    await processOutbox(env);
   }
 
   // Day 1, 00:30 WIB — generate monthly bills from recurring

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../types/env';
 import { canWriteGroup, forbiddenWrite, groupScope } from '../utils/group';
+import { syncToGcal } from '../utils/gcal';
 
 export const calRoutes = new Hono<{ Bindings: Env }>();
 
@@ -37,6 +38,9 @@ calRoutes.post('/', async (c) => {
   await c.env.DB.prepare(
     'INSERT INTO calendar_events (id, user_id, group_id, title, date, time, category, member_id, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).bind(id, userId, groupId, title, date, time || null, category || null, member_id || null, description || null, 1, now, now).run();
+
+  // Sinkron ke Google Calendar (diam-diam; gagal? cron yang ulang)
+  await syncToGcal(c.env, { writerUserId: userId, groupId, entityType: 'cal', entityId: id, action: 'upsert' });
 
   return c.json({ ok: true, data: { id, user_id: userId, group_id: groupId, title, date, time: time || null, category: category || null, member_id: member_id || null, description: description || null, rev: 1, created_at: now, updated_at: now }, error: null });
 });
@@ -94,6 +98,8 @@ calRoutes.put('/:id', async (c) => {
     'SELECT * FROM calendar_events WHERE id = ? AND void IS NULL'
   ).bind(id).first() as any;
 
+  await syncToGcal(c.env, { writerUserId: userId, groupId, entityType: 'cal', entityId: id, action: 'upsert' });
+
   return c.json({ ok: true, data: updated, error: null });
 });
 
@@ -119,6 +125,8 @@ calRoutes.delete('/:id', async (c) => {
   await c.env.DB.prepare(
     'UPDATE calendar_events SET void = ? WHERE id = ?'
   ).bind(now, id).run();
+
+  await syncToGcal(c.env, { writerUserId: userId, groupId, entityType: 'cal', entityId: id, action: 'delete' });
 
   return c.json({ ok: true, data: { id, void: now }, error: null });
 });

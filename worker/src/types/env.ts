@@ -6,6 +6,9 @@ export interface Env {
   FONNTE_TOKEN: string;
   FONNTE_TARGET: string;
   FONNTE_DEVICE: string;
+  // OAuth Google Calendar (di-set via `wrangler secret put` / .dev.vars)
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 }
 
 // Module augmentation — REQUIRED for c.get('userId') to work

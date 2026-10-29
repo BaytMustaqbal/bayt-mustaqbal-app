@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { Env } from '../types/env';
+import { syncToGcal } from '../utils/gcal';
 
 export const billRoutes = new Hono<{ Bindings: Env }>();
 
@@ -17,8 +18,9 @@ billRoutes.get('/', async (c) => {
 // POST /api/bill — create bill
 billRoutes.post('/', async (c) => {
   const userId = c.get('userId');
-  const { name, amount, due_date, recurring_id } = await c.req.json() as {
-    name: string; amount: number; due_date: string; recurring_id?: string;
+  const { name, amount, due_date, kategori, status, paid_at, paid_amount, last_notified, recurring_id } = await c.req.json() as {
+    name: string; amount: number; due_date: string; kategori?: string; status?: string; paid_at?: string;
+    paid_amount?: number; last_notified?: string; recurring_id?: string;
   };
 
   if (!name || amount == null || !due_date) {
@@ -29,10 +31,16 @@ billRoutes.post('/', async (c) => {
   const now = new Date().toISOString();
 
   await c.env.DB.prepare(
-    'INSERT INTO bills (id, user_id, name, amount, due_date, status, paid_at, recurring_id, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(id, userId, name, amount, due_date, 'unpaid', null, recurring_id || null, 1, now, now).run();
+    'INSERT INTO bills (id, user_id, name, amount, due_date, kategori, status, paid_at, paid_amount, last_notified, recurring_id, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(id, userId, name, amount, due_date, kategori || null, status || 'unpaid', paid_at || null, paid_amount || 0, last_notified || null, recurring_id || null, 1, now, now).run();
 
-  return c.json({ ok: true, data: { id, user_id: userId, name, amount, due_date, status: 'unpaid', paid_at: null, recurring_id, rev: 1, created_at: now, updated_at: now }, error: null });
+  await syncToGcal(c.env, { writerUserId: userId, groupId: null, entityType: 'bill', entityId: id, action: 'upsert' });
+
+  const created = await c.env.DB.prepare(
+    'SELECT * FROM bills WHERE id = ? AND user_id = ? AND void IS NULL'
+  ).bind(id, userId).first();
+
+  return c.json({ ok: true, data: created, error: null });
 });
 
 // GET /api/bill/:id — detail by id
@@ -64,8 +72,9 @@ billRoutes.put('/:id', async (c) => {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Bill tidak ditemukan' } }, 404);
   }
 
-  const { name, amount, due_date, status, paid_at, recurring_id } = await c.req.json() as {
-    name?: string; amount?: number; due_date?: string; status?: string; paid_at?: string; recurring_id?: string;
+  const { name, amount, due_date, kategori, status, paid_at, paid_amount, last_notified, recurring_id } = await c.req.json() as {
+    name?: string; amount?: number; due_date?: string; kategori?: string; status?: string; paid_at?: string;
+    paid_amount?: number; last_notified?: string; recurring_id?: string;
   };
 
   if (!name || amount == null || !due_date) {
@@ -74,12 +83,14 @@ billRoutes.put('/:id', async (c) => {
 
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    'UPDATE bills SET name = ?, amount = ?, due_date = ?, status = ?, paid_at = ?, recurring_id = ?, rev = rev + 1, updated_at = ? WHERE id = ? AND user_id = ? AND void IS NULL'
-  ).bind(name, amount, due_date, status || 'unpaid', paid_at || null, recurring_id || null, now, id, userId).run();
+    'UPDATE bills SET name = ?, amount = ?, due_date = ?, kategori = ?, status = ?, paid_at = ?, paid_amount = ?, last_notified = ?, recurring_id = ?, rev = rev + 1, updated_at = ? WHERE id = ? AND user_id = ? AND void IS NULL'
+  ).bind(name, amount, due_date, kategori || null, status || 'unpaid', paid_at || null, paid_amount || 0, last_notified || null, recurring_id || null, now, id, userId).run();
 
   const updated = await c.env.DB.prepare(
     'SELECT * FROM bills WHERE id = ? AND user_id = ? AND void IS NULL'
   ).bind(id, userId).first() as any;
+
+  await syncToGcal(c.env, { writerUserId: userId, groupId: null, entityType: 'bill', entityId: id, action: 'upsert' });
 
   return c.json({ ok: true, data: updated, error: null });
 });
@@ -101,6 +112,8 @@ billRoutes.delete('/:id', async (c) => {
   await c.env.DB.prepare(
     'UPDATE bills SET void = ? WHERE id = ? AND user_id = ? AND void IS NULL'
   ).bind(now, id, userId).run();
+
+  await syncToGcal(c.env, { writerUserId: userId, groupId: null, entityType: 'bill', entityId: id, action: 'delete' });
 
   return c.json({ ok: true, data: { id, void: now }, error: null });
 });

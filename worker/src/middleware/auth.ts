@@ -4,7 +4,7 @@ import { Env } from '../types/env';
 
 export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
   const path = c.req.path;
-  if (path === '/api/auth/login' || path === '/api/auth/register') {
+  if (path === '/api/auth/login' || path === '/api/auth/register' || path === '/api/gcal/callback') {
     return next();
   }
   const authHeader = c.req.header('Authorization');
