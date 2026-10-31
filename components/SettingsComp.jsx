@@ -2,6 +2,13 @@ import React from 'react';
 import { Icon } from './Icon';
 import { SectionHeader, Badge, CTA_CLASS } from './ui';
 
+/* Pilihan tampilan (same config di AccountModal.jsx) */
+const THEME_OPTIONS = [
+  { value: 'system', label: 'Sistem', icon: 'monitor' },
+  { value: 'light', label: 'Terang', icon: 'sun' },
+  { value: 'dark', label: 'Gelap', icon: 'moon' },
+];
+
 /* ============================================================================
    Halaman Pengaturan — rumah untuk pengaturan app. Isi pertama: integrasi
    Google Calendar (satu arah: app → Google).
@@ -18,7 +25,7 @@ const statusBadge = (gcal) => {
   return <Badge tone="gray">Belum tersambung</Badge>;
 };
 
-export function SettingsComp({ gcal, onConnect, onDisconnect, onRetry }) {
+export function SettingsComp({ gcal, onConnect, onDisconnect, onRetry, theme = 'system', onThemeChange }) {
   const busy = gcal.loading || gcal.connecting;
 
   return (
@@ -120,14 +127,30 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, onRetry }) {
           </ul>
         </div>
 
-        {/* ---- Placeholder pengaturan lain (biar halaman tidak terasa kosong) ---- */}
-        <div className="rounded-xl border border-dashed border-line bg-surface/60 p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-mutedfg">
-            <Icon name="sparkles" size={16} aria-hidden="true" />
-            Pengaturan lainnya
+        {/* ---- Tampilan (tema) ---- */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <h2 className="mb-3 text-sm font-bold text-ink">Tampilan</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {THEME_OPTIONS.map((opt) => (
+              <label key={opt.value} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="bm-theme"
+                  value={opt.value}
+                  checked={theme === opt.value}
+                  onChange={() => onThemeChange?.(opt.value)}
+                  className="peer sr-only"
+                />
+                <span className="flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl border border-line bg-surface px-2 text-[11px] font-medium text-mutedfg transition-colors hover:bg-muted peer-checked:border-brand/50 peer-checked:bg-brandtint peer-checked:text-brandfg peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-canvas">
+                  <Icon name={opt.icon} size={17} />
+                  {opt.label}
+                </span>
+              </label>
+            ))}
           </div>
-          <p className="mt-1 text-xs text-mutedfg">
-            Tema, notifikasi, dan preferensi anggota akan menyusul di sini.
+          <p className="mt-2 text-[11px] text-mutedfg">
+            Pilihan langsung berlaku. <strong className="font-semibold text-ink">Sistem</strong> mengikuti
+            pengaturan terang/gelap HP.
           </p>
         </div>
       </div>

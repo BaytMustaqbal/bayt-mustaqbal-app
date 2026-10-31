@@ -2545,6 +2545,8 @@ const [goals, setGoals] = useState([]);
             onConnect={connectGoogleCalendar}
             onDisconnect={disconnectGoogleCalendar}
             onRetry={refreshGcalStatus}
+            theme={theme}
+            onThemeChange={setTheme}
           />
         );
       }
@@ -3214,7 +3216,7 @@ const [goals, setGoals] = useState([]);
         noteFilter={noteFilter}
         onNoteSelect={handleNoteSelect}
         service={serviceInventory}
-        theme={theme}
+
       />
 
       <main
@@ -3282,8 +3284,8 @@ const [goals, setGoals] = useState([]);
         onSave={saveAccount}
         onLogout={handleLogout}
         onRegister={() => setRegisterOpen(true)}
-        theme={theme}
-        onThemeChange={setTheme}
+
+
       />
 
       {/* RegisterScreen � hanya bisa diakses dari AccountModal (master only) */}

@@ -24,7 +24,6 @@ const BOTTOM_NAV_ITEMS = [
   { id: 'agenda' },
   { id: 'expenses' },
   { id: 'dashboard' },
-  { id: 'terjadwal' },
   { id: 'family' },
   { id: 'notes' },
 ];
