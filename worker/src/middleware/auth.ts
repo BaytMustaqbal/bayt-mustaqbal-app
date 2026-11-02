@@ -1,5 +1,5 @@
 import { Context, Next } from 'hono';
-import { verifyToken } from '../utils/auth';
+import { verifyToken, verifySessionActive } from '../utils/auth';
 import { Env } from '../types/env';
 
 export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
@@ -22,6 +22,11 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
   const payload = verifyToken(token, c.env.JWT_SECRET);
   if (!payload) {
     return c.json({ ok: false, data: null, error: { code: 'UNAUTHENTICATED', message: 'Token invalid' } }, 401);
+  }
+  // Sesi aktif: tolak token tanpa jti aktif (logout / revoke / kedaluwarsa).
+  const active = await verifySessionActive(c.env, payload.jti, payload.userId);
+  if (!active) {
+    return c.json({ ok: false, data: null, error: { code: 'UNAUTHENTICATED', message: 'Sesi tidak aktif' } }, 401);
   }
   c.set('userId', payload.userId);
   c.set('role', payload.role);

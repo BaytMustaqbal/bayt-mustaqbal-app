@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import jwt from 'jsonwebtoken';
 import { Env } from '../types/env';
-import { signToken } from '../utils/auth';
+import { signToken, createSession } from '../utils/auth';
 import { APP_ORIGINS } from '../utils/gcal';
 
 const GOOGLE_AUTH = 'https://oauth2.googleapis.com';
@@ -123,6 +123,10 @@ googleAuthRoutes.get('/callback', async (c) => {
       .run();
   }
 
-  const token = signToken({ userId: user.id, role: user.role }, c.env.JWT_SECRET);
+  const token = signToken(
+    { userId: user.id, role: user.role },
+    c.env.JWT_SECRET,
+    await createSession(c.env, user.id, (c.req.header('User-Agent') || 'browser').slice(0, 120))
+  );
   return c.redirect(`${origin}/?google=success&token=${encodeURIComponent(token)}`, 302);
 });

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { hashPassword, verifyPassword, signToken, verifyToken } from '../utils/auth';
+import { hashPassword, verifyPassword, signToken, verifyToken, createSession, voidSessionByJti } from '../utils/auth';
 import { Env } from '../types/env';
 
 export const authRoutes = new Hono<{ Bindings: Env }>();
@@ -128,7 +128,9 @@ authRoutes.post('/login', async (c) => {
   if (!valid) {
     return c.json({ ok: false, data: null, error: { code: 'UNAUTHENTICATED', message: 'Username atau password salah' } }, 401);
   }
-  const token = signToken({ userId: user.id, role: user.role }, c.env.JWT_SECRET);
+  const device = (c.req.header('User-Agent') || 'browser').slice(0, 120);
+  const jti = await createSession(c.env, user.id, device);
+  const token = signToken({ userId: user.id, role: user.role }, c.env.JWT_SECRET, jti);
   c.header('Set-Cookie', `token=${token}; HttpOnly; Secure; SameSite=Lax; Max-Age=604800; Path=/`);
   return c.json({
     ok: true,
@@ -139,14 +141,22 @@ authRoutes.post('/login', async (c) => {
         role: user.role, family_role: user.family_role || 'anak', generasi: user.generasi || 'orangtua',
         birth_date: user.birth_date || null, avatar_url: user.avatar_url || null,
         group_id: user.group_id || null, group_role: user.group_role || 'anak', group_name: user.group_name || null,
+        google_sub: user.google_sub || null,
       },
     },
     error: null,
   });
 });
 
-// POST /api/auth/logout
-authRoutes.post('/logout', (c) => {
+// POST /api/auth/logout — void sesi saat ini + bersihkan cookie.
+authRoutes.post('/logout', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader?.replace('Bearer ', '') ||
+    c.req.header('Cookie')?.match(/token=([^;]+)/)?.[1] || null;
+  if (token) {
+    const p = verifyToken(token, c.env.JWT_SECRET);
+    if (p?.jti) await voidSessionByJti(c.env, p.jti);
+  }
   c.header('Set-Cookie', 'token=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/');
   return c.json({ ok: true, data: null, error: null });
 });
@@ -156,7 +166,7 @@ authRoutes.get('/me', async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DB.prepare(
     `SELECT u.id, u.username, u.nama, u.nickname, u.avatar_url, u.role, u.family_role, u.generasi, u.birth_date,
-            u.group_id, u.group_role, g.name AS group_name
+            u.group_id, u.group_role, u.google_sub, g.name AS group_name
      FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.id = ? AND u.void IS NULL`
   ).bind(userId).first();
@@ -203,4 +213,37 @@ authRoutes.put('/me', async (c) => {
      WHERE u.id = ? AND u.void IS NULL`
   ).bind(userId).first();
   return c.json({ ok: true, data: user, error: null });
+});
+
+// GET /api/auth/sessions — daftar sesi aktif milik user.
+authRoutes.get('/sessions', async (c) => {
+  const userId = c.get('userId');
+  const rows = await c.env.DB.prepare(
+    `SELECT id, jti, device, created_at, last_seen, expires_at
+     FROM sessions WHERE user_id = ? AND void IS NULL ORDER BY created_at DESC`
+  ).bind(userId).all();
+  return c.json({ ok: true, data: rows.results || [], error: null });
+});
+
+// DELETE /api/auth/sessions/:id — revoke sesi lain (hanya milik user sendiri).
+authRoutes.delete('/sessions/:id', async (c) => {
+  const userId = c.get('userId');
+  const id = c.req.param('id');
+  const row = (await c.env.DB.prepare(
+    'SELECT id FROM sessions WHERE id = ? AND user_id = ? AND void IS NULL'
+  ).bind(id, userId).first()) as { id: string } | null;
+  if (!row) {
+    return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Sesi tidak ditemukan' } }, 404);
+  }
+  await c.env.DB.prepare('UPDATE sessions SET void = ? WHERE id = ?')
+    .bind(new Date().toISOString(), id).run();
+  return c.json({ ok: true, data: { id }, error: null });
+});
+
+// POST /api/auth/google/unlink — hapus pengikat google_sub (bukan hapus akun).
+authRoutes.post('/google/unlink', async (c) => {
+  const userId = c.get('userId');
+  await c.env.DB.prepare('UPDATE users SET google_sub = NULL, updated_at = ? WHERE id = ? AND void IS NULL')
+    .bind(new Date().toISOString(), userId).run();
+  return c.json({ ok: true, data: { google_sub: null }, error: null });
 });
