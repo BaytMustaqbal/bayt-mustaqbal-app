@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
 import { Card, GlassCard, StatCard, QuickAction, ProgressBar, Badge, CTA_CLASS } from './ui';
-import { DonutChart, LineChart, DualTrendChart } from './charts';
 import { Timeline } from './Timeline';
 import { getBudget } from './budget';
 import { readUiPrefs } from '../services/uiPrefs';
@@ -239,40 +238,6 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           hint="Pemasukan − Pengeluaran"
         />
       </div>
-
-      {/* ---------- Tren Keuangan (pemasukan vs pengeluaran) ---------- */}
-      <Card className="p-4 sm:p-5 md:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <Icon name="trendingUp" size={18} className="shrink-0 text-brandfg" />
-            <h2 className="truncate font-bold text-ink">Tren Keuangan</h2>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-mutedfg">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
-              Pemasukan: <span className="font-semibold text-ink">{formatCurrencyShort(totals.incomeMonth)}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
-              Pengeluaran: <span className="font-semibold text-ink">{formatCurrencyShort(totals.expenseMonth)}</span>
-            </span>
-          </div>
-        </div>
-        <DualTrendChart
-          incomeData={data.incomeTrend || []}
-          expenseData={data.monthlyTrend}
-          formatValue={formatCurrencyShort}
-        />
-      </Card>
-
-      {/* ---------- Donat ---------- */}
-      <Panel
-        icon="pieChart"
-        title="Komposisi Pengeluaran"
-        action={<span className="shrink-0 text-xs text-mutedfg">bulan ini</span>}
-      >
-        <DonutChart data={data.categories} formatValue={formatCurrencyShort} centerLabel="Total" />
-      </Panel>
 
       {/* ---------- Pengeluaran terbaru ----------
           "Agenda Terdekat" dilepas dari Dashboard: isinya sudah tercakup kartu
