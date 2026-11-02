@@ -17,6 +17,7 @@ import Service from './components/ServiceComp';
 import SettingsComp from './components/SettingsComp';
 import MomentsComp from './components/MomentsComp';
 import InsightComp from './components/InsightComp';
+import TargetTabunganComp from './components/TargetTabunganComp';
 import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
@@ -616,6 +617,22 @@ export default function App() {
 // Perencanaan Impian & Tabungan — dikelola pengguna, terpisah dari budget kategori
 // Setiap goal: { id, nama, targetAmount, currentAmount, targetDate, achieved, createdAt }
 const [goals, setGoals] = useState([]);
+
+// Muat target tabungan dari localStorage saat buka app
+useEffect(() => {
+  try {
+    const raw = localStorage.getItem('bm-goals');
+    if (raw) setGoals(JSON.parse(raw));
+  } catch { /* abaikan */ }
+}, []);
+
+const saveGoals = (next) => {
+  setGoals(next);
+  try { localStorage.setItem('bm-goals', JSON.stringify(next)); } catch { /* lokal */ }
+};
+const addGoal = (g) => saveGoals([...goals, g]);
+const updateGoal = (id, patch) => saveGoals(goals.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+const deleteGoal = (id) => saveGoals(goals.filter((x) => x.id !== id));
 
   // Pemindai struk: foto dibaca OCR di perangkat, disimpan sebagai pengeluaran biasa
   const [scanOpen, setScanOpen] = useState(false);
@@ -1372,6 +1389,8 @@ const [goals, setGoals] = useState([]);
   const [notifRead, setNotifRead] = useState(readNotifRead);
   // Modal "Akun saya" (nama, username, avatar, password) � dibuka dari chip pengguna
   const [accountOpen, setAccountOpen] = useState(false);
+  // Tab aktif di halaman "Tugas Terjadwal" (pengeluaran/tabungan/belanja/service)
+  const [terjadwalTab, setTerjadwalTab] = useState('pengeluaran');
   // Tab awal saat modal Akun dibuka (default 'profil'; 'keamanan' dari Pengaturan)
   const [accountInitialTab, setAccountInitialTab] = useState('profil');
   // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
@@ -3155,36 +3174,113 @@ const [goals, setGoals] = useState([]);
       }
 
       case 'terjadwal': {
-        // Pengeluaran terjadwal + Target Tabungan + Daftar Belanja + Services
+        const terjadwalTabs = [
+          { id: 'pengeluaran', label: 'Pengeluaran', icon: 'receipt' },
+          { id: 'tabungan', label: 'Target Tabungan', icon: 'piggyBank' },
+          { id: 'belanja', label: 'Belanja', icon: 'shoppingBag' },
+          { id: 'service', label: 'Services', icon: 'wrench' },
+        ];
         return (
           <section className="app-fade-in">
             <SectionHeader
               icon="clock"
               title="Tugas Terjadwal"
-              subtitle="Pengeluaran jatuh tempo, target tabungan, daftar belanja, service motor"
+              subtitle="Semua aktivitas terjadwal keluarga"
             />
-            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-              <div className="rounded-xl border border-line bg-surface p-4 text-center">
-                <Icon name="receipt" size={24} className="text-brandfg/50" />
-                <h3 className="mt-2 text-sm font-semibold text-ink">Pengeluaran Terjadwal</h3>
-                <p className="mt-1 text-xs text-mutedfg">Lihat di tab Keuangan → filter terjangkau</p>
-              </div>
-              <div className="rounded-xl border border-line bg-surface p-4 text-center">
-                <Icon name="piggyBank" size={24} className="text-brandfg/50" />
-                <h3 className="mt-2 text-sm font-semibold text-ink">Target Tabungan</h3>
-                <p className="mt-1 text-xs text-mutedfg">Built next • fitur baru</p>
-              </div>
-              <div className="rounded-xl border border-line bg-surface p-4 text-center cursor-pointer hover:bg-muted" onClick={() => setActiveSection('belanja')}>
-                <Icon name="shoppingBag" size={24} className="text-brandfg/50" />
-                <h3 className="mt-2 text-sm font-semibold text-ink">Daftar Belanja</h3>
-                <p className="mt-1 text-xs text-mutedfg">Belanja bulanan otomatis</p>
-              </div>
-              <div className="rounded-xl border border-line bg-surface p-4 text-center cursor-pointer hover:bg-muted" onClick={() => setActiveSection('service')}>
-                <Icon name="wrench" size={24} className="text-brandfg/50" />
-                <h3 className="mt-2 text-sm font-semibold text-ink">Services</h3>
-                <p className="mt-1 text-xs text-mutedfg">Perawatan motor</p>
-              </div>
+            <div className="mb-4 flex gap-1.5 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Jenis tugas terjadwal">
+              {terjadwalTabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={terjadwalTab === t.id}
+                  onClick={() => setTerjadwalTab(t.id)}
+                  className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition-colors ${
+                    terjadwalTab === t.id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'
+                  }`}
+                >
+                  <Icon name={t.icon} size={15} />
+                  {t.label}
+                </button>
+              ))}
             </div>
+
+            {terjadwalTab === 'pengeluaran' && (
+              <div className="space-y-3">
+                {(!data.scheduledExpenses || data.scheduledExpenses.length === 0) ? (
+                  <p className="text-sm text-mutedfg">Belum ada pengeluaran terjadwal.</p>
+                ) : (
+                  <ul className="divide-y divide-line rounded-xl border border-line bg-canvas">
+                    {data.scheduledExpenses.map((tpl) => (
+                      <li key={tpl.id} className="flex items-center gap-3 px-3.5 py-2.5">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brandtint text-brandfg" aria-hidden="true">
+                          <Icon name="receipt" size={15} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-ink">{tpl.title || tpl.name}</p>
+                          <p className="text-[11px] text-mutedfg">
+                            {tpl.amount != null ? formatCurrency(tpl.amount) : ''}
+                            {tpl.frequency ? ` • ${tpl.frequency}` : ''}
+                          </p>
+                        </div>
+                        {tpl.active === false ? <Badge tone="gray">Nonaktif</Badge> : <Badge tone="green">Aktif</Badge>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {canWrite && (
+                  <button type="button" onClick={() => openAdd('scheduledTemplate')} className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-canvas px-3 text-sm font-semibold text-mutedfg transition-colors hover:bg-muted hover:text-ink">
+                    <Icon name="plus" size={15} /> Tambah Pengeluaran Terjadwal
+                  </button>
+                )}
+              </div>
+            )}
+
+            {terjadwalTab === 'tabungan' && (
+              <TargetTabunganComp
+                goals={goals}
+                canWrite={canWrite}
+                onAdd={addGoal}
+                onUpdate={updateGoal}
+                onDelete={deleteGoal}
+                formatCurrency={formatCurrency}
+              />
+            )}
+
+            {terjadwalTab === 'belanja' && (
+              (() => {
+                const { note, state } = getOrCreateShoppingNote();
+                return (
+                  <div className="space-y-3">
+                    <ShoppingList
+                      state={state}
+                      formatCurrency={formatCurrency}
+                      canWrite={canWrite}
+                      onAddItem={addShoppingItem}
+                      onToggle={toggleShoppingItem}
+                      onRemove={removeShoppingItem}
+                      onSaveTemplate={saveShoppingAsTemplate}
+                      onFinish={finishShopping}
+                    />
+                  </div>
+                );
+              })()
+            )}
+
+            {terjadwalTab === 'service' && (
+              <Service
+                inventory={serviceInventory}
+                history={serviceHistory}
+                formatCurrency={formatCurrency}
+                canWrite={canWrite}
+                onAddSparepart={addSparepart}
+                onUpdateSparepart={updateSparepart}
+                onRemoveSparepart={removeSparepart}
+                onAddService={addServiceRecord}
+                activeTab={serviceActiveTab}
+                onTabChange={setServiceActiveTab}
+              />
+            )}
           </section>
         );
       }
