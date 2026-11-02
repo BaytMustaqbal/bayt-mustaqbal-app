@@ -3,6 +3,7 @@ import { Icon } from './Icon';
 import { SectionHeader, Badge, CTA_CLASS } from './ui';
 import { settingsApi, gcalApi, auth, backupApi } from '../services/client';
 import { readUiPrefs, writeUiPrefs, applyUiPrefs, UI_PREFS_DEFAULTS } from '../services/uiPrefs';
+import RulesComp from './RulesComp';
 
 /* Pilihan tampilan (same config di AccountModal.jsx) */
 const THEME_OPTIONS = [
@@ -658,6 +659,17 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
               )}
             </div>
           </div>
+        </SettingSection>
+
+        {/* ---- Aturan Otomatis ---- */}
+        <SettingSection
+          icon="repeat"
+          title="Aturan Otomatis"
+          subtitle="Otomasi 'jika-maka' pengingat"
+          open={openKey === 'otomasi'}
+          onToggle={() => toggleKey('otomasi')}
+        >
+          <RulesComp />
         </SettingSection>
 
         {/* ---- Data & Cadangan ---- */}
