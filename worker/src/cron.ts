@@ -1,7 +1,7 @@
 import { Env } from './types/env';
 import { sendWA } from './utils/fonnte'; // fonnte WA utility (Task 7)
 import { processOutbox, syncToGcal } from './utils/gcal';
-import { readNotifPrefs, isInQuietWindow } from './utils/notif';
+import { readNotifPrefs, isInQuietWindow, readFonnteTarget } from './utils/notif';
 
 // Daily digest: summarize today's transactions
 async function sendDailyDigest(env: Env): Promise<void> {
@@ -26,7 +26,8 @@ async function sendDailyDigest(env: Env): Promise<void> {
 💸 Pengeluaran: Rp ${totalExpense.toLocaleString('id-ID')}
 📈 Saldo bersih: Rp ${net.toLocaleString('id-ID')}`;
 
-  await sendWA(env, message);
+  const target = await readFonnteTarget(env);
+  await sendWA(env, message, target);
   console.log('Daily digest sent');
 }
 
@@ -45,12 +46,14 @@ async function sendBillReminder(env: Env): Promise<void> {
     return;
   }
 
+  const target = await readFonnteTarget(env);
+
   for (const bill of bills) {
     const message = `🔔 Reminder Tagihan
 ${bill.name}
 Jumlah: Rp ${bill.amount.toLocaleString('id-ID')}
 Jatuh tempo: ${bill.due_date}`;
-    await sendWA(env, message);
+    await sendWA(env, message, target);
   }
 
   console.log(`Bill reminders sent: ${bills.length}`);

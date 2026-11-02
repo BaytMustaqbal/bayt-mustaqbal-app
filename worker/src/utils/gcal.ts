@@ -387,7 +387,10 @@ export async function syncToGcal(
 }
 
 /** Dipanggil cron tiap jam: proses sisa antrian yang belum menyerah. */
-export async function processOutbox(env: Env, limit = 10): Promise<void> {
+export async function processOutbox(
+  env: Env,
+  limit = 10
+): Promise<{ done: number; failed: number; pending: number }> {
   const rows = await env.DB.prepare(
     `SELECT * FROM gcal_outbox WHERE attempts < ${MAX_ATTEMPTS} ORDER BY created_at ASC LIMIT ?`
   )
@@ -414,4 +417,18 @@ export async function processOutbox(env: Env, limit = 10): Promise<void> {
   if (items.length > 0) {
     console.log(`GCal outbox: ${done} tersinkron, ${failed} gagal`);
   }
+
+  const pendingRow = (await env.DB.prepare(
+    `SELECT COUNT(*) AS c FROM gcal_outbox WHERE attempts < ${MAX_ATTEMPTS}`
+  ).first()) as { c: number };
+  const pending = Number(pendingRow?.c || 0);
+  return { done, failed, pending };
+}
+
+/** Jumlah antrean sinkronisasi yang belum terkirim (belum menyerah). */
+export async function pendingOutboxCount(env: Env): Promise<number> {
+  const row = (await env.DB.prepare(
+    `SELECT COUNT(*) AS c FROM gcal_outbox WHERE attempts < ${MAX_ATTEMPTS}`
+  ).first()) as { c: number };
+  return Number(row?.c || 0);
 }

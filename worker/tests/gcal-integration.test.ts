@@ -155,6 +155,19 @@ assert('disconnect tanpa koneksi → 200 connected=false', res.status === 200 &&
 res = await fetch(`${BASE}/api/gcal/disconnect`, { method: 'POST' });
 assert('disconnect tanpa token → 401', res.status === 401, res.status);
 
+// === SYNC STATUS + RETRY ===
+console.log('\n=== GET /api/gcal/sync-status + POST /sync-retry ===');
+res = await fetch(`${BASE}/api/gcal/sync-status`, { headers: { Authorization: `Bearer ${token}` } });
+json = (await res.json()) as any;
+assert('sync-status → 200 + pending angka', res.status === 200 && typeof json.data?.pending === 'number', `${res.status} ${JSON.stringify(json)}`);
+
+res = await fetch(`${BASE}/api/gcal/sync-status`);
+assert('sync-status tanpa token → 401', res.status === 401, res.status);
+
+res = await fetch(`${BASE}/api/gcal/sync-retry`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+json = (await res.json()) as any;
+assert('sync-retry → 200 + done/failed', res.status === 200 && typeof json.data?.done === 'number' && typeof json.data?.failed === 'number', `${res.status} ${JSON.stringify(json)}`);
+
 // === BILLS + kategori (migrasi tagihan) ===
 console.log('\n=== POST/PUT /api/bill dengan kategori ===');
 res = await fetch(`${BASE}/api/bill`, {

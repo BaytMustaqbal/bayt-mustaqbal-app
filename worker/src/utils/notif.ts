@@ -64,3 +64,12 @@ export function isInQuietWindow(prefs: NotifPrefs, hour: number): boolean {
   if (s < e) return hour >= s && hour < e;
   return hour >= s || hour < e;
 }
+
+/** Target WhatsApp untuk pengingat keluarga (setting "fonnte_target" per grup), fallback env. */
+export async function readFonnteTarget(env: Env): Promise<string | undefined> {
+  const row = (await env.DB.prepare(
+    `SELECT value FROM settings WHERE key = 'fonnte_target' AND group_id IS NOT NULL AND void IS NULL ORDER BY updated_at DESC LIMIT 1`
+  ).first()) as { value: string } | null;
+  const configured = row?.value?.trim();
+  return configured || env.FONNTE_TARGET;
+}

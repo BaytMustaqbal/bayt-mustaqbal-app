@@ -7,6 +7,8 @@ import {
   signGcalState,
   verifyGcalState,
   getConnection,
+  pendingOutboxCount,
+  processOutbox,
 } from '../utils/gcal';
 
 const GOOGLE_AUTH = 'https://oauth2.googleapis.com';
@@ -160,4 +162,16 @@ gcalRoutes.post('/disconnect', async (c) => {
   const userId = c.get('userId');
   await c.env.DB.prepare('DELETE FROM gcal_connections WHERE user_id = ?').bind(userId).run();
   return c.json({ ok: true, data: { connected: false }, error: null });
+});
+
+// GET /api/gcal/sync-status — jumlah antrean sinkronisasi yang belum terkirim.
+gcalRoutes.get('/sync-status', async (c) => {
+  const pending = await pendingOutboxCount(c.env);
+  return c.json({ ok: true, data: { pending }, error: null });
+});
+
+// POST /api/gcal/sync-retry — proses ulang manual antrean outbox.
+gcalRoutes.post('/sync-retry', async (c) => {
+  const result = await processOutbox(c.env, 20);
+  return c.json({ ok: true, data: result, error: null });
 });
