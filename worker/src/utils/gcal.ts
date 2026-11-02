@@ -133,7 +133,7 @@ export function buildConsentUrl(env: Env, origin: string, state: string): string
     client_id: clientId,
     redirect_uri: resolveRedirectUri(origin),
     response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/calendar.events openid email',
+    scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/photoslibrary.appendonly openid email',
     access_type: 'offline',
     prompt: 'consent',
     include_granted_scopes: 'true',

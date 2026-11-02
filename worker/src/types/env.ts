@@ -9,8 +9,6 @@ export interface Env {
   // OAuth Google Calendar (di-set via `wrangler secret put` / .dev.vars)
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
-  // R2 bucket penyimpanan foto momen keluarga
-  MOMENTS_R2: R2Bucket;
 }
 
 // Module augmentation — REQUIRED for c.get('userId') to work

@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { Env } from '../types/env';
 import { canWriteGroup, forbiddenWrite, groupScope } from '../utils/group';
+import { getConnection, resolveConnectionUserId } from '../utils/gcal';
+import { uploadMomentPhoto } from '../utils/photos';
 
 // Daftar kategori momen yang tetap (sinkron dengan frontend).
 export const MOMENT_CATEGORIES = [
@@ -74,11 +76,29 @@ momentRoutes.post('/', async (c) => {
   return c.json({ ok: true, data: created, error: null });
 });
 
-// POST /api/moment/upload — unggah foto momen ke R2, balikan URL publik.
+// POST /api/moment/upload — unggah foto momen ke Google Photos, balikan URL.
 momentRoutes.post('/upload', async (c) => {
   if (!canWriteGroup(c.get('groupRole'))) {
     return c.json(forbiddenWrite(), 403);
   }
+  const writerUserId = c.get('userId');
+  const groupId = c.get('groupId');
+  const ownerUserId = await resolveConnectionUserId(c.env, writerUserId, groupId);
+  if (!ownerUserId) {
+    return c.json({
+      ok: false,
+      data: null,
+      error: {
+        code: 'GCAL_NOT_CONNECTED',
+        message: 'Hubungkan akun Google dulu (menu Pengaturan) untuk mengunggah foto.',
+      },
+    }, 400);
+  }
+  const conn = await getConnection(c.env, ownerUserId);
+  if (!conn) {
+    return c.json({ ok: false, data: null, error: { code: 'GCAL_NOT_CONNECTED', message: 'Koneksi Google tidak ditemukan.' } }, 400);
+  }
+
   const form = await c.req.formData();
   const file = form.get('photo') as File | null;
   if (!file || typeof file === 'string') {
@@ -88,17 +108,18 @@ momentRoutes.post('/upload', async (c) => {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Foto maksimal 5MB' } }, 400);
   }
 
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const key = `moments/${crypto.randomUUID()}.${ext}`;
-  await c.env.MOMENTS_R2.put(key, file.stream(), {
-    httpMetadata: { contentType: file.type || 'image/jpeg' },
-  });
-
-  return c.json({
-    ok: true,
-    data: { photo_url: key },
-    error: null,
-  });
+  try {
+    const result = await uploadMomentPhoto(
+      c.env,
+      conn,
+      { bytes: await file.arrayBuffer(), name: file.name, type: file.type || 'image/jpeg' },
+      'Momen Keluarga'
+    );
+    return c.json({ ok: true, data: { photo_url: result.photo_url }, error: null });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return c.json({ ok: false, data: null, error: { code: 'PHOTOS_UPLOAD_FAILED', message: msg } }, 502);
+  }
 });
 
 // PUT /api/moment/:id — update (increment rev). Butuh peran tulis.
