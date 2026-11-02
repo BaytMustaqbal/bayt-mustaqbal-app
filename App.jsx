@@ -2812,29 +2812,15 @@ const deleteGoal = async (id) => {
               />
             ) : (
               <>
-                {/* Panel Pengeluaran Terjadwal & Tambah button - responsive: stacked on mobile, side-by-side on desktop */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 sm:items-start sm:gap-6">
-                  <SectionHeader
-                    icon="repeat"
-                    title="Pengeluaran Terjadwal"
-                    subtitle={((data.scheduledExpenses || []).length > 0 
-                      ? `${(data.scheduledExpenses || []).filter((t) => t.active).length} template aktif` 
-                      : 'Belum ada template')}
-                    actionLabel={canWrite ? 'Tambah template' : undefined}
-                    actionTone="accent"
-                    onAction={() => openAdd('scheduledTemplate')}
-                    className="mb-0"
-                  />
-                  <SectionHeader
-                    icon="wallet"
-                    title={activeMeta.label}
-                    subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
-                    actionLabel={canWrite ? 'Tambah' : undefined}
-                    actionTone="accent"
-                    onAction={() => openAdd('expenses')}
-                    className="mb-0"
-                  />
-                </div>
+                <SectionHeader
+                  icon="wallet"
+                  title={activeMeta.label}
+                  subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
+                  actionLabel={canWrite ? 'Tambah' : undefined}
+                  actionTone="accent"
+                  onAction={() => openAdd('expenses')}
+                  className="mb-0"
+                />
               </>
             )}
 
