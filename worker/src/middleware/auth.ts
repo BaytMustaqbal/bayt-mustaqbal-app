@@ -4,7 +4,13 @@ import { Env } from '../types/env';
 
 export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
   const path = c.req.path;
-  if (path === '/api/auth/login' || path === '/api/auth/register' || path === '/api/gcal/callback') {
+  if (
+    path === '/api/auth/login' ||
+    path === '/api/auth/register' ||
+    path === '/api/gcal/callback' ||
+    path === '/api/auth/google/login' ||
+    path === '/api/auth/google/callback'
+  ) {
     return next();
   }
   const authHeader = c.req.header('Authorization');
