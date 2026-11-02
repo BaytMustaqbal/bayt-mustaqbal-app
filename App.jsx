@@ -40,7 +40,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken } from './services/client';
 import './App.css';
 
 /* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
@@ -885,6 +885,38 @@ const [goals, setGoals] = useState([]);
       });
     }
     refreshGcalStatus();
+  }, []);
+
+  // Hasil login Google: ?google=success&token=… atau ?google=error&reason=…
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('google');
+    if (!result) return;
+    const reason = params.get('reason');
+    const token = params.get('token');
+    params.delete('google');
+    params.delete('reason');
+    params.delete('token');
+    const qs = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
+
+    if (result !== 'success' || !token) {
+      pushToast({
+        message: `Gagal masuk dengan Google${reason ? ` (${reason})` : ''}. Pastikan akun sudah terdaftar, atau pakai password.`,
+        duration: 5500,
+        tone: 'danger',
+      });
+      return;
+    }
+
+    // Simpan token lalu ambil profil untuk masuk.
+    setToken(token, true);
+    auth
+      .me()
+      .then((user) => handleLogin(user))
+      .catch(() => {
+        pushToast({ message: 'Token login Google tidak valid. Coba lagi.', duration: 4500, tone: 'danger' });
+      });
   }, []);
 
   // Tambah tagihan baru (API dulu, lalu state)
