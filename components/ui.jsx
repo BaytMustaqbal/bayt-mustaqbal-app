@@ -30,7 +30,11 @@ export const initialsOf = (name) => {
    (nama pengguna sudah dibacakan oleh teks di sebelahnya). */
 export function Avatar({ user, className = '' }) {
   return (
-    <span className={`grid shrink-0 place-items-center overflow-hidden ${className}`} aria-hidden="true">
+    <span
+      className={`grid shrink-0 place-items-center overflow-hidden ${className}`}
+      style={{ borderRadius: '9999px' }}
+      aria-hidden="true"
+    >
       {user?.avatar ? (
         <img src={user.avatar} alt="" className="h-full w-full object-cover" />
       ) : (
