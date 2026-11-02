@@ -18,6 +18,7 @@ const TERJADWAL_ITEMS = [
 ];
 
 const NAV_ITEMS = [
+  { id: 'momen', label: 'Momen Keluarga', icon: 'camera', dropdown: null },
   { id: 'dashboard', label: 'Dashboard', icon: 'home', dropdown: null },
   { id: 'agenda', label: 'Agenda', icon: 'calendar', dropdown: AGENDA_CATEGORIES },
   { id: 'expenses', label: 'Keuangan', icon: 'wallet', dropdown: FINANCE_CATEGORIES },

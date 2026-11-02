@@ -368,3 +368,49 @@ export const gcalApi = {
     return apiFetch('/gcal/disconnect', { method: 'POST' });
   },
 };
+
+/* ---- Momen Keluarga (backend /api/moment) ----
+   Bentuk frontend:
+     { id, title, description, date, location, category, photo_url, createdAt }
+   Satu momen = satu foto utama (opsional, R2 bucket). */
+export const momentsApi = {
+  fetch: async () => {
+    return apiFetch('/moment');
+  },
+  get: async (id) => {
+    return apiFetch(`/moment/${id}`);
+  },
+  create: async (item) => {
+    return apiFetch('/moment', {
+      method: 'POST',
+      body: JSON.stringify(item),
+    });
+  },
+  update: async (id, item) => {
+    return apiFetch(`/moment/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(item),
+    });
+  },
+  delete: async (id) => {
+    return apiFetch(`/moment/${id}`, { method: 'DELETE' });
+  },
+  // Unggah foto → balikan photo_url (key R2). Gagal? lempar error.
+  // Tidak lewat apiFetch: FormData harus SERAHKAN sendiri Content-Type-nya
+  // (dengan boundary) — apiFetch memaksa application/json.
+  uploadPhoto: async (file) => {
+    const token = getToken();
+    const form = new FormData();
+    form.append('photo', file);
+    const response = await fetch(`${API_BASE}/moment/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const result = await response.json();
+    if (!result.ok || !response.ok) {
+      throw new Error(result.error?.message || 'API error');
+    }
+    return result.data;
+  },
+};

@@ -11,6 +11,7 @@ import {
 } from './categories';
 
 const NAV_ITEMS = [
+  { id: 'momen', label: 'Momen Keluarga', icon: 'camera' },
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
   { id: 'agenda', label: 'Agenda', icon: 'calendar' },
   { id: 'expenses', label: 'Keuangan', icon: 'wallet' },

@@ -15,6 +15,7 @@ import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, Fam
 import ShoppingList from './components/ShoppingListComp';
 import Service from './components/ServiceComp';
 import SettingsComp from './components/SettingsComp';
+import MomentsComp from './components/MomentsComp';
 import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
@@ -39,7 +40,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi } from './services/client';
 import './App.css';
 
 /* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
@@ -595,6 +596,9 @@ export default function App() {
   // Tagihan & Utang-Piutang yang dikelola pengguna
   // Setiap tagihan: { id, nama, kategori, amount, dueDate, dibayar, lastPaidDate, lastNotified, createdAt }
   const [tagihans, setTagihans] = useState([]);
+  // Momen Keluarga (API /api/moment)
+  // Setiap momen: { id, title, description, date, location, category, photo_url, createdAt }
+  const [moments, setMoments] = useState([]);
   // Status integrasi Google Calendar (dipakai halaman Pengaturan)
   const [gcal, setGcal] = useState({
     loading: false,
@@ -763,6 +767,46 @@ const [goals, setGoals] = useState([]);
       alive = false;
     };
   }, [isLoggedIn]);
+
+  // Muat momen keluarga dari API (setelah login). Gagal → diam-diam kosong.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let alive = true;
+    momentsApi
+      .fetch()
+      .then((rows) => {
+        if (alive) setMoments(rows || []);
+      })
+      .catch(() => {
+        /* momen non-kritis; coba lagi saat buka halaman */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [isLoggedIn]);
+
+  // Simpan (tambah/ubah) momen → API lalu segarkan state.
+  const saveMoment = async (id, data) => {
+    const saved = id ? await momentsApi.update(id, data) : await momentsApi.create(data);
+    setMoments((prev) => {
+      if (id) return prev.map((m) => (m.id === id ? saved : m));
+      return [saved, ...prev];
+    });
+    pushToast({ message: id ? 'Momen diperbarui' : 'Momen tersimpan', duration: 2500 });
+    return saved;
+  };
+
+  // Hapus momen (soft delete).
+  const deleteMoment = async (moment) => {
+    const ok = window.confirm(`Hapus momen "${moment.title}"?`);
+    if (!ok) return;
+    await momentsApi.delete(moment.id);
+    setMoments((prev) => prev.filter((m) => m.id !== moment.id));
+    pushToast({ message: 'Momen dihapus', duration: 2500 });
+  };
+
+  // Unggah foto momen → R2 (opsional; gagal dilempar ke form).
+  const uploadMomentPhoto = (file) => momentsApi.uploadPhoto(file);
 
   // ---- Status & aksi integrasi Google Calendar (halaman Pengaturan) ----
   const refreshGcalStatus = async () => {
@@ -2349,8 +2393,8 @@ const [goals, setGoals] = useState([]);
   // bukan di dalam case switch: hook conditional bikin React crash
   // ("Rendered more hooks") saat pengguna berpindah section dari Agenda.
   const calendarEvents = useMemo(
-    () => toCalendarEvents({ ...data, bills: tagihans }),
-    [data, tagihans]
+    () => toCalendarEvents({ ...data, bills: tagihans, moments }),
+    [data, tagihans, moments]
   );
 
   const renderSection = () => {
@@ -2488,7 +2532,7 @@ const [goals, setGoals] = useState([]);
                 )}
               </>
             ) : agendaMode === 'timeline' ? (
-              <Timeline data={data} onEdit={openEdit} formatCurrency={formatCurrency} />
+              <Timeline data={{ ...data, moments }} onEdit={openEdit} formatCurrency={formatCurrency} />
             ) : (
               <>
                 {agendaMode === 'jadwal' ? (
@@ -2528,6 +2572,13 @@ const [goals, setGoals] = useState([]);
                   });
                   return;
                 }
+                if (type === 'momen') {
+                  pushToast({
+                    message: `${item.title}${item.location ? ` • ${item.location}` : ''} • ${item.date}`,
+                    duration: 3500,
+                  });
+                  return;
+                }
                 openEdit(type, item);
               }} 
                   />
@@ -2547,6 +2598,18 @@ const [goals, setGoals] = useState([]);
             onRetry={refreshGcalStatus}
             theme={theme}
             onThemeChange={setTheme}
+          />
+        );
+      }
+
+      case 'momen': {
+        return (
+          <MomentsComp
+            moments={moments}
+            canWrite={canWrite}
+            onSave={saveMoment}
+            onDelete={deleteMoment}
+            onUploadPhoto={uploadMomentPhoto}
           />
         );
       }
