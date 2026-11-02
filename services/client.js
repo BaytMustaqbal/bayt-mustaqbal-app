@@ -402,6 +402,13 @@ export const backupApi = {
   },
 };
 
+/* ---- Analitik & insight (backend /api/insight) ---- */
+export const insightApi = {
+  fetch: async () => {
+    return apiFetch('/insight');
+  },
+};
+
 /* ---- Momen Keluarga (backend /api/moment) ----
    Bentuk frontend:
      { id, title, description, date, location, category, photo_url, createdAt }

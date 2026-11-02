@@ -13,6 +13,7 @@ import {
 const NAV_ITEMS = [
   { id: 'momen', label: 'Momen Keluarga', icon: 'camera' },
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+  { id: 'wawasan', label: 'Wawasan', icon: 'barChart' },
   { id: 'agenda', label: 'Agenda', icon: 'calendar' },
   { id: 'expenses', label: 'Keuangan', icon: 'wallet' },
   { id: 'terjadwal', label: 'Tugas Terjadwal', icon: 'clock' },

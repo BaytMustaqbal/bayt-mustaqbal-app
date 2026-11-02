@@ -31,7 +31,7 @@ function Panel({ icon, title, action, children }) {
   );
 }
 
-export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem, onScanReceipt, moments = [] }) {
+export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem, onScanReceipt, moments = [], insight = null }) {
   // Jumlah uang di kartu hero disembunyikan secara default (privasi saat
   // orang lain melirik layar). Tombol mata menampilkannya sementara —
   // sengaja TIDAK disimpan, supaya tiap kali app dibuka kembali tersembunyi.
@@ -103,6 +103,59 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           Rumah Masa Depan
         </span>
       </div>
+
+      {/* ---------- Wawasan ringkas ---------- */}
+      {insight && (
+        <Card className="p-4 sm:p-5">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Icon name="barChart" size={18} className="shrink-0 text-brandfg" />
+              <h2 className="truncate font-bold text-ink">Wawasan</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('wawasan')}
+              className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-brandfg transition-colors hover:bg-brandtint"
+            >
+              Lihat semua
+              <Icon name="chevronRight" size={15} />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-line bg-canvas p-3">
+              <p className="text-[11px] text-mutedfg">Pengeluaran {insight.month}</p>
+              <p className="font-mono text-lg font-bold text-ink">{formatCurrencyShort(insight.totalExpense)}</p>
+              {insight.changePct != null && (
+                <p className={`text-[11px] font-semibold ${insight.changePct >= 0 ? 'text-tonerosefg' : 'text-toneemeraldfg'}`}>
+                  {insight.changePct >= 0 ? '▲' : '▼'} {Math.abs(insight.changePct)}% vs lalu
+                </p>
+              )}
+            </div>
+            {insight.topCategories[0] && (
+              <div className="rounded-xl border border-line bg-canvas p-3">
+                <p className="text-[11px] text-mutedfg">Kategori teratas</p>
+                <p className="truncate text-sm font-semibold text-ink">{insight.topCategories[0].label}</p>
+                <p className="font-mono text-xs text-brandfg">{formatCurrencyShort(insight.topCategories[0].amount)}</p>
+              </div>
+            )}
+            <div className="rounded-xl border border-line bg-canvas p-3">
+              <p className="text-[11px] text-mutedfg">Anggaran</p>
+              <p className="text-sm font-semibold text-ink">
+                {insight.buckets.some((b) => b.pct > 100)
+                  ? 'Ada yang melebihi'
+                  : insight.buckets.some((b) => b.pct >= 80)
+                    ? 'Mendekati batas'
+                    : 'Terjaga'}
+              </p>
+              <p className="text-[11px] text-mutedfg">
+                {insight.buckets.length > 0
+                  ? `tertinggi ${Math.max(...insight.buckets.map((b) => b.pct))}%`
+                  : ''}
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* ---------- Kartu hero: keuangan bulan ini ---------- */}
       <GlassCard className="relative p-5 sm:p-6">

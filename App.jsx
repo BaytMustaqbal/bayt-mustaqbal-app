@@ -16,6 +16,7 @@ import ShoppingList from './components/ShoppingListComp';
 import Service from './components/ServiceComp';
 import SettingsComp from './components/SettingsComp';
 import MomentsComp from './components/MomentsComp';
+import InsightComp from './components/InsightComp';
 import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
@@ -40,7 +41,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -600,6 +601,8 @@ export default function App() {
   // Momen Keluarga (API /api/moment)
   // Setiap momen: { id, title, description, date, location, category, photo_url, createdAt }
   const [moments, setMoments] = useState([]);
+  // Analitik & insight (API /api/insight)
+  const [insight, setInsight] = useState(null);
   // Status integrasi Google Calendar (dipakai halaman Pengaturan)
   const [gcal, setGcal] = useState({
     loading: false,
@@ -785,6 +788,29 @@ const [goals, setGoals] = useState([]);
       alive = false;
     };
   }, [isLoggedIn]);
+
+  // Muat analitik & insight setelah login.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let alive = true;
+    insightApi
+      .fetch()
+      .then((d) => {
+        if (alive) setInsight(d);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [isLoggedIn]);
+
+  const refreshInsight = async () => {
+    try {
+      setInsight(await insightApi.fetch());
+    } catch {
+      /* biarkan */
+    }
+  };
 
   // Simpan (tambah/ubah) momen → API lalu segarkan state.
   const saveMoment = async (id, data) => {
@@ -2648,6 +2674,18 @@ const [goals, setGoals] = useState([]);
         );
       }
 
+      case 'wawasan': {
+        return (
+          <InsightComp
+            insight={insight}
+            budget={data?.budget}
+            goals={goals}
+            formatCurrency={formatCurrency}
+            formatCurrencyShort={formatCurrencyShort}
+          />
+        );
+      }
+
       case 'momen': {
         return (
           <MomentsComp
@@ -3234,6 +3272,7 @@ const [goals, setGoals] = useState([]);
             onEditItem={openEdit}
             onScanReceipt={canWrite ? () => setScanOpen(true) : null}
             moments={moments}
+            insight={insight}
           />
         );
     }
