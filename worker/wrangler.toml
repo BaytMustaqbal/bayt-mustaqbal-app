@@ -8,4 +8,4 @@ database_name = "bayt-mustaqbal-db"
 database_id = "b9f5d75e-7d22-4f21-80f9-16660163da82"
 
 [triggers]
-crons = ["0 0 * * *", "0 * * * *", "30 17 * * *"]
+crons = ["0 0 * * *", "0 * * * *", "30 17 * * *", "0 12 * * *"]

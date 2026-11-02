@@ -18,6 +18,7 @@ import { gcalRoutes } from './routes/gcal';
 import { momentRoutes } from './routes/moment';
 import { googleAuthRoutes } from './routes/googleAuth';
 import { backupRoutes } from './routes/backup';
+import { insightRoutes } from './routes/insight';
 import { authMiddleware } from './middleware/auth';
 import { handleCron } from './cron';
 
@@ -54,6 +55,7 @@ app.route('/api/gcal', gcalRoutes);
 app.route('/api/moment', momentRoutes);
 app.route('/api/auth/google', googleAuthRoutes);
 app.route('/api/backup', backupRoutes);
+app.route('/api/insight', insightRoutes);
 
 app.get('/', (c) => c.json({ ok: true, message: 'Bayt Mustaqbal API' }));
 

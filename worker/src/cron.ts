@@ -2,6 +2,7 @@ import { Env } from './types/env';
 import { sendWA } from './utils/fonnte'; // fonnte WA utility (Task 7)
 import { processOutbox, syncToGcal } from './utils/gcal';
 import { readNotifPrefs, isInQuietWindow, readFonnteTarget } from './utils/notif';
+import { computeInsight } from './utils/insight';
 
 // Daily digest: summarize today's transactions
 async function sendDailyDigest(env: Env): Promise<void> {
@@ -95,6 +96,71 @@ async function generateMonthlyBills(env: Env): Promise<void> {
   console.log(`Monthly bills generated: ${generated}`);
 }
 
+const BUCKET_LABEL: Record<string, string> = { needs: 'Kebutuhan', wants: 'Keinginan', savings: 'Tabungan' };
+
+/** Daftar grup unik + contoh user per grup. */
+async function listGroupScopes(env: Env) {
+  const rows = await env.DB.prepare(
+    `SELECT group_id, MIN(id) AS sample_user FROM users WHERE void IS NULL AND group_id IS NOT NULL GROUP BY group_id`
+  ).all();
+  return (rows.results || []) as { group_id: string; sample_user: string }[];
+}
+
+/** Peringatan ambang anggaran (harian). Kirim WA + catat notifikasi bila ≥80%. */
+async function sendBudgetAlerts(env: Env): Promise<void> {
+  const scopes = await listGroupScopes(env);
+  const month = new Date().toISOString().slice(0, 7);
+  const target = await readFonnteTarget(env);
+
+  for (const scope of scopes) {
+    const insight = await computeInsight(env, scope.group_id, scope.sample_user);
+    const alerts: string[] = [];
+
+    for (const b of insight.buckets) {
+      if (b.alokasi <= 0) continue;
+      if (b.realisasi >= b.alokasi) {
+        alerts.push(`⚠️ ${BUCKET_LABEL[b.id]} melebihi anggaran: ${b.pct}%`);
+      } else if (b.pct >= 80) {
+        alerts.push(`⚡ ${BUCKET_LABEL[b.id]} sudah ${b.pct}% dari anggaran`);
+      }
+    }
+
+    // Dedup per grup + bulan + jenis.
+    const key = `budget_alert:${scope.group_id}:${month}`;
+    const notif = await env.DB.prepare(
+      `SELECT id FROM notification_log WHERE message = ? AND void IS NULL LIMIT 1`
+    ).bind(key).first();
+    if (alerts.length === 0 || notif) continue;
+
+    const message = `📊 *Pengingat Anggaran* ${month}\n${alerts.join('\n')}`;
+    await sendWA(env, message, target);
+
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      `INSERT INTO notification_log (id, user_id, type, message, read, rev, created_at) VALUES (?, ?, 'info', ?, 0, 1, ?)`
+    ).bind(id, scope.sample_user, key, now).run();
+  }
+}
+
+/** Rekap mingguan (Senin pagi). */
+async function sendWeeklyRecap(env: Env): Promise<void> {
+  const scopes = await listGroupScopes(env);
+  const target = await readFonnteTarget(env);
+  const now = new Date();
+  const end = now.toISOString().slice(0, 10);
+  const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  for (const scope of scopes) {
+    const insight = await computeInsight(env, scope.group_id, scope.sample_user);
+    const message = `📅 *Rekap Mingguan* (${start} s/d ${end})\n` +
+      `Pengeluaran: Rp ${insight.totalExpense.toLocaleString('id-ID')}\n` +
+      `Minggu lalu: Rp ${insight.prevTotalExpense.toLocaleString('id-ID')}` +
+      (insight.changePct != null ? ` (${insight.changePct >= 0 ? '+' : ''}${insight.changePct}%)` : '');
+    await sendWA(env, message, target);
+  }
+}
+
 export async function handleCron(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
   const now = new Date();
   const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -121,5 +187,15 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
   // Day 1, 00:30 WIB — generate monthly bills from recurring
   if (date === 1 && hour === 0 && event.cron === '30 17 * * *') {
     await generateMonthlyBills(env);
+  }
+
+  // Harian 07:00 WIB — rekap mingguan tiap Senin
+  if (event.cron === '0 0 * * *' && wib.getUTCDay() === 1) {
+    await sendWeeklyRecap(env);
+  }
+
+  // 19:00 WIB — peringatan ambang anggaran
+  if (event.cron === '0 12 * * *') {
+    await sendBudgetAlerts(env);
   }
 }
