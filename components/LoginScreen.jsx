@@ -199,7 +199,7 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
         </form>
 
         {/* atau login pakai Google */}
-        <div className="mt-5 flex items-center gap-3">
+        <div className="mt-3 flex items-center gap-3">
           <span className="h-px flex-1 bg-line" />
           <span className="text-xs font-medium text-mutedfg">atau</span>
           <span className="h-px flex-1 bg-line" />
@@ -207,7 +207,7 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
         <button
           type="button"
           onClick={handleGoogle}
-          className="mt-4 inline-flex min-h-[52px] w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-surface px-5 text-sm font-semibold text-ink transition-colors hover:bg-muted"
+          className="mt-2 inline-flex min-h-[52px] w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-surface px-5 text-sm font-semibold text-ink transition-colors hover:bg-muted"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z" />
