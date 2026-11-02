@@ -122,6 +122,18 @@ export const auth = {
   users: async () => {
     return apiFetch('/auth/users');
   },
+  // Sesi login aktif milik user ini.
+  sessions: async () => {
+    return apiFetch('/auth/sessions');
+  },
+  // Revoke (keluar) sesi lain.
+  revokeSession: async (id) => {
+    return apiFetch(`/auth/sessions/${id}`, { method: 'DELETE' });
+  },
+  // Hapus pengikat Google (unlink) — bukan hapus akun.
+  unlinkGoogle: async () => {
+    return apiFetch('/auth/google/unlink', { method: 'POST' });
+  },
 };
 
 /* ---- Data transform: Transaction (backend) ↔ Expense/Income (frontend) ---- */

@@ -1346,6 +1346,8 @@ const [goals, setGoals] = useState([]);
   const [notifRead, setNotifRead] = useState(readNotifRead);
   // Modal "Akun saya" (nama, username, avatar, password) � dibuka dari chip pengguna
   const [accountOpen, setAccountOpen] = useState(false);
+  // Tab awal saat modal Akun dibuka (default 'profil'; 'keamanan' dari Pengaturan)
+  const [accountInitialTab, setAccountInitialTab] = useState('profil');
   // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
   const [accountInitialGenerasi, setAccountInitialGenerasi] = useState(null);
   // Data state � dimuat dari API + localStorage cache
@@ -2393,6 +2395,12 @@ const [goals, setGoals] = useState([]);
     setActiveSection('dashboard');
   };
 
+  // Buka modal Akun saya langsung di tab Keamanan (dari Pengaturan).
+  const openAccountSecurity = () => {
+    setAccountInitialTab('keamanan');
+    setAccountOpen(true);
+  };
+
   // Dipanggil dropdown kategori agenda di navigasi ? buka section + set filter
   const handleAgendaSelect = (categoryId) => {
     setAgendaFilter(categoryId);
@@ -2633,9 +2641,9 @@ const [goals, setGoals] = useState([]);
             gcal={gcal}
             onConnect={connectGoogleCalendar}
             onDisconnect={disconnectGoogleCalendar}
-            onRetry={refreshGcalStatus}
             theme={theme}
             onThemeChange={setTheme}
+            onChangePassword={openAccountSecurity}
           />
         );
       }
@@ -3380,8 +3388,9 @@ const [goals, setGoals] = useState([]);
         user={currentUser}
         users={data.users}
         initialGenerasi={accountInitialGenerasi}
+        initialTab={accountInitialTab}
         onSaved={handleProfileSaved}
-        onClose={() => { setAccountOpen(false); setAccountInitialGenerasi(null); }}
+        onClose={() => { setAccountOpen(false); setAccountInitialGenerasi(null); setAccountInitialTab('profil'); }}
         onSwitchUser={handleLogout}
         onSave={saveAccount}
         onLogout={handleLogout}

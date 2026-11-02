@@ -74,6 +74,7 @@ export function AccountModal({
   user,
   users = [],
   initialGenerasi = null,
+  initialTab = 'profil',
   onSaved,
   onClose,
   onSwitchUser,
@@ -118,7 +119,7 @@ export function AccountModal({
 
   useEffect(() => {
     if (!open) return undefined;
-    setTab('profil');
+    setTab(initialTab === 'keamanan' ? 'keamanan' : 'profil');
     setName(user?.name || '');
     setUsername(user?.username || '');
     setPassword('');
@@ -132,7 +133,7 @@ export function AccountModal({
     setProfileSaved('');
     const t = setTimeout(() => fieldRefs.current.name?.focus(), 80);
     return () => clearTimeout(t);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, initialTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open) return undefined;

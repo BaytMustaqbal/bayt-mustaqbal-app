@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { SectionHeader, Badge, CTA_CLASS } from './ui';
-import { settingsApi, gcalApi } from '../services/client';
+import { settingsApi, gcalApi, auth } from '../services/client';
 import { readUiPrefs, writeUiPrefs, applyUiPrefs, UI_PREFS_DEFAULTS } from '../services/uiPrefs';
 
 /* Pilihan tampilan (same config di AccountModal.jsx) */
@@ -34,7 +34,7 @@ const hoursOptions = () => {
    API /api/gcal dan menangani balikan ?gcal=connected|error dari OAuth.
    ============================================================================ */
 
-export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', onThemeChange }) {
+export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', onThemeChange, onChangePassword }) {
   // ---- Notifikasi WA (preferensi per grup) ----
   const [notif, setNotif] = useState(NOTIF_DEFAULTS);
   const [notifLoaded, setNotifLoaded] = useState(false);
@@ -97,6 +97,51 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
     } catch (e) {
       console.warn('Gagal simpan target WA:', e.message);
       setWaSaved(false);
+    }
+  };
+
+  // ---- Keamanan sesi: metode login, sesi aktif, unlink ----
+  const [googleSub, setGoogleSub] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [sessLoading, setSessLoading] = useState(true);
+
+  const loadSecurity = async () => {
+    try {
+      const me = await auth.me();
+      setGoogleSub(me?.google_sub || null);
+    } catch {
+      /* biarkan */
+    }
+    try {
+      setSessions(await auth.sessions());
+    } catch {
+      /* biarkan */
+    } finally {
+      setSessLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSecurity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const unlinkGoogle = async () => {
+    if (!window.confirm('Hapus koneksi Google akun ini? Anda tetap bisa login pakai password.')) return;
+    try {
+      await auth.unlinkGoogle();
+      setGoogleSub(null);
+    } catch (e) {
+      console.warn('Gagal unlink Google:', e.message);
+    }
+  };
+
+  const revokeSession = async (id) => {
+    try {
+      await auth.revokeSession(id);
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+    } catch (e) {
+      console.warn('Gagal revoke sesi:', e.message);
     }
   };
 
@@ -473,6 +518,85 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
                 </button>
               </div>
               {waSaved && <p className="mt-1.5 text-[11px] font-medium text-green">Target tersimpan.</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* ---- Keamanan Sesi ---- */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
+              <Icon name="lock" size={18} />
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-ink">Keamanan Sesi</h2>
+              <p className="text-[11px] text-mutedfg">Cara masuk & sesi aktif</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* Indikator metode login */}
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-canvas px-3.5 py-3">
+              <span className="text-xs font-semibold text-mutedfg">Metode masuk:</span>
+              <Badge tone="green">Password aktif</Badge>
+              {googleSub ? (
+                <Badge tone="green">Google aktif</Badge>
+              ) : (
+                <Badge tone="gray">Google tidak terhubung</Badge>
+              )}
+            </div>
+
+            {/* Aksi akun */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={onChangePassword}
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-3 text-xs font-semibold text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+              >
+                <Icon name="key" size={14} />
+                Ubah password
+              </button>
+              {googleSub && (
+                <button
+                  type="button"
+                  onClick={unlinkGoogle}
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-3 text-xs font-semibold text-mutedfg transition-colors hover:bg-tonerose/10 hover:text-tonerosefg"
+                >
+                  <Icon name="logOut" size={14} />
+                  Hapus koneksi Google
+                </button>
+              )}
+            </div>
+
+            {/* Daftar sesi aktif */}
+            <div className="rounded-xl border border-line bg-canvas">
+              <p className="border-b border-line px-3.5 py-2 text-xs font-semibold text-mutedfg">Sesi aktif</p>
+              {sessLoading ? (
+                <p className="px-3.5 py-3 text-xs text-mutedfg">Memuat…</p>
+              ) : sessions.length === 0 ? (
+                <p className="px-3.5 py-3 text-xs text-mutedfg">Tidak ada sesi aktif.</p>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {sessions.map((s) => (
+                    <li key={s.id} className="flex items-center gap-3 px-3.5 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-ink">{s.device || 'Perangkat tidak dikenal'}</p>
+                        <p className="text-[11px] text-mutedfg">
+                          Masuk {new Date(s.created_at).toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => revokeSession(s.id)}
+                        className="inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-[11px] font-semibold text-mutedfg transition-colors hover:bg-tonerose/10 hover:text-tonerosefg"
+                      >
+                        <Icon name="logOut" size={13} />
+                        Keluar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
