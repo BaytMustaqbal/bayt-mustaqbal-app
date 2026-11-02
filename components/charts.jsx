@@ -492,8 +492,129 @@ export function LineChart({ data, height = 170, color = 'rgb(var(--chart1))', fo
   );
 }
 
-/* ---------------- Sparkline (garis mini untuk kartu KPI) ---------------- */
+/* ---------------- DualTrendChart: dua garis (pemasukan vs pengeluaran) ---------------- */
 
+export function DualTrendChart({
+  incomeData,
+  expenseData,
+  height = 170,
+  formatValue = (v) => v,
+  incomeColor = '#10b981',
+  expenseColor = '#ef4444',
+}) {
+  const W = 600;
+  const H = 200;
+  const padX = 12;
+  const padTop = 18;
+  const padBottom = 14;
+
+  const n = Math.max((incomeData || []).length, (expenseData || []).length);
+  const innerW = W - padX * 2;
+  const innerH = H - padTop - padBottom;
+  const xAt = (i) => padX + (n > 1 ? (i / (n - 1)) * innerW : padX);
+
+  const scale = (arr) => {
+    const values = (arr || []).map((d) => d.value);
+    const max = Math.max(...values, 0);
+    const min = Math.min(...values, 0);
+    const span = max - min || 1;
+    return (v) => padTop + innerH - ((v - min) / span) * innerH;
+  };
+  const yI = scale(incomeData);
+  const yE = scale(expenseData);
+
+  const ptsI = (incomeData || []).map((d, i) => [xAt(i), yI(d.value)]);
+  const ptsE = (expenseData || []).map((d, i) => [xAt(i), yE(d.value)]);
+  const lineI = smoothPath(ptsI);
+  const lineE = smoothPath(ptsE);
+
+  // Bulan aktif = indeks terakhir (default) lalu bisa digeser.
+  const { activeIdx, handlers } = useChartPick(n, n - 1, 'point');
+  const labelRight = activeIdx < n / 2;
+  const label = (incomeData || [])[activeIdx]?.label || (expenseData || [])[activeIdx]?.label || '';
+  const vI = (incomeData || [])[activeIdx]?.value;
+  const vE = (expenseData || [])[activeIdx]?.value;
+
+  const activePtE = ptsE[activeIdx];
+  const activePtI = ptsI[activeIdx];
+
+  return (
+    <figure className="m-0" aria-label="Grafik tren pemasukan vs pengeluaran bulanan">
+      <div className="relative">
+        <div className="grid-lines absolute inset-0 rounded-xl border border-line/70" aria-hidden="true" />
+
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none"
+          className="relative block w-full"
+          style={{ height }}
+          aria-hidden="true"
+        >
+          <path d={lineE} fill="none" style={{ stroke: expenseColor }} strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+          <path d={lineI} fill="none" style={{ stroke: incomeColor }} strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+        </svg>
+
+        {/* Titik aktif kedua garis */}
+        {activePtE && (
+          <span
+            className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-canvas"
+            style={{ left: `${(activePtE[0] / W) * 100}%`, top: `${(activePtE[1] / H) * 100}%`, background: expenseColor }}
+            aria-hidden="true"
+          />
+        )}
+        {activePtI && (
+          <span
+            className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-canvas"
+            style={{ left: `${(activePtI[0] / W) * 100}%`, top: `${(activePtI[1] / H) * 100}%`, background: incomeColor }}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Tooltip nominal dua nilai */}
+        <div
+          className={`pointer-events-none absolute z-10 w-max rounded-lg border border-line bg-surface/95 px-2.5 py-1.5 text-[11px] shadow-e1 backdrop-blur ${labelRight ? '' : 'right-0'}`}
+          style={{ left: labelRight ? `calc(${(activePtE ? activePtE[0] / W : 0.5) * 100}% + 10px)` : 'auto', top: 4 }}
+          aria-hidden="true"
+        >
+          <div className="font-semibold text-ink">{label}</div>
+          {vE != null && (
+            <div className="flex items-center gap-1.5 text-mutedfg">
+              <span className="h-2 w-2 rounded-full" style={{ background: expenseColor }} />
+              Pengeluaran: <span className="font-semibold text-ink">{formatValue(vE)}</span>
+            </div>
+          )}
+          {vI != null && (
+            <div className="flex items-center gap-1.5 text-mutedfg">
+              <span className="h-2 w-2 rounded-full" style={{ background: incomeColor }} />
+              Pemasukan: <span className="font-semibold text-ink">{formatValue(vI)}</span>
+            </div>
+          )}
+        </div>
+
+        <ChartTapLayer
+          label="Ketuk grafik, atau pakai tombol panah kiri/kanan, untuk melihat nilai tiap bulan."
+          handlers={handlers}
+        />
+      </div>
+
+      <div className="mt-1.5 flex text-[11px] text-mutedfg" aria-hidden="true">
+        {(incomeData || []).map((d, i) => (
+          <span key={d.label} className={`flex-1 truncate text-center ${i === activeIdx ? 'font-semibold text-brandfg' : ''}`}>
+            {d.label}
+          </span>
+        ))}
+      </div>
+
+      <p className="sr-only" aria-live="polite">
+        {label
+          ? `${label}: pemasukan ${vI != null ? formatValue(vI) : '-'}, pengeluaran ${vE != null ? formatValue(vE) : '-'}`
+          : ''}
+      </p>
+    </figure>
+  );
+}
+
+/* ---------------- Sparkline (garis mini untuk kartu KPI) ---------------- */
 export function Sparkline({ data, color = 'rgb(var(--chart1))' }) {
   const values = data.map((d) => (typeof d === 'number' ? d : d.value));
   if (values.length < 2) return null;

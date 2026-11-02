@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
 import { Card, GlassCard, StatCard, QuickAction, ProgressBar, Badge, CTA_CLASS } from './ui';
-import { DonutChart, LineChart } from './charts';
+import { DonutChart, LineChart, DualTrendChart } from './charts';
 import { Timeline } from './Timeline';
 import { getBudget } from './budget';
 import { readUiPrefs } from '../services/uiPrefs';
@@ -293,30 +293,29 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         />
       </div>
 
-      {/* ---------- Tren 6 bulan ---------- */}
+      {/* ---------- Tren Keuangan (pemasukan vs pengeluaran) ---------- */}
       <Card className="p-4 sm:p-5 md:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <Icon name="trendingUp" size={18} className="shrink-0 text-brandfg" />
-            <h2 className="truncate font-bold text-ink">Tren Pengeluaran</h2>
+            <h2 className="truncate font-bold text-ink">Tren Keuangan</h2>
           </div>
-          <span className="shrink-0 text-xs text-mutedfg">
-            6 bulan · rata-rata {formatCurrencyShort(totals.avgMonth)}
-          </span>
-        </div>
-        <LineChart data={data.monthlyTrend} formatValue={formatCurrencyShort} />
-      </Card>
-
-      {/* ---------- Tren pemasukan 6 bulan (kembaran tren pengeluaran) ---------- */}
-      <Card className="p-4 sm:p-5 md:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <Icon name="trendingUp" size={18} className="shrink-0 text-success" />
-            <h2 className="truncate font-bold text-ink">Tren Pemasukan</h2>
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-mutedfg">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+              Pemasukan: <span className="font-semibold text-ink">{formatCurrencyShort(totals.incomeMonth)}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
+              Pengeluaran: <span className="font-semibold text-ink">{formatCurrencyShort(totals.expenseMonth)}</span>
+            </span>
           </div>
-          <span className="shrink-0 text-xs text-mutedfg">6 bulan terakhir</span>
         </div>
-        <LineChart data={data.incomeTrend || []} formatValue={formatCurrencyShort} />
+        <DualTrendChart
+          incomeData={data.incomeTrend || []}
+          expenseData={data.monthlyTrend}
+          formatValue={formatCurrencyShort}
+        />
       </Card>
 
       {/* ---------- Donat ---------- */}
