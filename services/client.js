@@ -400,6 +400,9 @@ export const backupApi = {
       body: JSON.stringify(payload),
     });
   },
+  exportDrive: async () => {
+    return apiFetch('/backup/export-drive', { method: 'POST' });
+  },
 };
 
 /* ---- Analitik & insight (backend /api/insight) ---- */

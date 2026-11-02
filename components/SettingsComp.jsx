@@ -224,6 +224,21 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
     }
   };
 
+  const doExportDrive = async () => {
+    setBkBusy(true);
+    setBkMsg('');
+    try {
+      const r = await backupApi.exportDrive();
+      setBkMsg(`Backup Drive selesai (${new Date(r.last_backup).toLocaleString('id-ID')}).`);
+    } catch (e) {
+      const m = e.message || '';
+      setBkMsg(m.includes('Hubungkan') ? 'Hubungkan Google dengan izin Drive dulu.' : 'Gagal backup Drive: ' + m);
+    } finally {
+      setBkBusy(false);
+      setTimeout(() => setBkMsg(''), 4000);
+    }
+  };
+
   useEffect(() => {
     let alive = true;
     settingsApi
@@ -710,6 +725,15 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
             >
               <Icon name="upload" size={15} />
               Import Backup
+            </button>
+            <button
+              type="button"
+              onClick={doExportDrive}
+              disabled={bkBusy}
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-3 text-sm font-semibold text-mutedfg transition-colors hover:bg-muted hover:text-ink disabled:opacity-50"
+            >
+              <Icon name="drive" size={15} />
+              Backup ke Google Drive
             </button>
             <input
               ref={fileInputRef}
