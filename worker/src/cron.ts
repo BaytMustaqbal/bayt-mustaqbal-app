@@ -3,6 +3,7 @@ import { sendWA } from './utils/fonnte'; // fonnte WA utility (Task 7)
 import { processOutbox, syncToGcal } from './utils/gcal';
 import { readNotifPrefs, isInQuietWindow, readFonnteTarget } from './utils/notif';
 import { computeInsight } from './utils/insight';
+import { evaluateRules } from './utils/rules';
 
 // Daily digest: summarize today's transactions
 async function sendDailyDigest(env: Env): Promise<void> {
@@ -194,8 +195,12 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
     await sendWeeklyRecap(env);
   }
 
-  // 19:00 WIB — peringatan ambang anggaran
+  // 19:00 WIB — peringatan ambang anggaran + aturan otomatis
   if (event.cron === '0 12 * * *') {
     await sendBudgetAlerts(env);
+    const scopes = await listGroupScopes(env);
+    for (const scope of scopes) {
+      await evaluateRules(env, scope.group_id, scope.sample_user);
+    }
   }
 }
