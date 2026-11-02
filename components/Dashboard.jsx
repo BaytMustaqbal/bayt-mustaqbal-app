@@ -4,6 +4,7 @@ import { Card, GlassCard, StatCard, QuickAction, ProgressBar, Badge, CTA_CLASS }
 import { DonutChart, LineChart } from './charts';
 import { Timeline } from './Timeline';
 import { getBudget } from './budget';
+import { readUiPrefs } from '../services/uiPrefs';
 
 /* =========================================================
    Dashboard — slice pertama tema "High-Tech Blue".
@@ -34,7 +35,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
   // Jumlah uang di kartu hero disembunyikan secara default (privasi saat
   // orang lain melirik layar). Tombol mata menampilkannya sementara —
   // sengaja TIDAK disimpan, supaya tiap kali app dibuka kembali tersembunyi.
-  const [showMoney, setShowMoney] = useState(false);
+  const [showMoney, setShowMoney] = useState(() => !readUiPrefs().hideMoneyDefault);
   const masked = 'Rp ••••••';
 
   // Satu sumber angka anggaran (components/budget.js). Snapshot localStorage

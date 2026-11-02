@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { SectionHeader, Badge, CTA_CLASS } from './ui';
 import { settingsApi } from '../services/client';
+import { readUiPrefs, writeUiPrefs, applyUiPrefs, UI_PREFS_DEFAULTS } from '../services/uiPrefs';
 
 /* Pilihan tampilan (same config di AccountModal.jsx) */
 const THEME_OPTIONS = [
@@ -48,6 +49,15 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, onRetry, theme = '
   const [notif, setNotif] = useState(NOTIF_DEFAULTS);
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
+
+  // ---- Privasi & tampilan (preferensi per perangkat) ----
+  const [uiPrefs, setUiPrefs] = useState(() => readUiPrefs());
+  const saveUiPrefs = (patch) => {
+    const next = { ...uiPrefs, ...patch };
+    setUiPrefs(next);
+    writeUiPrefs(next);
+    applyUiPrefs(next);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -332,6 +342,72 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, onRetry, theme = '
             Pilihan langsung berlaku. <strong className="font-semibold text-ink">Sistem</strong> mengikuti
             pengaturan terang/gelap HP.
           </p>
+        </div>
+
+        {/* ---- Privasi & Tampilan ---- */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
+              <Icon name="eye" size={18} />
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-ink">Privasi & Tampilan</h2>
+              <p className="text-[11px] text-mutedfg">Berlaku di perangkat ini</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-canvas px-3.5">
+              <input
+                type="checkbox"
+                checked={uiPrefs.hideMoneyDefault}
+                onChange={(e) => saveUiPrefs({ hideMoneyDefault: e.target.checked })}
+                className="h-5 w-5 shrink-0 rounded border-line bg-canvas accent-[#2563EB]"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-ink">Sembunyikan uang default</span>
+                <span className="block text-[11px] text-mutedfg">Jumlah uang tersembunyi saat buka app</span>
+              </span>
+            </label>
+
+            <div>
+              <label htmlFor="ui-density" className="mb-1 block text-xs font-semibold text-mutedfg">Ukuran konten</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { v: 'compact', l: 'Kompak' },
+                  { v: 'normal', l: 'Normal' },
+                  { v: 'large', l: 'Besar' },
+                ].map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => saveUiPrefs({ density: opt.v })}
+                    aria-pressed={uiPrefs.density === opt.v}
+                    className={`min-h-[44px] rounded-xl border text-sm font-semibold transition-colors ${
+                      uiPrefs.density === opt.v
+                        ? 'border-brand/50 bg-brandtint text-brandfg'
+                        : 'border-line bg-canvas text-mutedfg hover:bg-muted hover:text-ink'
+                    }`}
+                  >
+                    {opt.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-canvas px-3.5">
+              <input
+                type="checkbox"
+                checked={uiPrefs.compactMode}
+                onChange={(e) => saveUiPrefs({ compactMode: e.target.checked })}
+                className="h-5 w-5 shrink-0 rounded border-line bg-canvas accent-[#2563EB]"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-ink">Mode kompak</span>
+                <span className="block text-[11px] text-mutedfg">Rapatkan jarak antar-kartu</span>
+              </span>
+            </label>
+          </div>
         </div>
       </div>
     </section>

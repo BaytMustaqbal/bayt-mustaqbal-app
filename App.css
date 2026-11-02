@@ -594,6 +594,20 @@ summary,
   }
 }
 
+/* Mode kompak (preferensi tampilan) — memadatkan jarak halaman */
+html.ui-compact #main {
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
+
+html.ui-compact .app-fade-in.space-y-4 > * + * {
+  margin-top: 0.625rem;
+}
+
+html.ui-compact .app-fade-in.space-y-5 > * + * {
+  margin-top: 0.875rem;
+}
+
 /* Hormati preferensi reduced-motion */@media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -41,6 +41,7 @@ import {
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
 import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken } from './services/client';
+import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
 /* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
@@ -1627,6 +1628,11 @@ const [goals, setGoals] = useState([]);
       /* localStorage dilarang ? tema tetap jalan untuk sesi ini */
     }
   }, [theme, resolvedTheme]);
+
+  // Terapkan preferensi tampilan (font-size density + mode kompak) saat buka app.
+  useEffect(() => {
+    applyUiPrefs(readUiPrefs());
+  }, []);
 
   useEffect(() => {
     let mq;
