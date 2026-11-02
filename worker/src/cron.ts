@@ -4,6 +4,7 @@ import { processOutbox, syncToGcal } from './utils/gcal';
 import { readNotifPrefs, isInQuietWindow, readFonnteTarget } from './utils/notif';
 import { computeInsight } from './utils/insight';
 import { evaluateRules } from './utils/rules';
+import { runDriveBackup } from './utils/drive';
 
 // Daily digest: summarize today's transactions
 async function sendDailyDigest(env: Env): Promise<void> {
@@ -185,9 +186,17 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
     await processOutbox(env);
   }
 
-  // Day 1, 00:30 WIB — generate monthly bills from recurring
+  // Day 1, 00:30 WIB — generate monthly bills + backup Drive otomatis
   if (date === 1 && hour === 0 && event.cron === '30 17 * * *') {
     await generateMonthlyBills(env);
+    const scopes = await listGroupScopes(env);
+    for (const scope of scopes) {
+      try {
+        await runDriveBackup(env, scope.group_id, scope.sample_user);
+      } catch (e) {
+        console.warn('Drive backup gagal:', (e as Error).message);
+      }
+    }
   }
 
   // Harian 07:00 WIB — rekap mingguan tiap Senin

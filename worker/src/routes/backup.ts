@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { Env } from '../types/env';
 import { groupScope, forbiddenWrite } from '../utils/group';
 import { logAudit } from '../utils/audit';
+import { getConnection, resolveConnectionUserId } from '../utils/gcal';
+import { runDriveBackup } from '../utils/drive';
 
 /**
  * Data & cadangan keluarga. Export mengumpulkan seluruh data milik grup
@@ -19,15 +21,8 @@ function hasScope(groupRole: string | null): boolean {
 
 const TABLES = ['transactions', 'calendar_events', 'notes', 'family_moments', 'settings'];
 
-// GET /api/backup/export
-backupRoutes.get('/export', async (c) => {
-  if (!hasScope(c.get('groupRole'))) {
-    return c.json(forbiddenWrite(), 403);
-  }
-  const userId = c.get('userId');
-  const groupId = c.get('groupId');
+async function gatherBackup(env: Env, groupId: string | null, userId: string) {
   const scope = groupScope(groupId, userId);
-
   const data: Record<string, unknown[]> = {};
   for (const t of TABLES) {
     const hasGroupCol = t === 'transactions' || t === 'calendar_events' || t === 'notes' || t === 'family_moments' || t === 'settings';
@@ -36,25 +31,54 @@ backupRoutes.get('/export', async (c) => {
       : `SELECT * FROM ${t} WHERE user_id = ? AND void IS NULL`;
     const params = hasGroupCol ? [scope.val] : [userId];
     try {
-      const rows = await c.env.DB.prepare(sql).bind(...params).all();
+      const rows = await env.DB.prepare(sql).bind(...params).all();
       data[t] = rows.results || [];
     } catch (e) {
       data[t] = [];
     }
   }
+  return {
+    exported_at: new Date().toISOString(),
+    app: 'bayt-mustaqbal',
+    scope_id: groupId || userId,
+    data,
+  };
+}
+
+// GET /api/backup/export
+backupRoutes.get('/export', async (c) => {
+  if (!hasScope(c.get('groupRole'))) {
+    return c.json(forbiddenWrite(), 403);
+  }
+  const userId = c.get('userId');
+  const groupId = c.get('groupId');
+  const payload = await gatherBackup(c.env, groupId, userId);
 
   await logAudit(c.env, userId, groupId, 'backup_export', 'family', groupId || userId);
 
-  return c.json({
-    ok: true,
-    data: {
-      exported_at: new Date().toISOString(),
-      app: 'bayt-mustaqbal',
-      scope_id: groupId || userId,
-      data,
-    },
-    error: null,
-  });
+  return c.json({ ok: true, data: payload, error: null });
+});
+
+// POST /api/backup/export-drive — arsipkan ke Google Drive.
+backupRoutes.post('/export-drive', async (c) => {
+  if (!hasScope(c.get('groupRole'))) {
+    return c.json(forbiddenWrite(), 403);
+  }
+  const userId = c.get('userId');
+  const groupId = c.get('groupId');
+  try {
+    const result = await runDriveBackup(c.env, groupId, userId);
+    return c.json({ ok: true, data: result, error: null });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === 'NO_CONNECTION') {
+      return c.json({
+        ok: false, data: null,
+        error: { code: 'GCAL_NOT_CONNECTED', message: 'Hubungkan Google (dengan izin Drive) dulu.' },
+      }, 400);
+    }
+    return c.json({ ok: false, data: null, error: { code: 'DRIVE_FAILED', message: msg } }, 502);
+  }
 });
 // POST /api/backup/import — timpa seluruh data grup dari cadangan.
 backupRoutes.post('/import', async (c) => {
