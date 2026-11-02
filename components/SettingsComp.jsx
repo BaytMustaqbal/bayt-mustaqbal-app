@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { SectionHeader, Badge, CTA_CLASS } from './ui';
+import { settingsApi } from '../services/client';
 
 /* Pilihan tampilan (same config di AccountModal.jsx) */
 const THEME_OPTIONS = [
@@ -8,6 +9,21 @@ const THEME_OPTIONS = [
   { value: 'light', label: 'Terang', icon: 'sun' },
   { value: 'dark', label: 'Gelap', icon: 'moon' },
 ];
+
+const NOTIF_DEFAULTS = {
+  tagihanEnabled: true,
+  digestEnabled: true,
+  digestHour: 7,
+  reminderHour: null,
+  quietStart: null,
+  quietEnd: null,
+};
+
+const hoursOptions = () => {
+  const arr = [];
+  for (let h = 0; h < 24; h++) arr.push(h);
+  return arr;
+};
 
 /* ============================================================================
    Halaman Pengaturan — rumah untuk pengaturan app. Isi pertama: integrasi
@@ -27,6 +43,55 @@ const statusBadge = (gcal) => {
 
 export function SettingsComp({ gcal, onConnect, onDisconnect, onRetry, theme = 'system', onThemeChange }) {
   const busy = gcal.loading || gcal.connecting;
+
+  // ---- Notifikasi WA (preferensi per grup) ----
+  const [notif, setNotif] = useState(NOTIF_DEFAULTS);
+  const [notifLoaded, setNotifLoaded] = useState(false);
+  const [notifSaved, setNotifSaved] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    settingsApi
+      .fetchAll()
+      .then((rows) => {
+        if (!alive) return;
+        const row = (rows || []).find((s) => s.key === 'notif_prefs');
+        if (row?.value) {
+          try {
+            const p = JSON.parse(row.value);
+            setNotif({
+              tagihanEnabled: p.tagihanEnabled !== false,
+              digestEnabled: p.digestEnabled !== false,
+              digestHour: Number.isInteger(p.digestHour) ? p.digestHour : NOTIF_DEFAULTS.digestHour,
+              reminderHour: p.reminderHour == null ? null : Number.isInteger(p.reminderHour) ? p.reminderHour : null,
+              quietStart: p.quietStart == null ? null : Number.isInteger(p.quietStart) ? p.quietStart : null,
+              quietEnd: p.quietEnd == null ? null : Number.isInteger(p.quietEnd) ? p.quietEnd : null,
+            });
+          } catch {
+            /* default */
+          }
+        }
+        setNotifLoaded(true);
+      })
+      .catch(() => setNotifLoaded(true));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const persistNotif = async (patch) => {
+    const next = { ...notif, ...patch };
+    setNotif(next);
+    setNotifSaved(false);
+    try {
+      await settingsApi.upsert('notif_prefs', JSON.stringify(next));
+      setNotifSaved(true);
+      setTimeout(() => setNotifSaved(false), 2500);
+    } catch (e) {
+      /* gagal simpan — biarkan state lokal */
+      console.warn('Gagal simpan preferensi notifikasi:', e.message);
+    }
+  };
 
   return (
     <section className="app-fade-in">
@@ -125,6 +190,121 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, onRetry, theme = '
               Token disimpan di server, bukan di browser.
             </li>
           </ul>
+        </div>
+
+        {/* ---- Notifikasi & pengingat WA ---- */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
+              <Icon name="bell" size={18} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-ink">Notifikasi & Pengingat</h2>
+              <p className="text-[11px] text-mutedfg">Kirim pengingat lewat WhatsApp</p>
+            </div>
+            {notifSaved && <Badge tone="green">Tersimpan</Badge>}
+          </div>
+
+          {!notifLoaded ? (
+            <p className="text-xs text-mutedfg">Memuat preferensi…</p>
+          ) : (
+            <div className="space-y-4">
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-canvas px-3.5">
+                <input
+                  type="checkbox"
+                  checked={notif.tagihanEnabled}
+                  onChange={(e) => persistNotif({ tagihanEnabled: e.target.checked })}
+                  className="h-5 w-5 shrink-0 rounded border-line bg-canvas accent-[#2563EB]"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-ink">Pengingat Tagihan</span>
+                  <span className="block text-[11px] text-mutedfg">WA saat tagihan jatuh tempo</span>
+                </span>
+              </label>
+
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-canvas px-3.5">
+                <input
+                  type="checkbox"
+                  checked={notif.digestEnabled}
+                  onChange={(e) => persistNotif({ digestEnabled: e.target.checked })}
+                  className="h-5 w-5 shrink-0 rounded border-line bg-canvas accent-[#2563EB]"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-ink">Digest Harian</span>
+                  <span className="block text-[11px] text-mutedfg">Ringkasan transaksi & agenda pagi</span>
+                </span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="notif-digest-hour" className="mb-1 block text-xs font-semibold text-mutedfg">Jam digest</label>
+                  <select
+                    id="notif-digest-hour"
+                    value={notif.digestHour}
+                    disabled={!notif.digestEnabled}
+                    onChange={(e) => persistNotif({ digestHour: Number(e.target.value) })}
+                    className="min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand disabled:opacity-50"
+                  >
+                    {hoursOptions().map((h) => (
+                      <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="notif-reminder-hour" className="mb-1 block text-xs font-semibold text-mutedfg">Jam pengingat tagihan</label>
+                  <select
+                    id="notif-reminder-hour"
+                    value={notif.reminderHour ?? ''}
+                    disabled={!notif.tagihanEnabled}
+                    onChange={(e) => persistNotif({ reminderHour: e.target.value === '' ? null : Number(e.target.value) })}
+                    className="min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand disabled:opacity-50"
+                  >
+                    <option value="">Tiap jam</option>
+                    {hoursOptions().map((h) => (
+                      <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-line bg-canvas p-3.5">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-mutedfg">
+                  <Icon name="moon" size={14} />
+                  Mode senyap (tidak kirim WA)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="notif-quiet-start" className="mb-1 block text-[11px] text-mutedfg">Mulai</label>
+                    <select
+                      id="notif-quiet-start"
+                      value={notif.quietStart ?? ''}
+                      onChange={(e) => persistNotif({ quietStart: e.target.value === '' ? null : Number(e.target.value) })}
+                      className="min-h-[40px] w-full rounded-lg border border-line bg-canvas px-2.5 text-sm text-ink outline-none focus:border-brand"
+                    >
+                      <option value="">Nonaktif</option>
+                      {hoursOptions().map((h) => (
+                        <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="notif-quiet-end" className="mb-1 block text-[11px] text-mutedfg">Selesai</label>
+                    <select
+                      id="notif-quiet-end"
+                      value={notif.quietEnd ?? ''}
+                      onChange={(e) => persistNotif({ quietEnd: e.target.value === '' ? null : Number(e.target.value) })}
+                      className="min-h-[40px] w-full rounded-lg border border-line bg-canvas px-2.5 text-sm text-ink outline-none focus:border-brand"
+                    >
+                      <option value="">Nonaktif</option>
+                      {hoursOptions().map((h) => (
+                        <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ---- Tampilan (tema) ---- */}
