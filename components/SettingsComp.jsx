@@ -4,6 +4,7 @@ import { SectionHeader, Badge, CTA_CLASS } from './ui';
 import { settingsApi, gcalApi, auth, backupApi } from '../services/client';
 import { readUiPrefs, writeUiPrefs, applyUiPrefs, UI_PREFS_DEFAULTS } from '../services/uiPrefs';
 import RulesComp from './RulesComp';
+import AuditComp from './AuditComp';
 
 /* Pilihan tampilan (same config di AccountModal.jsx) */
 const THEME_OPTIONS = [
@@ -670,6 +671,17 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
           onToggle={() => toggleKey('otomasi')}
         >
           <RulesComp />
+        </SettingSection>
+
+        {/* ---- Audit Log ---- */}
+        <SettingSection
+          icon="activity"
+          title="Audit Log"
+          subtitle="Aktivitas keluarga tercatat"
+          open={openKey === 'audit'}
+          onToggle={() => toggleKey('audit')}
+        >
+          <AuditComp />
         </SettingSection>
 
         {/* ---- Data & Cadangan ---- */}

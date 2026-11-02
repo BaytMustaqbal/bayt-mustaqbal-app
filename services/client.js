@@ -409,6 +409,13 @@ export const insightApi = {
   },
 };
 
+/* ---- Audit log aktivitas (backend /api/audit) ---- */
+export const auditApi = {
+  fetch: async () => {
+    return apiFetch('/audit');
+  },
+};
+
 /* ---- Momen Keluarga (backend /api/moment) ----
    Bentuk frontend:
      { id, title, description, date, location, category, photo_url, createdAt }
