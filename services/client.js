@@ -419,6 +419,43 @@ export const auditApi = {
   },
 };
 
+/* ---- Target Tabungan (backend /api/goal) ---- */
+const goalTransform = {
+  toFrontend: (row) => ({
+    id: row.id,
+    nama: row.nama,
+    targetAmount: Number(row.target_amount) || 0,
+    currentAmount: Number(row.current_amount) || 0,
+    targetDate: row.target_date || '',
+    achieved: !!row.achieved,
+    createdAt: row.created_at,
+  }),
+  toPayload: (g) => ({
+    nama: g.nama,
+    target_amount: Number(g.targetAmount) || 0,
+    current_amount: Number(g.currentAmount) || 0,
+    target_date: g.targetDate || null,
+  }),
+};
+
+export const goalsApi = {
+  fetch: async () => {
+    const rows = await apiFetch('/goal');
+    return (rows || []).map(goalTransform.toFrontend);
+  },
+  create: async (g) => {
+    const row = await apiFetch('/goal', { method: 'POST', body: JSON.stringify(goalTransform.toPayload(g)) });
+    return goalTransform.toFrontend(row);
+  },
+  update: async (id, g) => {
+    const row = await apiFetch(`/goal/${id}`, { method: 'PUT', body: JSON.stringify(goalTransform.toPayload(g)) });
+    return goalTransform.toFrontend(row);
+  },
+  delete: async (id) => {
+    return apiFetch(`/goal/${id}`, { method: 'DELETE' });
+  },
+};
+
 /* ---- Momen Keluarga (backend /api/moment) ----
    Bentuk frontend:
      { id, title, description, date, location, category, photo_url, createdAt }

@@ -42,7 +42,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -618,21 +618,50 @@ export default function App() {
 // Setiap goal: { id, nama, targetAmount, currentAmount, targetDate, achieved, createdAt }
 const [goals, setGoals] = useState([]);
 
-// Muat target tabungan dari localStorage saat buka app
+// Muat target tabungan dari API; migrasi sekali dari localStorage bila kosong
 useEffect(() => {
-  try {
-    const raw = localStorage.getItem('bm-goals');
-    if (raw) setGoals(JSON.parse(raw));
-  } catch { /* abaikan */ }
-}, []);
+  if (!isLoggedIn) return;
+  let alive = true;
+  (async () => {
+    let rows = [];
+    try {
+      rows = await goalsApi.fetch();
+    } catch {
+      return;
+    }
+    if (rows.length === 0) {
+      try {
+        const raw = localStorage.getItem('bm-goals');
+        if (raw) {
+          const legacy = JSON.parse(raw);
+          for (const g of legacy) {
+            try {
+              rows.push(await goalsApi.create(g));
+            } catch { /* lewati */ }
+          }
+          if (rows.length) localStorage.removeItem('bm-goals');
+        }
+      } catch { /* abaikan */ }
+    }
+    if (alive) setGoals(rows);
+  })();
+  return () => {
+    alive = false;
+  };
+}, [isLoggedIn]);
 
-const saveGoals = (next) => {
-  setGoals(next);
-  try { localStorage.setItem('bm-goals', JSON.stringify(next)); } catch { /* lokal */ }
+const addGoal = async (g) => {
+  const created = await goalsApi.create(g);
+  setGoals((prev) => [...prev, created]);
 };
-const addGoal = (g) => saveGoals([...goals, g]);
-const updateGoal = (id, patch) => saveGoals(goals.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-const deleteGoal = (id) => saveGoals(goals.filter((x) => x.id !== id));
+const updateGoal = async (id, patch) => {
+  const updated = await goalsApi.update(id, patch);
+  setGoals((prev) => prev.map((x) => (x.id === id ? updated : x)));
+};
+const deleteGoal = async (id) => {
+  await goalsApi.delete(id);
+  setGoals((prev) => prev.filter((x) => x.id !== id));
+};
 
   // Pemindai struk: foto dibaca OCR di perangkat, disimpan sebagai pengeluaran biasa
   const [scanOpen, setScanOpen] = useState(false);
