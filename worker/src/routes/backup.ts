@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../types/env';
 import { groupScope, forbiddenWrite } from '../utils/group';
+import { logAudit } from '../utils/audit';
 
 /**
  * Data & cadangan keluarga. Export mengumpulkan seluruh data milik grup
@@ -42,6 +43,8 @@ backupRoutes.get('/export', async (c) => {
     }
   }
 
+  await logAudit(c.env, userId, groupId, 'backup_export', 'family', groupId || userId);
+
   return c.json({
     ok: true,
     data: {
@@ -53,7 +56,6 @@ backupRoutes.get('/export', async (c) => {
     error: null,
   });
 });
-
 // POST /api/backup/import — timpa seluruh data grup dari cadangan.
 backupRoutes.post('/import', async (c) => {
   if (!hasScope(c.get('groupRole'))) {
@@ -106,6 +108,8 @@ backupRoutes.post('/import', async (c) => {
       }
     }
   }
+
+  await logAudit(c.env, userId, groupId, 'backup_import', 'family', groupId || userId);
 
   return c.json({ ok: true, data: { restored, tables: TABLES }, error: null });
 });

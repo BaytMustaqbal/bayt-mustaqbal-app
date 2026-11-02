@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { hashPassword, verifyPassword, signToken, verifyToken, createSession, voidSessionByJti } from '../utils/auth';
+import { logAudit } from '../utils/audit';
 import { Env } from '../types/env';
 
 export const authRoutes = new Hono<{ Bindings: Env }>();
@@ -132,6 +133,7 @@ authRoutes.post('/login', async (c) => {
   const jti = await createSession(c.env, user.id, device);
   const token = signToken({ userId: user.id, role: user.role }, c.env.JWT_SECRET, jti);
   c.header('Set-Cookie', `token=${token}; HttpOnly; Secure; SameSite=Lax; Max-Age=604800; Path=/`);
+  await logAudit(c.env, user.id, user.group_id, 'login', 'users', user.id);
   return c.json({
     ok: true,
     data: {
@@ -158,6 +160,7 @@ authRoutes.post('/logout', async (c) => {
     if (p?.jti) await voidSessionByJti(c.env, p.jti);
   }
   c.header('Set-Cookie', 'token=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/');
+  await logAudit(c.env, c.get('userId'), c.get('groupId'), 'logout', 'users', c.get('userId'));
   return c.json({ ok: true, data: null, error: null });
 });
 
@@ -205,6 +208,7 @@ authRoutes.put('/me', async (c) => {
   const now = new Date().toISOString();
   await c.env.DB.prepare('UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, updated_at = ? WHERE id = ? AND void IS NULL')
     .bind(newNama, newNick, newBirth, newAvatar, now, userId).run();
+  await logAudit(c.env, userId, c.get('groupId'), 'update_profile', 'users', userId);
 
   const user = await c.env.DB.prepare(
     `SELECT u.id, u.username, u.nama, u.nickname, u.avatar_url, u.role, u.family_role, u.generasi, u.birth_date,
@@ -237,6 +241,7 @@ authRoutes.delete('/sessions/:id', async (c) => {
   }
   await c.env.DB.prepare('UPDATE sessions SET void = ? WHERE id = ?')
     .bind(new Date().toISOString(), id).run();
+  await logAudit(c.env, userId, c.get('groupId'), 'revoke_session', 'sessions', id);
   return c.json({ ok: true, data: { id }, error: null });
 });
 
@@ -245,5 +250,6 @@ authRoutes.post('/google/unlink', async (c) => {
   const userId = c.get('userId');
   await c.env.DB.prepare('UPDATE users SET google_sub = NULL, updated_at = ? WHERE id = ? AND void IS NULL')
     .bind(new Date().toISOString(), userId).run();
+  await logAudit(c.env, userId, c.get('groupId'), 'unlink_google', 'users', userId);
   return c.json({ ok: true, data: { google_sub: null }, error: null });
 });
