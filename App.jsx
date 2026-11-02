@@ -3219,6 +3219,7 @@ const [goals, setGoals] = useState([]);
             onOpenTimeline={handleOpenAgendaTimeline}
             onEditItem={openEdit}
             onScanReceipt={canWrite ? () => setScanOpen(true) : null}
+            moments={moments}
           />
         );
     }
