@@ -250,7 +250,7 @@ export function Navigation({
 
   return (
     <>
-      <header className={`sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-[transform,background-color,border-color,box-shadow] duration-base ease-crisp ${headerHidden ? '-translate-y-full' : 'translate-y-0'} ${scrolled ? 'border-line bg-canvas/90 shadow-e2' : 'border-transparent bg-canvas/80'}`}>
+      <header className={`sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)] backdrop-blur-xl transition-[transform,background-color,border-color,box-shadow] duration-base ease-crisp lg:pl-72 ${headerHidden ? '-translate-y-full' : 'translate-y-0'} ${scrolled ? 'border-line bg-canvas/90 shadow-e2' : 'border-transparent bg-canvas/80'}`}>
         <div className="relative mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-4 sm:h-16 sm:gap-3 sm:px-6">
           {/* Logo - trigger buka sidebar di desktop */}
           <button

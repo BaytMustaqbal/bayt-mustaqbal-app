@@ -3370,7 +3370,7 @@ const [goals, setGoals] = useState([]);
 
       <main
         id="main"
-        className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(4.5rem_+_env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:pt-6 lg:pb-12"
+        className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(4.5rem_+_env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:pt-6 lg:pl-72 lg:pb-12"
       >
         {!isOnline && (
           <div
