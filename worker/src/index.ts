@@ -15,13 +15,14 @@ import { reviewRoutes } from './routes/review';
 import { dashRoutes } from './routes/dash';
 import { auditRoutes } from './routes/audit';
 import { gcalRoutes } from './routes/gcal';
+import { momentRoutes } from './routes/moment';
 import { authMiddleware } from './middleware/auth';
 import { handleCron } from './cron';
 
 const app = new Hono<{ Bindings: Env }>();
 
 app.use('*', cors({
-  origin: 'https://app.baytmustaqbal.my.id',
+  origin: ['https://app.baytmustaqbal.my.id', 'https://7ff6e1b3.app-project.pages.dev'],
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
@@ -48,6 +49,7 @@ app.route('/api/review', reviewRoutes);
 app.route('/api/dash', dashRoutes);
 app.route('/api/audit', auditRoutes);
 app.route('/api/gcal', gcalRoutes);
+app.route('/api/moment', momentRoutes);
 
 app.get('/', (c) => c.json({ ok: true, message: 'Bayt Mustaqbal API' }));
 

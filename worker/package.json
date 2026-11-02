@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "tsx tests/gcal-unit.test.ts",
     "test:integration": "tsx tests/integration.test.ts",
-    "test:gcal": "tsx tests/gcal-integration.test.ts"
+    "test:gcal": "tsx tests/gcal-integration.test.ts",
+    "test:moment": "tsx tests/moment-integration.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

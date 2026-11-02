@@ -7,5 +7,9 @@ binding = "DB"
 database_name = "bayt-mustaqbal-db"
 database_id = "b9f5d75e-7d22-4f21-80f9-16660163da82"
 
+[[r2_buckets]]
+binding = "MOMENTS_R2"
+bucket_name = "bayt-moments"
+
 [triggers]
 crons = ["0 0 * * *", "0 * * * *", "30 17 * * *"]
