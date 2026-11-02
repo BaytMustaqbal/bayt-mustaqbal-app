@@ -1,6 +1,7 @@
 import { Env } from './types/env';
 import { sendWA } from './utils/fonnte'; // fonnte WA utility (Task 7)
 import { processOutbox, syncToGcal } from './utils/gcal';
+import { readNotifPrefs, isInQuietWindow } from './utils/notif';
 
 // Daily digest: summarize today's transactions
 async function sendDailyDigest(env: Env): Promise<void> {
@@ -99,14 +100,18 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
 
   console.log(`Cron triggered: ${event.cron}, WIB hour=${hour}, date=${date}`);
 
-  // 07:00 WIB — daily digest
-  if (hour === 7 && event.cron === '0 0 * * *') {
-    await sendDailyDigest(env);
-  }
-
-  // Every hour — bill reminder + retry antrean sinkron Google Calendar
+  // Every hour — notifikasi (hormati preferensi) + retry antrean sinkron Google
   if (event.cron === '0 * * * *') {
-    await sendBillReminder(env);
+    const prefs = await readNotifPrefs(env);
+
+    if (!isInQuietWindow(prefs, hour)) {
+      const reminderDue =
+        prefs.tagihanEnabled && (prefs.reminderHour == null || prefs.reminderHour === hour);
+      if (reminderDue) await sendBillReminder(env);
+
+      if (prefs.digestEnabled && prefs.digestHour === hour) await sendDailyDigest(env);
+    }
+
     await processOutbox(env);
   }
 
