@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { SectionHeader, Badge, CTA_CLASS } from './ui';
-import { settingsApi, gcalApi, auth } from '../services/client';
+import { settingsApi, gcalApi, auth, backupApi } from '../services/client';
 import { readUiPrefs, writeUiPrefs, applyUiPrefs, UI_PREFS_DEFAULTS } from '../services/uiPrefs';
 
 /* Pilihan tampilan (same config di AccountModal.jsx) */
@@ -142,6 +142,55 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
       setSessions((prev) => prev.filter((s) => s.id !== id));
     } catch (e) {
       console.warn('Gagal revoke sesi:', e.message);
+    }
+  };
+
+  // ---- Data & cadangan: export/import ----
+  const [bkBusy, setBkBusy] = useState(false);
+  const [bkMsg, setBkMsg] = useState('');
+  const fileInputRef = React.useRef(null);
+
+  const doExport = async () => {
+    setBkBusy(true);
+    setBkMsg('');
+    try {
+      const payload = await backupApi.exportBackup();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bayt-mustaqbal-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setBkMsg('Backup berhasil diunduh.');
+    } catch (e) {
+      setBkMsg('Gagal membuat backup: ' + e.message);
+    } finally {
+      setBkBusy(false);
+      setTimeout(() => setBkMsg(''), 3500);
+    }
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!window.confirm('Import akan menimpa seluruh data keluarga saat ini. Lanjutkan?')) return;
+    setBkBusy(true);
+    setBkMsg('');
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!parsed?.data) throw new Error('Format backup tidak valid');
+      const res = await backupApi.importBackup(parsed);
+      setBkMsg(`Import selesai (${res.restored} baris).`);
+    } catch (err) {
+      setBkMsg('Gagal import: ' + (err.message || 'format salah'));
+    } finally {
+      setBkBusy(false);
+      setTimeout(() => setBkMsg(''), 4000);
     }
   };
 
@@ -598,6 +647,48 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
                 </ul>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* ---- Data & Cadangan ---- */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
+              <Icon name="download" size={18} />
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-ink">Data & Cadangan</h2>
+              <p className="text-[11px] text-mutedfg">Ekspor & pulihkan data keluarga</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={doExport}
+              disabled={bkBusy}
+              className={`${CTA_CLASS} min-h-[44px] w-full`}
+            >
+              <Icon name={bkBusy ? 'loader' : 'download'} size={15} className={bkBusy ? 'animate-spin' : ''} />
+              {bkBusy ? 'Memproses…' : 'Export Backup'}
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={bkBusy}
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-3 text-sm font-semibold text-mutedfg transition-colors hover:bg-muted hover:text-ink disabled:opacity-50"
+            >
+              <Icon name="upload" size={15} />
+              Import Backup
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              onChange={handleImportFile}
+            />
+            {bkMsg && <p className="text-center text-xs font-medium text-mutedfg">{bkMsg}</p>}
           </div>
         </div>
       </div>

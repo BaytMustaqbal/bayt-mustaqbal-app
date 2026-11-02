@@ -389,6 +389,19 @@ export const gcalApi = {
   },
 };
 
+/* ---- Backup keluarga (backend /api/backup) ---- */
+export const backupApi = {
+  exportBackup: async () => {
+    return apiFetch('/backup/export');
+  },
+  importBackup: async (payload) => {
+    return apiFetch('/backup/import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+};
+
 /* ---- Momen Keluarga (backend /api/moment) ----
    Bentuk frontend:
      { id, title, description, date, location, category, photo_url, createdAt }
