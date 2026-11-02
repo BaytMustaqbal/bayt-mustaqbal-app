@@ -367,6 +367,14 @@ export const gcalApi = {
   disconnect: async () => {
     return apiFetch('/gcal/disconnect', { method: 'POST' });
   },
+  // Status sinkronisasi: jumlah antrean yang belum terkirim.
+  syncStatus: async () => {
+    return apiFetch('/gcal/sync-status');
+  },
+  // Proses ulang manual antrean outbox.
+  syncRetry: async () => {
+    return apiFetch('/gcal/sync-retry', { method: 'POST' });
+  },
 };
 
 /* ---- Momen Keluarga (backend /api/moment) ----

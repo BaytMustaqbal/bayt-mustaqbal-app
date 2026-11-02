@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { SectionHeader, Badge, CTA_CLASS } from './ui';
-import { settingsApi } from '../services/client';
+import { settingsApi, gcalApi } from '../services/client';
 import { readUiPrefs, writeUiPrefs, applyUiPrefs, UI_PREFS_DEFAULTS } from '../services/uiPrefs';
 
 /* Pilihan tampilan (same config di AccountModal.jsx) */
@@ -57,6 +57,57 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, onRetry, theme = '
     setUiPrefs(next);
     writeUiPrefs(next);
     applyUiPrefs(next);
+  };
+
+  // ---- Integrasi lanjutan: status sinkronisasi & target WA ----
+  const [syncPending, setSyncPending] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [waTarget, setWaTarget] = useState('');
+  const [waSaved, setWaSaved] = useState(false);
+
+  const refreshSyncStatus = async () => {
+    try {
+      const s = await gcalApi.syncStatus();
+      setSyncPending(s.pending);
+    } catch {
+      setSyncPending(null);
+    }
+  };
+
+  const retrySync = async () => {
+    setSyncing(true);
+    try {
+      const r = await gcalApi.syncRetry();
+      setSyncPending(r.pending);
+    } catch {
+      /* biarkan */
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshSyncStatus();
+    settingsApi
+      .fetchAll()
+      .then((rows) => {
+        const row = (rows || []).find((s) => s.key === 'fonnte_target');
+        if (row?.value) setWaTarget(row.value);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const saveWaTarget = async () => {
+    setWaSaved(false);
+    try {
+      await settingsApi.upsert('fonnte_target', waTarget.trim());
+      setWaSaved(true);
+      setTimeout(() => setWaSaved(false), 2500);
+    } catch (e) {
+      console.warn('Gagal simpan target WA:', e.message);
+      setWaSaved(false);
+    }
   };
 
   useEffect(() => {
@@ -407,6 +458,119 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, onRetry, theme = '
                 <span className="block text-[11px] text-mutedfg">Rapatkan jarak antar-kartu</span>
               </span>
             </label>
+          </div>
+        </div>
+
+        {/* ---- Integrasi Lanjutan ---- */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
+              <Icon name="sparkles" size={18} />
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-ink">Integrasi Lanjutan</h2>
+              <p className="text-[11px] text-mutedfg">Layanan yang terhubung</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* Daftar integrasi */}
+            <div className="divide-y divide-line rounded-xl border border-line bg-canvas">
+              {[
+                { nama: 'Google Calendar', ket: 'Agenda & tagihan', status: gcal.connected ? 'Tersambung' : 'Belum terhubung', tone: gcal.connected ? 'green' : 'gray' },
+                { nama: 'Google Photos', ket: 'Foto Momen Keluarga', status: gcal.connected ? 'Siap (via Google)' : 'Butuh koneksi Google', tone: gcal.connected ? 'green' : 'amber' },
+                { nama: 'WhatsApp / Fonnte', ket: 'Pengingat & digest', status: 'Terpasang', tone: 'green' },
+              ].map((row) => (
+                <div key={row.nama} className="flex items-center gap-3 px-3.5 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-ink">{row.nama}</p>
+                    <p className="text-[11px] text-mutedfg">{row.ket}</p>
+                  </div>
+                  <Badge tone={row.tone}>{row.status}</Badge>
+                </div>
+              ))}
+            </div>
+
+            {/* Detail koneksi Google */}
+            <div className="rounded-xl border border-line bg-canvas p-3.5">
+              <p className="mb-2 text-xs font-semibold text-mutedfg">Koneksi Google</p>
+              {gcal.connected && gcal.email ? (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="flex items-center gap-1.5 text-xs text-mutedfg">
+                    <Icon name="mail" size={14} />
+                    {gcal.email}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onDisconnect}
+                    className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-semibold text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+                  >
+                    <Icon name="logOut" size={14} />
+                    Putuskan
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-mutedfg">Belum terhubung ke Google.</p>
+                  <button type="button" onClick={onConnect} className={`${CTA_CLASS} min-h-[40px] px-4 text-xs`}>
+                    <Icon name="refresh" size={14} />
+                    Hubungkan
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Status sinkronisasi */}
+            <div className="rounded-xl border border-line bg-canvas p-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-mutedfg">
+                  <Icon name="refresh" size={14} />
+                  Sinkronisasi Google
+                </p>
+                <button
+                  type="button"
+                  onClick={retrySync}
+                  disabled={syncing}
+                  className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-semibold text-mutedfg transition-colors hover:bg-muted hover:text-ink disabled:opacity-50"
+                >
+                  <Icon name={syncing ? 'loader' : 'refresh'} size={14} className={syncing ? 'animate-spin' : ''} />
+                  {syncing ? 'Memproses…' : 'Coba ulang'}
+                </button>
+              </div>
+              <p className="mt-1.5 text-[11px] text-mutedfg">
+                {syncPending == null
+                  ? 'Tidak dapat membaca status.'
+                  : syncPending === 0
+                    ? 'Tidak ada antrean tertunda.'
+                    : `${syncPending} agenda/tagihan menunggu dikirim.`}
+              </p>
+            </div>
+
+            {/* Kelola target WhatsApp */}
+            <div className="rounded-xl border border-line bg-canvas p-3.5">
+              <label htmlFor="wa-target" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Target WhatsApp (nomor tujuan pengingat)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="wa-target"
+                  type="text"
+                  inputMode="numeric"
+                  value={waTarget}
+                  onChange={(e) => { setWaTarget(e.target.value); setWaSaved(false); }}
+                  placeholder="mis. 6281234567890"
+                  className="min-h-[44px] flex-1 rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none focus:border-brand"
+                />
+                <button
+                  type="button"
+                  onClick={saveWaTarget}
+                  className={`${CTA_CLASS} min-h-[44px] px-4 text-xs`}
+                >
+                  Simpan
+                </button>
+              </div>
+              {waSaved && <p className="mt-1.5 text-[11px] font-medium text-green">Target tersimpan.</p>}
+            </div>
           </div>
         </div>
       </div>
