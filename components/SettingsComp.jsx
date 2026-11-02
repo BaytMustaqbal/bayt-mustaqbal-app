@@ -26,6 +26,31 @@ const hoursOptions = () => {
   return arr;
 };
 
+/* Baris header accordion — satu area terbuka dalam satu waktu. */
+function SettingSection({ icon, title, subtitle, open, onToggle, badge, children }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/40"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
+          <Icon name={icon} size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-ink">{title}</span>
+          <span className="block text-[11px] text-mutedfg">{subtitle}</span>
+        </span>
+        {badge}
+        <Icon name={open ? 'chevronDown' : 'chevronRight'} size={16} className="shrink-0 text-mutedfg" />
+      </button>
+      {open && <div className="border-t border-line p-4">{children}</div>}
+    </div>
+  );
+}
+
 /* ============================================================================
    Halaman Pengaturan — rumah untuk pengaturan app. Isi pertama: integrasi
    Google Calendar (satu arah: app → Google).
@@ -42,6 +67,9 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
 
   // ---- Privasi & tampilan (preferensi per perangkat) ----
   const [uiPrefs, setUiPrefs] = useState(() => readUiPrefs());
+  // Area accordion yang sedang terbuka (default: Integrasi).
+  const [openKey, setOpenKey] = useState('integrasi');
+  const toggleKey = (k) => setOpenKey((cur) => (cur === k ? null : k));
   const saveUiPrefs = (patch) => {
     const next = { ...uiPrefs, ...patch };
     setUiPrefs(next);
@@ -248,18 +276,14 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
 
       <div className="space-y-4">
         {/* ---- Notifikasi & pengingat WA ---- */}
-        <div className="rounded-xl border border-line bg-surface p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
-              <Icon name="bell" size={18} />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-sm font-bold text-ink">Notifikasi & Pengingat</h2>
-              <p className="text-[11px] text-mutedfg">Kirim pengingat lewat WhatsApp</p>
-            </div>
-            {notifSaved && <Badge tone="green">Tersimpan</Badge>}
-          </div>
-
+        <SettingSection
+          icon="bell"
+          title="Notifikasi & Pengingat"
+          subtitle="Kirim pengingat lewat WhatsApp"
+          open={openKey === 'notifikasi'}
+          onToggle={() => toggleKey('notifikasi')}
+          badge={notifSaved && <Badge tone="green">Tersimpan</Badge>}
+        >
           {!notifLoaded ? (
             <p className="text-xs text-mutedfg">Memuat preferensi…</p>
           ) : (
@@ -360,47 +384,16 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
               </div>
             </div>
           )}
-        </div>
-
-        {/* ---- Tampilan (tema) ---- */}
-        <div className="rounded-xl border border-line bg-surface p-5">
-          <h2 className="mb-3 text-sm font-bold text-ink">Tampilan</h2>
-          <div className="grid grid-cols-3 gap-2">
-            {THEME_OPTIONS.map((opt) => (
-              <label key={opt.value} className="cursor-pointer">
-                <input
-                  type="radio"
-                  name="bm-theme"
-                  value={opt.value}
-                  checked={theme === opt.value}
-                  onChange={() => onThemeChange?.(opt.value)}
-                  className="peer sr-only"
-                />
-                <span className="flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl border border-line bg-surface px-2 text-[11px] font-medium text-mutedfg transition-colors hover:bg-muted peer-checked:border-brand/50 peer-checked:bg-brandtint peer-checked:text-brandfg peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-canvas">
-                  <Icon name={opt.icon} size={17} />
-                  {opt.label}
-                </span>
-              </label>
-            ))}
-          </div>
-          <p className="mt-2 text-[11px] text-mutedfg">
-            Pilihan langsung berlaku. <strong className="font-semibold text-ink">Sistem</strong> mengikuti
-            pengaturan terang/gelap HP.
-          </p>
-        </div>
+        </SettingSection>
 
         {/* ---- Privasi & Tampilan ---- */}
-        <div className="rounded-xl border border-line bg-surface p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
-              <Icon name="eye" size={18} />
-            </span>
-            <div>
-              <h2 className="text-sm font-bold text-ink">Privasi & Tampilan</h2>
-              <p className="text-[11px] text-mutedfg">Berlaku di perangkat ini</p>
-            </div>
-          </div>
-
+        <SettingSection
+          icon="eye"
+          title="Privasi & Tampilan"
+          subtitle="Berlaku di perangkat ini"
+          open={openKey === 'privasi'}
+          onToggle={() => toggleKey('privasi')}
+        >
           <div className="space-y-4">
             <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-canvas px-3.5">
               <input
@@ -452,21 +445,42 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
                 <span className="block text-[11px] text-mutedfg">Rapatkan jarak antar-kartu</span>
               </span>
             </label>
-          </div>
-        </div>
 
-        {/* ---- Integrasi Lanjutan ---- */}
-        <div className="rounded-xl border border-line bg-surface p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
-              <Icon name="sparkles" size={18} />
-            </span>
             <div>
-              <h2 className="text-sm font-bold text-ink">Integrasi Lanjutan</h2>
-              <p className="text-[11px] text-mutedfg">Layanan yang terhubung</p>
+              <p className="mb-2 text-xs font-semibold text-mutedfg">Tema</p>
+              <div className="grid grid-cols-3 gap-2">
+                {THEME_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="cursor-pointer">
+                    <input
+                      type="radio"
+                      name="bm-theme"
+                      value={opt.value}
+                      checked={theme === opt.value}
+                      onChange={() => onThemeChange?.(opt.value)}
+                      className="peer sr-only"
+                    />
+                    <span className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border border-line bg-surface px-2 text-[11px] font-medium text-mutedfg transition-colors hover:bg-muted peer-checked:border-brand/50 peer-checked:bg-brandtint peer-checked:text-brandfg peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-canvas">
+                      <Icon name={opt.icon} size={16} />
+                      {opt.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11px] text-mutedfg">
+                <strong className="font-semibold text-ink">Sistem</strong> mengikuti pengaturan terang/gelap HP.
+              </p>
             </div>
           </div>
+        </SettingSection>
 
+        {/* ---- Integrasi Lanjutan ---- */}
+        <SettingSection
+          icon="sparkles"
+          title="Integrasi Lanjutan"
+          subtitle="Layanan yang terhubung"
+          open={openKey === 'integrasi'}
+          onToggle={() => toggleKey('integrasi')}
+        >
           <div className="space-y-4">
             {/* Daftar integrasi */}
             <div className="divide-y divide-line rounded-xl border border-line bg-canvas">
@@ -569,20 +583,16 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
               {waSaved && <p className="mt-1.5 text-[11px] font-medium text-green">Target tersimpan.</p>}
             </div>
           </div>
-        </div>
+        </SettingSection>
 
         {/* ---- Keamanan Sesi ---- */}
-        <div className="rounded-xl border border-line bg-surface p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
-              <Icon name="lock" size={18} />
-            </span>
-            <div>
-              <h2 className="text-sm font-bold text-ink">Keamanan Sesi</h2>
-              <p className="text-[11px] text-mutedfg">Cara masuk & sesi aktif</p>
-            </div>
-          </div>
-
+        <SettingSection
+          icon="lock"
+          title="Keamanan Sesi"
+          subtitle="Cara masuk & sesi aktif"
+          open={openKey === 'keamanan'}
+          onToggle={() => toggleKey('keamanan')}
+        >
           <div className="space-y-4">
             {/* Indikator metode login */}
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-canvas px-3.5 py-3">
@@ -648,20 +658,16 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
               )}
             </div>
           </div>
-        </div>
+        </SettingSection>
 
         {/* ---- Data & Cadangan ---- */}
-        <div className="rounded-xl border border-line bg-surface p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
-              <Icon name="download" size={18} />
-            </span>
-            <div>
-              <h2 className="text-sm font-bold text-ink">Data & Cadangan</h2>
-              <p className="text-[11px] text-mutedfg">Ekspor & pulihkan data keluarga</p>
-            </div>
-          </div>
-
+        <SettingSection
+          icon="download"
+          title="Data & Cadangan"
+          subtitle="Ekspor & pulihkan data keluarga"
+          open={openKey === 'data'}
+          onToggle={() => toggleKey('data')}
+        >
           <div className="space-y-3">
             <button
               type="button"
@@ -690,7 +696,7 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
             />
             {bkMsg && <p className="text-center text-xs font-medium text-mutedfg">{bkMsg}</p>}
           </div>
-        </div>
+        </SettingSection>
       </div>
     </section>
   );
