@@ -82,7 +82,7 @@ function MomentCard({ moment, canWrite, onEdit, onDelete }) {
 }
 
 /* Form tambah/ubah momen (bottom sheet sederhana). */
-function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto }) {
+function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto, googleConnected }) {
   const [title, setTitle] = useState(initial?.title || '');
   const [category, setCategory] = useState(initial?.category || 'lainnya');
   const [date, setDate] = useState(initial?.date || new Date().toISOString().slice(0, 10));
@@ -100,6 +100,10 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto }) {
       return;
     }
     setError('');
+    if (photoFile && !googleConnected) {
+      setError('Hubungkan Google dulu (Pengaturan → Integrasi) untuk mengunggah foto.');
+      return;
+    }
     let finalPhoto = photoUrl;
     if (photoFile && onUploadPhoto) {
       setUploading(true);
@@ -185,6 +189,11 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto }) {
               if (f) setPhotoFile(f);
             }}
           />
+          {photoFile && !googleConnected && (
+            <p className="mt-2 rounded-lg bg-toneamber/10 px-3 py-2 text-[11px] text-toneamberfg">
+              Foto belum bisa diunggah sampai Google terhubung (Pengaturan → Integrasi). Simpan momen tanpa foto dulu.
+            </p>
+          )}
         </div>
 
         {/* Judul */}
@@ -234,7 +243,7 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto }) {
   );
 }
 
-export function MomentsComp({ moments = [], canWrite = false, onSave, onDelete, onUploadPhoto }) {
+export function MomentsComp({ moments = [], canWrite = false, onSave, onDelete, onUploadPhoto, googleConnected = false }) {
   const [form, setForm] = useState(null); // { mode: 'add' } | { mode: 'edit', moment }
 
   const openAdd = () => setForm({ mode: 'add' });
@@ -270,6 +279,7 @@ export function MomentsComp({ moments = [], canWrite = false, onSave, onDelete, 
         <MomentForm
           initial={form.mode === 'edit' ? form.moment : null}
           canWrite={canWrite}
+          googleConnected={googleConnected}
           onCancel={() => setForm(null)}
           onUploadPhoto={onUploadPhoto}
           onSubmit={async (data) => {

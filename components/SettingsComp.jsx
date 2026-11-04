@@ -503,7 +503,7 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
             <div className="divide-y divide-line rounded-xl border border-line bg-canvas">
               {[
                 { nama: 'Google Calendar', ket: 'Agenda & tagihan', status: gcal.connected ? 'Tersambung' : 'Belum terhubung', tone: gcal.connected ? 'green' : 'gray' },
-                { nama: 'Google Photos', ket: 'Foto Momen Keluarga', status: gcal.connected ? 'Siap (via Google)' : 'Butuh koneksi Google', tone: gcal.connected ? 'green' : 'amber' },
+                { nama: 'Google Photos', ket: 'Foto Momen Keluarga', status: gcal.photosEnabled ? 'Siap' : (gcal.connected ? 'Perlu izin foto' : 'Butuh koneksi Google'), tone: gcal.photosEnabled ? 'green' : (gcal.connected ? 'amber' : 'gray') },
                 { nama: 'WhatsApp / Fonnte', ket: 'Pengingat & digest', status: 'Terpasang', tone: 'green' },
               ].map((row) => (
                 <div key={row.nama} className="flex items-center gap-3 px-3.5 py-2.5">
