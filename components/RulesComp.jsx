@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Icon } from './Icon';
-import { Badge, CTA_CLASS } from './ui';
+import { Badge, CTA_CLASS, CurrencyInput } from './ui';
 import { settingsApi } from '../services/client';
 
 const RULE_TYPES = [
@@ -170,11 +170,9 @@ export function RulesComp() {
           {(draft.type === 'category_threshold' || draft.type === 'large_txn') && (
             <div>
               <label className="mb-1 block text-[11px] text-mutedfg">Ambang nominal (Rp)</label>
-              <input
-                type="number"
-                min="0"
+              <CurrencyInput
                 value={draft.threshold}
-                onChange={(e) => setDraft({ ...draft, threshold: Number(e.target.value) })}
+                onChange={(n) => setDraft({ ...draft, threshold: n })}
                 className={inputCls}
               />
             </div>

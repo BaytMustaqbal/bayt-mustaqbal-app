@@ -11,7 +11,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { AccountModal } from './components/AccountModal';
 import { ReceiptScanner } from './components/ReceiptScanner';
-import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, FamilyList, initialsOf } from './components/ui';
+import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, FamilyList, initialsOf, Badge } from './components/ui';
 import ShoppingList from './components/ShoppingListComp';
 import Service from './components/ServiceComp';
 import SettingsComp from './components/SettingsComp';
@@ -206,6 +206,7 @@ const buildDataBundle = (apiData, currentUser) => {
     familyContacts: LOCAL_SEED.familyContacts,
     expenses,
     income,
+    scheduledExpenses: apiData?.scheduledExpenses || [],
     tasks: LOCAL_SEED.tasks,
     notes: apiData?.notes || [],
     budget: {
@@ -216,8 +217,6 @@ const buildDataBundle = (apiData, currentUser) => {
         needs: [{ id: 'n1', label: 'Cicilan rumah/sewa' }, { id: 'n2', label: 'Belanja bahan makanan & beras' }, { id: 'n3', label: 'Tagihan utilitas (listrik/air/internet)' }, { id: 'n4', label: 'Transportasi (BBM/angkutan umum)' }, { id: 'n5', label: 'Sekolah anak' }, { id: 'n6', label: 'Asuransi kesehatan' }],
         wants: [{ id: 'w1', label: 'Makan di luar/hangout' }, { id: 'w2', label: 'Hobi & hiburan' }, { id: 'w3', label: 'Langganan streaming' }, { id: 'w4', label: 'Liburan/travelling' }],
         savings: [{ id: 's1', label: 'Dana darurat (target 3�6� pengeluaran bulanan)' }, { id: 's2', label: 'Tabungan' }, { id: 's3', label: 'Investasi' }, { id: 's4', label: 'Pembayaran cicilan/utang' }],
-        // Scheduled expenses dari API (atau array kosong kalau belum ada)
-        scheduledExpenses: apiData?.scheduledExpenses || [],
       },
     },
     monthlyTrend: computeMonthlyTrend(expenses),
@@ -303,6 +302,16 @@ const toFormValues = (section, item) => {
       nama: item.nama || '',
       intervalType: item.intervalType || 'km',
       intervalValue: String(item.intervalValue || 3000),
+    };
+  }
+  if (section === 'scheduledTemplate') {
+    return {
+      name: item.name || '',
+      amount: String(item.amount ?? ''),
+      category: item.category || 'lainnya',
+      day: String(item.day ?? 1),
+      bucket: item.bucket || 'auto',
+      active: item.active !== false,
     };
   }
   return {};
@@ -434,7 +443,15 @@ const fetchApiData = async () => {
     try { budget.pos = JSON.parse(budgetSettings.budget_pos); } catch {}
   }
 
-  return { schedule, expenses, income, notes, budget, users };
+  let scheduledExpenses = [];
+  if (budgetSettings.scheduled_expenses) {
+    try {
+      const parsed = JSON.parse(budgetSettings.scheduled_expenses);
+      if (Array.isArray(parsed)) scheduledExpenses = parsed;
+    } catch {}
+  }
+
+  return { schedule, expenses, income, notes, budget, scheduledExpenses, users };
 };
 
 /* Label status keluarga dari kolom family_role backend */
@@ -1257,7 +1274,7 @@ const deleteGoal = async (id) => {
       icon: 'wallet',
       fields: [
         { key: 'description', label: 'Deskripsi', type: 'text', required: true, placeholder: 'contoh: Bahan masakan mingguan' },
-        { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 150000' },
+        { key: 'amount', label: 'Nominal (Rp)', type: 'currency', required: true, min: 0, placeholder: 'Rp 0' },
         { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
         { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: getBudgetCategoryOptions()[0].value, options: getBudgetCategoryOptions() },
         // Keranjang anggaran: "Otomatis" = ikut kategori (lihat CATEGORY_BUCKET
@@ -1281,7 +1298,7 @@ const deleteGoal = async (id) => {
       icon: 'wallet',
       fields: [
         { key: 'description', label: 'Sumber / Keterangan', type: 'text', required: true, placeholder: 'contoh: Gaji bulan ini, Projek desain' },
-        { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 8000000' },
+        { key: 'amount', label: 'Nominal (Rp)', type: 'currency', required: true, min: 0, placeholder: 'Rp 0' },
         { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
         { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(INCOME_CATEGORIES)[0].value, options: catOptions(INCOME_CATEGORIES) },
       ],
@@ -1360,8 +1377,8 @@ const deleteGoal = async (id) => {
       icon: 'repeat',
       fields: [
         { key: 'name', label: 'Nama template', type: 'text', required: true, placeholder: 'contoh: Bulanan listrik' },
-        { key: 'amount', label: 'Nominal (Rp)', type: 'number', required: true, min: 0, placeholder: 'contoh: 50000' },
-        { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'lainnya', options: [{ value: 'lainnya', label: 'Lainnya' }] },
+        { key: 'amount', label: 'Nominal (Rp)', type: 'currency', required: true, min: 0, placeholder: 'Rp 0' },
+        { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'utilitas', options: [...catOptions(FINANCE_CATEGORIES), { value: 'lainnya', label: 'Lainnya' }] },
         { key: 'day', label: 'Hari jatuh tempo', type: 'number', required: true, min: 1, max: 31, defaultValue: 1, placeholder: '1-31' },
         { key: 'bucket', label: 'Keranjang', type: 'select', required: true, defaultValue: 'auto', options: [{ value: 'auto', label: 'Otomatis' }, { value: 'needs', label: 'Kebutuhan' }, { value: 'wants', label: 'Keinginan' }, { value: 'savings', label: 'Tabungan & Utang' }] },
         { key: 'active', label: 'Aktif', type: 'checkbox', help: 'Nonaktifkan template jika tidak digunakan' },
@@ -1375,7 +1392,7 @@ const deleteGoal = async (id) => {
       fields: [
         { key: 'nama', label: 'Nama item', type: 'text', required: true, placeholder: 'contoh: Beras 5 kg' },
         { key: 'qty', label: 'Jumlah', type: 'number', required: true, min: 1, defaultValue: 1, placeholder: '1' },
-        { key: 'harga', label: 'Harga per unit (Rp)', type: 'number', min: 0, defaultValue: 0, placeholder: '0' },
+        { key: 'harga', label: 'Harga per unit (Rp)', type: 'currency', min: 0, defaultValue: 0, placeholder: 'Rp 0' },
       ],
     },
     service: {
@@ -2183,56 +2200,74 @@ const deleteGoal = async (id) => {
   // Simpan template pengeluaran terjadwal
   const saveScheduledTemplate = async (values) => {
     const { name, amount, category, day, bucket, active } = values;
-    const template = {
-      id: Date.now(),
+    const editId = editing && editing.section === 'scheduledTemplate' ? editing.id : null;
+
+    const buildTpl = (id, tpl) => ({
+      id,
       name,
       amount: Number(amount) || 0,
       category: category || 'lainnya',
       day: Number(day) || 1,
       bucket: bucket || 'auto',
       active: active !== false,
-      lastRunMonth: null,
-    };
+      lastRunMonth: tpl ? tpl.lastRunMonth : null,
+    });
 
-    // Simpan ke settings API
     const key = 'scheduled_expenses';
     const existingValue = (await settingsApi.fetchAll()).find((s) => s.key === key);
-    let value = existingValue ? existingValue.value : '[]';
-
-    // Parse existing dan tambahkan template baru
     let templates = [];
     try {
-      templates = JSON.parse(value);
+      templates = JSON.parse(existingValue ? existingValue.value : '[]');
     } catch {}
 
-    // Cek apakah template dengan nama sama sudah ada
-    const exists = templates.some((t) => t.name === name);
-    if (exists) {
-      pushToast({ message: `Template "${name}" sudah ada`, duration: 3000, tone: 'warning' });
-      return;
+    let nextTemplates;
+    if (editId) {
+      const idx = templates.findIndex((t) => String(t.id) === String(editId));
+      if (idx < 0) {
+        pushToast({ message: 'Template tidak ditemukan.', duration: 3000, tone: 'danger' });
+        return;
+      }
+      nextTemplates = templates.map((t, i) => (i === idx ? buildTpl(t.id, t) : t));
+    } else {
+      if (templates.some((t) => t.name === name)) {
+        pushToast({ message: `Template "${name}" sudah ada`, duration: 3000, tone: 'warning' });
+        return;
+      }
+      nextTemplates = [...templates, buildTpl(Date.now(), null)];
     }
-
-    templates.push(template);
-    value = JSON.stringify(templates);
 
     // Simpan ke settings API
     if (isOnline) {
       try {
-        await settingsApi.upsert(key, value);
+        await settingsApi.upsert(key, JSON.stringify(nextTemplates));
         pushToast({ message: 'Template pengeluaran terjadwal disimpan', duration: 2500 });
-      } catch (err) {
+      } catch {
         pushToast({ message: 'Template disimpan Lokal (gagal sinkron)', duration: 4000, tone: 'warning' });
       }
     } else {
       pushToast({ message: 'Template disimpan Lokal (tidak ada koneksi)', duration: 3000 });
     }
 
-    // Update state lokal
-    const templatesRef = data?.scheduledExpenses || [];
-    saveData({
-      ...data,
-      scheduledExpenses: [...templatesRef, template],
-    });
+    // Update state lokal (jadikan array settings sebagai sumber kebenaran)
+    saveData({ ...data, scheduledExpenses: nextTemplates });
+  };
+
+  const deleteScheduledTemplate = async (id) => {
+    const key = 'scheduled_expenses';
+    const existingValue = (await settingsApi.fetchAll()).find((s) => s.key === key);
+    let templates = [];
+    try {
+      templates = JSON.parse(existingValue ? existingValue.value : '[]');
+    } catch {}
+    const next = templates.filter((t) => String(t.id) !== String(id));
+
+    if (isOnline) {
+      try {
+        await settingsApi.upsert(key, JSON.stringify(next));
+      } catch { /* offline: tetap hapus lokal */ }
+    }
+    saveData({ ...data, scheduledExpenses: next });
+    pushToast({ message: 'Template pengeluaran terjadwal dihapus', duration: 2500 });
   };
 
 // Setelah daftar akun / simpan profil: segarkan data + perbarui currentUser
@@ -2518,6 +2553,121 @@ const deleteGoal = async (id) => {
     () => toCalendarEvents({ ...data, bills: tagihans, moments }),
     [data, tagihans, moments]
   );
+
+  // ---- Daftar Belanja (catatan kategori 'belanja') ----
+  // Daftar belanja bulanan dikelola sebagai catatan khusus (judul
+  // "Daftar Belanja · YYYY-MM"); item disimpan sebagai JSON di `body`.
+  const shoppingMonthKey = () => monthKeyOf(new Date());
+  const findShoppingNote = () =>
+    (dataRef.current.notes || []).find(
+      (n) => n.category === SHOPPING_CATEGORY && n.title === monthTitle(shoppingMonthKey())
+    ) || null;
+
+  // Simpan state belanja: optimis ke lokal, lalu sinkron ke backend.
+  const applyShoppingState = async (state) => {
+    const current = dataRef.current;
+    const title = monthTitle(shoppingMonthKey());
+    const body = serializeShopping(state);
+    const nextNotes = current.notes || [];
+    const idx = nextNotes.findIndex(
+      (n) => n.category === SHOPPING_CATEGORY && n.title === title
+    );
+    if (idx >= 0) {
+      const updated = { ...nextNotes[idx], body };
+      saveData({ ...current, notes: nextNotes.map((n, i) => (i === idx ? updated : n)) });
+      try {
+        await notesApi.update(nextNotes[idx].id, { title, body, category: SHOPPING_CATEGORY, pinned: false }, currentUser);
+      } catch { /* offline: tetap simpan lokal */ }
+    } else {
+      try {
+        const created = await notesApi.create({ title, body, category: SHOPPING_CATEGORY, pinned: false }, currentUser);
+        saveData({ ...current, notes: [...nextNotes, created] });
+      } catch {
+        const local = {
+          id: `local-shop-${Date.now()}`,
+          title,
+          body,
+          category: SHOPPING_CATEGORY,
+          pinned: false,
+          author: currentUser?.name || '',
+          updatedAt: todayKey(),
+        };
+        saveData({ ...current, notes: [...nextNotes, local] });
+      }
+    }
+  };
+
+  const getOrCreateShoppingNote = () => {
+    const existing = findShoppingNote();
+    return { note: existing, state: existing ? parseShoppingNote(existing) : emptyShopping() };
+  };
+
+  const addShoppingItem = async (values) => {
+    const { state } = getOrCreateShoppingNote();
+    await applyShoppingState({ ...state, items: [...state.items, newShoppingItem(values)] });
+  };
+
+  const toggleShoppingItem = async (id) => {
+    const { state } = getOrCreateShoppingNote();
+    await applyShoppingState({
+      ...state,
+      items: state.items.map((it) => (it.id === id ? { ...it, checked: !it.checked } : it)),
+    });
+  };
+
+  const removeShoppingItem = async (id) => {
+    const { state } = getOrCreateShoppingNote();
+    await applyShoppingState({ ...state, items: state.items.filter((it) => it.id !== id) });
+  };
+
+  const saveShoppingAsTemplate = async () => {
+    const { state } = getOrCreateShoppingNote();
+    const body = JSON.stringify({ v: 1, items: toTemplateItems(state.items), selesai: false, expenseId: null });
+    const current = dataRef.current;
+    const nextNotes = current.notes || [];
+    const idx = nextNotes.findIndex(
+      (n) => n.category === SHOPPING_CATEGORY && n.title === SHOPPING_TEMPLATE_TITLE
+    );
+    if (idx >= 0) {
+      const updated = { ...nextNotes[idx], body };
+      saveData({ ...current, notes: nextNotes.map((n, i) => (i === idx ? updated : n)) });
+      try {
+        await notesApi.update(nextNotes[idx].id, { title: SHOPPING_TEMPLATE_TITLE, body, category: SHOPPING_CATEGORY, pinned: false }, currentUser);
+      } catch { /* offline */ }
+    } else {
+      try {
+        const created = await notesApi.create({ title: SHOPPING_TEMPLATE_TITLE, body, category: SHOPPING_CATEGORY, pinned: false }, currentUser);
+        saveData({ ...current, notes: [...nextNotes, created] });
+      } catch {
+        saveData({
+          ...current,
+          notes: [
+            ...nextNotes,
+            { id: `local-shop-tpl-${Date.now()}`, title: SHOPPING_TEMPLATE_TITLE, body, category: SHOPPING_CATEGORY, pinned: false, author: currentUser?.name || '', updatedAt: todayKey() },
+          ],
+        });
+      }
+    }
+  };
+
+  const finishShopping = async () => {
+    const { note, state } = getOrCreateShoppingNote();
+    if (!note || !state.items.length) return;
+    const total = sumItems(state.items, true);
+    try {
+      const result = await txn.create({
+        category: SHOPPING_CATEGORY,
+        description: `${monthTitle(shoppingMonthKey())} (beres)`,
+        amount: total,
+        date: todayKey(),
+        bucket: 'auto',
+      });
+      addItemToState('expenses', result);
+      await applyShoppingState({ ...state, selesai: true, expenseId: result.id });
+    } catch {
+      pushToast({ message: 'Gagal mencatat belanja sebagai pengeluaran.', duration: 4000, tone: 'danger' });
+    }
+  };
 
   const renderSection = () => {
     switch (activeSection) {
@@ -2859,17 +3009,6 @@ const deleteGoal = async (id) => {
               </button>
               <button
                 type="button"
-                onClick={() => setFinanceMode('anggaran')}
-                aria-pressed={financeMode === 'anggaran'}
-                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                  financeMode === 'anggaran' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
-                }`}
-              >
-                <Icon name="pieChart" size={16} />
-                Anggaran
-              </button>
-              <button
-                type="button"
                 onClick={() => setFinanceMode('pemasukan')}
                 aria-pressed={financeMode === 'pemasukan'}
                 className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
@@ -2878,6 +3017,17 @@ const deleteGoal = async (id) => {
               >
                 <Icon name="trendingUp" size={16} />
                 Pemasukan
+              </button>
+              <button
+                type="button"
+                onClick={() => setFinanceMode('anggaran')}
+                aria-pressed={financeMode === 'anggaran'}
+                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                  financeMode === 'anggaran' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                }`}
+              >
+                <Icon name="pieChart" size={16} />
+                Anggaran
               </button>
             </div>
 
@@ -3241,7 +3391,29 @@ const deleteGoal = async (id) => {
                             {tpl.frequency ? ` • ${tpl.frequency}` : ''}
                           </p>
                         </div>
-                        {tpl.active === false ? <Badge tone="gray">Nonaktif</Badge> : <Badge tone="green">Aktif</Badge>}
+                        <div className="flex shrink-0 items-center gap-1">
+                          {tpl.active === false ? <Badge tone="gray">Nonaktif</Badge> : <Badge tone="green">Aktif</Badge>}
+                          {canWrite && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openEdit('scheduledTemplate', tpl)}
+                                aria-label={`Edit ${tpl.name}`}
+                                className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+                              >
+                                <Icon name="edit" size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteScheduledTemplate(tpl.id)}
+                                aria-label={`Hapus ${tpl.name}`}
+                                className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-tonerose/10 hover:text-tonerosefg"
+                              >
+                                <Icon name="trash" size={15} />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>

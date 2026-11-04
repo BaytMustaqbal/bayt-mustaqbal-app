@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from './Icon';
-import { EmptyState, ProgressBar, CTA_CLASS, Badge } from './ui';
+import { EmptyState, ProgressBar, CTA_CLASS, Badge, CurrencyInput } from './ui';
 
 const inputCls =
   'min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand';
@@ -43,11 +43,11 @@ function GoalForm({ initial, onCancel, onSave }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="mb-1 block text-[11px] text-mutedfg">Target (Rp)</label>
-          <input type="number" min="0" value={targetAmount} onChange={(e) => setTargetAmount(Number(e.target.value))} className={inputCls} />
+          <CurrencyInput value={targetAmount} onChange={setTargetAmount} className={inputCls} />
         </div>
         <div>
           <label className="mb-1 block text-[11px] text-mutedfg">Terkumpul (Rp)</label>
-          <input type="number" min="0" value={currentAmount} onChange={(e) => setCurrentAmount(Number(e.target.value))} className={inputCls} />
+          <CurrencyInput value={currentAmount} onChange={setCurrentAmount} className={inputCls} />
         </div>
       </div>
       <div>

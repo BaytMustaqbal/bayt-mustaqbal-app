@@ -97,10 +97,18 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
             {greeting}, {user.name}
           </h1>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand/25 bg-brandtint px-3 py-1 text-[11px] font-semibold text-brandfg">
-          <Icon name="sparkles" size={13} />
-          Rumah Masa Depan
-        </span>
+        <button
+          type="button"
+          onClick={() => onNavigate('momen')}
+          className="group relative inline-flex shrink-0 cursor-pointer items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-4 py-1.5 text-[11px] font-semibold text-white shadow-glow transition-all duration-base ease-crisp hover:-translate-y-0.5 active:scale-95"
+        >
+          <Icon name="image" size={13} />
+          Momen Keluarga
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-500 ease-out group-hover:translate-x-full"
+          />
+        </button>
       </div>
 
       {/* ---------- Kartu hero: keuangan bulan ini ---------- */}
@@ -203,10 +211,11 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
       </div>
 
       {/* ---------- KPI ---------- */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <StatCard icon="calendar" tone="cyan" value={data.schedule.length} label="Agenda" hint="Jadwal aktif" />
-        <StatCard icon="users" tone="blue" value={data.family.length} label="Anggota" hint="Terdaftar" />
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
+        <StatCard compact icon="calendar" tone="cyan" value={data.schedule.length} label="Agenda" hint="Jadwal aktif" />
+        <StatCard compact icon="users" tone="blue" value={data.family.length} label="Anggota" hint="Terdaftar" />
         <StatCard
+          compact
           icon="trendingUp"
           tone="emerald"
           value={formatCurrencyShort(totals.incomeMonth)}
@@ -215,6 +224,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           hint="Gaji, side job & lainnya"
         />
         <StatCard
+          compact
           icon="tasks"
           tone="violet"
           value={`${totals.tasksDone}/${data.tasks.length}`}
@@ -222,6 +232,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           hint="Selesai · di Agenda"
         />
         <StatCard
+          compact
           icon="target"
           tone={totals.budgetLeft >= 0 ? 'emerald' : 'rose'}
           value={formatCurrencyShort(Math.abs(totals.budgetLeft))}
@@ -230,6 +241,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           hint={`dari ${formatCurrencyShort(budget.income)}`}
         />
         <StatCard
+          compact
           icon="wallet"
           tone={totals.net >= 0 ? 'emerald' : 'rose'}
           value={`${totals.net >= 0 ? '+' : '−'}${formatCurrencyShort(Math.abs(totals.net))}`}

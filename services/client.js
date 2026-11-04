@@ -284,6 +284,16 @@ export const notesApi = {
   },
 };
 
+/* ---- WhatsApp / Fonnte (backend /api/wa) ---- */
+export const waApi = {
+  test: async (target) => {
+    return apiFetch('/wa/test', {
+      method: 'POST',
+      body: JSON.stringify(target ? { target } : {}),
+    });
+  },
+};
+
 // Settings (budget income / ratios / pos)
 export const settingsApi = {
   fetchAll: async () => {

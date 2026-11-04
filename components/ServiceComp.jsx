@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from './Icon';
-import { Badge, Card, CTA_CLASS, ProgressBar } from './ui';
+import { Badge, Card, CTA_CLASS, ProgressBar, CurrencyInput } from './ui';
 import { sumServiceItems } from './service';
 
 /* Komponen Service - inventory dan riwayat service motor */
@@ -279,11 +279,9 @@ export function Service({
                         <option key={sp.id} value={sp.id}>{sp.nama}</option>
                       ))}
                     </select>
-                    <input
-                      type="number"
+                    <CurrencyInput
                       value={item.price}
-                      onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
-                      placeholder="Harga"
+                      onChange={(n) => handleItemChange(idx, 'price', n)}
                       className="w-20 rounded-xl border border-line bg-canvas px-2 text-sm"
                     />
                     <button

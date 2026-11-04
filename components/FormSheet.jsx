@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
-import { CTA_CLASS } from './ui';
+import { CTA_CLASS, CurrencyInput } from './ui';
 
 /* ============================================================================
    Bottom sheet "Tambah / Ubah" — formulir generik per section.
@@ -194,6 +194,16 @@ export function FormSheet({
                         aria-invalid={!!err}
                         aria-describedby={err ? `${fieldId}-err` : undefined}
                         className={`${inputCls} resize-y py-2.5 leading-relaxed`}
+                      />
+                    ) : f.type === 'currency' ? (
+                      <CurrencyInput
+                        id={fieldId}
+                        value={values[f.key] || 0}
+                        onChange={(n) => setVal(f.key, n)}
+                        placeholder={f.placeholder}
+                        aria-invalid={!!err}
+                        aria-describedby={err ? `${fieldId}-err` : undefined}
+                        className={`${inputCls} appearance-none`}
                       />
                     ) : (
                       <input

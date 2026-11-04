@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from './Icon';
-import { Badge, Card, CTA_CLASS, ProgressBar } from './ui';
+import { Badge, Card, CTA_CLASS, ProgressBar, CurrencyInput } from './ui';
 import { itemSubtotal, progressOf, sumItems } from './shoppingList';
 
 /* Daftar Belanja bulanan.
@@ -93,13 +93,10 @@ export function ShoppingList({
                 </label>
                 <label className="block min-w-0 flex-1 sm:w-36 sm:flex-none">
                   <span className="mb-1 block text-xs font-medium text-mutedfg">Estimasi harga</span>
-                  <input
-                    type="number"
-                    min="0"
-                    inputMode="numeric"
+                  <CurrencyInput
                     value={harga}
-                    onChange={(e) => setHarga(e.target.value)}
-                    placeholder="0"
+                    onChange={(n) => setHarga(n)}
+                    placeholder="Rp 0"
                     className="input-field min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 font-mono text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand"
                   />
                 </label>

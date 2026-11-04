@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { SectionHeader, Badge, CTA_CLASS } from './ui';
-import { settingsApi, gcalApi, auth, backupApi } from '../services/client';
+import { settingsApi, gcalApi, auth, backupApi, waApi } from '../services/client';
 import { readUiPrefs, writeUiPrefs, applyUiPrefs, UI_PREFS_DEFAULTS } from '../services/uiPrefs';
 import RulesComp from './RulesComp';
 import AuditComp from './AuditComp';
@@ -70,7 +70,7 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
   // ---- Privasi & tampilan (preferensi per perangkat) ----
   const [uiPrefs, setUiPrefs] = useState(() => readUiPrefs());
   // Area accordion yang sedang terbuka (default: Integrasi).
-  const [openKey, setOpenKey] = useState('integrasi');
+  const [openKey, setOpenKey] = useState(null);
   const toggleKey = (k) => setOpenKey((cur) => (cur === k ? null : k));
   const saveUiPrefs = (patch) => {
     const next = { ...uiPrefs, ...patch };
@@ -84,6 +84,10 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
   const [syncing, setSyncing] = useState(false);
   const [waTarget, setWaTarget] = useState('');
   const [waSaved, setWaSaved] = useState(false);
+  const [waTesting, setWaTesting] = useState(false);
+  const [waTestMsg, setWaTestMsg] = useState(null);
+  const [waSavedTarget, setWaSavedTarget] = useState(null);
+  const [editingWa, setEditingWa] = useState(false);
 
   const refreshSyncStatus = async () => {
     try {
@@ -112,7 +116,10 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
       .fetchAll()
       .then((rows) => {
         const row = (rows || []).find((s) => s.key === 'fonnte_target');
-        if (row?.value) setWaTarget(row.value);
+        if (row?.value) {
+          setWaTarget(row.value);
+          setWaSavedTarget(row.value);
+        }
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,11 +129,30 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
     setWaSaved(false);
     try {
       await settingsApi.upsert('fonnte_target', waTarget.trim());
+      setWaSavedTarget(waTarget.trim());
+      setEditingWa(false);
       setWaSaved(true);
       setTimeout(() => setWaSaved(false), 2500);
     } catch (e) {
       console.warn('Gagal simpan target WA:', e.message);
       setWaSaved(false);
+    }
+  };
+
+  const sendWaTest = async () => {
+    if (!waTarget.trim()) {
+      setWaTestMsg({ tone: 'amber', text: 'Isi nomor target WhatsApp dulu.' });
+      return;
+    }
+    setWaTesting(true);
+    setWaTestMsg(null);
+    try {
+      await waApi.test(waTarget.trim());
+      setWaTestMsg({ tone: 'green', text: 'Pesan uji terkirim ke target.' });
+    } catch (e) {
+      setWaTestMsg({ tone: 'danger', text: `Gagal kirim: ${e.message}` });
+    } finally {
+      setWaTesting(false);
     }
   };
 
@@ -579,25 +605,73 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
               <label htmlFor="wa-target" className="mb-1 block text-xs font-semibold text-mutedfg">
                 Target WhatsApp (nomor tujuan pengingat)
               </label>
-              <div className="flex gap-2">
-                <input
-                  id="wa-target"
-                  type="text"
-                  inputMode="numeric"
-                  value={waTarget}
-                  onChange={(e) => { setWaTarget(e.target.value); setWaSaved(false); }}
-                  placeholder="mis. 6281234567890"
-                  className="min-h-[44px] flex-1 rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none focus:border-brand"
-                />
-                <button
-                  type="button"
-                  onClick={saveWaTarget}
-                  className={`${CTA_CLASS} min-h-[44px] px-4 text-xs`}
+              {(!waSavedTarget || editingWa) ? (
+                <div className="space-y-2">
+                  <input
+                    id="wa-target"
+                    type="text"
+                    inputMode="numeric"
+                    value={waTarget}
+                    onChange={(e) => { setWaTarget(e.target.value); setWaSaved(false); setWaTestMsg(null); }}
+                    placeholder="mis. 6281234567890"
+                    className="min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none focus:border-brand"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={saveWaTarget}
+                      className={`${CTA_CLASS} min-h-[44px] flex-1 px-4 text-xs`}
+                    >
+                      Simpan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={sendWaTest}
+                      disabled={waTesting}
+                      className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-brand/25 bg-brandtint px-3 text-xs font-semibold text-brandfg transition-colors hover:bg-brand/10 disabled:opacity-60"
+                    >
+                      <Icon name="mail" size={14} />
+                      {waTesting ? 'Mengirim…' : 'Kirim Tes'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-canvas px-3.5 py-2.5">
+                  <Icon name="phone" size={15} />
+                  <span className="min-w-0 flex-1 truncate font-mono text-sm text-ink">{waSavedTarget}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingWa(true); setWaTestMsg(null); }}
+                    className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-brandfg transition-colors hover:bg-brandtint"
+                  >
+                    <Icon name="edit" size={13} /> Ubah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={sendWaTest}
+                    disabled={waTesting}
+                    className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-brand/25 bg-brandtint px-2.5 text-xs font-semibold text-brandfg transition-colors hover:bg-brand/10 disabled:opacity-60"
+                  >
+                    <Icon name="mail" size={13} />
+                    {waTesting ? 'Mengirim…' : 'Kirim Tes'}
+                  </button>
+                </div>
+              )}
+              {(waSaved || waTestMsg) && (
+                <p
+                  className={`mt-1.5 text-[11px] font-medium ${
+                    waTestMsg
+                      ? waTestMsg.tone === 'danger'
+                        ? 'text-danger'
+                        : waTestMsg.tone === 'amber'
+                        ? 'text-toneamberfg'
+                        : 'text-green'
+                      : 'text-green'
+                  }`}
                 >
-                  Simpan
-                </button>
-              </div>
-              {waSaved && <p className="mt-1.5 text-[11px] font-medium text-green">Target tersimpan.</p>}
+                  {waTestMsg ? waTestMsg.text : 'Target tersimpan.'}
+                </p>
+              )}
             </div>
           </div>
         </SettingSection>

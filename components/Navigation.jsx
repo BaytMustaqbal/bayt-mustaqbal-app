@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { Avatar } from './ui';
 import {
@@ -172,6 +172,51 @@ export function Navigation({
   const notifMenuRef = useRef(null);
   const lastScrollY = useRef(0);
 
+  // ---- Indikator aktif bergeser (bottom nav) ----
+  const ulRef = useRef(null);
+  const btnRefs = useRef({});
+  const [pill, setPill] = useState(null);
+
+  const updatePill = useCallback(() => {
+    const ul = ulRef.current;
+    if (!ul) return;
+    const ulRect = ul.getBoundingClientRect();
+    const btn = btnRefs.current[activeSection];
+    if (!btn) {
+      setPill(null);
+      return;
+    }
+    // Ukur elemen ikon (data-nav-icon), bukan tombol penuh, agar pil hanya
+    // membungkus ikon. Fallback ke tombol bila ikon belum ada.
+    const iconEl = btn.querySelector('[data-nav-icon]');
+    const el = iconEl || btn;
+    const r = el.getBoundingClientRect();
+    setPill({
+      left: r.left - ulRect.left,
+      top: r.top - ulRect.top,
+      width: r.width,
+      height: r.height,
+    });
+  }, [activeSection]);
+
+  useLayoutEffect(() => {
+    updatePill();
+  }, [updatePill]);
+
+  useEffect(() => {
+    const onResize = () => updatePill();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [updatePill]);
+
+  useEffect(() => {
+    const ul = ulRef.current;
+    if (!ul || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => updatePill());
+    ro.observe(ul);
+    return () => ro.disconnect();
+  }, [updatePill]);
+
   const closeMenu = () => {
     if (!openKey) return;
     setClosingKey(openKey);
@@ -306,7 +351,16 @@ export function Navigation({
 
       {/* Bottom navbar - tanpa dropdown, semua tombol buka langsung halamannya */}
       <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-40 rounded-t-[26px] border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-xl lg:hidden">
-        <ul className="relative mx-auto flex h-[68px] max-w-md items-stretch px-2 lg:max-w-6xl">
+        <ul ref={ulRef} className="relative mx-auto flex h-[68px] max-w-md items-stretch px-2 lg:max-w-6xl">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute rounded-full bg-brandtint ring-1 ring-brand/20 transition-all duration-[450ms] ease-out"
+            style={
+              pill
+                ? { left: pill.left, top: pill.top, width: pill.width, height: pill.height, opacity: 1 }
+                : { opacity: 0 }
+            }
+          />
           {BOTTOM_NAV_ITEMS.map((item) => {
             const isDashboard = item.id === 'dashboard';
             const active = activeSection === item.id;
@@ -314,25 +368,34 @@ export function Navigation({
             return (
               <li key={item.id} className="min-w-0 flex-1">
                 <button
+                  ref={(el) => {
+                    btnRefs.current[item.id] = el;
+                  }}
                   type="button"
                   onClick={() => onSectionChange(item.id)}
                   aria-current={active ? 'page' : undefined}
-                  className={`relative flex h-full w-full flex-col items-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors ${isDashboard ? 'justify-end pb-2.5' : 'justify-center'} ${isDashboard ? (active ? 'text-brandfg' : 'text-mutedfg') : active ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
+                  className={`relative flex h-full w-full select-none flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors touch-manipulation ${isDashboard ? (active ? 'text-brandfg' : 'text-mutedfg') : active ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
                 >
                   {isDashboard ? (
-                    <span
-                      aria-hidden="true"
-                      className={`group absolute left-1/2 top-0 grid h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition duration-slow ease-spring active:scale-[0.92] active:bg-ctahover active:shadow-e2 active:duration-fast active:ease-crisp ${active ? 'shadow-glow ring-brand/40' : ''}`}
-                    >
-                      <img
-                        src="/icons/icon-mark-square.png"
-                        alt=""
-                        className="h-auto w-11 object-contain drop-shadow-md transition-transform duration-base ease-crisp group-hover:-translate-y-0.5 group-hover:scale-110"
-                      />
-                    </span>
+                    <>
+                      <span
+                        data-nav-icon
+                        aria-hidden="true"
+                        className={`group absolute left-1/2 top-0 grid h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition-colors active:bg-ctahover ${active ? 'shadow-glow ring-brand/40' : ''}`}
+                      >
+                        <img
+                          src="/icons/icon-mark-square.png"
+                          alt=""
+                          className="h-auto w-11 object-contain drop-shadow-md"
+                        />
+                      </span>
+                      {/* Spacer tak terlihat agar posisi label sejajar dengan tombol lain */}
+                      <span aria-hidden="true" className="block h-8 w-11 shrink-0" />
+                    </>
                   ) : (
                     <span
-                      className={`grid h-8 w-11 shrink-0 place-items-center rounded-full transition duration-slow ease-spring hover:-translate-y-[1px] hover:opacity-90 active:-translate-y-[3px] active:scale-[1.08] active:shadow-glow active:duration-fast active:ease-crisp ${active ? 'bg-brandtint' : ''}`}
+                      data-nav-icon
+                      className="grid h-8 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp active:opacity-70"
                     >
                       <Icon name={navItem?.icon} size={19} />
                     </span>

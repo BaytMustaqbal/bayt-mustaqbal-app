@@ -7,7 +7,7 @@
 import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
 import { DonutChart } from './charts';
-import { Badge, Card, CTA_CLASS, ProgressBar, StatCard } from './ui';
+import { Badge, Card, CTA_CLASS, ProgressBar, StatCard, CurrencyInput } from './ui';
 import { BUCKETS } from './categories';
 import { allocate, DEFAULT_RATIOS, getBudget, ratiosValid, summarize } from './budget';
 
@@ -163,12 +163,9 @@ export function Budgeting({
                 <span className="mb-1 block text-xs font-medium text-mutedfg">
                   Pemasukan bulan ini (Rp)
                 </span>
-                <input
-                  type="number"
-                  min="0"
-                  inputMode="numeric"
+                <CurrencyInput
                   value={draft.income}
-                  onChange={(e) => setField('income', e.target.value)}
+                  onChange={(n) => setField('income', n)}
                   data-budget-input="income"
                   className={FIELD_CLASS}
                 />

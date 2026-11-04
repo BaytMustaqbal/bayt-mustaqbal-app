@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
-import { CTA_CLASS } from './ui';
+import { CTA_CLASS, CurrencyInput } from './ui';
 import { saranDariTeks, daftarItemDariTeks, jumlahItemDariTeks } from './receiptOcr';
 
 /* Pemindai struk: mode semi-auto.
@@ -246,15 +246,11 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
               <label htmlFor={`${titleId}-amount`} className="mb-1.5 block text-xs font-semibold text-mutedfg">
                 Nominal (Rp)
               </label>
-              <input
+              <CurrencyInput
                 id={`${titleId}-amount`}
-                type="number"
-                inputMode="numeric"
-                min={0}
                 className={INPUT_CLS}
                 value={form.amount}
-                onChange={set('amount')}
-                placeholder="contoh: 75000"
+                onChange={(n) => setForm((f) => ({ ...f, amount: n }))}
                 disabled={busy}
               />
             </div>

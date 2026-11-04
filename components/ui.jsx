@@ -1,7 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon } from './Icon';
 import { Sparkline } from './charts';
 import { FINANCE_CATEGORIES, INCOME_CATEGORIES, getCategoryMeta } from './categories';
+
+/* Format angka bulat jadi Rupiah, mis. 1000000 → "Rp 1.000.000" */
+const fmtRp = (n) => 'Rp ' + n.toLocaleString('id-ID');
+
+/* Input uang dengan format live: ketik angka → otomatis "Rp" + pemisah
+   ribuan. Menyimpan angka murni via onChange. Integer-only. */
+export function CurrencyInput({ value, onChange, id, className = '', placeholder, min, onBlur, onKeyDown, ...rest }) {
+  const [text, setText] = useState('');
+
+  useEffect(() => {
+    const n = Number(value) || 0;
+    setText(n ? fmtRp(n) : '');
+  }, [value]);
+
+  const handleChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    if (!digits) {
+      setText('');
+      onChange('');
+      return;
+    }
+    const n = parseInt(digits, 10);
+    setText(fmtRp(n));
+    onChange(n);
+  };
+
+  return (
+    <input
+      {...rest}
+      id={id}
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      value={text}
+      onChange={handleChange}
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
+      min={min}
+      placeholder={placeholder ?? 'Rp 0'}
+      className={className}
+    />
+  );
+}
 
 /* Tombol utama (CTA) — gradasi cobalt dengan teks putih (kontras 5,2:1).
    Ditulis sekali di sini supaya semua tombol utama konsisten. */
@@ -98,7 +141,7 @@ export function SectionHeader({ icon, title, subtitle, actionLabel, onAction, ac
 }
 
 /* Kartu statistik (KPI). `spark` = deret angka untuk grafik mini. */
-export function StatCard({ icon, label, value, hint, valueTitle, tone = 'cyan', spark, className = '' }) {
+export function StatCard({ icon, label, value, hint, valueTitle, tone = 'cyan', spark, className = '', compact = false }) {
   const tones = {
     cyan: 'bg-tonecyan/15 text-tonecyanfg',
     blue: 'bg-toneblue/15 text-tonebluefg',
@@ -107,11 +150,41 @@ export function StatCard({ icon, label, value, hint, valueTitle, tone = 'cyan', 
     amber: 'bg-toneamber/15 text-toneamberfg',
     rose: 'bg-tonerose/15 text-tonerosefg',
   };
+  // Varian compact: lebih rapat, hint sekunder dipindah ke tooltip.
+  const cardCls = compact ? 'p-3 sm:p-4' : 'p-4 sm:p-5';
+  const iconBox = compact ? 'h-8 w-8 rounded-lg' : 'h-10 w-10 rounded-xl sm:h-11 sm:w-11';
+  const iconSize = compact ? 16 : 20;
+  const valCls = compact
+    ? 'mt-2 font-mono text-sm font-bold tracking-tight text-ink sm:text-lg'
+    : 'mt-3 break-words font-mono text-base font-bold tracking-tight text-ink sm:mt-4 sm:text-2xl';
+  const labelCls = compact ? 'text-[11px] font-medium text-ink sm:text-xs' : 'text-xs font-medium text-ink sm:text-sm';
+  const title = compact ? [valueTitle, hint].filter(Boolean).join(' · ') : valueTitle;
+  if (compact) {
+    // Varian compact: ikon + angka sebaris, label di bawah, hint di tooltip.
+    return (
+      <Card className={`${cardCls} ${className}`}>
+        <div className="flex items-center gap-2.5">
+          <span className={`grid ${iconBox} shrink-0 place-items-center ${tones[tone]}`} aria-hidden="true">
+            <Icon name={icon} size={iconSize} />
+          </span>
+          <p className={`min-w-0 flex-1 truncate ${valCls}`} title={title}>
+            {value}
+          </p>
+          <p className={`shrink-0 text-right ${labelCls}`}>{label}</p>
+          {spark && (
+            <span className="hidden shrink-0 opacity-80 sm:block" aria-hidden="true">
+              <Sparkline data={spark} />
+            </span>
+          )}
+        </div>
+      </Card>
+    );
+  }
   return (
-    <Card className={`p-4 sm:p-5 ${className}`}>
+    <Card className={`${cardCls} ${className}`}>
       <div className="flex items-start justify-between gap-2">
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl sm:h-11 sm:w-11 ${tones[tone]}`} aria-hidden="true">
-          <Icon name={icon} size={20} />
+        <span className={`grid ${iconBox} shrink-0 place-items-center ${tones[tone]}`} aria-hidden="true">
+          <Icon name={icon} size={iconSize} />
         </span>
         {spark && (
           <span className="hidden shrink-0 opacity-80 sm:block" aria-hidden="true">
@@ -119,13 +192,10 @@ export function StatCard({ icon, label, value, hint, valueTitle, tone = 'cyan', 
           </span>
         )}
       </div>
-      <p
-        className="mt-3 break-words font-mono text-base font-bold tracking-tight text-ink sm:mt-4 sm:text-2xl"
-        title={valueTitle}
-      >
+      <p className={valCls} title={valueTitle}>
         {value}
       </p>
-      <p className="text-xs font-medium text-ink sm:text-sm">{label}</p>
+      <p className={labelCls}>{label}</p>
       {hint && <p className="truncate text-[11px] text-mutedfg sm:text-xs">{hint}</p>}
     </Card>
   );
