@@ -9,6 +9,7 @@ import {
   getConnection,
   pendingOutboxCount,
   processOutbox,
+  hasGcalScope,
 } from '../utils/gcal';
 
 const GOOGLE_AUTH = 'https://oauth2.googleapis.com';
@@ -22,6 +23,7 @@ export const gcalRoutes = new Hono<{ Bindings: Env }>();
 // GET /api/gcal/status — status koneksi Google Calendar milik user ini
 gcalRoutes.get('/status', async (c) => {
   const conn = await getConnection(c.env, c.get('userId'));
+  const photosScope = 'https://www.googleapis.com/auth/photoslibrary.appendonly';
   return c.json({
     ok: true,
     data: {
@@ -29,6 +31,7 @@ gcalRoutes.get('/status', async (c) => {
       email: conn?.google_email ?? null,
       calendar_id: conn?.calendar_id ?? null,
       expires_at: conn?.token_expires_at ?? null,
+      photosEnabled: hasGcalScope(conn, photosScope),
     },
     error: null,
   });
@@ -96,6 +99,7 @@ gcalRoutes.get('/callback', async (c) => {
     refresh_token?: string;
     expires_in?: number;
     id_token?: string;
+    scope?: string;
   };
 
   // refresh_token tidak selalu dikirim ulang; tanpa itu sinkron mati setelah
@@ -128,16 +132,16 @@ gcalRoutes.get('/callback', async (c) => {
     await c.env.DB.prepare(
       `UPDATE gcal_connections
          SET google_sub = ?, google_email = COALESCE(?, google_email), access_token = ?,
-             refresh_token = ?, token_expires_at = ?, updated_at = ?
+             refresh_token = ?, token_expires_at = ?, google_scopes = ?, updated_at = ?
        WHERE id = ?`
     )
-      .bind(sub, email, tokens.access_token, tokens.refresh_token, expiresAt, now.toISOString(), existing.id)
+      .bind(sub, email, tokens.access_token, tokens.refresh_token, expiresAt, tokens.scope || null, now.toISOString(), existing.id)
       .run();
   } else {
     await c.env.DB.prepare(
       `INSERT INTO gcal_connections
-         (id, user_id, google_sub, google_email, calendar_id, access_token, refresh_token, token_expires_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'primary', ?, ?, ?, ?, ?)`
+         (id, user_id, google_sub, google_email, calendar_id, access_token, refresh_token, token_expires_at, google_scopes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'primary', ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         crypto.randomUUID(),
@@ -147,6 +151,7 @@ gcalRoutes.get('/callback', async (c) => {
         tokens.access_token,
         tokens.refresh_token,
         expiresAt,
+        tokens.scope || null,
         now.toISOString(),
         now.toISOString()
       )

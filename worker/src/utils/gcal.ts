@@ -42,6 +42,12 @@ export interface GcalConnection {
   access_token: string;
   refresh_token: string;
   token_expires_at: string;
+  google_scopes?: string | null;
+}
+
+/** Cek apakah koneksi memiliki scope Google tertentu. */
+export function hasGcalScope(conn: GcalConnection | null | undefined, scope: string): boolean {
+  return !!(conn?.google_scopes && conn.google_scopes.split(' ').includes(scope));
 }
 
 export interface GcalEventInput {

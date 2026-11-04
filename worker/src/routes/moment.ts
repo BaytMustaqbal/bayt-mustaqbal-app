@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../types/env';
 import { canWriteGroup, forbiddenWrite, groupScope } from '../utils/group';
-import { getConnection, resolveConnectionUserId } from '../utils/gcal';
+import { getConnection, resolveConnectionUserId, hasGcalScope } from '../utils/gcal';
 import { uploadMomentPhoto } from '../utils/photos';
 
 // Daftar kategori momen yang tetap (sinkron dengan frontend).
@@ -97,6 +97,16 @@ momentRoutes.post('/upload', async (c) => {
   const conn = await getConnection(c.env, ownerUserId);
   if (!conn) {
     return c.json({ ok: false, data: null, error: { code: 'GCAL_NOT_CONNECTED', message: 'Koneksi Google tidak ditemukan.' } }, 400);
+  }
+  if (!hasGcalScope(conn, 'https://www.googleapis.com/auth/photoslibrary.appendonly')) {
+    return c.json({
+      ok: false,
+      data: null,
+      error: {
+        code: 'PHOTOS_SCOPE_MISSING',
+        message: 'Izin Google Photos belum diberikan. Putuskan lalu hubungkan ulang Google dan setujui izin foto.',
+      },
+    }, 400);
   }
 
   const form = await c.req.formData();
