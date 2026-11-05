@@ -97,18 +97,6 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
             {greeting}, {user.name}
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={() => onNavigate('momen')}
-          className="group relative inline-flex shrink-0 cursor-pointer items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] px-4 py-1.5 text-[11px] font-semibold text-white shadow-glow transition-all duration-base ease-crisp hover:-translate-y-0.5 active:scale-95"
-        >
-          <Icon name="image" size={13} />
-          Momen Keluarga
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-500 ease-out group-hover:translate-x-full"
-          />
-        </button>
       </div>
 
       {/* ---------- Kartu hero: keuangan bulan ini ---------- */}
@@ -203,7 +191,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           )}
         </div>
         <div className="grid grid-cols-4 gap-2.5 sm:gap-3">
-          <QuickAction icon="wallet" label="Keuangan" tone="cyan" onClick={() => onNavigate('expenses')} />
+          <QuickAction icon="image" label="Momen" tone="amber" onClick={() => onNavigate('momen')} />
           <QuickAction icon="calendar" label="Agenda" tone="blue" onClick={() => onNavigate('agenda')} />
           <QuickAction icon="note" label="Catatan" tone="violet" onClick={() => onNavigate('notes')} />
           <QuickAction icon="users" label="Keluarga" tone="emerald" onClick={() => onNavigate('family')} />
