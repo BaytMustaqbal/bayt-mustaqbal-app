@@ -111,9 +111,19 @@ export async function uploadMomentPhoto(
     throw new Error(`Google Photos batchCreate gagal (${create.status})`);
   }
   const data = (await create.json()) as {
-    newMediaItemResults?: { mediaItem?: { baseUrl?: string; productUrl?: string } }[];
+    newMediaItemResults?: {
+      mediaItem?: { baseUrl?: string; productUrl?: string };
+      status?: { code?: number; message?: string };
+    }[];
   };
-  const item = data.newMediaItemResults?.[0]?.mediaItem;
+  const first = data.newMediaItemResults?.[0];
+  // Google bisa mengembalikan status error per-item (mis. scope kurang, file
+  // tidak valid, uploadToken kedaluwarsa). Tampilkan pesan aslinya supaya
+  // bisa didiagnosa pengguna.
+  if (first?.status?.message) {
+    throw new Error(`Google Photos: ${first.status.message}`);
+  }
+  const item = first?.mediaItem;
   if (!item?.baseUrl) {
     throw new Error('Google Photos tidak mengembalikan media item');
   }
