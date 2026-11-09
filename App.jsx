@@ -589,6 +589,9 @@ export default function App() {
   // Auth: isLoggedIn = punya token yang valid. authChecking = sedang verify token.
   const [isLoggedIn, setIsLoggedIn] = useState(storedToken() ? true : false);
   const [authChecking, setAuthChecking] = useState(storedToken() ? true : false);
+  // authReady: baru true setelah verifikasi auth selesai (DEV: token dibersihkan;
+  // prod: /auth/me sudah diputuskan). Mencegah data-effect memakai token basi.
+  const [authReady, setAuthReady] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [authError, setAuthError] = useState('');
   const stored = getUser();
@@ -638,7 +641,7 @@ const [goals, setGoals] = useState([]);
 
 // Muat target tabungan dari API; migrasi sekali dari localStorage bila kosong
 useEffect(() => {
-  if (!isLoggedIn) return;
+  if (!isLoggedIn || !authReady) return;
   let alive = true;
   (async () => {
     let rows = [];
@@ -666,7 +669,7 @@ useEffect(() => {
   return () => {
     alive = false;
   };
-}, [isLoggedIn]);
+}, [isLoggedIn, authReady]);
 
 const addGoal = async (g) => {
   const created = await goalsApi.create(g);
@@ -800,7 +803,7 @@ const deleteGoal = async (id) => {
   // Muat tagihan dari API + migrasi sekali-jalan dari localStorage.
   // Berjalan setelah login (sebelum login API menjawab 401).
   useEffect(() => {
-    if (!isLoggedIn || tagihanMigrationStarted) return;
+    if (!isLoggedIn || !authReady || tagihanMigrationStarted) return;
     tagihanMigrationStarted = true;
     let alive = true;
     (async () => {
@@ -834,11 +837,11 @@ const deleteGoal = async (id) => {
     return () => {
       alive = false;
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, authReady]);
 
   // Muat momen keluarga dari API (setelah login). Gagal → diam-diam kosong.
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !authReady) return;
     let alive = true;
     momentsApi
       .fetch()
@@ -851,11 +854,11 @@ const deleteGoal = async (id) => {
     return () => {
       alive = false;
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, authReady]);
 
   // Muat analitik & insight setelah login.
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !authReady) return;
     let alive = true;
     insightApi
       .fetch()
@@ -866,7 +869,7 @@ const deleteGoal = async (id) => {
     return () => {
       alive = false;
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, authReady]);
 
   const refreshInsight = async () => {
     try {
@@ -1101,96 +1104,11 @@ const deleteGoal = async (id) => {
     }
   };
 
-  // UseEffect: Cek pengingat tagihan setiap hari (pukul 09:00 sore)
-  useEffect(() => {
-    // Fungsi format tanggal untuk perbandingan (hanya date part)
-    const formatDate = (dateStr) => {
-      if (!dateStr) return null;
-      return new Date(dateStr).toISOString().split('T')[0];
-    };
-
-    // Fungsi kirim ke Fonnte
-    const kirimFonnte = async (message, target) => {
-      try {
-        const result = await fetch('https://api.fonnte.net/v1/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_FONNTE_TOKEN}`,
-          },
-          body: JSON.stringify({ message, target }),
-        });
-        const data = await result.json();
-        return data;
-      } catch (err) {
-        console.error('Gagal kirim Fonnte:', err.message);
-        return null;
-      }
-    };
-
-    // Fungsi cek dan kirim pengingat
-    const cekPengingat = async () => {
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      
-      tagihans.forEach((tagihan) => {
-        if (!tagihan.dueDate) return;
-        
-        const dueDate = new Date(tagihan.dueDate);
-        const dueDateStr = dueDate.toISOString().split('T')[0];
-        
-        // Hitung selisih hari
-        const diffTime = Math.abs(dueDate - today) / 86400000;
-        const daysDiff = Math.round(diffTime);
-        
-        // Cek apakah sudah diberitahu hari ini
-        const alreadyNotifiedToday = tagihan.lastNotified === todayStr;
-        
-        // Jika tenggat hari ini (0 hari selisih) dan belum dikirim
-        if (daysDiff === 0 && !alreadyNotifiedToday) {
-          const message = `⚠️ *Hari Ini Tenggat Bayar!*\nTagihan *${tagihan.nama}* sebesar *Rp ${formatCurrencyShort(tagihan.amount)}* tenggat bayar hari ini. Segera lakukan pembayaran!`;
-          kirimFonnte(message, import.meta.env.VITE_FONNTE_TARGET || '').then(() => {
-            resetLastNotified(tagihan.id);
-          });
-          return;
-        }
-        
-        // Jika 7 hari sebelum tenggat dan belum dikirim
-        if (daysDiff === 7 && !alreadyNotifiedToday) {
-          const message = `⚠️ *Pengingat Bayar 7 Hari!*\nTagihan *${tagihan.nama}* sebesar *Rp ${formatCurrencyShort(tagihan.amount)}* tenggat bayar ${tagihan.dueDate}. Silakan segera bayar!`;
-          kirimFonnte(message, import.meta.env.VITE_FONNTE_TARGET || '').then(() => {
-            resetLastNotified(tagihan.id);
-          });
-          return;
-        }
-      });
-    };
-
-    // Jalankan cek setiap hari pukul 09:00 WIB
-    // Set timer untuk 9:00 sore setiap hari
-    const runOnce = async () => {
-      await cekPengingat();
-    };
-
-    // Set interval cek harian - cek setiap hari pada pukul 09:00
-    const intervalId = setInterval(async () => {
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = now.getMinutes();
-      
-      // Cek apakah sudah lewat 09:00 sore (17:00)
-      // Atau cek pagi 09:00
-      if (hours >= 9 && hours < 10) {
-        await cekPengingat();
-      }
-    }, 60000); // Cek setiap menit, tapi hanya jalan pada jam 09:00-09:01
-
-    // Jalankan sekali saat component mount
-    runOnce();
-
-    // Bersihkan interval saat component unmount
-    return () => clearInterval(intervalId);
-  }, [tagihans]);
+  /* UseEffect: Cek pengingat tagihan setiap hari (pukul 09:00 sore)
+       - Dinonaktifkan sementara karena API Fonnte (api.fonnte.net) tidak dapat
+         ter-resolve di environment ini. Pengiriman pengingat akan didisepakati
+         hanya melalui tombol "Kirim Tes" di halaman Pengaturan secara manual. */
+  // (effect lama dihapus: setInterval + runOnce yang memanggil kirimFonnte)
 
   // Hitung status tagihan (persentase, sisa, warna)
   const hitungStatusTagihan = (tagihan) => {
@@ -1451,6 +1369,8 @@ const deleteGoal = async (id) => {
   // dataRef menjaga snapshot terbaru untuk aksi yang berjalan belakangan
   // (mis. tombol "Urungkan" dari toast) tanpa closure basi.
   const dataRef = useRef(data);
+  // Ref untuk mencegah log error Fonnte berulang setiap interval tick
+  const sentFonnteError = React.useRef(false);
 
   const saveData = (next) => {
     dataRef.current = next;
@@ -1474,10 +1394,12 @@ const deleteGoal = async (id) => {
       localStorage.removeItem('bayt-mustaqbal-data-v2'); /* clear cache lama */
       setIsLoggedIn(false);
       setAuthChecking(false);
+      setAuthReady(true);
       return;
     }
     if (!storedToken()) {
       setAuthChecking(false);
+      setAuthReady(true);
       return;
     }
     setAuthChecking(true);
@@ -1517,7 +1439,10 @@ const deleteGoal = async (id) => {
           ? 'Sesi berakhir. Masuk lagi.'
           : 'Tidak dapat memverifikasi sesi.');
       })
-      .finally(() => setAuthChecking(false));
+      .finally(() => {
+        setAuthChecking(false);
+        setAuthReady(true);
+      });
   }, []);
 
   // ---- Fetch data from API when logged in ----
@@ -1563,11 +1488,11 @@ const deleteGoal = async (id) => {
 
   // Effect: load data ketika auth state berubah
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && authReady) {
       loadFromAPI();
       refreshGcalStatus();
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, authReady]);
 
   // Effect: auto-create scheduled expenses saat app mount
   // Cek template ? buat transaksi jika tanggal jatuh tempo belum dibuat bulan ini (hanya sekali per bulan)
@@ -1626,8 +1551,14 @@ const deleteGoal = async (id) => {
   }, [isLoggedIn, data]);
 
   // Effect: kirim notifikasi WA ke Fonnte jika scheduled expense due date tiba
+  // Gunakan flag permanent agar hanya kirim sekali per sesi, hindari looping console.error
+  const sentFonnteNotif = React.useRef(false);
+
   useEffect(() => {
-    if (!isLoggedIn || !data || !data.scheduledExpenses) return;
+    // Kirim notifikasi Fonnte dinonaktifkan sementara karena API
+    // api.fonnte.net tidak dapat ter-resolve di environment ini.
+    // Gunakan tombol "Kirim Tes" di halaman Pengaturan untuk pengiriman manual.
+    return;
 
     const fetchFonnte = async (token, message, target) => {
       try {
@@ -1639,10 +1570,14 @@ const deleteGoal = async (id) => {
           },
           body: JSON.stringify({ message, target }),
         });
-        const data = await result.json();
-        return data;
+        const resultData = await result.json();
+        return resultData;
       } catch (err) {
-        console.error('Gagal kirim Fonnte:', err.message);
+        // Hindari log error berulang setiap interval tick
+        if (!sentFonnteError.current) {
+          console.error('Gagal kirim Fonnte:', err.message);
+          sentFonnteError.current = true;
+        }
         return null;
       }
     };
@@ -1653,6 +1588,7 @@ const deleteGoal = async (id) => {
 
       if (!fonnteToken) {
         console.error('VITE_FONNTE_TOKEN not set');
+        sentFonnteNotif.current = false; // reset bila token hilang
         return;
       }
 
@@ -1678,14 +1614,14 @@ const deleteGoal = async (id) => {
 
     const today = new Date();
     sendFonnteNotifications();
-  }, [isLoggedIn, data, formatCurrencyShort]);
+  }, [isLoggedIn, data]);
 
   // Effect: reload data ketika online kembali
   useEffect(() => {
-    if (isOnline && isLoggedIn && data) {
+    if (isOnline && isLoggedIn && authReady && data) {
       loadFromAPI();
     }
-  }, [isOnline]);
+  }, [isOnline, authReady]);
 
   /* ---------- Dev auto-login ----------
      Hanya di development (Vite DEV), auto-fill kredensial dari .env.development
