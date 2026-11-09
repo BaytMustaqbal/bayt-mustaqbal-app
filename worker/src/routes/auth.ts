@@ -182,12 +182,35 @@ authRoutes.get('/me', async (c) => {
 // PUT /api/auth/me — update profil sendiri (nama + tanggal lahir)
 authRoutes.put('/me', async (c) => {
   const userId = c.get('userId');
-  const { nama, nickname, birth_date, avatar_url } = await c.req.json() as { nama?: string; nickname?: string | null; birth_date?: string | null; avatar_url?: string | null };
+  const caller = await c.env.DB.prepare('SELECT username FROM users WHERE id = ? AND void IS NULL').bind(userId).first() as any;
+  const isMaster = caller?.username === MASTER_USERNAME;
+  const { nama, nickname, birth_date, avatar_url, family_role, generasi, group_role } = await c.req.json() as {
+    nama?: string; nickname?: string | null; birth_date?: string | null; avatar_url?: string | null;
+    family_role?: string; generasi?: string; group_role?: string;
+  };
 
-  const existing = await c.env.DB.prepare('SELECT id, nama, nickname, birth_date, avatar_url FROM users WHERE id = ? AND void IS NULL')
+  const existing = await c.env.DB.prepare('SELECT id, nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, group_id FROM users WHERE id = ? AND void IS NULL')
     .bind(userId).first() as any;
   if (!existing) {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } }, 404);
+  }
+
+  // Validasi enum bila dikirim
+  const FAMILY_ROLES = ['suami', 'istri', 'anak', 'lainnya'];
+  const GENERASI = ['orangtua', 'anak', 'cucu'];
+  const GROUP_ROLES = ['kepala_keluarga', 'suami', 'istri', 'anak', 'cucu'];
+  if (family_role !== undefined && !FAMILY_ROLES.includes(family_role)) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'family_role tidak valid' } }, 400);
+  }
+  if (generasi !== undefined && !GENERASI.includes(generasi)) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'generasi tidak valid' } }, 400);
+  }
+  if (group_role !== undefined && !GROUP_ROLES.includes(group_role)) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'group_role tidak valid' } }, 400);
+  }
+  // Peran grup hanya bisa diubah master (anti self-promote)
+  if (group_role !== undefined && group_role !== existing.group_role && !isMaster) {
+    return c.json({ ok: false, data: null, error: { code: 'FORBIDDEN', message: 'Peran grup hanya bisa diubah oleh master.' } }, 403);
   }
 
   // Partial update: hanya field yang dikirim yang diubah (guard tipe: null/angka -> pakai nilai lama)
@@ -205,9 +228,23 @@ authRoutes.put('/me', async (c) => {
     if (avatar_url === null) newAvatar = null;
     else if (typeof avatar_url === 'string' && avatar_url.length <= 500_000) newAvatar = avatar_url || null;
   }
+  const newFamilyRole = family_role !== undefined ? family_role : existing.family_role;
+  const newGenerasi = generasi !== undefined ? generasi : existing.generasi;
+  const newGroupRole = group_role !== undefined ? group_role : existing.group_role;
+
+  // Unik Suami/Istri per grup bila status berubah
+  if ((newFamilyRole === 'suami' || newFamilyRole === 'istri') && existing.group_id && newFamilyRole !== existing.family_role) {
+    const dup = await c.env.DB.prepare(
+      'SELECT id FROM users WHERE group_id = ? AND family_role = ? AND void IS NULL AND id != ? LIMIT 1'
+    ).bind(existing.group_id, newFamilyRole, userId).first();
+    if (dup) {
+      return c.json({ ok: false, data: null, error: { code: 'CONFLICT', message: `Sudah ada akun dengan status ${newFamilyRole === 'suami' ? 'Suami' : 'Istri'} di grup ini.` } }, 409);
+    }
+  }
+
   const now = new Date().toISOString();
-  await c.env.DB.prepare('UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, updated_at = ? WHERE id = ? AND void IS NULL')
-    .bind(newNama, newNick, newBirth, newAvatar, now, userId).run();
+  await c.env.DB.prepare('UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, family_role = ?, generasi = ?, group_role = ?, updated_at = ? WHERE id = ? AND void IS NULL')
+    .bind(newNama, newNick, newBirth, newAvatar, newFamilyRole, newGenerasi, newGroupRole, now, userId).run();
   await logAudit(c.env, userId, c.get('groupId'), 'update_profile', 'users', userId);
 
   const user = await c.env.DB.prepare(
