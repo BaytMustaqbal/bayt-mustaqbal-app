@@ -99,6 +99,9 @@ export function AccountModal({
 
   const [profileNickname, setProfileNickname] = useState('');
   const [profileBirthDate, setProfileBirthDate] = useState('');
+  const [profileFamilyRole, setProfileFamilyRole] = useState('anak');
+  const [profileGenerasi, setProfileGenerasi] = useState('orangtua');
+  const [profileGroupRole, setProfileGroupRole] = useState('anak');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState('');
 
@@ -196,8 +199,11 @@ export function AccountModal({
     if (open) {
       setProfileNickname(user?.nickname || '');
       setProfileBirthDate(user?.birthDate || '');
+      setProfileFamilyRole(user?.family_role || 'anak');
+      setProfileGenerasi(user?.generasi || 'orangtua');
+      setProfileGroupRole(user?.group_role || 'anak');
     }
-  }, [open, user?.nickname, user?.birthDate]);
+  }, [open, user?.nickname, user?.birthDate, user?.family_role, user?.generasi, user?.group_role]);
 
   const fieldRefs = useRef({});
   const fileRef = useRef(null);
@@ -308,6 +314,9 @@ export function AccountModal({
         nama: name.trim(),
         nickname: profileNickname.trim() || null,
         birthDate: profileBirthDate || null,
+        familyRole: profileFamilyRole,
+        generasi: profileGenerasi,
+        groupRole: isMaster ? profileGroupRole : undefined,
       });
       onSaved?.(updated);
       setProfileSaved('Profil tersimpan.');
@@ -374,6 +383,7 @@ export function AccountModal({
   }`;
 
   return page ? (
+    <>
     <section className="app-fade-in">
       <div className="mb-3 flex items-center gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brandtint text-brandfg" aria-hidden="true">
@@ -502,6 +512,36 @@ export function AccountModal({
                 />
               </div>
             </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Status keluarga</label>
+              <select value={profileFamilyRole} onChange={(e) => { setProfileFamilyRole(e.target.value); setProfileSaved(''); }} className={inputCls}>
+                <option value="suami">Suami</option>
+                <option value="istri">Istri</option>
+                <option value="anak">Anak</option>
+                <option value="lainnya">Lainnya</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Posisi silsilah</label>
+              <select value={profileGenerasi} onChange={(e) => { setProfileGenerasi(e.target.value); setProfileSaved(''); }} className={inputCls}>
+                <option value="orangtua">Orangtua</option>
+                <option value="anak">Anak</option>
+                <option value="cucu">Cucu</option>
+              </select>
+            </div>
+            {isMaster && (
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-mutedfg">Peran grup</label>
+                <select value={profileGroupRole} onChange={(e) => { setProfileGroupRole(e.target.value); setProfileSaved(''); }} className={inputCls}>
+                  <option value="kepala_keluarga">Kepala Keluarga</option>
+                  <option value="suami">Suami</option>
+                  <option value="istri">Istri</option>
+                  <option value="anak">Anak</option>
+                  <option value="cucu">Cucu</option>
+                </select>
+              </div>
+            )}
 
             <button
               type="button"
@@ -646,85 +686,95 @@ export function AccountModal({
                 </ul>
               )}
             </div>
-
-            {/* Form edit anggota */}
-            {editingMember && (
-              <div className="space-y-3 rounded-2xl border border-brand/25 bg-surface p-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-bold text-ink">Edit: {memberForm.nama || editingMember.nama}</p>
-                  <button
-                    type="button"
-                    onClick={() => setEditingMember(null)}
-                    aria-label="Tutup form edit"
-                    className="grid h-9 w-9 place-items-center rounded-lg text-mutedfg hover:bg-muted hover:text-ink"
-                  >
-                    <Icon name="close" size={16} />
-                  </button>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Nama</label>
-                  <input type="text" value={memberForm.nama} onChange={(e) => setMemberForm((f) => ({ ...f, nama: e.target.value }))} className={inputCls} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Panggilan</label>
-                  <input type="text" value={memberForm.nickname} onChange={(e) => setMemberForm((f) => ({ ...f, nickname: e.target.value }))} className={inputCls} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Tanggal lahir</label>
-                  <input type="date" value={memberForm.birth_date} onChange={(e) => setMemberForm((f) => ({ ...f, birth_date: e.target.value }))} className={inputCls} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Status keluarga</label>
-                  <select value={memberForm.family_role} onChange={(e) => setMemberForm((f) => ({ ...f, family_role: e.target.value }))} className={inputCls}>
-                    <option value="suami">Suami</option>
-                    <option value="istri">Istri</option>
-                    <option value="anak">Anak</option>
-                    <option value="lainnya">Lainnya</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Posisi silsilah</label>
-                  <select value={memberForm.generasi} onChange={(e) => setMemberForm((f) => ({ ...f, generasi: e.target.value }))} className={inputCls}>
-                    <option value="orangtua">Orangtua</option>
-                    <option value="anak">Anak</option>
-                    <option value="cucu">Cucu</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Peran grup</label>
-                  <select value={memberForm.group_role} onChange={(e) => setMemberForm((f) => ({ ...f, group_role: e.target.value }))} className={inputCls}>
-                    <option value="kepala_keluarga">Kepala Keluarga</option>
-                    <option value="suami">Suami</option>
-                    <option value="istri">Istri</option>
-                    <option value="anak">Anak</option>
-                    <option value="cucu">Cucu</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Password baru (opsional)</label>
-                  <input type="password" value={memberForm.password} onChange={(e) => setMemberForm((f) => ({ ...f, password: e.target.value }))} placeholder="Kosongkan jika tidak diubah" className={inputCls} />
-                </div>
-
-                {memberNotice && (
-                  <p className={`text-center text-xs font-medium ${memberNotice.startsWith('Gagal') ? 'text-danger' : 'text-green'}`}>{memberNotice}</p>
-                )}
-
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setEditingMember(null)} className={`${CTA_CLASS} min-h-[48px] flex-1 bg-muted text-mutedfg`}>
-                    Batal
-                  </button>
-                  <button type="button" onClick={saveEditMember} disabled={memberSaving} className={`${CTA_CLASS} min-h-[48px] flex-[2]`}>
-                    {memberSaving ? <div className="ld-trio ld-xs inline-block align-middle" aria-hidden="true"><i></i><i></i><i></i></div> : <Icon name="check" size={16} />}
-                    {memberSaving ? 'Menyimpan…' : 'Simpan'}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
     </section>
+
+    {editingMember && (
+      <div className="fixed inset-0 z-[80] grid place-items-center p-4" role="dialog" aria-modal="true">
+        <button
+          type="button"
+          aria-label="Tutup form edit"
+          onClick={() => setEditingMember(null)}
+          className="absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm"
+        />
+        <div className="modal-panel relative max-h-[calc(100dvh_-_2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-surface/95 p-5 shadow-pop backdrop-blur-xl">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 text-base font-bold text-ink">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brandtint text-brandfg" aria-hidden="true">
+                <Icon name="edit" size={16} />
+              </span>
+              Edit: {memberForm.nama || editingMember.nama}
+            </h3>
+            <button type="button" onClick={() => setEditingMember(null)} aria-label="Tutup" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink">
+              <Icon name="close" size={18} />
+            </button>
+          </div>
+
+          <div className="space-y-3.5">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Nama</label>
+              <input type="text" value={memberForm.nama} onChange={(e) => setMemberForm((f) => ({ ...f, nama: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Panggilan</label>
+              <input type="text" value={memberForm.nickname} onChange={(e) => setMemberForm((f) => ({ ...f, nickname: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Tanggal lahir</label>
+              <input type="date" value={memberForm.birth_date} onChange={(e) => setMemberForm((f) => ({ ...f, birth_date: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Status keluarga</label>
+              <select value={memberForm.family_role} onChange={(e) => setMemberForm((f) => ({ ...f, family_role: e.target.value }))} className={inputCls}>
+                <option value="suami">Suami</option>
+                <option value="istri">Istri</option>
+                <option value="anak">Anak</option>
+                <option value="lainnya">Lainnya</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Posisi silsilah</label>
+              <select value={memberForm.generasi} onChange={(e) => setMemberForm((f) => ({ ...f, generasi: e.target.value }))} className={inputCls}>
+                <option value="orangtua">Orangtua</option>
+                <option value="anak">Anak</option>
+                <option value="cucu">Cucu</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Peran grup</label>
+              <select value={memberForm.group_role} onChange={(e) => setMemberForm((f) => ({ ...f, group_role: e.target.value }))} className={inputCls}>
+                <option value="kepala_keluarga">Kepala Keluarga</option>
+                <option value="suami">Suami</option>
+                <option value="istri">Istri</option>
+                <option value="anak">Anak</option>
+                <option value="cucu">Cucu</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Password baru (opsional)</label>
+              <input type="password" value={memberForm.password} onChange={(e) => setMemberForm((f) => ({ ...f, password: e.target.value }))} placeholder="Kosongkan jika tidak diubah" className={inputCls} />
+            </div>
+
+            {memberNotice && (
+              <p className={`text-center text-xs font-medium ${memberNotice.startsWith('Gagal') ? 'text-danger' : 'text-green'}`}>{memberNotice}</p>
+            )}
+
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setEditingMember(null)} className={`${CTA_CLASS} min-h-[48px] flex-1 bg-muted text-mutedfg`}>
+                Batal
+              </button>
+              <button type="button" onClick={saveEditMember} disabled={memberSaving} className={`${CTA_CLASS} min-h-[48px] flex-[2]`}>
+                {memberSaving ? <div className="ld-trio ld-xs inline-block align-middle" aria-hidden="true"><i></i><i></i><i></i></div> : <Icon name="check" size={16} />}
+                {memberSaving ? 'Menyimpan…' : 'Simpan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   ) : (
     <div className="fixed inset-0 z-[80] grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <button
@@ -874,6 +924,36 @@ export function AccountModal({
                 />
               </div>
             </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Status keluarga</label>
+              <select value={profileFamilyRole} onChange={(e) => { setProfileFamilyRole(e.target.value); setProfileSaved(''); }} className={inputCls}>
+                <option value="suami">Suami</option>
+                <option value="istri">Istri</option>
+                <option value="anak">Anak</option>
+                <option value="lainnya">Lainnya</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">Posisi silsilah</label>
+              <select value={profileGenerasi} onChange={(e) => { setProfileGenerasi(e.target.value); setProfileSaved(''); }} className={inputCls}>
+                <option value="orangtua">Orangtua</option>
+                <option value="anak">Anak</option>
+                <option value="cucu">Cucu</option>
+              </select>
+            </div>
+            {isMaster && (
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-mutedfg">Peran grup</label>
+                <select value={profileGroupRole} onChange={(e) => { setProfileGroupRole(e.target.value); setProfileSaved(''); }} className={inputCls}>
+                  <option value="kepala_keluarga">Kepala Keluarga</option>
+                  <option value="suami">Suami</option>
+                  <option value="istri">Istri</option>
+                  <option value="anak">Anak</option>
+                  <option value="cucu">Cucu</option>
+                </select>
+              </div>
+            )}
 
             <button
               type="button"

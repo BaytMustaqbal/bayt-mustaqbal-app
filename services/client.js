@@ -109,13 +109,16 @@ export const auth = {
       }),
     });
   },
-  // Update profil sendiri (nama, panggilan, tanggal lahir, avatar) — PUT /auth/me
-  updateProfile: async ({ nama, nickname, birthDate, avatarUrl }) => {
+  // Update profil sendiri (nama, panggilan, tanggal lahir, avatar, status, silsilah, peran)
+  updateProfile: async ({ nama, nickname, birthDate, avatarUrl, familyRole, generasi, groupRole }) => {
     const body = {};
     if (nama !== undefined) body.nama = nama;
     if (nickname !== undefined) body.nickname = nickname;
     if (birthDate !== undefined) body.birth_date = birthDate;
     if (avatarUrl !== undefined) body.avatar_url = avatarUrl;
+    if (familyRole !== undefined) body.family_role = familyRole;
+    if (generasi !== undefined) body.generasi = generasi;
+    if (groupRole !== undefined) body.group_role = groupRole;
     return apiFetch('/auth/me', { method: 'PUT', body: JSON.stringify(body) });
   },
   // Daftar anggota keluarga (semua akun aktif, master disembunyikan backend)
