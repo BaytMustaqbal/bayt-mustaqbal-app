@@ -163,6 +163,68 @@ async function sendWeeklyRecap(env: Env): Promise<void> {
   }
 }
 
+/** Normalisasi tanggal ke YYYY-MM-DD (lokal server, UTC). */
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Hitung tanggal jatuh tempo berikutnya untuk tugas terjadwal.
+ *  - pengeluaran: dari `day` bulan ini (dipangkas ke akhir bulan).
+ *  - lainnya: langsung `next_due`. */
+function scheduledDueDate(task: any, today: Date): string | null {
+  if (task.type === 'pengeluaran' && task.day) {
+    const year = today.getUTCFullYear();
+    const month = today.getUTCMonth();
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const d = Math.min(Number(task.day), lastDay);
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  return task.next_due || null;
+}
+
+/** Notif WA H-3 untuk tugas terjadwal (4 tab). */
+async function sendScheduledTaskReminders(env: Env): Promise<void> {
+  const scopes = await listGroupScopes(env);
+  const target = await readFonnteTarget(env);
+  if (!target) return;
+
+  const today = new Date();
+  const in3 = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const in3Str = isoDate(in3);
+
+  for (const scope of scopes) {
+    const rows = await env.DB.prepare(
+      `SELECT * FROM scheduled_tasks WHERE group_id = ? AND void IS NULL AND active = 1`
+    ).bind(scope.group_id).all();
+    const tasks = (rows.results || []) as any[];
+
+    for (const task of tasks) {
+      const due = scheduledDueDate(task, today);
+      if (!due || due !== in3Str) continue;
+
+      // Dedup per tugas + tanggal jatuh tempo.
+      const key = `scheduled_alert:${task.id}:${due}`;
+      const notif = await env.DB.prepare(
+        `SELECT id FROM notification_log WHERE message = ? AND void IS NULL LIMIT 1`
+      ).bind(key).first();
+      if (notif) continue;
+
+      const label = task.amount != null ? ` (${formatIdr(task.amount)})` : '';
+      const message = `⏰ *Tugas Terjadwal*\n${task.name}${label}\nJatuh tempo dalam 3 hari (${due}).`;
+      await sendWA(env, message, target);
+
+      const nid = crypto.randomUUID();
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `INSERT INTO notification_log (id, user_id, type, message, read, rev, created_at) VALUES (?, ?, 'info', ?, 0, 1, ?)`
+      ).bind(nid, scope.sample_user, key, now).run();
+    }
+  }
+}
+
+const formatIdr = (v: number) =>
+  Number(v).toLocaleString('id-ID');
+
 export async function handleCron(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
   const now = new Date();
   const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -181,6 +243,8 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
       if (reminderDue) await sendBillReminder(env);
 
       if (prefs.digestEnabled && prefs.digestHour === hour) await sendDailyDigest(env);
+
+      if (prefs.scheduledEnabled) await sendScheduledTaskReminders(env);
     }
 
     await processOutbox(env);

@@ -10,6 +10,8 @@ export interface NotifPrefs {
   tagihanEnabled: boolean;
   /** Kirim digest harian (default true). */
   digestEnabled: boolean;
+  /** Kirim pengingat H-3 tugas terjadwal (default true). */
+  scheduledEnabled: boolean;
   /** Jam WIB kirim digest (0-23, default 7 = 07.00). */
   digestHour: number;
   /** Jam WIB kirim pengingat tagihan; null = tiap jam. */
@@ -23,6 +25,7 @@ export interface NotifPrefs {
 export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
   tagihanEnabled: true,
   digestEnabled: true,
+  scheduledEnabled: true,
   digestHour: 7,
   reminderHour: null,
   quietStart: null,
@@ -46,6 +49,7 @@ export async function readNotifPrefs(env: Env): Promise<NotifPrefs> {
     return {
       tagihanEnabled: p.tagihanEnabled !== false,
       digestEnabled: p.digestEnabled !== false,
+      scheduledEnabled: p.scheduledEnabled !== false,
       digestHour: toIntOrNull(p.digestHour) ?? DEFAULT_NOTIF_PREFS.digestHour,
       reminderHour: toIntOrNull(p.reminderHour),
       quietStart: toIntOrNull(p.quietStart),
