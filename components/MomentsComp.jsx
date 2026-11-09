@@ -133,7 +133,7 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto, goog
       <form
         onSubmit={(e) => { e.preventDefault(); submit(); }}
         noValidate
-        className="modal-panel relative mx-auto w-full max-w-lg rounded-t-3xl border border-line bg-surface/95 p-5 shadow-pop backdrop-blur-xl sm:rounded-3xl"
+        className="modal-panel relative mx-auto w-full max-w-lg max-h-[calc(100dvh_-_2rem)] overflow-y-auto rounded-t-3xl border border-line bg-surface/95 p-5 shadow-pop backdrop-blur-xl sm:rounded-3xl"
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-base font-bold text-ink">
