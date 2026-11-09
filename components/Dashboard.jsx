@@ -193,50 +193,16 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         <div className="grid grid-cols-4 gap-2.5 sm:gap-3">
           <QuickAction icon="image" label="Momen" tone="amber" onClick={() => onNavigate('momen')} />
           <QuickAction icon="calendar" label="Agenda" tone="blue" onClick={() => onNavigate('agenda')} />
+          <QuickAction icon="camera" label="Foto Struk" tone="amber" onClick={() => onNavigate('momen')} />
           <QuickAction icon="note" label="Catatan" tone="violet" onClick={() => onNavigate('notes')} />
-          <QuickAction icon="users" label="Keluarga" tone="emerald" onClick={() => onNavigate('family')} />
         </div>
       </div>
 
       {/* ---------- KPI ---------- */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
-        <StatCard compact icon="calendar" tone="cyan" value={data.schedule.length} label="Agenda" hint="Jadwal aktif" />
-        <StatCard compact icon="users" tone="blue" value={data.family.length} label="Anggota" hint="Terdaftar" />
-        <StatCard
-          compact
-          icon="trendingUp"
-          tone="emerald"
-          value={formatCurrencyShort(totals.incomeMonth)}
-          valueTitle={formatCurrency(totals.incomeMonth)}
-          label="Pemasukan Bulan Ini"
-          hint="Gaji, side job & lainnya"
-        />
-        <StatCard
-          compact
-          icon="tasks"
-          tone="violet"
-          value={`${totals.tasksDone}/${data.tasks.length}`}
-          label="Tugas"
-          hint="Selesai · di Agenda"
-        />
-        <StatCard
-          compact
-          icon="target"
-          tone={totals.budgetLeft >= 0 ? 'emerald' : 'rose'}
-          value={formatCurrencyShort(Math.abs(totals.budgetLeft))}
-          valueTitle={formatCurrency(Math.abs(totals.budgetLeft))}
-          label={totals.budgetLeft >= 0 ? 'Sisa anggaran' : 'Lebih dari anggaran'}
-          hint={`dari ${formatCurrencyShort(budget.income)}`}
-        />
-        <StatCard
-          compact
-          icon="wallet"
-          tone={totals.net >= 0 ? 'emerald' : 'rose'}
-          value={`${totals.net >= 0 ? '+' : '−'}${formatCurrencyShort(Math.abs(totals.net))}`}
-          valueTitle={`${totals.net >= 0 ? '+' : '−'}${formatCurrency(Math.abs(totals.net))}`}
-          label="Selisih Bulan Ini"
-          hint="Pemasukan − Pengeluaran"
-        />
+      {/* Hanya menampilkan Agenda dan Tugas di ringkasan dashboard */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <StatCard compact icon="calendar" tone="cyan" value={data.schedule.length} label="Agenda" hint="Jadwal" />
+        <StatCard compact icon="tasks" tone="violet" value={`${totals.tasksDone}/${data.tasks.length}`} label="Tugas" hint="Selesai" />
       </div>
 
       {/* ---------- Pengeluaran terbaru ----------

@@ -151,7 +151,7 @@ export function StatCard({ icon, label, value, hint, valueTitle, tone = 'cyan', 
     rose: 'bg-tonerose/15 text-tonerosefg',
   };
   // Varian compact: lebih rapat, hint sekunder dipindah ke tooltip.
-  const cardCls = compact ? 'p-3 sm:p-4' : 'p-4 sm:p-5';
+  const cardCls = compact ? 'p-5 sm:p-6' : 'p-5 sm:p-6';
   const iconBox = compact ? 'h-8 w-8 rounded-lg' : 'h-10 w-10 rounded-xl sm:h-11 sm:w-11';
   const iconSize = compact ? 16 : 20;
   const valCls = compact
@@ -163,14 +163,16 @@ export function StatCard({ icon, label, value, hint, valueTitle, tone = 'cyan', 
     // Varian compact: ikon + angka sebaris, label di bawah, hint di tooltip.
     return (
       <Card className={`${cardCls} ${className}`}>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-6">
           <span className={`grid ${iconBox} shrink-0 place-items-center ${tones[tone]}`} aria-hidden="true">
             <Icon name={icon} size={iconSize} />
           </span>
-          <p className={`min-w-0 flex-1 truncate ${valCls}`} title={title}>
+          <p className={`min-w-0 flex-1 ${valCls}`} title={title}>
             {value}
           </p>
-          <p className={`shrink-0 text-right ${labelCls}`}>{label}</p>
+          <p className={`ml-auto min-w-0 text-right ${labelCls}`} title={label}>
+            {label}
+          </p>
           {spark && (
             <span className="hidden shrink-0 opacity-80 sm:block" aria-hidden="true">
               <Sparkline data={spark} />
