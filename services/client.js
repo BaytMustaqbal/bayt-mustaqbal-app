@@ -122,6 +122,13 @@ export const auth = {
   users: async () => {
     return apiFetch('/auth/users');
   },
+  // Edit data anggota oleh master (profil + peran/status + opsional password).
+  updateMember: async (id, payload) => {
+    return apiFetch(`/auth/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
   // Sesi login aktif milik user ini.
   sessions: async () => {
     return apiFetch('/auth/sessions');

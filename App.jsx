@@ -1354,11 +1354,9 @@ const deleteGoal = async (id) => {
   const [toast, setToast] = useState(null);
   // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
   const [notifRead, setNotifRead] = useState(readNotifRead);
-  // Modal "Akun saya" (nama, username, avatar, password) � dibuka dari chip pengguna
-  const [accountOpen, setAccountOpen] = useState(false);
   // Tab aktif di halaman "Tugas Terjadwal" (pengeluaran/tabungan/belanja/service)
   const [terjadwalTab, setTerjadwalTab] = useState('pengeluaran');
-  // Tab awal saat modal Akun dibuka (default 'profil'; 'keamanan' dari Pengaturan)
+  // Tab awal saat halaman Akun dibuka (default 'profil'; 'keamanan' dari Pengaturan)
   const [accountInitialTab, setAccountInitialTab] = useState('profil');
   // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
   const [accountInitialGenerasi, setAccountInitialGenerasi] = useState(null);
@@ -2102,10 +2100,11 @@ const deleteGoal = async (id) => {
     await addItem('expenses', { ...values, bucket: 'auto' });
     setScanOpen(false);
   };
-  // Klik placeholder "+ Tambah" di FamilyTree ? buka AccountModal dengan generasi preset
+  // Klik placeholder "+ Tambah" di FamilyTree ? buka halaman Akun dengan generasi preset
   const handleTreeAdd = (generasi) => {
     setAccountInitialGenerasi(generasi);
-    setAccountOpen(true);
+    setAccountInitialTab('profil');
+    setActiveSection('akun');
   };
 
   // Simpan template pengeluaran terjadwal (backend /rec/scheduled)
@@ -2155,6 +2154,10 @@ const deleteGoal = async (id) => {
   };
 
   const deleteScheduledTemplate = async (id) => {
+    const tpl = data.scheduledExpenses.find((t) => String(t.id) === String(id));
+    const nama = tpl?.name || 'template ini';
+    const ok = window.confirm(`Hapus pengeluaran terjadwal "${nama}"?`);
+    if (!ok) return;
     try {
       await scheduledTasksApi.delete(id);
     } catch (e) {
@@ -2401,10 +2404,10 @@ const deleteGoal = async (id) => {
     setActiveSection('dashboard');
   };
 
-  // Buka modal Akun saya langsung di tab Keamanan (dari Pengaturan).
+  // Buka halaman Akun langsung di tab Keamanan (dari Pengaturan).
   const openAccountSecurity = () => {
     setAccountInitialTab('keamanan');
-    setAccountOpen(true);
+    setActiveSection('akun');
   };
 
   // Dipanggil dropdown kategori agenda di navigasi ? buka section + set filter
@@ -2753,6 +2756,25 @@ const deleteGoal = async (id) => {
               </>
             )}
           </section>
+        );
+      }
+
+      case 'akun': {
+        return (
+          <AccountModal
+            page
+            open
+            user={currentUser}
+            users={data.users}
+            initialGenerasi={accountInitialGenerasi}
+            initialTab={accountInitialTab}
+            onSaved={handleProfileSaved}
+            onClose={() => { setAccountInitialGenerasi(null); setAccountInitialTab('profil'); }}
+            onSwitchUser={handleLogout}
+            onSave={saveAccount}
+            onLogout={handleLogout}
+            onRegister={() => setRegisterOpen(true)}
+          />
         );
       }
 
@@ -3436,7 +3458,7 @@ const deleteGoal = async (id) => {
         activeSection={activeSection}
         onSectionChange={setActiveSection}
         user={currentUser}
-        onOpenAccount={() => setAccountOpen(true)}
+        onOpenAccount={() => { setAccountInitialTab('profil'); setAccountInitialGenerasi(null); setActiveSection('akun'); }}
         schedule={data.schedule}
         expenses={data.expenses}
         family={familyAll}
@@ -3454,6 +3476,12 @@ const deleteGoal = async (id) => {
         onNotificationOpen={openNotification}
         onMarkAllNotificationsRead={markAllNotifRead}
         onOpenSidebar={() => setSidebarOpen(true)}
+        onQuickAction={(action) => {
+          if (action === 'expenses') openAdd('expenses');
+          else if (action === 'notes') openAdd('notes');
+          else if (action === 'scan') { if (canWrite) setScanOpen(true); else openAdd('expenses'); }
+          else if (action === 'momen') setActiveSection('momen');
+        }}
       />
 
       {/* Sidebar desktop (trigger: klik header) */}
@@ -3475,7 +3503,7 @@ const deleteGoal = async (id) => {
         noteFilter={noteFilter}
         onNoteSelect={handleNoteSelect}
         service={serviceInventory}
-
+        onOpenAccount={() => { setSidebarOpen(false); setAccountInitialTab('profil'); setAccountInitialGenerasi(null); setActiveSection('akun'); }}
       />
 
       <main
@@ -3531,24 +3559,7 @@ const deleteGoal = async (id) => {
         onSubmit={(values) => submitSheet(sheetOpen, values)}
       />
 
-      {/* Modal "Akun saya" � dibuka dari chip pengguna di header */}
-      <AccountModal
-        open={accountOpen}
-        user={currentUser}
-        users={data.users}
-        initialGenerasi={accountInitialGenerasi}
-        initialTab={accountInitialTab}
-        onSaved={handleProfileSaved}
-        onClose={() => { setAccountOpen(false); setAccountInitialGenerasi(null); setAccountInitialTab('profil'); }}
-        onSwitchUser={handleLogout}
-        onSave={saveAccount}
-        onLogout={handleLogout}
-        onRegister={() => setRegisterOpen(true)}
-
-
-      />
-
-      {/* RegisterScreen � hanya bisa diakses dari AccountModal (master only) */}
+      {/* RegisterScreen � hanya bisa diakses dari halaman Akun (master only) */}
       {registerOpen && (
         <RegisterScreen
           onLogin={handleLogin}

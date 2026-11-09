@@ -81,6 +81,7 @@ export function AccountModal({
   onLogout,
   onSave,
   onRegister,
+  page = false,
 }) {
   const [tab, setTab] = useState('profil');
   const [name, setName] = useState('');
@@ -101,6 +102,96 @@ export function AccountModal({
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState('');
 
+  // ---- Edit anggota (master) ----
+  const [editingMember, setEditingMember] = useState(null);
+  const [memberForm, setMemberForm] = useState({});
+  const [memberSaving, setMemberSaving] = useState(false);
+  const [memberNotice, setMemberNotice] = useState('');
+
+  const startEditMember = (u) => {
+    setEditingMember(u);
+    setMemberForm({
+      nama: u.nama || '',
+      nickname: u.nickname || '',
+      birth_date: u.birth_date || '',
+      family_role: u.family_role || 'anak',
+      generasi: u.generasi || 'orangtua',
+      group_role: u.group_role || 'anak',
+      password: '',
+    });
+    setMemberNotice('');
+  };
+
+  const saveEditMember = async () => {
+    if (!editingMember) return;
+    const payload = {
+      nama: memberForm.nama,
+      nickname: memberForm.nickname,
+      birth_date: memberForm.birth_date,
+      family_role: memberForm.family_role,
+      generasi: memberForm.generasi,
+      group_role: memberForm.group_role,
+    };
+    if (memberForm.password) payload.password = memberForm.password;
+    setMemberSaving(true);
+    setMemberNotice('');
+    try {
+      const updated = await auth.updateMember(editingMember.id, payload);
+      onSaved?.(updated);
+      setMemberNotice('Data anggota tersimpan.');
+      setEditingMember(null);
+    } catch (err) {
+      setMemberNotice('Gagal menyimpan: ' + err.message);
+    } finally {
+      setMemberSaving(false);
+    }
+  };
+
+  // ---- Edit anggota (master) ----
+  const [editing, setEditing] = useState(null); // anggota yang sedang diedit
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [editNotice, setEditNotice] = useState('');
+
+  const startEdit = (u) => {
+    setEditForm({
+      nama: u.nama || '',
+      nickname: u.nickname || '',
+      birth_date: u.birth_date || '',
+      family_role: u.family_role || 'anak',
+      generasi: u.generasi || 'orangtua',
+      group_role: u.group_role || 'anak',
+      password: '',
+    });
+    setEditNotice('');
+    setEditing(u);
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const payload = {
+      nama: editForm.nama,
+      nickname: editForm.nickname,
+      birth_date: editForm.birth_date,
+      family_role: editForm.family_role,
+      generasi: editForm.generasi,
+      group_role: editForm.group_role,
+    };
+    if (editForm.password) payload.password = editForm.password;
+    setEditSaving(true);
+    setEditNotice('');
+    try {
+      const updated = await auth.updateMember(editing.id, payload);
+      onSaved?.(updated, 'member');
+      setEditNotice('Data anggota tersimpan.');
+      setEditing(null);
+    } catch (err) {
+      setEditNotice('Gagal menyimpan: ' + err.message);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (open) {
       setProfileNickname(user?.nickname || '');
@@ -114,7 +205,7 @@ export function AccountModal({
 
   const close = () => {
     onClose();
-    setTimeout(() => document.getElementById('account-trigger')?.focus(), 0);
+    if (!page) setTimeout(() => document.getElementById('account-trigger')?.focus(), 0);
   };
 
   useEffect(() => {
@@ -131,12 +222,15 @@ export function AccountModal({
     setErrors({});
     setNotice('');
     setProfileSaved('');
-    const t = setTimeout(() => fieldRefs.current.name?.focus(), 80);
-    return () => clearTimeout(t);
+    if (!page) {
+      const t = setTimeout(() => fieldRefs.current.name?.focus(), 80);
+      return () => clearTimeout(t);
+    }
+    return undefined;
   }, [open, initialTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open || page) return undefined;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e) => {
@@ -279,7 +373,359 @@ export function AccountModal({
     tab === id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'
   }`;
 
-  return (
+  return page ? (
+    <section className="app-fade-in">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brandtint text-brandfg" aria-hidden="true">
+          <Icon name="userCheck" size={18} />
+        </span>
+        <h2 id={titleId} className="text-lg font-bold text-ink">Akun saya</h2>
+      </div>
+
+      {/* Tab bar */}
+      <div role="tablist" aria-label="Bagian akun" className="mb-4 flex gap-1.5 rounded-xl bg-muted/50 p-1">
+        {TABS.filter((t) => t.id !== 'anggota' || isMaster).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={tabBtn(t.id)}
+          >
+            <Icon name={t.icon} size={16} />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mx-auto max-w-md space-y-3.5">
+        {tab === 'profil' && (
+          <div className="space-y-3.5">
+            {/* Foto profil — avatar besar terpusat */}
+            <div className="flex flex-col items-center gap-4 rounded-2xl border border-line bg-canvas px-4 py-6 text-center">
+              <Avatar
+                user={previewUser}
+                className={`h-28 w-28 rounded-full text-4xl font-bold ring-4 ring-brand/15 ${avatar ? 'bg-muted' : 'bg-brandtint text-brandfg'}`}
+              />
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={avatarBusy}
+                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brandtint px-4 text-sm font-semibold text-brandfg transition-colors hover:bg-brand/10 disabled:opacity-50"
+                >
+                  <Icon name="camera" size={15} />
+                  {avatarBusy ? 'Memproses…' : avatar ? 'Ganti Foto' : 'Pilih Foto'}
+                </button>
+                {avatar && (
+                  <button
+                    type="button"
+                    onClick={() => { setAvatar(''); setNotice(''); }}
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-line bg-surface px-4 text-sm font-medium text-mutedfg transition-colors hover:bg-muted hover:text-danger"
+                  >
+                    <Icon name="trash" size={15} />
+                    Hapus
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePickFile}
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
+              />
+            </div>
+            {notice && <p role="alert" className="text-center text-xs font-medium text-danger">{notice}</p>}
+
+            <div>
+              <label htmlFor="acc-name" className="mb-1 block text-xs font-semibold text-mutedfg">
+                Nama <span className="text-brand" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="acc-name"
+                ref={(el) => { fieldRefs.current.name = el; }}
+                type="text"
+                value={name}
+                onChange={(e) => setField('name', e.target.value)}
+                placeholder="Nama panggilan di rumah"
+                aria-invalid={!!errors.name}
+                aria-describedby={errors.name ? 'acc-name-err' : undefined}
+                className={inputCls}
+              />
+              {errors.name && <p id="acc-name-err" className="mt-1 text-xs font-medium text-danger">{errors.name}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="acc-username" className="mb-1 block text-xs font-semibold text-mutedfg">Email</label>
+              <input
+                id="acc-username"
+                ref={(el) => { fieldRefs.current.username = el; }}
+                type="email"
+                inputMode="email"
+                value={username}
+                onChange={(e) => setField('username', e.target.value)}
+                placeholder=" Masukan email "
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-invalid={!!errors.username}
+                aria-describedby={errors.username ? 'acc-username-err' : undefined}
+                className={inputCls}
+              />
+              {errors.username && <p id="acc-username-err" className="mt-1 text-xs font-medium text-danger">{errors.username}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="profile-nickname" className="mb-1 block text-xs font-semibold text-mutedfg">Panggilan</label>
+                <input
+                  id="profile-nickname"
+                  type="text"
+                  value={profileNickname}
+                  onChange={(e) => { setProfileNickname(e.target.value); setProfileSaved(''); }}
+                  placeholder="mis. Eki"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label htmlFor="profile-birth-date" className="mb-1 block text-xs font-semibold text-mutedfg">Tgl lahir</label>
+                <input
+                  id="profile-birth-date"
+                  type="date"
+                  value={profileBirthDate}
+                  onChange={(e) => { setProfileBirthDate(e.target.value); setProfileSaved(''); }}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={saveProfile}
+              disabled={profileSaving}
+              className={`${CTA_CLASS} min-h-[48px] w-full`}
+            >
+              {profileSaving ? <div className="ld-trio ld-xs inline-block align-middle" aria-hidden="true"><i></i><i></i><i></i></div> : <Icon name="check" size={16} />}
+              {profileSaving ? 'Menyimpan…' : 'Simpan Profil'}
+            </button>
+            {profileSaved && (
+              <p className={`text-center text-xs font-medium ${profileSaved.startsWith('Gagal') ? 'text-danger' : 'text-green'}`}>
+                {profileSaved}
+              </p>
+            )}
+          </div>
+        )}
+
+        {tab === 'keamanan' && (
+          <div className="space-y-3.5">
+            <div className="relative">
+              <label htmlFor="acc-password" className="mb-1 block text-xs font-semibold text-mutedfg">Password baru</label>
+              <div className="relative">
+                <input
+                  id="acc-password"
+                  ref={(el) => { fieldRefs.current.password = el; }}
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setField('password', e.target.value)}
+                  disabled={clearPassword}
+                  autoComplete="new-password"
+                  placeholder={hasStoredPassword ? 'Tidak diubah' : 'Minimal 6 karakter'}
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? 'acc-password-err' : undefined}
+                  className={`${inputCls} pr-12`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  aria-pressed={showPassword}
+                  className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-mutedfg transition-colors hover:text-brandfg"
+                >
+                  <Icon name={showPassword ? 'eyeOff' : 'eye'} size={16} />
+                </button>
+              </div>
+              {errors.password && <p id="acc-password-err" className="mt-1 text-xs font-medium text-danger">{errors.password}</p>}
+            </div>
+
+            {password && !clearPassword && (
+              <div>
+                <label htmlFor="acc-password2" className="mb-1 block text-xs font-semibold text-mutedfg">Ulangi password</label>
+                <input
+                  id="acc-password2"
+                  ref={(el) => { fieldRefs.current.password2 = el; }}
+                  type={showPassword ? 'text' : 'password'}
+                  value={password2}
+                  onChange={(e) => setField('password2', e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Ketik ulang password baru"
+                  aria-invalid={!!errors.password2}
+                  aria-describedby={errors.password2 ? 'acc-password2-err' : undefined}
+                  className={inputCls}
+                />
+                {errors.password2 && <p id="acc-password2-err" className="mt-1 text-xs font-medium text-danger">{errors.password2}</p>}
+              </div>
+            )}
+
+            {hasStoredPassword && (
+              <button
+                type="button"
+                onClick={() => {
+                  setClearPassword((prev) => !prev);
+                  setPassword('');
+                  setPassword2('');
+                  setErrors((prev) => ({ ...prev, password: undefined, password2: undefined }));
+                }}
+                className="min-h-[40px] w-full rounded-lg text-xs font-medium text-mutedfg transition-colors hover:bg-muted hover:text-danger"
+              >
+                {clearPassword ? 'Batalkan hapus password' : 'Hapus password'}
+              </button>
+            )}
+
+            <button type="button" onClick={savePassword} className={`${CTA_CLASS} min-h-[48px] w-full`}>
+              <Icon name="check" size={16} />
+              Simpan Password
+            </button>
+
+            <div className="mt-2 border-t border-line pt-3">
+              <button
+                type="button"
+                onClick={onSwitchUser}
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-3 text-xs font-medium text-mutedfg transition-colors hover:bg-muted hover:text-brandfg"
+              >
+                <Icon name="users" size={14} />
+                Ganti pengguna
+              </button>
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="mt-1 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-line px-3 text-xs font-medium text-tonerosefg transition-colors hover:bg-tonerose/10"
+                >
+                  <Icon name="logOut" size={14} />
+                  Keluar
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === 'anggota' && isMaster && (
+          <div className="space-y-3.5">
+            <button type="button" onClick={onRegister} className={`${CTA_CLASS} min-h-[48px] w-full text-sm font-semibold`}>
+              <Icon name="userPlus" size={15} />
+              Daftar Akun Baru
+            </button>
+
+            <div className="rounded-2xl border border-line bg-canvas p-3">
+              <p className="mb-2 text-xs font-semibold text-mutedfg">Anggota keluarga</p>
+              {users.filter((u) => u.id !== user?.id).length === 0 ? (
+                <p className="text-xs text-mutedfg">Belum ada anggota lain.</p>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {users.filter((u) => u.id !== user?.id).map((u) => (
+                    <li key={u.id} className="flex items-center gap-2.5 py-2">
+                      <Avatar user={u} className="h-8 w-8 rounded-lg bg-brandtint text-xs font-bold text-brandfg" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-ink">{u.nama || u.name}</p>
+                        <p className="truncate text-[11px] text-mutedfg">{u.username}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => startEditMember(u)}
+                        aria-label={`Edit ${u.nama || u.name}`}
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+                      >
+                        <Icon name="edit" size={16} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Form edit anggota */}
+            {editingMember && (
+              <div className="space-y-3 rounded-2xl border border-brand/25 bg-surface p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-ink">Edit: {memberForm.nama || editingMember.nama}</p>
+                  <button
+                    type="button"
+                    onClick={() => setEditingMember(null)}
+                    aria-label="Tutup form edit"
+                    className="grid h-9 w-9 place-items-center rounded-lg text-mutedfg hover:bg-muted hover:text-ink"
+                  >
+                    <Icon name="close" size={16} />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Nama</label>
+                  <input type="text" value={memberForm.nama} onChange={(e) => setMemberForm((f) => ({ ...f, nama: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Panggilan</label>
+                  <input type="text" value={memberForm.nickname} onChange={(e) => setMemberForm((f) => ({ ...f, nickname: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Tanggal lahir</label>
+                  <input type="date" value={memberForm.birth_date} onChange={(e) => setMemberForm((f) => ({ ...f, birth_date: e.target.value }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Status keluarga</label>
+                  <select value={memberForm.family_role} onChange={(e) => setMemberForm((f) => ({ ...f, family_role: e.target.value }))} className={inputCls}>
+                    <option value="suami">Suami</option>
+                    <option value="istri">Istri</option>
+                    <option value="anak">Anak</option>
+                    <option value="lainnya">Lainnya</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Posisi silsilah</label>
+                  <select value={memberForm.generasi} onChange={(e) => setMemberForm((f) => ({ ...f, generasi: e.target.value }))} className={inputCls}>
+                    <option value="orangtua">Orangtua</option>
+                    <option value="anak">Anak</option>
+                    <option value="cucu">Cucu</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Peran grup</label>
+                  <select value={memberForm.group_role} onChange={(e) => setMemberForm((f) => ({ ...f, group_role: e.target.value }))} className={inputCls}>
+                    <option value="kepala_keluarga">Kepala Keluarga</option>
+                    <option value="suami">Suami</option>
+                    <option value="istri">Istri</option>
+                    <option value="anak">Anak</option>
+                    <option value="cucu">Cucu</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-mutedfg">Password baru (opsional)</label>
+                  <input type="password" value={memberForm.password} onChange={(e) => setMemberForm((f) => ({ ...f, password: e.target.value }))} placeholder="Kosongkan jika tidak diubah" className={inputCls} />
+                </div>
+
+                {memberNotice && (
+                  <p className={`text-center text-xs font-medium ${memberNotice.startsWith('Gagal') ? 'text-danger' : 'text-green'}`}>{memberNotice}</p>
+                )}
+
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setEditingMember(null)} className={`${CTA_CLASS} min-h-[48px] flex-1 bg-muted text-mutedfg`}>
+                    Batal
+                  </button>
+                  <button type="button" onClick={saveEditMember} disabled={memberSaving} className={`${CTA_CLASS} min-h-[48px] flex-[2]`}>
+                    {memberSaving ? <div className="ld-trio ld-xs inline-block align-middle" aria-hidden="true"><i></i><i></i><i></i></div> : <Icon name="check" size={16} />}
+                    {memberSaving ? 'Menyimpan…' : 'Simpan'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  ) : (
     <div className="fixed inset-0 z-[80] grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <button
         type="button"
@@ -435,7 +881,7 @@ export function AccountModal({
               disabled={profileSaving}
               className={`${CTA_CLASS} min-h-[48px] w-full`}
             >
-              {profileSaving ? <Icon name="loader" size={16} className="animate-spin" /> : <Icon name="check" size={16} />}
+              {profileSaving ? <div className="ld-trio ld-xs inline-block align-middle" aria-hidden="true"><i></i><i></i><i></i></div> : <Icon name="check" size={16} />}
               {profileSaving ? 'Menyimpan…' : 'Simpan Profil'}
             </button>
             {profileSaved && (
