@@ -99,9 +99,6 @@ export function AccountModal({
 
   const [profileNickname, setProfileNickname] = useState('');
   const [profileBirthDate, setProfileBirthDate] = useState('');
-  const [profileFamilyRole, setProfileFamilyRole] = useState('anak');
-  const [profileGenerasi, setProfileGenerasi] = useState('orangtua');
-  const [profileGroupRole, setProfileGroupRole] = useState('anak');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState('');
 
@@ -199,11 +196,8 @@ export function AccountModal({
     if (open) {
       setProfileNickname(user?.nickname || '');
       setProfileBirthDate(user?.birthDate || '');
-      setProfileFamilyRole(user?.family_role || 'anak');
-      setProfileGenerasi(user?.generasi || 'orangtua');
-      setProfileGroupRole(user?.group_role || 'anak');
     }
-  }, [open, user?.nickname, user?.birthDate, user?.family_role, user?.generasi, user?.group_role]);
+  }, [open, user?.nickname, user?.birthDate]);
 
   const fieldRefs = useRef({});
   const fileRef = useRef(null);
@@ -314,9 +308,6 @@ export function AccountModal({
         nama: name.trim(),
         nickname: profileNickname.trim() || null,
         birthDate: profileBirthDate || null,
-        familyRole: profileFamilyRole,
-        generasi: profileGenerasi,
-        groupRole: isMaster ? profileGroupRole : undefined,
       });
       onSaved?.(updated);
       setProfileSaved('Profil tersimpan.');
@@ -512,36 +503,6 @@ export function AccountModal({
                 />
               </div>
             </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-mutedfg">Status keluarga</label>
-              <select value={profileFamilyRole} onChange={(e) => { setProfileFamilyRole(e.target.value); setProfileSaved(''); }} className={inputCls}>
-                <option value="suami">Suami</option>
-                <option value="istri">Istri</option>
-                <option value="anak">Anak</option>
-                <option value="lainnya">Lainnya</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-mutedfg">Posisi silsilah</label>
-              <select value={profileGenerasi} onChange={(e) => { setProfileGenerasi(e.target.value); setProfileSaved(''); }} className={inputCls}>
-                <option value="orangtua">Orangtua</option>
-                <option value="anak">Anak</option>
-                <option value="cucu">Cucu</option>
-              </select>
-            </div>
-            {isMaster && (
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-mutedfg">Peran grup</label>
-                <select value={profileGroupRole} onChange={(e) => { setProfileGroupRole(e.target.value); setProfileSaved(''); }} className={inputCls}>
-                  <option value="kepala_keluarga">Kepala Keluarga</option>
-                  <option value="suami">Suami</option>
-                  <option value="istri">Istri</option>
-                  <option value="anak">Anak</option>
-                  <option value="cucu">Cucu</option>
-                </select>
-              </div>
-            )}
 
             <button
               type="button"
@@ -924,36 +885,6 @@ export function AccountModal({
                 />
               </div>
             </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-mutedfg">Status keluarga</label>
-              <select value={profileFamilyRole} onChange={(e) => { setProfileFamilyRole(e.target.value); setProfileSaved(''); }} className={inputCls}>
-                <option value="suami">Suami</option>
-                <option value="istri">Istri</option>
-                <option value="anak">Anak</option>
-                <option value="lainnya">Lainnya</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-mutedfg">Posisi silsilah</label>
-              <select value={profileGenerasi} onChange={(e) => { setProfileGenerasi(e.target.value); setProfileSaved(''); }} className={inputCls}>
-                <option value="orangtua">Orangtua</option>
-                <option value="anak">Anak</option>
-                <option value="cucu">Cucu</option>
-              </select>
-            </div>
-            {isMaster && (
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-mutedfg">Peran grup</label>
-                <select value={profileGroupRole} onChange={(e) => { setProfileGroupRole(e.target.value); setProfileSaved(''); }} className={inputCls}>
-                  <option value="kepala_keluarga">Kepala Keluarga</option>
-                  <option value="suami">Suami</option>
-                  <option value="istri">Istri</option>
-                  <option value="anak">Anak</option>
-                  <option value="cucu">Cucu</option>
-                </select>
-              </div>
-            )}
 
             <button
               type="button"

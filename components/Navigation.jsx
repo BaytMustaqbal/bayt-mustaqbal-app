@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
-import { Avatar } from './ui';
 import {
   AGENDA_CATEGORIES,
   FINANCE_CATEGORIES,
@@ -143,8 +142,6 @@ function NotificationMenu({ items, readIds, closing, onSelect, onMarkAll }) {
 export function Navigation({
   activeSection,
   onSectionChange,
-  user,
-  onOpenAccount,
   schedule,
   expenses,
   family,
@@ -162,6 +159,7 @@ export function Navigation({
   onNotificationOpen,
   onMarkAllNotificationsRead,
   onOpenSidebar,
+  onQuickAction,
 }) {
   const [openKey, setOpenKey] = useState(null);
   const [closingKey, setClosingKey] = useState(null);
@@ -333,10 +331,14 @@ export function Navigation({
             </button>
             <span role="status" aria-atomic="true" className="sr-only">{notifUnread > 0 ? `${notifUnread} notifikasi belum dibaca` : 'Semua notifikasi sudah dibaca'}</span>
 
-            {/* Buka modal "Akun saya" */}
-            <button type="button" id="account-trigger" onClick={onOpenAccount} aria-label={`Pengaturan akun (sekarang ${user.name})`} className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line px-1.5 text-sm transition-colors hover:bg-muted sm:px-3">
-              <Avatar user={user} className="h-8 w-8 rounded-lg bg-brandtint text-xs font-bold text-brandfg" />
-              <span className="hidden max-w-[7rem] truncate text-mutedfg sm:inline">{user.name}</span>
+            {/* Buka Dashboard */}
+            <button
+              type="button"
+              onClick={() => onSectionChange('dashboard')}
+              aria-label="Dashboard"
+              className={`grid h-11 w-11 place-items-center rounded-full border transition-colors ${activeSection === 'dashboard' ? 'border-brand/30 bg-brandtint text-brandfg' : 'border-line text-mutedfg hover:bg-muted hover:text-ink'}`}
+            >
+              <Icon name="home" size={19} />
             </button>
           </div>
 
@@ -350,13 +352,13 @@ export function Navigation({
       </header>
 
       {/* Bottom navbar - tanpa dropdown, semua tombol buka langsung halamannya */}
-      <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-40 rounded-t-[26px] border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-xl lg:hidden">
+      <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-[70] rounded-t-[26px] border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] shadow-nav backdrop-blur-xl lg:hidden">
         <ul ref={ulRef} className="relative mx-auto flex h-[68px] max-w-md items-stretch px-2 lg:max-w-6xl">
           <span
             aria-hidden="true"
             className="pointer-events-none absolute rounded-full bg-brandtint ring-1 ring-brand/20 transition-all duration-[450ms] ease-out"
             style={
-              pill
+              pill && activeSection !== 'dashboard'
                 ? { left: pill.left, top: pill.top, width: pill.width, height: pill.height, opacity: 1 }
                 : { opacity: 0 }
             }
@@ -367,43 +369,66 @@ export function Navigation({
             const navItem = NAV_ITEMS.find((n) => n.id === item.id);
             return (
               <li key={item.id} className="min-w-0 flex-1">
-                <button
-                  ref={(el) => {
-                    btnRefs.current[item.id] = el;
-                  }}
-                  type="button"
-                  onClick={() => onSectionChange(item.id)}
-                  aria-current={active ? 'page' : undefined}
-                  className={`relative flex h-full w-full select-none flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors touch-manipulation ${isDashboard ? (active ? 'text-brandfg' : 'text-mutedfg') : active ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
-                >
-                  {isDashboard ? (
-                    <>
-                      <span
-                        data-nav-icon
-                        aria-hidden="true"
-                        className={`group absolute left-1/2 top-0 grid h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition-colors active:bg-ctahover ${active ? 'shadow-glow ring-brand/40' : ''}`}
-                      >
-                        <img
-                          src="/icons/icon-mark-square.png"
-                          alt=""
-                          className="h-auto w-11 object-contain drop-shadow-md"
-                        />
+                {isDashboard ? (
+                  <div
+                    ref={(el) => {
+                      btnRefs.current[item.id] = el;
+                    }}
+                    className="relative flex h-full w-full select-none flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors touch-manipulation"
+                  >
+                    {/* FAB aksi cepat: hidden checkbox + label (no-JS) untuk fan-out.
+                        Menggantikan navigasi dashboard. */}
+                    <input type="checkbox" id="qa-fab-toggle" className="qa-fab-toggle" />
+                    <label
+                      htmlFor="qa-fab-toggle"
+                      aria-label="Aksi cepat (buat pengeluaran, foto struk, catatan, momen)"
+                      className="qa-fab-trigger grid place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition-colors"
+                    >
+                      <span className="qa-fab-logo" aria-hidden="true">
+                        <img src="/icons/icon-mark-square.png" alt="" />
                       </span>
-                      {/* Spacer tak terlihat agar posisi label sejajar dengan tombol lain */}
-                      <span aria-hidden="true" className="block h-8 w-11 shrink-0" />
-                    </>
-                  ) : (
+                      <span className="qa-fab-close" aria-hidden="true">
+                        <Icon name="close" size={20} />
+                      </span>
+                    </label>
+                    <div className="qa-fab-menu" aria-hidden="true">
+                      <button type="button" className="qa-fab-item qf-1 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Momen Keluarga" onClick={() => onQuickAction?.('momen')}>
+                        <Icon name="image" size={18} />
+                      </button>
+                      <button type="button" className="qa-fab-item qf-2 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Pengeluaran Baru" onClick={() => onQuickAction?.('expenses')}>
+                        <Icon name="receipt" size={18} />
+                      </button>
+                      <button type="button" className="qa-fab-item qf-3 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Foto Struk" onClick={() => onQuickAction?.('scan')}>
+                        <Icon name="camera" size={18} />
+                      </button>
+                      <button type="button" className="qa-fab-item qf-4 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Catatan Baru" onClick={() => onQuickAction?.('notes')}>
+                        <Icon name="note" size={18} />
+                      </button>
+                    </div>
+                    {/* Spacer untuk memberi tinggi (label teks dihapus) */}
+                    <span aria-hidden="true" className="block h-4 w-full" />
+                  </div>
+                ) : (
+                  <button
+                    ref={(el) => {
+                      btnRefs.current[item.id] = el;
+                    }}
+                    type="button"
+                    onClick={() => onSectionChange(item.id)}
+                    aria-current={active ? 'page' : undefined}
+                    className={`relative flex h-full w-full select-none flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors touch-manipulation ${active ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
+                  >
                     <span
                       data-nav-icon
                       className="grid h-8 w-11 shrink-0 place-items-center rounded-full transition-colors duration-base ease-crisp active:opacity-70"
                     >
                       <Icon name={navItem?.icon} size={19} />
                     </span>
-                  )}
-                  <span className="flex w-full items-center justify-center gap-0.5">
-                    <span className="truncate">{navItem?.label}</span>
-                  </span>
-                </button>
+                    <span className="flex w-full items-center justify-center gap-0.5">
+                      <span className="truncate">{navItem?.label}</span>
+                    </span>
+                  </button>
+                )}
               </li>
             );
           })}

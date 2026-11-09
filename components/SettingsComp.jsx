@@ -629,7 +629,7 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
                   disabled={syncing}
                   className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-xs font-semibold text-mutedfg transition-colors hover:bg-muted hover:text-ink disabled:opacity-50"
                 >
-                  <Icon name={syncing ? 'loader' : 'refresh'} size={14} className={syncing ? 'animate-spin' : ''} />
+                  {syncing ? <div className="ld-trio ld-xs inline-block align-middle" aria-hidden="true"><i></i><i></i><i></i></div> : <Icon name="refresh" size={14} />}
                   {syncing ? 'Memproses…' : 'Coba ulang'}
                 </button>
               </div>
@@ -888,7 +888,7 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
               disabled={bkBusy}
               className={`${CTA_CLASS} min-h-[44px] w-full`}
             >
-              <Icon name={bkBusy ? 'loader' : 'download'} size={15} className={bkBusy ? 'animate-spin' : ''} />
+              {bkBusy ? <div className="ld-trio ld-xs inline-block align-middle" aria-hidden="true"><i></i><i></i><i></i></div> : <Icon name="download" size={15} />}
               {bkBusy ? 'Memproses…' : 'Export Backup'}
             </button>
             <button

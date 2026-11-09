@@ -229,7 +229,7 @@ export function RegisterScreen({ onLogin, onBack }) {
           >
             {submitting ? (
               <>
-                <Icon name="loader" size={18} />
+                <div className="ld-trio ld-sm" aria-hidden="true"><i></i><i></i><i></i></div>
                 Membuat…
               </>
             ) : (

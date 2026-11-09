@@ -627,3 +627,227 @@ html.ui-compact .app-fade-in.space-y-5 > * + * {
     opacity: 1 !important;
   }
 }
+
+/* =========================================================
+   Tri-Arc loader (pure CSS) — spinner concentric arcs,
+   single --ink token (default currentColor), variasi ukuran
+   untuk tombol kecil (ld-sm ≈ 20px, ld-xs ≈ 16px).
+   ========================================================= */
+:root { --ink: currentColor; }
+
+.ld-trio {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+.ld-trio i {
+  position: absolute;
+  border: 3px solid transparent;
+  border-top-color: var(--ink);
+  border-radius: 50%;
+}
+.ld-trio i:nth-child(1) {
+  inset: 0;
+  animation: spin 1.2s linear infinite;
+}
+.ld-trio i:nth-child(2) {
+  inset: 8px;
+  animation: spin 0.9s linear infinite reverse;
+  opacity: 0.65;
+}
+.ld-trio i:nth-child(3) {
+  inset: 16px;
+  animation: spin 0.6s linear infinite;
+  opacity: 0.35;
+}
+
+.ld-trio.ld-sm {
+  width: 20px;
+  height: 20px;
+}
+.ld-trio.ld-sm i { border-width: 2px; }
+.ld-trio.ld-sm i:nth-child(2) { inset: 3px; }
+.ld-trio.ld-sm i:nth-child(3) { inset: 6px; }
+
+.ld-trio.ld-xs {
+  width: 16px;
+  height: 16px;
+}
+.ld-trio.ld-xs i { border-width: 2px; }
+.ld-trio.ld-xs i:nth-child(2) { inset: 2px; }
+.ld-trio.ld-xs i:nth-child(3) { inset: 4px; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* =========================================================
+   Login logo — bintang orbit (pure CSS, tanpa GSAP)
+   5 bintang mengelilingi logo pada radius 50px; rotasi orbit
+   10s; opacity tiap bintang bernapas dengan stagger.
+   ========================================================= */
+.login-logo-wrapper {
+  position: relative;
+  display: inline-block;
+}
+.login-logo {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 30px rgb(34 211 238 / 0.20));
+}
+
+/* Cincin cahaya berputar — menggantikan orbit bintang */
+.login-ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.login-ring-a {
+  inset: -24px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgb(var(--brand) / 0.85) 55deg,
+    transparent 130deg,
+    transparent 330deg,
+    rgb(var(--brand) / 0.35) 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 2px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 2px));
+  animation: spin 7s linear infinite;
+}
+.login-ring-b {
+  inset: -36px;
+  background: conic-gradient(
+    from 80deg,
+    transparent 0deg,
+    rgb(var(--brand) / 0.5) 70deg,
+    transparent 150deg,
+    transparent 330deg,
+    rgb(var(--brand) / 0.2) 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 13px), #000 calc(100% - 7px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 13px), #000 calc(100% - 7px));
+  animation: spin 11s linear infinite reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-ring {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-trio i {
+    animation: none;
+  }
+}
+
+/* =========================================================
+   FAB aksi cepat (bottom nav) — fan-out berbasis checkbox tersembunyi,
+   tanpa JS. + berputar jadi ×, 4 mini-action membuka busur di atas.
+   ========================================================= */
+.qa-fab {
+  position: relative;
+}
+.qa-fab-toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.qa-fab-trigger {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 60px;
+  height: 60px;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Latar bulat pas di belakang tombol + (pangung lingkaran) */
+.qa-fab-trigger::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgb(var(--brand) / 0.22) 0%, transparent 70%);
+  z-index: -1;
+}
+/* Logo + ikon close di dalam trigger — logo default, close saat terbuka */
+.qa-fab-logo,
+.qa-fab-close {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.25s ease;
+}
+.qa-fab-logo img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 5px rgb(0 0 0 / 0.45));
+}
+.qa-fab-close {
+  opacity: 0;
+  transform: scale(0.4) rotate(-90deg);
+}
+.qa-fab-toggle:checked ~ .qa-fab-trigger .qa-fab-logo {
+  opacity: 0;
+  transform: scale(0.4) rotate(135deg);
+}
+.qa-fab-toggle:checked ~ .qa-fab-trigger .qa-fab-close {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.qa-fab-menu {
+  position: absolute;
+  left: 50%;
+  top: -30px; /* sejajar pusat tombol utama (tinggi 60px/2) */
+  width: 0;
+  height: 0;
+  z-index: 80;
+}
+.qa-fab-item {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(0, 0) scale(0.15);
+  z-index: 1;
+  transition:
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.3s ease;
+}
+/* Posisi busur (relatif pusat trigger) — awal mengumpul di pusat tombol */
+.qa-fab-item.qf-1 { transform: translate(0, 0) scale(0.15); }
+.qa-fab-item.qf-2 { transform: translate(0, 0) scale(0.15); }
+.qa-fab-item.qf-3 { transform: translate(0, 0) scale(0.15); }
+.qa-fab-item.qf-4 { transform: translate(0, 0) scale(0.15); }
+
+.qa-fab-toggle:checked ~ .qa-fab-menu .qa-fab-item {
+  opacity: 1;
+  pointer-events: auto;
+}
+.qa-fab-toggle:checked ~ .qa-fab-menu .qa-fab-item.qf-1 { transform: translate(-78px, -30px) scale(1); transition-delay: 0ms; }
+.qa-fab-toggle:checked ~ .qa-fab-menu .qa-fab-item.qf-2 { transform: translate(-28px, -48px) scale(1); transition-delay: 50ms; }
+.qa-fab-toggle:checked ~ .qa-fab-menu .qa-fab-item.qf-3 { transform: translate(28px, -48px) scale(1); transition-delay: 100ms; }
+.qa-fab-toggle:checked ~ .qa-fab-menu .qa-fab-item.qf-4 { transform: translate(78px, -30px) scale(1); transition-delay: 150ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qa-fab-logo,
+  .qa-fab-close,
+  .qa-fab-item {
+    transition: none;
+  }
+}

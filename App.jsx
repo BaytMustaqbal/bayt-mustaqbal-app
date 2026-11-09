@@ -688,6 +688,9 @@ const deleteGoal = async (id) => {
   // Pemindai struk: foto dibaca OCR di perangkat, disimpan sebagai pengeluaran biasa
   const [scanOpen, setScanOpen] = useState(false);
 
+  // Sinyal auto-buka form "Momen Baru" dari FAB (timestamp berubah tiap klik)
+  const [momentAddSignal, setMomentAddSignal] = useState(null);
+
   // Sidebar navigasi (desktop-trigger header, mobile-tetap bottom navbar)
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -2812,6 +2815,7 @@ const deleteGoal = async (id) => {
             onDelete={deleteMoment}
             onUploadPhoto={uploadMomentPhoto}
             googleConnected={gcal.connected}
+            autoOpenAdd={momentAddSignal}
           />
         );
       }
@@ -3480,7 +3484,7 @@ const deleteGoal = async (id) => {
           if (action === 'expenses') openAdd('expenses');
           else if (action === 'notes') openAdd('notes');
           else if (action === 'scan') { if (canWrite) setScanOpen(true); else openAdd('expenses'); }
-          else if (action === 'momen') setActiveSection('momen');
+          else if (action === 'momen') { setActiveSection('momen'); setMomentAddSignal(Date.now()); }
         }}
       />
 

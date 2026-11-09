@@ -92,13 +92,17 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
       <div className="gate-in relative mx-auto flex min-h-full w-full max-w-md flex-col justify-center gap-7 px-6 py-10">
         {/* Identitas app — logo */}
         <div className="text-center">
-          <img
-            src="/brand/logo.png"
-            alt="Bayt Mustaqbal"
-            width="256"
-            height="221"
-            className="mx-auto h-auto w-full max-w-[200px] object-contain drop-shadow-[0_0_30px_rgba(34,211,238,0.20)] sm:max-w-[240px]"
-          />
+          <div className="login-logo-wrapper mx-auto">
+            <img
+              src="/brand/logo.png"
+              alt="Bayt Mustaqbal"
+              width="256"
+              height="221"
+              className="login-logo h-auto w-full max-w-[200px] object-contain drop-shadow-[0_0_30px_rgba(34,211,238,0.20)] sm:max-w-[240px]"
+            />
+            <div className="login-ring login-ring-a" aria-hidden="true" />
+            <div className="login-ring login-ring-b" aria-hidden="true" />
+          </div>
           <p className="mt-5 text-sm text-mutedfg">
             Rumah Masa Depan — Iman, Teknologi, Keluarga
           </p>
@@ -180,7 +184,7 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
           >
             {submitting ? (
               <>
-                <Icon name="loader" size={18} className="animate-spin" />
+                <div className="ld-trio ld-sm" aria-hidden="true"><i></i><i></i><i></i></div>
                 Memeriksa…
               </>
             ) : (

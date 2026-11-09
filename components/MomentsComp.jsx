@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { SectionHeader, EmptyState, Badge, CTA_CLASS } from './ui';
 
@@ -234,7 +234,7 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto, goog
             Batal
           </button>
           <button type="submit" disabled={uploading} className={`${CTA_CLASS} min-h-[48px] flex-[2]`}>
-            {uploading ? <Icon name="loader" size={16} className="animate-spin" /> : <Icon name="check" size={16} />}
+            {uploading ? <div className="ld-trio ld-xs inline-block align-middle" aria-hidden="true"><i></i><i></i><i></i></div> : <Icon name="check" size={16} />}
             {uploading ? 'Mengunggah…' : initial ? 'Simpan Perubahan' : 'Simpan Momen'}
           </button>
         </div>
@@ -243,11 +243,16 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto, goog
   );
 }
 
-export function MomentsComp({ moments = [], canWrite = false, onSave, onDelete, onUploadPhoto, googleConnected = false }) {
+export function MomentsComp({ moments = [], canWrite = false, onSave, onDelete, onUploadPhoto, googleConnected = false, autoOpenAdd = null }) {
   const [form, setForm] = useState(null); // { mode: 'add' } | { mode: 'edit', moment }
 
   const openAdd = () => setForm({ mode: 'add' });
   const openEdit = (m) => setForm({ mode: 'edit', moment: m });
+
+  // Auto-buka form "Momen Baru" saat sinyal dari FAB berubah.
+  useEffect(() => {
+    if (autoOpenAdd != null) openAdd();
+  }, [autoOpenAdd]);
 
   return (
     <section className="app-fade-in">
