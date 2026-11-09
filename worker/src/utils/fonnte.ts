@@ -33,8 +33,14 @@ export async function sendWA(env: Env, message: string, target?: string): Promis
 
     const result = await res.json() as any;
 
-    if (result.error) {
-      console.error('WA send error:', result.error, result.message);
+    // Fonnte membalas status via `status`/`reason`, bukan field `error`.
+    // Status false atau non-2xx = gagal (token invalid, device not connected,
+    // target not found, quota exceeded, dsb.). Jangan pernah anggap sukses
+    // tanpa verifikasi ini.
+    const failed = !res.ok || result?.status === false || !!result?.error || !!result?.reason;
+    if (failed) {
+      const reason = result?.reason || result?.error?.message || result?.message || `HTTP ${res.status}`;
+      console.error('WA send error:', reason);
       return false;
     }
 
