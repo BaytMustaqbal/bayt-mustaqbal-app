@@ -13,6 +13,7 @@ const toRow = (r: any) => ({
   type: r.type,
   name: r.name,
   amount: r.amount != null ? Number(r.amount) : null,
+  category: r.category || 'lainnya',
   day: r.day != null ? Number(r.day) : null,
   next_due: r.next_due || null,
   active: r.active === 1,
@@ -38,8 +39,8 @@ scheduledTaskRoutes.post('/', async (c) => {
 
   const userId = c.get('userId');
   const groupId = c.get('groupId');
-  const { type, name, amount, day, next_due, active } = await c.req.json() as {
-    type: string; name: string; amount?: number; day?: number; next_due?: string; active?: boolean;
+  const { type, name, amount, category, day, next_due, active } = await c.req.json() as {
+    type: string; name: string; amount?: number; category?: string; day?: number; next_due?: string; active?: boolean;
   };
 
   if (!SCHEDULED_TYPES.includes(type) || !name?.trim()) {
@@ -55,9 +56,9 @@ scheduledTaskRoutes.post('/', async (c) => {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    `INSERT INTO scheduled_tasks (id, user_id, group_id, type, name, amount, day, next_due, active, rev, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(id, userId, groupId, type, name.trim(), amount != null ? amount : null, day != null ? day : null, next_due || null, active === false ? 0 : 1, 1, now, now).run();
+    `INSERT INTO scheduled_tasks (id, user_id, group_id, type, name, amount, category, day, next_due, active, rev, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, userId, groupId, type, name.trim(), amount != null ? amount : null, category || 'lainnya', day != null ? day : null, next_due || null, active === false ? 0 : 1, 1, now, now).run();
 
   const created = await c.env.DB.prepare('SELECT * FROM scheduled_tasks WHERE id = ?').bind(id).first();
   return c.json({ ok: true, data: toRow(created), error: null });
@@ -78,8 +79,8 @@ scheduledTaskRoutes.put('/:id', async (c) => {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Tugas terjadwal tidak ditemukan' } }, 404);
   }
 
-  const { type, name, amount, day, next_due, active } = await c.req.json() as {
-    type?: string; name?: string; amount?: number; day?: number; next_due?: string; active?: boolean;
+  const { type, name, amount, category, day, next_due, active } = await c.req.json() as {
+    type?: string; name?: string; amount?: number; category?: string; day?: number; next_due?: string; active?: boolean;
   };
   const newType = type && SCHEDULED_TYPES.includes(type) ? type : existing.type;
   if (type && !SCHEDULED_TYPES.includes(type)) {
@@ -94,12 +95,13 @@ scheduledTaskRoutes.put('/:id', async (c) => {
 
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    `UPDATE scheduled_tasks SET type = ?, name = ?, amount = ?, day = ?, next_due = ?, active = ?, rev = rev + 1, updated_at = ?
+    `UPDATE scheduled_tasks SET type = ?, name = ?, amount = ?, category = ?, day = ?, next_due = ?, active = ?, rev = rev + 1, updated_at = ?
      WHERE id = ? AND ${scope.sql} AND void IS NULL`
   ).bind(
     newType,
     name !== undefined ? name.trim() : existing.name,
     amount !== undefined ? amount : existing.amount,
+    category !== undefined ? category : existing.category,
     day !== undefined ? day : existing.day,
     next_due !== undefined ? next_due : existing.next_due,
     active !== undefined ? (active === false ? 0 : 1) : existing.active,

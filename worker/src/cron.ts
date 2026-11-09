@@ -225,6 +225,41 @@ async function sendScheduledTaskReminders(env: Env): Promise<void> {
 const formatIdr = (v: number) =>
   Number(v).toLocaleString('id-ID');
 
+/** Buat transaksi pengeluaran otomatis untuk tugas terjadwal yang jatuh tempo hari ini.
+ *  Dedup: satu template maksimal satu transaksi per bulan. */
+async function createScheduledTransactions(env: Env): Promise<void> {
+  const today = new Date();
+  const todayStr = isoDate(today);
+  const monthPrefix = todayStr.slice(0, 7);
+
+  const rows = await env.DB.prepare(
+    `SELECT * FROM scheduled_tasks WHERE type = 'pengeluaran' AND void IS NULL AND active = 1`
+  ).all();
+  const tasks = (rows.results || []) as any[];
+
+  for (const task of tasks) {
+    const due = scheduledDueDate(task, today);
+    if (due !== todayStr) continue;
+
+    // Sudah ada transaksi bulan ini untuk template ini?
+    const existing = await env.DB.prepare(
+      `SELECT id FROM transactions WHERE user_id = ? AND type = 'out' AND void IS NULL
+       AND description = ? AND date >= ? AND date <= ? LIMIT 1`
+    ).bind(task.user_id, task.name, `${monthPrefix}-01`, `${monthPrefix}-31`).first();
+    if (existing) continue;
+
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const amount = task.amount != null ? Number(task.amount) : 0;
+    if (amount <= 0) continue;
+
+    await env.DB.prepare(
+      `INSERT INTO transactions (id, user_id, category_id, amount, type, date, description, rev, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'out', ?, ?, 1, ?, ?)`
+    ).bind(id, task.user_id, task.category || 'lainnya', amount, due, task.name, now, now).run();
+  }
+}
+
 export async function handleCron(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
   const now = new Date();
   const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -244,7 +279,10 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
 
       if (prefs.digestEnabled && prefs.digestHour === hour) await sendDailyDigest(env);
 
-      if (prefs.scheduledEnabled) await sendScheduledTaskReminders(env);
+      if (prefs.scheduledEnabled) {
+        await sendScheduledTaskReminders(env);
+        await createScheduledTransactions(env);
+      }
     }
 
     await processOutbox(env);
