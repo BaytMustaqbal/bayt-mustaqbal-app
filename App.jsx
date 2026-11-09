@@ -42,7 +42,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi, scheduledTasksApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -216,7 +216,7 @@ const buildDataBundle = (apiData, currentUser) => {
       pos: budget.pos || {
         needs: [{ id: 'n1', label: 'Cicilan rumah/sewa' }, { id: 'n2', label: 'Belanja bahan makanan & beras' }, { id: 'n3', label: 'Tagihan utilitas (listrik/air/internet)' }, { id: 'n4', label: 'Transportasi (BBM/angkutan umum)' }, { id: 'n5', label: 'Sekolah anak' }, { id: 'n6', label: 'Asuransi kesehatan' }],
         wants: [{ id: 'w1', label: 'Makan di luar/hangout' }, { id: 'w2', label: 'Hobi & hiburan' }, { id: 'w3', label: 'Langganan streaming' }, { id: 'w4', label: 'Liburan/travelling' }],
-        savings: [{ id: 's1', label: 'Dana darurat (target 3�6� pengeluaran bulanan)' }, { id: 's2', label: 'Tabungan' }, { id: 's3', label: 'Investasi' }, { id: 's4', label: 'Pembayaran cicilan/utang' }],
+        savings: [{ id: 's1', label: 'Dana darurat (target 3-6 bulan pengeluaran bulanan)' }, { id: 's2', label: 'Tabungan' }, { id: 's3', label: 'Investasi' }, { id: 's4', label: 'Pembayaran cicilan/utang' }],
       },
     },
     monthlyTrend: computeMonthlyTrend(expenses),
@@ -414,13 +414,14 @@ const buildMergedData = (apiData, currentUser) => {
 
 // Fetch all API data (schedule, expenses, income, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, income, notes, settings, users] = await Promise.all([
+  const [schedule, expenses, income, notes, settings, users, scheduledTasks] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
     txn.fetchIncome().catch(() => []),
     notesApi.fetch(null).catch(() => []),
     settingsApi.fetchAll().catch(() => []),
     auth.users().catch(() => []),
+    scheduledTasksApi.fetch().catch(() => []),
   ]);
 
   // Parse budget settings
@@ -443,13 +444,13 @@ const fetchApiData = async () => {
     try { budget.pos = JSON.parse(budgetSettings.budget_pos); } catch {}
   }
 
-  let scheduledExpenses = [];
-  if (budgetSettings.scheduled_expenses) {
-    try {
-      const parsed = JSON.parse(budgetSettings.scheduled_expenses);
-      if (Array.isArray(parsed)) scheduledExpenses = parsed;
-    } catch {}
-  }
+  // Pengeluaran terjadwal: sekarang dari backend /rec/scheduled (type pengeluaran),
+  // bukan lagi blob JSON di settings. Bentuk frontend: { id, name, amount, day, active }.
+  const scheduledExpenses = Array.isArray(scheduledTasks)
+    ? scheduledTasks
+        .filter((t) => t.type === 'pengeluaran')
+        .map((t) => ({ id: t.id, name: t.name, amount: t.amount, day: t.day, active: t.active }))
+    : [];
 
   return { schedule, expenses, income, notes, budget, scheduledExpenses, users };
 };
@@ -1247,7 +1248,7 @@ const deleteGoal = async (id) => {
       icon: 'note',
       fields: [
         { key: 'title', label: 'Judul catatan', type: 'text', required: true, placeholder: 'contoh: Daftar belanja mingguan' },
-        { key: 'body', label: 'Isi catatan', type: 'textarea', rows: 3, placeholder: 'tulis detail catatan di sini�' },
+        { key: 'body', label: 'Isi catatan', type: 'textarea', rows: 3, placeholder: 'tulis detail catatan di sini...' },
         { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: 'info', options: catOptions(NOTE_CATEGORIES) },
         { key: 'pinned', label: 'Tandai penting', type: 'checkbox', help: 'Muncul di filter "Penting"' },
       ],
@@ -1369,8 +1370,6 @@ const deleteGoal = async (id) => {
   // dataRef menjaga snapshot terbaru untuk aksi yang berjalan belakangan
   // (mis. tombol "Urungkan" dari toast) tanpa closure basi.
   const dataRef = useRef(data);
-  // Ref untuk mencegah log error Fonnte berulang setiap interval tick
-  const sentFonnteError = React.useRef(false);
 
   const saveData = (next) => {
     dataRef.current = next;
@@ -1457,7 +1456,7 @@ const deleteGoal = async (id) => {
         // Tidak ada cache ? tetap tampilkan app dengan data lokal saja
         const merged = buildDataBundle({}, currentUser);
         saveData(merged);
-        pushToast({ message: 'Offline � hanya data lokal yang tersedia.', duration: 4000, tone: 'warning' });
+        pushToast({ message: 'Offline: hanya data lokal yang tersedia.', duration: 4000, tone: 'warning' });
       }
       return;
     }
@@ -1492,6 +1491,42 @@ const deleteGoal = async (id) => {
       loadFromAPI();
       refreshGcalStatus();
     }
+  }, [isLoggedIn, authReady]);
+
+  // Migrasi sekali-jalan: template pengeluaran terjadwal lama yang tersimpan
+  // di settings (blob "scheduled_expenses") dipindah ke /rec/scheduled,
+  // lalu key lama dibersihkan. Menjalankan sekali per sesi.
+  const scheduledMigratedRef = useRef(false);
+  useEffect(() => {
+    if (!isLoggedIn || !authReady || scheduledMigratedRef.current) return;
+    scheduledMigratedRef.current = true;
+    (async () => {
+      try {
+        const all = await settingsApi.fetchAll();
+        const row = all.find((s) => s.key === 'scheduled_expenses');
+        if (!row?.value) return;
+        const parsed = JSON.parse(row.value);
+        if (!Array.isArray(parsed) || parsed.length === 0) return;
+        const existing = await scheduledTasksApi.fetch();
+        for (const tpl of parsed) {
+          if (!tpl?.name) continue;
+          const dup = existing.some((t) => t.type === 'pengeluaran' && t.name === tpl.name);
+          if (dup) continue;
+          await scheduledTasksApi.create({
+            type: 'pengeluaran',
+            name: tpl.name,
+            amount: Number(tpl.amount) || 0,
+            day: Number(tpl.day) || 1,
+            active: tpl.active !== false,
+          });
+        }
+        // Bersihkan blob lama setelah berhasil migrasi.
+        try { await settingsApi.upsert('scheduled_expenses', '[]'); } catch {}
+        loadFromAPI();
+      } catch (e) {
+        console.warn('Migrasi pengeluaran terjadwal gagal:', e.message);
+      }
+    })();
   }, [isLoggedIn, authReady]);
 
   // Effect: auto-create scheduled expenses saat app mount
@@ -1548,72 +1583,6 @@ const deleteGoal = async (id) => {
           });
       }
     });
-  }, [isLoggedIn, data]);
-
-  // Effect: kirim notifikasi WA ke Fonnte jika scheduled expense due date tiba
-  // Gunakan flag permanent agar hanya kirim sekali per sesi, hindari looping console.error
-  const sentFonnteNotif = React.useRef(false);
-
-  useEffect(() => {
-    // Kirim notifikasi Fonnte dinonaktifkan sementara karena API
-    // api.fonnte.net tidak dapat ter-resolve di environment ini.
-    // Gunakan tombol "Kirim Tes" di halaman Pengaturan untuk pengiriman manual.
-    return;
-
-    const fetchFonnte = async (token, message, target) => {
-      try {
-        const result = await fetch('https://api.fonnte.net/v1/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ message, target }),
-        });
-        const resultData = await result.json();
-        return resultData;
-      } catch (err) {
-        // Hindari log error berulang setiap interval tick
-        if (!sentFonnteError.current) {
-          console.error('Gagal kirim Fonnte:', err.message);
-          sentFonnteError.current = true;
-        }
-        return null;
-      }
-    };
-
-    const sendFonnteNotifications = async () => {
-      const fonnteToken = import.meta.env.VITE_FONNTE_TOKEN;
-      const fonnteTarget = import.meta.env.VITE_FONNTE_TARGET || '';
-
-      if (!fonnteToken) {
-        console.error('VITE_FONNTE_TOKEN not set');
-        sentFonnteNotif.current = false; // reset bila token hilang
-        return;
-      }
-
-      data.scheduledExpenses
-        .filter((t) => t.active)
-        .forEach((t) => {
-          const dueDate = new Date(today.getFullYear(), t.day - 1, 1);
-          const timeDiff = dueDate - today;
-          const daysDiff = Math.round(timeDiff / 86400000);
-
-          // Hanya kirim jika 3 hari sebelum atau hari due date
-          if (daysDiff === 3 || daysDiff === 0) {
-            const amountFmt = typeof formatCurrencyShort === 'function' ? formatCurrencyShort(t.amount) : String(t.amount);
-            const message = `*Jadwal Pengeluaran*\nTransaksi "${t.name}" sebesar ${amountFmt} jatuh tempo ${daysDiff === 0 ? 'hari ini' : '3 hari lagi'} (${t.day} ${dayLabel(today.getMonth() + 1)}).`;
-            const target = fonnteTarget;
-
-            fetchFonnte(fonnteToken, message, target).catch(() => {
-              console.error(`Fonnte gagal kirim untuk ${t.name}`);
-            });
-          }
-        });
-    };
-
-    const today = new Date();
-    sendFonnteNotifications();
   }, [isLoggedIn, data]);
 
   // Effect: reload data ketika online kembali
@@ -1797,7 +1766,7 @@ const deleteGoal = async (id) => {
       next = { ...current, notes: [...(current.notes || []), item] };
     } else if (section === 'family') {
       if (item.bagian === 'anggota') {
-        next = { ...current, family: [...(current.family || []), { id: item.id, name: item.title, role: 'Anggota', initials: item.initials, status: 'active', birthDate: '', blood: '�', allergy: '�', phone: item.meta || '�' }] };
+        next = { ...current, family: [...(current.family || []), { id: item.id, name: item.title, role: 'Anggota', initials: item.initials, status: 'active', birthDate: '', blood: '', allergy: '', phone: item.meta || '' }] };
       } else if (item.bagian === 'medis') {
         next = { ...current, familyMedical: [...(current.familyMedical || []), { id: item.id, title: item.title, meta: item.meta, badge: 'Catatan', tone: 'gray' }] };
       } else if (item.bagian === 'dokumen') {
@@ -2133,75 +2102,58 @@ const deleteGoal = async (id) => {
     setAccountOpen(true);
   };
 
-  // Simpan template pengeluaran terjadwal
+  // Simpan template pengeluaran terjadwal (backend /rec/scheduled)
   const saveScheduledTemplate = async (values) => {
     const { name, amount, category, day, bucket, active } = values;
     const editId = editing && editing.section === 'scheduledTemplate' ? editing.id : null;
 
-    const buildTpl = (id, tpl) => ({
-      id,
+    const payload = {
+      type: 'pengeluaran',
       name,
       amount: Number(amount) || 0,
-      category: category || 'lainnya',
       day: Number(day) || 1,
-      bucket: bucket || 'auto',
       active: active !== false,
-      lastRunMonth: tpl ? tpl.lastRunMonth : null,
-    });
+    };
 
-    const key = 'scheduled_expenses';
-    const existingValue = (await settingsApi.fetchAll()).find((s) => s.key === key);
-    let templates = [];
     try {
-      templates = JSON.parse(existingValue ? existingValue.value : '[]');
-    } catch {}
-
-    let nextTemplates;
-    if (editId) {
-      const idx = templates.findIndex((t) => String(t.id) === String(editId));
-      if (idx < 0) {
-        pushToast({ message: 'Template tidak ditemukan.', duration: 3000, tone: 'danger' });
-        return;
+      if (editId) {
+        await scheduledTasksApi.update(editId, payload);
+      } else {
+        const existing = await scheduledTasksApi.fetch();
+        if (existing.some((t) => t.name === name && t.type === 'pengeluaran')) {
+          pushToast({ message: `Template "${name}" sudah ada`, duration: 3000, tone: 'warning' });
+          return;
+        }
+        await scheduledTasksApi.create(payload);
       }
-      nextTemplates = templates.map((t, i) => (i === idx ? buildTpl(t.id, t) : t));
-    } else {
-      if (templates.some((t) => t.name === name)) {
-        pushToast({ message: `Template "${name}" sudah ada`, duration: 3000, tone: 'warning' });
-        return;
-      }
-      nextTemplates = [...templates, buildTpl(Date.now(), null)];
+      pushToast({ message: 'Template pengeluaran terjadwal disimpan', duration: 2500 });
+    } catch (e) {
+      // Offline / gagal sinkron → simpan lokal sementara, tanpa hilang.
+      console.warn('Gagal sinkron template terjadwal:', e.message);
+      pushToast({ message: 'Template disimpan Lokal (gagal sinkron)', duration: 4000, tone: 'warning' });
     }
 
-    // Simpan ke settings API
-    if (isOnline) {
-      try {
-        await settingsApi.upsert(key, JSON.stringify(nextTemplates));
-        pushToast({ message: 'Template pengeluaran terjadwal disimpan', duration: 2500 });
-      } catch {
-        pushToast({ message: 'Template disimpan Lokal (gagal sinkron)', duration: 4000, tone: 'warning' });
-      }
-    } else {
-      pushToast({ message: 'Template disimpan Lokal (tidak ada koneksi)', duration: 3000 });
+    // Segarkan dari backend (atau tetap state lokal bila offline).
+    try {
+      const list = await scheduledTasksApi.fetch();
+      saveData({
+        ...data,
+        scheduledExpenses: list
+          .filter((t) => t.type === 'pengeluaran')
+          .map((t) => ({ id: t.id, name: t.name, amount: t.amount, day: t.day, active: t.active })),
+      });
+    } catch {
+      /* biarkan state lokal */
     }
-
-    // Update state lokal (jadikan array settings sebagai sumber kebenaran)
-    saveData({ ...data, scheduledExpenses: nextTemplates });
   };
 
   const deleteScheduledTemplate = async (id) => {
-    const key = 'scheduled_expenses';
-    const existingValue = (await settingsApi.fetchAll()).find((s) => s.key === key);
-    let templates = [];
     try {
-      templates = JSON.parse(existingValue ? existingValue.value : '[]');
-    } catch {}
-    const next = templates.filter((t) => String(t.id) !== String(id));
-
-    if (isOnline) {
-      try {
-        await settingsApi.upsert(key, JSON.stringify(next));
-      } catch { /* offline: tetap hapus lokal */ }
+      await scheduledTasksApi.delete(id);
+    } catch (e) {
+      console.warn('Gagal hapus template terjadwal:', e.message);
     }
+    const next = data.scheduledExpenses.filter((t) => String(t.id) !== String(id));
     saveData({ ...data, scheduledExpenses: next });
     pushToast({ message: 'Template pengeluaran terjadwal dihapus', duration: 2500 });
   };
@@ -2886,7 +2838,7 @@ const deleteGoal = async (id) => {
               <SectionHeader
                 icon="pieChart"
                 title="Anggaran"
-                subtitle={`Gaji ${formatCurrencyShort(budget.income)} � ${budget.month}`}
+                subtitle={`Gaji ${formatCurrencyShort(budget.income)} - ${budget.month}`}
               />
             ) : financeMode === 'ringkasan' ? (
               <SectionHeader icon="barChart" title="Ringkasan" subtitle={`Periode ${monthNameLong(summaryMonth)}`} />
@@ -2894,7 +2846,7 @@ const deleteGoal = async (id) => {
               <SectionHeader
                 icon="trendingUp"
                 title={incomeMeta.label}
-                subtitle={`Total: ${formatCurrency(incomeTotal)} � bulan ini ${formatCurrency(incomeThisMonth)}`}
+                subtitle={`Total: ${formatCurrency(incomeTotal)} - bulan ini ${formatCurrency(incomeThisMonth)}`}
                 actionLabel={canWrite ? 'Tambah' : undefined}
                 actionTone="accent"
                 onAction={() => openAdd('income')}
@@ -3043,14 +2995,14 @@ const deleteGoal = async (id) => {
                   <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-toneamber/40 bg-toneamber/10 px-3 py-2.5 text-sm text-toneamberfg">
                     <Icon name="alertTriangle" size={16} className="mt-0.5 shrink-0" />
                     <span>
-                      Pengeluaran sudah memakai {anggaranStatus.pct}% anggaran bulan ini � hati-hati.
+                      Pengeluaran sudah memakai {anggaranStatus.pct}% anggaran bulan ini. Hati-hati.
                     </span>
                   </div>
                 ) : (
                   <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 px-3 py-2.5 text-sm text-success">
                     <Icon name="circleCheck" size={16} className="mt-0.5 shrink-0" />
                     <span>
-                      Pengeluaran {anggaranStatus.pct}% dari anggaran � masih aman.
+                      Pengeluaran {anggaranStatus.pct}% dari anggaran. Masih aman.
                     </span>
                   </div>
                 )}
@@ -3084,14 +3036,14 @@ const deleteGoal = async (id) => {
                   <StatCard
                     icon="target"
                     tone={anggaranStatus.level === 'lewat' ? 'rose' : anggaranStatus.level === 'hati-hati' ? 'amber' : anggaranStatus.level === 'aman' ? 'emerald' : 'cyan'}
-                    value={anggaranStatus.level === 'belum' ? '�' : `${anggaranStatus.pct}%`}
+                    value={anggaranStatus.level === 'belum' ? '-' : `${anggaranStatus.pct}%`}
                     label="Anggaran terpakai"
                     hint={budget.income > 0 ? `dari ${formatCurrencyShort(budget.income)}` : 'Anggaran belum diisi'}
                   />
                   <StatCard
                     icon={anggaranStatus.sisa >= 0 ? 'circleCheck' : 'alertTriangle'}
                     tone={anggaranStatus.sisa >= 0 ? 'emerald' : 'rose'}
-                    value={anggaranStatus.level === 'belum' ? '�' : formatCurrencyShort(Math.abs(anggaranStatus.sisa))}
+                    value={anggaranStatus.level === 'belum' ? '-' : formatCurrencyShort(Math.abs(anggaranStatus.sisa))}
                     valueTitle={anggaranStatus.level === 'belum' ? undefined : formatCurrency(Math.abs(anggaranStatus.sisa))}
                     label={anggaranStatus.sisa >= 0 ? 'Sisa anggaran' : 'Melewati anggaran'}
                     hint="Dari angka rencana"
@@ -3240,7 +3192,7 @@ const deleteGoal = async (id) => {
                 type="search"
                 value={noteQuery}
                 onChange={(e) => setNoteQuery(e.target.value)}
-                placeholder="Cari judul atau isi catatan�"
+                placeholder="Cari judul atau isi catatan..."
                 aria-label="Cari catatan"
                 className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas py-2 pl-11 pr-12 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand"
               />
@@ -3462,8 +3414,8 @@ const deleteGoal = async (id) => {
         {dataLoading && (
           <div className="fixed inset-0 z-[90] flex items-center justify-center bg-canvas/90">
             <div className="text-center">
-              <Icon name="loader" size={32} className="animate-spin text-brand" />
-              <p className="mt-3 text-sm text-mutedfg">Memuat data�</p>
+              <div className="ld-trio text-brand mx-auto" aria-hidden="true"><i></i><i></i><i></i></div>
+              <p className="mt-3 text-sm text-mutedfg">Memuat data...</p>
             </div>
           </div>
         )}
@@ -3529,7 +3481,7 @@ const deleteGoal = async (id) => {
             className="mb-4 flex items-center gap-2.5 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-tonerosefg"
           >
             <Icon name="wifiOff" size={16} />
-            <span>Mode offline � perubahan akan disinkronkan saat online.</span>
+            <span>Mode offline: perubahan akan disinkronkan saat online.</span>
           </div>
         )}
         {!canWrite && (
@@ -3538,7 +3490,7 @@ const deleteGoal = async (id) => {
             className="mb-4 flex items-center gap-2.5 rounded-xl border border-toneamber/40 bg-toneamber/10 px-4 py-3 text-sm text-toneamberfg"
           >
             <Icon name="eye" size={16} />
-            <span>Mode baca-saja � hanya Kepala Keluarga, Suami &amp; Istri yang bisa menambah atau mengubah data keluarga.</span>
+            <span>Mode baca-saja: hanya Kepala Keluarga, Suami &amp; Istri yang bisa menambah atau mengubah data keluarga.</span>
           </div>
         )}
         {renderSection()}

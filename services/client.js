@@ -511,3 +511,28 @@ export const momentsApi = {
     return result.data;
   },
 };
+
+/* ---- Tugas Terjadwal (backend /api/rec/scheduled) ----
+   4 tab: pengeluaran / tabungan / belanja / service. Backend memakai
+   baris ini untuk notif WA H-3. Field frontend → payload:
+     { type, name, amount, day (pengeluaran), next_due (jenis lain), active } */
+export const scheduledTasksApi = {
+  fetch: async () => {
+    return apiFetch('/rec/scheduled');
+  },
+  create: async (item) => {
+    return apiFetch('/rec/scheduled', {
+      method: 'POST',
+      body: JSON.stringify(item),
+    });
+  },
+  update: async (id, item) => {
+    return apiFetch(`/rec/scheduled/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(item),
+    });
+  },
+  delete: async (id) => {
+    return apiFetch(`/rec/scheduled/${id}`, { method: 'DELETE' });
+  },
+};
