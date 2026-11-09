@@ -449,7 +449,7 @@ const fetchApiData = async () => {
   const scheduledExpenses = Array.isArray(scheduledTasks)
     ? scheduledTasks
         .filter((t) => t.type === 'pengeluaran')
-        .map((t) => ({ id: t.id, name: t.name, amount: t.amount, day: t.day, active: t.active }))
+        .map((t) => ({ id: t.id, name: t.name, amount: t.amount, category: t.category, day: t.day, active: t.active }))
     : [];
 
   return { schedule, expenses, income, notes, budget, scheduledExpenses, users };
@@ -1516,6 +1516,7 @@ const deleteGoal = async (id) => {
             type: 'pengeluaran',
             name: tpl.name,
             amount: Number(tpl.amount) || 0,
+            category: tpl.category || 'lainnya',
             day: Number(tpl.day) || 1,
             active: tpl.active !== false,
           });
@@ -1530,8 +1531,13 @@ const deleteGoal = async (id) => {
   }, [isLoggedIn, authReady]);
 
   // Effect: auto-create scheduled expenses saat app mount
-  // Cek template ? buat transaksi jika tanggal jatuh tempo belum dibuat bulan ini (hanya sekali per bulan)
+  // DIPINDAHKAN ke cron backend (createScheduledTransactions) — di sini
+  // dinonaktifkan supaya tidak duplikasi. Cron membuat transaksi otomatis
+  // pada tanggal jatuh tempo tanpa perlu app terbuka.
+  // (Efek lama dihapus: loop tpl + txn.create di frontend)
   useEffect(() => {
+    return;
+    // eslint-disable-next-line no-unreachable
     if (!isLoggedIn || !data || !data.scheduledExpenses) return;
     const now = new Date();
     const year = now.getFullYear();
@@ -2111,6 +2117,7 @@ const deleteGoal = async (id) => {
       type: 'pengeluaran',
       name,
       amount: Number(amount) || 0,
+      category: category || 'lainnya',
       day: Number(day) || 1,
       active: active !== false,
     };
