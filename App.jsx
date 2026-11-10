@@ -43,7 +43,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -887,6 +887,33 @@ const deleteGoal = async (id) => {
     return () => {
       alive = false;
     };
+  }, [isLoggedIn, authReady]);
+
+  // Muat inventory service dari backend + migrasi localStorage sekali-jalan.
+  const svcMigratedRef = useRef(false);
+  useEffect(() => {
+    if (!isLoggedIn || !authReady || svcMigratedRef.current) return;
+    svcMigratedRef.current = true;
+    let alive = true;
+    (async () => {
+      try {
+        const rows = await serviceInvApi.fetch();
+        if (alive) {
+          // Gabung: data backend menang; localStorage lama jadi seed bila kosong.
+          const localInv = dataRef.current?.serviceInventory || [];
+          if (rows.length === 0 && localInv.length > 0) {
+            for (const it of localInv) {
+              try { await serviceInvApi.create(it); } catch { /* lewati */ }
+            }
+            const fresh = await serviceInvApi.fetch();
+            if (alive) saveData({ ...dataRef.current, serviceInventory: fresh });
+          } else {
+            saveData({ ...dataRef.current, serviceInventory: rows });
+          }
+        }
+      } catch { /* non-kritis */ }
+    })();
+    return () => { alive = false; };
   }, [isLoggedIn, authReady]);
 
   // Muat analitik & insight setelah login.
@@ -2337,8 +2364,12 @@ const deleteGoal = async (id) => {
   const addSparepart = async (vals) => {
     if (!canWrite) return;
     const item = sparepartToPayload(newSparepart(vals));
+    let saved = item;
+    if (isOnline) {
+      try { saved = await serviceInvApi.create(item); } catch { /* simpan lokal */ }
+    }
     const currentInv = dataRef.current?.serviceInventory || [];
-    saveData({ ...dataRef.current, serviceInventory: [...currentInv, item] });
+    saveData({ ...dataRef.current, serviceInventory: [...currentInv, saved] });
     pushToast({ message: 'Perawatan ditambahkan', duration: 2500 });
   };
 
@@ -2348,6 +2379,9 @@ const deleteGoal = async (id) => {
     if (!sparepart) return;
     const record = serviceHistory[0];
     const updated = { ...sparepart };
+    if (isOnline) {
+      try { await serviceInvApi.update(sparepartId, updated); } catch { /* abaikan */ }
+    }
     const currentInv = dataRef.current?.serviceInventory || [];
     saveData({
       ...dataRef.current,
@@ -2357,6 +2391,9 @@ const deleteGoal = async (id) => {
 
   const removeSparepart = async (sparepartId) => {
     if (!canWrite) return;
+    if (isOnline) {
+      try { await serviceInvApi.delete(sparepartId); } catch { /* abaikan */ }
+    }
     const currentInv = dataRef.current?.serviceInventory || [];
     saveData({ ...dataRef.current, serviceInventory: currentInv.filter((s) => s.id !== sparepartId) });
     pushToast({ message: 'Perawatan dihapus', duration: 2500 });
@@ -2377,6 +2414,15 @@ const deleteGoal = async (id) => {
           : s
       );
     }, currentInv);
+    // Sinkronkan update sparepart ke backend.
+    if (isOnline) {
+      for (const s of updatedInv) {
+        const old = currentInv.find((x) => x.id === s.id);
+        if (old && (old.lastServiceKm !== s.lastServiceKm || old.lastServiceDate !== s.lastServiceDate)) {
+          try { await serviceInvApi.update(s.id, s); } catch { /* abaikan */ }
+        }
+      }
+    }
     saveData({
       ...dataRef.current,
       serviceHistory: [...currentHistory, { ...record, id: `service-${Date.now()}` }],

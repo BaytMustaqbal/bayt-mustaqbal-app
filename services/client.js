@@ -601,3 +601,19 @@ export const subApi = {
     return apiFetch(`/sub/${id}`, { method: 'DELETE' });
   },
 };
+
+/* ---- Service inventory (backend /api/service-inv) ---- */
+export const serviceInvApi = {
+  fetch: async () => {
+    return apiFetch('/service-inv');
+  },
+  create: async (item) => {
+    return apiFetch('/service-inv', { method: 'POST', body: JSON.stringify(item) });
+  },
+  update: async (id, item) => {
+    return apiFetch(`/service-inv/${id}`, { method: 'PUT', body: JSON.stringify(item) });
+  },
+  delete: async (id) => {
+    return apiFetch(`/service-inv/${id}`, { method: 'DELETE' });
+  },
+};
