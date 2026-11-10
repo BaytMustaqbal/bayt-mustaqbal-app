@@ -60,7 +60,14 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
     const avgMonth = Math.round(
       data.monthlyTrend.reduce((sum, m) => sum + m.value, 0) / (monthCount || 1)
     );
-    return { totalExpense, totalIncome, incomeMonth, expenseMonth, net: incomeMonth - expenseMonth, tasksDone, budgetLeft, delta, avgMonth };
+    // Proyeksi saldo akhir bulan: rata-rata pengeluaran harian bulan ini × sisa hari.
+    const nowDate = new Date();
+    const daysInMonth = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0).getDate();
+    const dayToday = nowDate.getDate();
+    const dailyAvg = dayToday > 0 ? expenseMonth / dayToday : 0;
+    const projectedExpense = Math.round(dailyAvg * daysInMonth);
+    const projectedNet = Math.round(incomeMonth - projectedExpense);
+    return { totalExpense, totalIncome, incomeMonth, expenseMonth, net: incomeMonth - expenseMonth, tasksDone, budgetLeft, delta, avgMonth, dailyAvg, projectedExpense, projectedNet, daysInMonth, dayToday };
   }, [data]);
 
   // Momen terbaru untuk ringkasan dashboard (paling baru dulu).
@@ -204,6 +211,37 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         <StatCard compact icon="calendar" tone="cyan" value={data.schedule.length} label="Agenda" hint="Jadwal" />
         <StatCard compact icon="tasks" tone="violet" value={`${totals.tasksDone}/${data.tasks.length}`} label="Tugas" hint="Selesai" />
       </div>
+
+      {/* ---------- Proyeksi saldo ---------- */}
+      <Card className="p-4 sm:p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Icon name="trendingUp" size={18} className="shrink-0 text-brandfg" />
+          <h2 className="truncate font-bold text-ink">Proyeksi Saldo</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-line bg-canvas p-3">
+            <p className="text-[11px] text-mutedfg">Rata-rata harian</p>
+            <p className="font-mono text-sm font-bold text-ink">{formatCurrencyShort(totals.dailyAvg)}</p>
+          </div>
+          <div className="rounded-xl border border-line bg-canvas p-3">
+            <p className="text-[11px] text-mutedfg">Proyeksi pengeluaran</p>
+            <p className="font-mono text-sm font-bold text-ink">{formatCurrencyShort(totals.projectedExpense)}</p>
+          </div>
+          <div className="rounded-xl border border-line bg-canvas p-3">
+            <p className="text-[11px] text-mutedfg">Pemasukan bulan ini</p>
+            <p className="font-mono text-sm font-bold text-brandfg">{formatCurrencyShort(totals.incomeMonth)}</p>
+          </div>
+          <div className="rounded-xl border border-line bg-canvas p-3">
+            <p className="text-[11px] text-mutedfg">Proyeksi akhir bulan</p>
+            <p className={`font-mono text-sm font-bold ${totals.projectedNet >= 0 ? 'text-toneemeraldfg' : 'text-tonerosefg'}`}>
+              {formatCurrencyShort(totals.projectedNet)}
+            </p>
+          </div>
+        </div>
+        <p className="mt-2.5 text-[11px] text-mutedfg">
+          Estimasi berdasar rata-rata {totals.dayToday} hari pertama bulan {budget.month}.
+        </p>
+      </Card>
 
       {/* ---------- Pengeluaran terbaru ----------
           "Agenda Terdekat" dilepas dari Dashboard: isinya sudah tercakup kartu
