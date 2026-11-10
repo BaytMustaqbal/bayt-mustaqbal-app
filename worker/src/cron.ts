@@ -316,6 +316,90 @@ async function sendSubscriptionReminders(env: Env): Promise<void> {
   }
 }
 
+/** Notif H-3 target tabungan (menuju target_date, belum tercapai). */
+async function sendGoalReminders(env: Env): Promise<void> {
+  const scopes = await listGroupScopes(env);
+  const target = await readFonnteTarget(env);
+  const in3 = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+  const in3Str = isoDate(in3);
+
+  for (const scope of scopes) {
+    const rows = await env.DB.prepare(
+      `SELECT * FROM goals WHERE group_id = ? AND void IS NULL AND achieved = 0 AND target_date IS NOT NULL`
+    ).bind(scope.group_id).all();
+    const goals = (rows.results || []) as any[];
+
+    for (const g of goals) {
+      const due = String(g.target_date || '').slice(0, 10);
+      if (due !== in3Str) continue;
+
+      const key = `goal_alert:${g.id}:${due}`;
+      const notif = await env.DB.prepare(
+        `SELECT id FROM notification_log WHERE message = ? AND void IS NULL LIMIT 1`
+      ).bind(key).first();
+      if (notif) continue;
+
+      const sisa = Math.max(0, Number(g.target_amount) - Number(g.current_amount));
+      const message = `🎯 *Target Tabungan*\n${g.nama}\nSisa Rp ${formatIdr(sisa)} — target ${due} dalam 3 hari.`;
+      await sendWA(env, message, target);
+
+      const nid = crypto.randomUUID();
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `INSERT INTO notification_log (id, user_id, type, message, read, rev, created_at) VALUES (?, ?, 'info', ?, 0, 1, ?)`
+      ).bind(nid, scope.sample_user, key, now).run();
+
+      await sendPushToUser(env, scope.sample_user, {
+        title: 'Target Tabungan',
+        body: `${g.nama} menuju target ${due} dalam 3 hari.`,
+        url: '/#terjadwal',
+      });
+    }
+  }
+}
+
+/** Notif H-3 service motor (berbasis next_due tanggal). */
+async function sendServiceReminders(env: Env): Promise<void> {
+  const scopes = await listGroupScopes(env);
+  const target = await readFonnteTarget(env);
+  const in3 = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+  const in3Str = isoDate(in3);
+
+  for (const scope of scopes) {
+    const rows = await env.DB.prepare(
+      `SELECT * FROM service_inventory WHERE group_id = ? AND void IS NULL`
+    ).bind(scope.group_id).all();
+    const inv = (rows.results || []) as any[];
+
+    for (const sp of inv) {
+      const due = String(sp.next_due || '').slice(0, 10);
+      // Hanya tipe berbasis tanggal (month/date) yang punya next_due tanggal.
+      if (!due || due !== in3Str) continue;
+
+      const key = `svc_alert:${sp.id}:${due}`;
+      const notif = await env.DB.prepare(
+        `SELECT id FROM notification_log WHERE message = ? AND void IS NULL LIMIT 1`
+      ).bind(key).first();
+      if (notif) continue;
+
+      const message = `🔧 *Service Motor*\n${sp.nama}${sp.jenis ? ` (${sp.jenis})` : ''}\nJadwal service ${due} dalam 3 hari.`;
+      await sendWA(env, message, target);
+
+      const nid = crypto.randomUUID();
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `INSERT INTO notification_log (id, user_id, type, message, read, rev, created_at) VALUES (?, ?, 'info', ?, 0, 1, ?)`
+      ).bind(nid, scope.sample_user, key, now).run();
+
+      await sendPushToUser(env, scope.sample_user, {
+        title: 'Service Motor',
+        body: `${sp.nama} jadwal service ${due} dalam 3 hari.`,
+        url: '/#terjadwal',
+      });
+    }
+  }
+}
+
 export async function handleCron(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
   const now = new Date();
   const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -339,6 +423,8 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
         await sendScheduledTaskReminders(env);
         await createScheduledTransactions(env);
         await sendSubscriptionReminders(env);
+        await sendGoalReminders(env);
+        await sendServiceReminders(env);
       }
     }
 
