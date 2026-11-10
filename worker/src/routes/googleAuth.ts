@@ -39,8 +39,8 @@ function buildLoginConsentUrl(env: Env, origin: string, state: string): string {
     client_id: clientId,
     redirect_uri: resolveLoginRedirectUri(origin),
     response_type: 'code',
-    scope: 'openid email profile',
-    access_type: 'online',
+    scope: 'openid email profile https://www.googleapis.com/auth/photoslibrary.appendonly https://www.googleapis.com/auth/calendar.events',
+    access_type: 'offline',
     prompt: 'select_account',
     include_granted_scopes: 'true',
     state,
@@ -97,7 +97,7 @@ googleAuthRoutes.get('/callback', async (c) => {
     console.error('Google login token exchange gagal:', res.status);
     return fail('token_exchange_failed');
   }
-  const tokens = (await res.json()) as { id_token?: string; access_token?: string };
+  const tokens = (await res.json()) as { id_token?: string; access_token?: string; refresh_token?: string; expires_in?: number };
   const idToken = tokens.id_token || tokens.access_token;
   if (!idToken) return fail('no_id_token');
 
@@ -117,10 +117,29 @@ googleAuthRoutes.get('/callback', async (c) => {
 
   // Kalau google_sub sudah terikat, harus sama (cegah spoof email).
   if (user.google_sub && user.google_sub !== sub) return fail('akun_google_berbeda');
+  const now = new Date().toISOString();
   if (!user.google_sub) {
     await c.env.DB.prepare('UPDATE users SET google_sub = ?, updated_at = ? WHERE id = ?')
-      .bind(sub, new Date().toISOString(), user.id)
+      .bind(sub, now, user.id)
       .run();
+  }
+
+  // Simpan / perbarui koneksi Google (Photos + Calendar) — integrasi otomatis.
+  const scopeStr = 'https://www.googleapis.com/auth/photoslibrary.appendonly https://www.googleapis.com/auth/calendar.events';
+  const expiresAt = tokens.expires_in
+    ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+    : new Date(Date.now() + 3600 * 1000).toISOString();
+  const existingConn = await c.env.DB.prepare('SELECT id FROM gcal_connections WHERE user_id = ?').bind(user.id).first();
+  if (existingConn) {
+    await c.env.DB.prepare(
+      'UPDATE gcal_connections SET google_sub = ?, google_email = ?, access_token = ?, refresh_token = ?, token_expires_at = ?, google_scopes = ?, updated_at = ? WHERE user_id = ?'
+    ).bind(sub, email, tokens.access_token || '', tokens.refresh_token || existingConn.refresh_token, expiresAt, scopeStr, now, user.id).run();
+  } else {
+    const cid = crypto.randomUUID();
+    await c.env.DB.prepare(
+      `INSERT INTO gcal_connections (id, user_id, google_sub, google_email, calendar_id, access_token, refresh_token, token_expires_at, google_scopes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'primary', ?, ?, ?, ?, ?, ?)`
+    ).bind(cid, user.id, sub, email, tokens.access_token || '', tokens.refresh_token || '', expiresAt, scopeStr, now, now).run();
   }
 
   const token = signToken(
