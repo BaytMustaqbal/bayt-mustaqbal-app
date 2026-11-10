@@ -117,6 +117,7 @@ export function AccountModal({
       family_role: u.family_role || 'anak',
       generasi: u.generasi || 'orangtua',
       group_role: u.group_role || 'anak',
+      phone: u.phone || '',
       password: '',
     });
     setMemberNotice('');
@@ -131,6 +132,7 @@ export function AccountModal({
       family_role: memberForm.family_role,
       generasi: memberForm.generasi,
       group_role: memberForm.group_role,
+      phone: memberForm.phone,
     };
     if (memberForm.password) payload.password = memberForm.password;
     setMemberSaving(true);
@@ -633,6 +635,7 @@ export function AccountModal({
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-ink">{u.nama || u.name}</p>
                         <p className="truncate text-[11px] text-mutedfg">{u.username}</p>
+                        {u.phone && <p className="flex truncate items-center gap-1 text-[11px] text-mutedfg"><Icon name="phone" size={11} />{u.phone}</p>}
                       </div>
                       <button
                         type="button"
@@ -677,6 +680,10 @@ export function AccountModal({
             <div>
               <label className="mb-1 block text-xs font-semibold text-mutedfg">Nama</label>
               <input type="text" value={memberForm.nama} onChange={(e) => setMemberForm((f) => ({ ...f, nama: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-mutedfg">No. Telp</label>
+              <input type="tel" inputMode="tel" value={memberForm.phone} onChange={(e) => setMemberForm((f) => ({ ...f, phone: e.target.value }))} placeholder="cth. 0812-3456-7890" className={inputCls} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-mutedfg">Panggilan</label>
@@ -1017,6 +1024,7 @@ export function AccountModal({
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-ink">{u.nama || u.name}</p>
                         <p className="truncate text-[11px] text-mutedfg">{u.username}</p>
+                        {u.phone && <p className="flex truncate items-center gap-1 text-[11px] text-mutedfg"><Icon name="phone" size={11} />{u.phone}</p>}
                       </div>
                     </li>
                   ))}
