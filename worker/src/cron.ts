@@ -2,6 +2,7 @@ import { Env } from './types/env';
 import { sendWA } from './utils/fonnte'; // fonnte WA utility (Task 7)
 import { processOutbox, syncToGcal } from './utils/gcal';
 import { readNotifPrefs, isInQuietWindow, readFonnteTarget } from './utils/notif';
+import { sendPushToUser } from './utils/push';
 import { computeInsight } from './utils/insight';
 import { evaluateRules } from './utils/rules';
 import { runDriveBackup } from './utils/drive';
@@ -39,7 +40,7 @@ async function sendBillReminder(env: Env): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
 
   const overdueBills = await env.DB.prepare(
-    `SELECT name, amount, due_date FROM bills WHERE user_id IN (SELECT id FROM users WHERE void IS NULL) AND void IS NULL AND status = 'unpaid' AND due_date <= ?`
+    `SELECT name, amount, due_date, user_id FROM bills WHERE user_id IN (SELECT id FROM users WHERE void IS NULL) AND void IS NULL AND status = 'unpaid' AND due_date <= ?`
   ).bind(today).all() as any;
 
   const bills = overdueBills?.results || [];
@@ -57,6 +58,11 @@ ${bill.name}
 Jumlah: Rp ${bill.amount.toLocaleString('id-ID')}
 Jatuh tempo: ${bill.due_date}`;
     await sendWA(env, message, target);
+    await sendPushToUser(env, bill.user_id, {
+      title: 'Reminder Tagihan',
+      body: `${bill.name} jatuh tempo ${bill.due_date}`,
+      url: '/#expenses',
+    });
   }
 
   console.log(`Bill reminders sent: ${bills.length}`);
@@ -212,6 +218,11 @@ async function sendScheduledTaskReminders(env: Env): Promise<void> {
       const label = task.amount != null ? ` (${formatIdr(task.amount)})` : '';
       const message = `⏰ *Tugas Terjadwal*\n${task.name}${label}\nJatuh tempo dalam 3 hari (${due}).`;
       await sendWA(env, message, target);
+      await sendPushToUser(env, scope.sample_user, {
+        title: 'Tugas Terjadwal',
+        body: `${task.name} jatuh tempo dalam 3 hari (${due}).`,
+        url: '/#terjadwal',
+      });
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();

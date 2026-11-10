@@ -22,6 +22,7 @@ import { insightRoutes } from './routes/insight';
 import { goalRoutes } from './routes/goal';
 import { waRoutes } from './routes/wa';
 import { scheduledTaskRoutes } from './routes/scheduledTask';
+import { pushRoutes } from './routes/push';
 import { authMiddleware } from './middleware/auth';
 import { handleCron } from './cron';
 
@@ -62,7 +63,7 @@ app.route('/api/backup', backupRoutes);
 app.route('/api/insight', insightRoutes);
 app.route('/api/goal', goalRoutes);
 app.route('/api/wa', waRoutes);
-app.route('/api/rec/scheduled', scheduledTaskRoutes);
+app.route('/api/push', pushRoutes);
 
 app.get('/', (c) => c.json({ ok: true, message: 'Bayt Mustaqbal API' }));
 
