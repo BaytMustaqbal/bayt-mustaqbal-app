@@ -40,8 +40,9 @@ export function LoginScreen({ onLogin, onReset, pushToast }) {
 
   const handleGoogle = () => {
     setLoading(true);
-    const origin = encodeURIComponent(window.location.origin);
-    window.location.href = `/api/auth/google/login?origin=${origin}`;
+    import('../services/client').then(({ googleLoginUrl }) => {
+      window.location.href = googleLoginUrl(window.location.origin);
+    });
   };
 
   return (

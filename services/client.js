@@ -10,6 +10,10 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.baytmustaqbal.my.id/api';
 
+/** URL login Google (absolut, mengarah ke backend API). */
+export const googleLoginUrl = (origin) =>
+  `${API_BASE}/auth/google/login?origin=${encodeURIComponent(origin)}`;
+
 const TOKEN_KEY = 'bm-api-token';
 
 /* ---- Token management ----
