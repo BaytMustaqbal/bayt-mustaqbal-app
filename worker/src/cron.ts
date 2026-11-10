@@ -271,6 +271,51 @@ async function createScheduledTransactions(env: Env): Promise<void> {
   }
 }
 
+/** Notif H-3 langganan/utilitas (push + WA). */
+async function sendSubscriptionReminders(env: Env): Promise<void> {
+  const scopes = await listGroupScopes(env);
+  const target = await readFonnteTarget(env);
+  const today = new Date();
+  const in3 = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const in3Day = in3.getUTCDate();
+
+  for (const scope of scopes) {
+    const rows = await env.DB.prepare(
+      `SELECT * FROM subscriptions WHERE group_id = ? AND void IS NULL AND active = 1`
+    ).bind(scope.group_id).all();
+    const subs = (rows.results || []) as any[];
+
+    for (const sub of subs) {
+      const day = Number(sub.billing_day) || 1;
+      // H-3 dari tanggal tagih bulan ini (dipangkas ke akhir bulan).
+      const lastDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0)).getUTCDate();
+      const dueDay = Math.min(day, lastDay);
+      if (dueDay !== in3Day) continue;
+
+      const key = `sub_alert:${sub.id}:${in3.toISOString().slice(0, 10)}`;
+      const notif = await env.DB.prepare(
+        `SELECT id FROM notification_log WHERE message = ? AND void IS NULL LIMIT 1`
+      ).bind(key).first();
+      if (notif) continue;
+
+      const message = `🔌 *Langganan*\n${sub.name} (${sub.category})\nJatuh tempo dalam 3 hari (tagihan ${dueDay}).`;
+      await sendWA(env, message, target);
+
+      const nid = crypto.randomUUID();
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `INSERT INTO notification_log (id, user_id, type, message, read, rev, created_at) VALUES (?, ?, 'info', ?, 0, 1, ?)`
+      ).bind(nid, scope.sample_user, key, now).run();
+
+      await sendPushToUser(env, scope.sample_user, {
+        title: 'Langganan & Utilitas',
+        body: `${sub.name} jatuh tempo dalam 3 hari.`,
+        url: '/#terjadwal',
+      });
+    }
+  }
+}
+
 export async function handleCron(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
   const now = new Date();
   const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -293,6 +338,7 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
       if (prefs.scheduledEnabled) {
         await sendScheduledTaskReminders(env);
         await createScheduledTransactions(env);
+        await sendSubscriptionReminders(env);
       }
     }
 
