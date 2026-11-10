@@ -169,6 +169,14 @@ export function Navigation({
   const lastTriggerRef = useRef(null);
   const notifMenuRef = useRef(null);
   const lastScrollY = useRef(0);
+  // Ref untuk checkbox FAB aksi cepat (dipakai menutup menu setelah klik mini).
+  const qaToggleRef = useRef(null);
+
+  // Jalankan aksi cepat lalu tutup menu (uncheck checkbox).
+  const handleQuickAction = (action) => {
+    onQuickAction?.(action);
+    if (qaToggleRef.current) qaToggleRef.current.checked = false;
+  };
 
   // ---- Indikator aktif bergeser (bottom nav) ----
   const ulRef = useRef(null);
@@ -378,7 +386,7 @@ export function Navigation({
                   >
                     {/* FAB aksi cepat: hidden checkbox + label (no-JS) untuk fan-out.
                         Menggantikan navigasi dashboard. */}
-                    <input type="checkbox" id="qa-fab-toggle" className="qa-fab-toggle" />
+                    <input ref={qaToggleRef} type="checkbox" id="qa-fab-toggle" className="qa-fab-toggle" />
                     <label
                       htmlFor="qa-fab-toggle"
                       aria-label="Aksi cepat (buat pengeluaran, foto struk, catatan, momen)"
@@ -392,16 +400,16 @@ export function Navigation({
                       </span>
                     </label>
                     <div className="qa-fab-menu" aria-hidden="true">
-                      <button type="button" className="qa-fab-item qf-1 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Momen Keluarga" onClick={() => onQuickAction?.('momen')}>
+                      <button type="button" className="qa-fab-item qf-1 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Momen Keluarga" onClick={() => handleQuickAction('momen')}>
                         <Icon name="image" size={18} />
                       </button>
-                      <button type="button" className="qa-fab-item qf-2 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Pengeluaran Baru" onClick={() => onQuickAction?.('expenses')}>
+                      <button type="button" className="qa-fab-item qf-2 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Pengeluaran Baru" onClick={() => handleQuickAction('expenses')}>
                         <Icon name="receipt" size={18} />
                       </button>
-                      <button type="button" className="qa-fab-item qf-3 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Foto Struk" onClick={() => onQuickAction?.('scan')}>
+                      <button type="button" className="qa-fab-item qf-3 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Foto Struk" onClick={() => handleQuickAction('scan')}>
                         <Icon name="camera" size={18} />
                       </button>
-                      <button type="button" className="qa-fab-item qf-4 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Catatan Baru" onClick={() => onQuickAction?.('notes')}>
+                      <button type="button" className="qa-fab-item qf-4 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Catatan Baru" onClick={() => handleQuickAction('notes')}>
                         <Icon name="note" size={18} />
                       </button>
                     </div>

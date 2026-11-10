@@ -1677,22 +1677,6 @@ const deleteGoal = async (id) => {
     }
   }, [isOnline, authReady]);
 
-  /* ---------- Dev auto-login ----------
-     Hanya di development (Vite DEV), auto-fill kredensial dari .env.development
-     supaya tidak perlu ketik login berulang kali. */
-  useEffect(() => {
-    if (import.meta.env.DEV && !isLoggedIn && !entered && !authChecking && storedToken() === null) {
-      const devUser = import.meta.env.VITE_DEV_USER || 'baytmustaqbal@gmail.com';
-      const devPass = import.meta.env.VITE_DEV_PASS || '@_Eki091278';
-      const timer = setTimeout(() => {
-        auth.login(devUser, devPass)
-          .then((result) => handleLogin(result.user))
-          .catch((err) => console.error('[dev] auto-login gagal:', err.message));
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoggedIn, entered, authChecking]);
-
   /* ---------- Tema ----------
      1) Terapkan tema yang sudah diresolusi ke elemen akar + meta warna browser.
         Atribut `data-theme` yang dipasang skrip di index.html ditimpa dengan
@@ -2325,10 +2309,10 @@ const deleteGoal = async (id) => {
   // Dipakai untuk badge jumlah di dropdown bagian keluarga.
   const familyAll = useMemo(
     () => (data ? [
-      ...data.family.map((m) => ({ ...m, category: 'anggota' })),
-      ...data.familyMedical.map((h) => ({ ...h, category: 'medis' })),
-      ...data.familyContacts.map((c) => ({ ...c, category: 'kontak' })),
-      ...data.familyDocuments.map((d) => ({ ...d, category: 'dokumen' })),
+      ...(data.family || []).map((m) => ({ ...m, category: 'anggota' })),
+      ...(data.familyMedical || []).map((h) => ({ ...h, category: 'medis' })),
+      ...(data.familyContacts || []).map((c) => ({ ...c, category: 'kontak' })),
+      ...(data.familyDocuments || []).map((d) => ({ ...d, category: 'dokumen' })),
     ] : []),
     [data]
   );

@@ -76,6 +76,7 @@ function MemberBox({ member, onSelect }) {
           <span className="block break-words">Nama: {member.name}</span>
           {member.nickname && <span className="block break-words">Panggilan: {member.nickname}</span>}
           <span className="block break-words">Email: {member.email || '—'}</span>
+          {member.phone && <span className="block break-words">Telp: {member.phone}</span>}
           <span className="block">Status: {member.role} · Posisi: {LABEL_GENERASI[member.generasi] || 'Orangtua'}</span>
           <span className="block">Tanggal lahir: {birth || 'belum diisi'}</span>
         </span>

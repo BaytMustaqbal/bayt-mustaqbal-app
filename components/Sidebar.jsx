@@ -93,7 +93,7 @@ export function Sidebar({
       {/* Overlay backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-canvas/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-[75] bg-canvas/50 backdrop-blur-sm lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -103,7 +103,7 @@ export function Sidebar({
       <aside
         data-sidebar
         ref={sidebarRef}
-        className={`fixed top-0 z-50 flex h-screen w-72 max-w-[90vw] flex-col overflow-y-auto border-r border-line bg-surface/95 shadow-nav backdrop-blur-xl transition-transform duration-300 ease-crisp lg:fixed lg:inset-y-auto lg:left-0 lg:top-0 lg:bottom-0 lg:translate-x-0 lg:z-50 ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed top-0 z-[80] flex h-screen w-72 max-w-[90vw] flex-col overflow-y-auto border-r border-line bg-surface/95 shadow-nav backdrop-blur-xl transition-transform duration-300 ease-crisp lg:fixed lg:inset-y-auto lg:left-0 lg:top-0 lg:bottom-0 lg:translate-x-0 lg:z-[80] ${open ? 'translate-x-0' : '-translate-x-full'}`}
         aria-label="Navigasi utama"
       >
         {/* Header sidebar */}

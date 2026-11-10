@@ -92,7 +92,28 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto, goog
   const [photoFile, setPhotoFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [closing, setClosing] = useState(false);
   const fileRef = useRef(null);
+
+  // Kunci scroll body + tutup via Escape (sama seperti FormSheet).
+  const requestClose = () => {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(onCancel, 260);
+  };
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === 'Escape') requestClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [closing]);
 
   const submit = async () => {
     if (!title.trim() || !date) {
@@ -125,15 +146,16 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto, goog
       description: description.trim() || null,
       photo_url: finalPhoto || null,
     });
+    requestClose();
   };
 
   return (
-    <div className="fixed inset-0 z-[80] grid items-end sm:items-center">
-      <button type="button" aria-label="Tutup" onClick={onCancel} className="modal-backdrop absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true">
+      <button type="button" aria-label="Tutup" onClick={requestClose} className={`sheet-backdrop absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm ${closing ? 'sheet-backdrop--closing' : ''}`} />
       <form
         onSubmit={(e) => { e.preventDefault(); submit(); }}
         noValidate
-        className="modal-panel relative mx-auto w-full max-w-lg max-h-[calc(100dvh_-_2rem)] overflow-y-auto rounded-t-3xl border border-line bg-surface/95 p-5 shadow-pop backdrop-blur-xl sm:rounded-3xl"
+        className={`sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl ${closing ? 'sheet-panel--closing' : ''}`}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-base font-bold text-ink">
@@ -142,11 +164,12 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto, goog
             </span>
             {initial ? 'Ubah Momen' : 'Momen Baru'}
           </h2>
-          <button type="button" onClick={onCancel} aria-label="Tutup" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink">
+          <button type="button" onClick={requestClose} aria-label="Tutup" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink">
             <Icon name="close" size={18} />
           </button>
         </div>
 
+        <div className="max-h-[56vh] overflow-y-auto pr-1">
         {/* Foto */}
         <div className="mb-3.5">
           {photoUrl || photoFile ? (
@@ -228,9 +251,10 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto, goog
         />
 
         {error && <p role="alert" className="mt-2 text-xs font-medium text-danger">{error}</p>}
+        </div>
 
         <div className="mt-5 flex gap-2.5">
-          <button type="button" onClick={onCancel} className="min-h-[48px] flex-1 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-mutedfg transition-colors hover:text-ink">
+          <button type="button" onClick={requestClose} className="min-h-[48px] flex-1 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-mutedfg transition-colors hover:text-ink">
             Batal
           </button>
           <button type="submit" disabled={uploading} className={`${CTA_CLASS} min-h-[48px] flex-[2]`}>
@@ -255,6 +279,7 @@ export function MomentsComp({ moments = [], canWrite = false, onSave, onDelete, 
   }, [autoOpenAdd]);
 
   return (
+    <>
     <section className="app-fade-in">
       <SectionHeader
         icon="camera"
@@ -280,25 +305,27 @@ export function MomentsComp({ moments = [], canWrite = false, onSave, onDelete, 
         </div>
       )}
 
-      {form && (
-        <MomentForm
-          initial={form.mode === 'edit' ? form.moment : null}
-          canWrite={canWrite}
-          googleConnected={googleConnected}
-          onCancel={() => setForm(null)}
-          onUploadPhoto={onUploadPhoto}
-          onSubmit={async (data) => {
-            try {
-              if (form.mode === 'edit') await onSave(form.moment.id, data);
-              else await onSave(null, data);
-              setForm(null);
-            } catch (e) {
-              /* error sudah dipush oleh App */
-            }
-          }}
-        />
-      )}
     </section>
+
+    {form && (
+      <MomentForm
+        initial={form.mode === 'edit' ? form.moment : null}
+        canWrite={canWrite}
+        googleConnected={googleConnected}
+        onCancel={() => setForm(null)}
+        onUploadPhoto={onUploadPhoto}
+        onSubmit={async (data) => {
+          try {
+            if (form.mode === 'edit') await onSave(form.moment.id, data);
+            else await onSave(null, data);
+            setForm(null);
+          } catch (e) {
+            /* error sudah dipush oleh App */
+          }
+        }}
+      />
+    )}
+    </>
   );
 }
 

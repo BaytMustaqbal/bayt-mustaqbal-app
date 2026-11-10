@@ -34,25 +34,33 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
   const [progress, setProgress] = useState(0);
   const [note, setNote] = useState('');
   const [err, setErr] = useState('');
+  const [closing, setClosing] = useState(false);
   // Teks mentah hasil OCR (bukan teks struk yang disimpan, hanya untuk
   // diperiksa pengguna & membantu diagnosis bila hasil bacaan tidak jelas)
   const [rawText, setRawText] = useState('');
   // Rincian item terbaca dari struk (read-only, untuk verifikasi pengguna)
   const [items, setItems] = useState([]);
 
+  // Tutup dengan animasi keluar (slide-down) lalu baru panggil onClose.
+  const requestClose = () => {
+    if (busy || closing) return;
+    setClosing(true);
+    setTimeout(onClose, 260);
+  };
+
   // Tutup dengan Escape (kecuali sedang OCR) + kunci scroll body
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e) => {
-      if (e.key === 'Escape' && !busy) onClose();
+      if (e.key === 'Escape' && !busy) requestClose();
     };
     window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener('keydown', onKey);
     };
-  }, [busy, onClose]);
+  }, [busy, closing]);
 
   // Cabut objectURL saat komponen dilepas: foto tidak boleh menetap di memori
   useEffect(() => () => {
@@ -135,25 +143,26 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
       date: form.date || defaultDate,
       category: form.category,
     });
+    requestClose();
   };
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center p-4" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       {/* Backdrop: tutup saat diketuk di luar panel */}
       <button
         type="button"
         aria-label="Tutup pemindai struk"
-        onClick={() => { if (!busy) onClose(); }}
+        onClick={requestClose}
         disabled={busy}
-        className="modal-backdrop absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm"
+        className={`sheet-backdrop absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm ${closing ? 'sheet-backdrop--closing' : ''}`}
       />
 
       <form
         onSubmit={simpan}
         noValidate
-        className="modal-panel relative max-h-[calc(100dvh_-_2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-surface/95 p-5 shadow-pop backdrop-blur-xl"
+        className={`sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl ${closing ? 'sheet-panel--closing' : ''}`}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 id={titleId} className="flex items-center gap-2 text-base font-bold text-ink">
@@ -164,7 +173,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Tutup"
             disabled={busy}
             className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink disabled:opacity-50"
@@ -173,6 +182,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
           </button>
         </div>
 
+        <div className="max-h-[56vh] overflow-y-auto pr-1">
         <p className="mb-3 text-xs leading-relaxed text-mutedfg">
           Foto hanya dipakai untuk membaca teks, tidak disimpan. Isian di bawah adalah saran dari hasil bacaan,
           silakan diperiksa dan diperbaiki sebelum disimpan.
@@ -329,12 +339,13 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
             {err}
           </p>
         )}
+        </div>
 
         {/* ---------- Aksi ---------- */}
         <div className="mt-4 flex gap-2.5">
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             disabled={busy}
             className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-4 text-sm font-semibold text-ink transition-colors hover:bg-muted disabled:opacity-50"
           >

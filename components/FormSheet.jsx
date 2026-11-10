@@ -29,12 +29,21 @@ export function FormSheet({
 }) {
   const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
+  const [closing, setClosing] = useState(false);
   const firstFieldRef = useRef(null);
   const titleId = useId();
+
+  // Tutup dengan animasi keluar (slide-down) lalu baru panggil onClose.
+  const requestClose = () => {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(onClose, 260);
+  };
 
   // Isi nilai awal + fokus field pertama setiap kali dibuka
   useEffect(() => {
     if (!open) return undefined;
+    setClosing(false);
     const init = {};
     fields.forEach((f) => {
       init[f.key] = initialValues?.[f.key] ?? f.defaultValue ?? '';
@@ -52,14 +61,14 @@ export function FormSheet({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') requestClose();
     };
     document.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = prevOverflow;
       document.removeEventListener('keydown', onKey);
     };
-  }, [open, onClose]);
+  }, [open, closing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!open) return null;
 
@@ -79,7 +88,7 @@ export function FormSheet({
       return;
     }
     onSubmit(values);
-    onClose();
+    requestClose();
   };
 
   const inputCls =
@@ -91,15 +100,15 @@ export function FormSheet({
       <button
         type="button"
         aria-label="Tutup formulir"
-        onClick={onClose}
-        className="sheet-backdrop absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm"
+        onClick={requestClose}
+        className={`sheet-backdrop absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm ${closing ? 'sheet-backdrop--closing' : ''}`}
       />
 
       {/* Panel */}
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl"
+        className={`sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl ${closing ? 'sheet-panel--closing' : ''}`}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 id={titleId} className="flex items-center gap-2 text-base font-bold text-ink">
@@ -113,7 +122,7 @@ export function FormSheet({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Tutup"
             className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink"
           >
@@ -236,7 +245,7 @@ export function FormSheet({
         <div className="mt-5 flex gap-2.5">
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className="min-h-[48px] flex-1 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-mutedfg transition-colors hover:text-ink"
           >
             Batal

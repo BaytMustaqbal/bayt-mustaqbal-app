@@ -461,6 +461,15 @@ summary,
   animation: sheetPanelIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Mode menutup: panel turun + backdrop pudar sebelum dihapus dari DOM. */
+.sheet-backdrop--closing {
+  animation: sheetBackdropOut 0.22s ease-in both;
+}
+
+.sheet-panel--closing {
+  animation: sheetPanelOut 0.26s cubic-bezier(0.36, 0, 1, 1) both;
+}
+
 @keyframes sheetBackdropIn {
   from {
     opacity: 0;
@@ -478,6 +487,26 @@ summary,
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes sheetBackdropOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sheetPanelOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(28px);
   }
 }
 
