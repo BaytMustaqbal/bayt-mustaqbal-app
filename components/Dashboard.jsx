@@ -43,22 +43,24 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
   const budget = getBudget(data);
 
   const totals = useMemo(() => {
-    const totalExpense = data.expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const expenses = data.expenses || [];
     const incomeList = data.income || [];
+    const monthlyTrend = data.monthlyTrend || [];
+    const totalExpense = expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const totalIncome = incomeList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     // Bulan berjalan — dipakai kartu "Pemasukan Bulan Ini" & "Selisih"
     const now = new Date();
     const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const inMonth = (list) => list.filter((i) => (i.date || '').startsWith(monthPrefix));
     const incomeMonth = inMonth(incomeList).reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-    const expenseMonth = inMonth(data.expenses).reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-    const tasksDone = data.tasks.filter((t) => t.completed).length;
+    const expenseMonth = inMonth(expenses).reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+    const tasksDone = (data.tasks || []).filter((t) => t.completed).length;
     const budgetLeft = budget.income - totalExpense;
-    const monthCount = data.monthlyTrend.length;
-    const prevMonth = monthCount > 1 ? data.monthlyTrend[monthCount - 2].value : 0;
+    const monthCount = monthlyTrend.length;
+    const prevMonth = monthCount > 1 ? monthlyTrend[monthCount - 2].value : 0;
     const delta = prevMonth ? Math.round(((totalExpense - prevMonth) / prevMonth) * 100) : 0;
     const avgMonth = Math.round(
-      data.monthlyTrend.reduce((sum, m) => sum + m.value, 0) / (monthCount || 1)
+      monthlyTrend.reduce((sum, m) => sum + m.value, 0) / (monthCount || 1)
     );
     // Proyeksi saldo akhir bulan: rata-rata pengeluaran harian bulan ini × sisa hari.
     const nowDate = new Date();
@@ -208,8 +210,8 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
       {/* ---------- KPI ---------- */}
       {/* Hanya menampilkan Agenda dan Tugas di ringkasan dashboard */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <StatCard compact icon="calendar" tone="cyan" value={data.schedule.length} label="Agenda" hint="Jadwal" />
-        <StatCard compact icon="tasks" tone="violet" value={`${totals.tasksDone}/${data.tasks.length}`} label="Tugas" hint="Selesai" />
+        <StatCard compact icon="calendar" tone="cyan" value={(data.schedule || []).length} label="Agenda" hint="Jadwal" />
+        <StatCard compact icon="tasks" tone="violet" value={`${totals.tasksDone}/${(data.tasks || []).length}`} label="Tugas" hint="Selesai" />
       </div>
 
       {/* ---------- Proyeksi saldo ---------- */}
@@ -260,11 +262,11 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           </button>
         }
       >
-        {data.expenses.length === 0 ? (
+        {(data.expenses || []).length === 0 ? (
           <p className="py-6 text-center text-sm text-mutedfg">Belum ada pengeluaran.</p>
         ) : (
           <ul className="divide-y divide-line">
-            {data.expenses.slice(0, 4).map((item) => (
+            {(data.expenses || []).slice(0, 4).map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-ink">{item.category}</p>
