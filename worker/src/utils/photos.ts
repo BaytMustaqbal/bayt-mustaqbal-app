@@ -118,47 +118,49 @@ export async function uploadMomentPhoto(
     throw new Error('Google Photos tidak mengembalikan uploadToken');
   }
 
-  // 2) batchCreate media item di album
-  const create = await fetch(`${PHOTOS_API}/mediaItems:batchCreate`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      albumId,
+  // 2) batchCreate media item. Coba langsung ke album; kalau Google hanya
+  // mengembalikan uploadToken (tanpa mediaItem), ulangi TANPA albumId untuk
+  // mengisolasi masalah kepemilikan album.
+  const doBatchCreate = async (targetAlbumId: string | null) => {
+    const payload: Record<string, unknown> = {
       newMediaItems: [
         {
           description: description || 'Momen Keluarga',
-          simpleMediaItem: {
-            fileName: file.name,
-            uploadToken,
-          },
+          simpleMediaItem: { fileName: file.name, uploadToken },
         },
       ],
-    }),
-  });
-  if (!create.ok) {
-    throw new Error(`Google Photos batchCreate gagal (${create.status})`);
-  }
-  const data = (await create.json()) as {
-    newMediaItemResults?: {
-      mediaItem?: { baseUrl?: string; productUrl?: string };
-      status?: { code?: number; message?: string };
-      uploadToken?: string;
-    }[];
+    };
+    if (targetAlbumId) payload.albumId = targetAlbumId;
+    const res = await fetch(`${PHOTOS_API}/mediaItems:batchCreate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    const status = res.status;
+    if (!res.ok) {
+      const text = (await res.text()).slice(0, 300);
+      throw new Error(`Google Photos batchCreate gagal (${status}) ${text}`);
+    }
+    const json = (await res.json()) as {
+      newMediaItemResults?: { mediaItem?: { baseUrl?: string; productUrl?: string }; status?: { code?: number; message?: string } }[];
+    };
+    const r = json?.newMediaItemResults?.[0];
+    if (r?.status?.code && r.status.code !== 0) {
+      throw new Error(`Google Photos: ${r.status.message || `gagal (code ${r.status.code})`}`);
+    }
+    return { baseUrl: r?.mediaItem?.baseUrl, productUrl: r?.mediaItem?.productUrl || '' };
   };
-  const first = data.newMediaItemResults?.[0];
 
-  if (first?.status?.code && first.status.code !== 0) {
-    throw new Error(`Google Photos: ${first.status.message || `gagal (code ${first.status.code})`}`);
+  let created = await doBatchCreate(albumId);
+  if (!created.baseUrl) {
+    created = await doBatchCreate(null);
   }
-  // Google hanya membalas uploadToken tanpa mediaItem → izin foto belum aktif
-  // di token (koneksi lama). Butuh sambungkan ulang Google dengan izin foto.
-  const item = first?.mediaItem;
-  if (!item?.baseUrl) {
-    throw new Error('Izin Google Photos belum aktif. Putuskan lalu hubungkan ulang Google dan setujui izin foto.');
+  if (!created.baseUrl) {
+    throw new Error('Google tidak membuat media item (batchCreate hanya mengembalikan uploadToken). Coba lagi atau cek akun Google.');
   }
 
-  return { photo_url: item.baseUrl, product_url: item.productUrl || '' };
+  return { photo_url: created.baseUrl, product_url: created.productUrl };
 }
