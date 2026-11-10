@@ -117,11 +117,11 @@ export async function uploadMomentPhoto(
     }[];
   };
   const first = data.newMediaItemResults?.[0];
-  // Google bisa mengembalikan status error per-item (mis. scope kurang, file
-  // tidak valid, uploadToken kedaluwarsa). Tampilkan pesan aslinya supaya
-  // bisa didiagnosa pengguna.
-  if (first?.status?.message) {
-    throw new Error(`Google Photos: ${first.status.message}`);
+  // Google mengembalikan status per-item. code 0 = sukses (message "Success").
+  // Hanya code != 0 yang berarti gagal (mis. scope kurang, file tidak valid,
+  // uploadToken kedaluwarsa).
+  if (first?.status?.code && first.status.code !== 0) {
+    throw new Error(`Google Photos: ${first.status.message || `gagal (code ${first.status.code})`}`);
   }
   const item = first?.mediaItem;
   if (!item?.baseUrl) {
