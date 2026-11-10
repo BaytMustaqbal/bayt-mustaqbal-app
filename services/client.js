@@ -448,6 +448,8 @@ const goalTransform = {
     currentAmount: Number(row.current_amount) || 0,
     targetDate: row.target_date || '',
     achieved: !!row.achieved,
+    category: row.category || 'lainnya',
+    monthly: Number(row.monthly) || 0,
     createdAt: row.created_at,
   }),
   toPayload: (g) => ({
@@ -455,6 +457,8 @@ const goalTransform = {
     target_amount: Number(g.targetAmount) || 0,
     current_amount: Number(g.currentAmount) || 0,
     target_date: g.targetDate || null,
+    category: g.category || 'lainnya',
+    monthly: Number(g.monthly) || 0,
   }),
 };
 
@@ -473,6 +477,15 @@ export const goalsApi = {
   },
   delete: async (id) => {
     return apiFetch(`/goal/${id}`, { method: 'DELETE' });
+  },
+  transactions: async (id) => {
+    return apiFetch(`/goal/${id}/transactions`);
+  },
+  addTransaction: async (id, payload) => {
+    return apiFetch(`/goal/${id}/transactions`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 };
 

@@ -3416,6 +3416,7 @@ const deleteGoal = async (id) => {
                 onAdd={addGoal}
                 onUpdate={updateGoal}
                 onDelete={deleteGoal}
+                onTransaction={async (id, payload) => goalsApi.addTransaction(id, payload)}
                 formatCurrency={formatCurrency}
               />
             )}
