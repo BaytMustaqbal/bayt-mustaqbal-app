@@ -114,18 +114,19 @@ export async function uploadMomentPhoto(
     newMediaItemResults?: {
       mediaItem?: { baseUrl?: string; productUrl?: string };
       status?: { code?: number; message?: string };
+      uploadToken?: string;
     }[];
   };
   const first = data.newMediaItemResults?.[0];
-  // Google mengembalikan status per-item. code 0 = sukses (message "Success").
-  // Hanya code != 0 yang berarti gagal (mis. scope kurang, file tidak valid,
-  // uploadToken kedaluwarsa).
+
   if (first?.status?.code && first.status.code !== 0) {
     throw new Error(`Google Photos: ${first.status.message || `gagal (code ${first.status.code})`}`);
   }
+  // Google hanya membalas uploadToken tanpa mediaItem → izin foto belum aktif
+  // di token (koneksi lama). Butuh sambungkan ulang Google dengan izin foto.
   const item = first?.mediaItem;
   if (!item?.baseUrl) {
-    throw new Error('Google Photos tidak mengembalikan media item');
+    throw new Error('Izin Google Photos belum aktif. Putuskan lalu hubungkan ulang Google dan setujui izin foto.');
   }
 
   return { photo_url: item.baseUrl, product_url: item.productUrl || '' };
