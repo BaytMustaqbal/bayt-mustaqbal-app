@@ -566,3 +566,25 @@ export const pushApi = {
     });
   },
 };
+
+/* ---- Langganan & Utilitas (backend /api/sub) ---- */
+export const subApi = {
+  fetch: async () => {
+    return apiFetch('/sub');
+  },
+  create: async (item) => {
+    return apiFetch('/sub', {
+      method: 'POST',
+      body: JSON.stringify(item),
+    });
+  },
+  update: async (id, item) => {
+    return apiFetch(`/sub/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(item),
+    });
+  },
+  delete: async (id) => {
+    return apiFetch(`/sub/${id}`, { method: 'DELETE' });
+  },
+};

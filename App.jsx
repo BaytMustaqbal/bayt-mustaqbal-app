@@ -14,6 +14,7 @@ import { ReceiptScanner } from './components/ReceiptScanner';
 import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, FamilyList, initialsOf, Badge } from './components/ui';
 import ShoppingList from './components/ShoppingListComp';
 import Service from './components/ServiceComp';
+import SubscriptionsComp from './components/SubscriptionsComp';
 import SettingsComp from './components/SettingsComp';
 import MomentsComp from './components/MomentsComp';
 import InsightComp from './components/InsightComp';
@@ -42,7 +43,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -634,6 +635,8 @@ export default function App() {
   // Momen Keluarga (API /api/moment)
   // Setiap momen: { id, title, description, date, location, category, photo_url, createdAt }
   const [moments, setMoments] = useState([]);
+  // Langganan & Utilitas (API /api/sub)
+  const [subs, setSubs] = useState([]);
   // Analitik & insight (API /api/insight)
   const [insight, setInsight] = useState(null);
   // Status integrasi Google Calendar (dipakai halaman Pengaturan)
@@ -866,6 +869,21 @@ const deleteGoal = async (id) => {
       .catch(() => {
         /* momen non-kritis; coba lagi saat buka halaman */
       });
+    return () => {
+      alive = false;
+    };
+  }, [isLoggedIn, authReady]);
+
+  // Muat langganan & utilitas.
+  useEffect(() => {
+    if (!isLoggedIn || !authReady) return;
+    let alive = true;
+    subApi
+      .fetch()
+      .then((rows) => {
+        if (alive) setSubs(rows || []);
+      })
+      .catch(() => {});
     return () => {
       alive = false;
     };
@@ -3311,6 +3329,7 @@ const deleteGoal = async (id) => {
           { id: 'tabungan', label: 'Target Tabungan', icon: 'piggyBank' },
           { id: 'belanja', label: 'Belanja', icon: 'shoppingBag' },
           { id: 'service', label: 'Services', icon: 'wrench' },
+          { id: 'langganan', label: 'Langganan', icon: 'repeat' },
         ];
         return (
           <section className="app-fade-in">
@@ -3433,6 +3452,27 @@ const deleteGoal = async (id) => {
                 onAddService={addServiceRecord}
                 activeTab={serviceActiveTab}
                 onTabChange={setServiceActiveTab}
+              />
+            )}
+
+            {terjadwalTab === 'langganan' && (
+              <SubscriptionsComp
+                subs={subs}
+                canWrite={canWrite}
+                formatCurrency={formatCurrency}
+                onSave={async (item) => {
+                  const saved = item.id
+                    ? await subApi.update(item.id, item)
+                    : await subApi.create(item);
+                  setSubs((prev) => {
+                    if (item.id) return prev.map((s) => (s.id === item.id ? saved : s));
+                    return [saved, ...prev];
+                  });
+                }}
+                onDelete={async (id) => {
+                  await subApi.delete(id);
+                  setSubs((prev) => prev.filter((s) => s.id !== id));
+                }}
               />
             )}
           </section>
