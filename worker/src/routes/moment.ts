@@ -123,7 +123,8 @@ momentRoutes.post('/upload', async (c) => {
       c.env,
       conn,
       { bytes: await file.arrayBuffer(), name: file.name, type: file.type || 'image/jpeg' },
-      'Momen Keluarga'
+      'Momen Keluarga',
+      writerUserId
     );
     return c.json({ ok: true, data: { photo_url: result.photo_url }, error: null });
   } catch (e) {

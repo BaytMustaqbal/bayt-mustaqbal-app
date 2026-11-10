@@ -23,23 +23,48 @@ async function photosToken(env: Env, conn: GcalConnection): Promise<string> {
   return ensureAccessToken(env, conn);
 }
 
-/** Cari album berdasarkan judul; kalau tidak ada, buat. */
+/** Cari album berdasarkan judul; kalau tidak ada, buat. Simpan album_id di
+ *  settings (key "photos_album_id") per user agar selalu dipakai ulang. */
 async function findOrCreateAlbum(
   env: Env,
   conn: GcalConnection,
-  token: string
+  token: string,
+  userId: string
 ): Promise<string> {
-  const list = await fetch(`${PHOTOS_API}/albums?pageSize=50`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (list.ok) {
-    const data = (await list.json()) as { albums?: { id: string; title: string }[] };
-    const hit = (data.albums || []).find(
-      (a) => a.title.trim().toLowerCase() === ALBUM_TITLE.trim().toLowerCase()
-    );
-    if (hit) return hit.id;
+  // 1) Coba pakai album_id yang sudah tersimpan.
+  const savedRow = (await env.DB.prepare(
+    `SELECT value FROM settings WHERE user_id = ? AND key = 'photos_album_id' AND void IS NULL ORDER BY updated_at DESC LIMIT 1`
+  ).bind(userId).first()) as { value?: string } | null;
+  if (savedRow?.value) {
+    return savedRow.value;
   }
 
+  // 2) Cari album existing (dengan pagination agar tidak terbatas 50 pertama).
+  let pageToken: string | undefined;
+  let hit: string | null = null;
+  do {
+    const q = `${PHOTOS_API}/albums?pageSize=50${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+    const list = await fetch(q, { headers: { Authorization: `Bearer ${token}` } });
+    if (!list.ok) break;
+    const data = (await list.json()) as { albums?: { id: string; title: string }[]; nextPageToken?: string };
+    const found = (data.albums || []).find(
+      (a) => a.title.trim().toLowerCase() === ALBUM_TITLE.trim().toLowerCase()
+    );
+    if (found) { hit = found.id; break; }
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  if (hit) {
+    // Simpan untuk dipakai ulang.
+    const now = new Date().toISOString();
+    const cid = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO settings (id, user_id, key, value, rev, created_at, updated_at) VALUES (?, ?, 'photos_album_id', ?, 1, ?, ?)`
+    ).bind(cid, userId, hit, now, now).run();
+    return hit;
+  }
+
+  // 3) Buat baru.
   const created = await fetch(`${PHOTOS_API}/albums`, {
     method: 'POST',
     headers: {
@@ -52,6 +77,11 @@ async function findOrCreateAlbum(
     throw new Error(`Gagal membuat album Google Photos (${created.status})`);
   }
   const createdData = (await created.json()) as { id: string };
+  const now = new Date().toISOString();
+  const cid = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO settings (id, user_id, key, value, rev, created_at, updated_at) VALUES (?, ?, 'photos_album_id', ?, 1, ?, ?)`
+  ).bind(cid, userId, createdData.id, now, now).run();
   return createdData.id;
 }
 
@@ -65,10 +95,11 @@ export async function uploadMomentPhoto(
   env: Env,
   conn: GcalConnection,
   file: { bytes: ArrayBuffer; name: string; type: string },
-  description?: string
+  description?: string,
+  userId?: string
 ): Promise<PhotoUploadResult> {
   const token = await photosToken(env, conn);
-  const albumId = await findOrCreateAlbum(env, conn, token);
+  const albumId = await findOrCreateAlbum(env, conn, token, userId || '');
 
   // 1) Upload byte mentah → uploadToken
   const up = await fetch(`${PHOTOS_API}/uploads`, {
