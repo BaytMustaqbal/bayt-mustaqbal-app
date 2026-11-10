@@ -103,7 +103,7 @@ authRoutes.post('/register', async (c) => {
 // Master account disembunyikan (hanya untuk admin/register, bukan anggota).
 authRoutes.get('/users', async (c) => {
   const results = await c.env.DB.prepare(
-    `SELECT u.id, u.username, u.nama, u.nickname, u.family_role, u.generasi, u.birth_date, u.avatar_url, u.created_at,
+    `SELECT u.id, u.username, u.nama, u.nickname, u.family_role, u.generasi, u.birth_date, u.avatar_url, u.phone, u.created_at,
             u.group_id, u.group_role, g.name AS group_name
      FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.void IS NULL AND u.username != '${MASTER_USERNAME}'
@@ -184,12 +184,12 @@ authRoutes.put('/me', async (c) => {
   const userId = c.get('userId');
   const caller = await c.env.DB.prepare('SELECT username FROM users WHERE id = ? AND void IS NULL').bind(userId).first() as any;
   const isMaster = caller?.username === MASTER_USERNAME;
-  const { nama, nickname, birth_date, avatar_url, family_role, generasi, group_role } = await c.req.json() as {
+  const { nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, phone } = await c.req.json() as {
     nama?: string; nickname?: string | null; birth_date?: string | null; avatar_url?: string | null;
-    family_role?: string; generasi?: string; group_role?: string;
+    family_role?: string; generasi?: string; group_role?: string; phone?: string | null;
   };
 
-  const existing = await c.env.DB.prepare('SELECT id, nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, group_id FROM users WHERE id = ? AND void IS NULL')
+  const existing = await c.env.DB.prepare('SELECT id, nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, group_id, phone FROM users WHERE id = ? AND void IS NULL')
     .bind(userId).first() as any;
   if (!existing) {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } }, 404);
@@ -231,6 +231,7 @@ authRoutes.put('/me', async (c) => {
   const newFamilyRole = family_role !== undefined ? family_role : existing.family_role;
   const newGenerasi = generasi !== undefined ? generasi : existing.generasi;
   const newGroupRole = group_role !== undefined ? group_role : existing.group_role;
+  const newPhone = phone !== undefined ? (typeof phone === 'string' ? phone.trim().slice(0, 30) || null : null) : existing.phone;
 
   // Unik Suami/Istri per grup bila status berubah
   if ((newFamilyRole === 'suami' || newFamilyRole === 'istri') && existing.group_id && newFamilyRole !== existing.family_role) {
@@ -243,13 +244,13 @@ authRoutes.put('/me', async (c) => {
   }
 
   const now = new Date().toISOString();
-  await c.env.DB.prepare('UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, family_role = ?, generasi = ?, group_role = ?, updated_at = ? WHERE id = ? AND void IS NULL')
-    .bind(newNama, newNick, newBirth, newAvatar, newFamilyRole, newGenerasi, newGroupRole, now, userId).run();
+  await c.env.DB.prepare('UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, family_role = ?, generasi = ?, group_role = ?, phone = ?, updated_at = ? WHERE id = ? AND void IS NULL')
+    .bind(newNama, newNick, newBirth, newAvatar, newFamilyRole, newGenerasi, newGroupRole, newPhone, now, userId).run();
   await logAudit(c.env, userId, c.get('groupId'), 'update_profile', 'users', userId);
 
   const user = await c.env.DB.prepare(
     `SELECT u.id, u.username, u.nama, u.nickname, u.avatar_url, u.role, u.family_role, u.generasi, u.birth_date,
-            u.group_id, u.group_role, g.name AS group_name
+            u.phone, u.group_id, u.group_role, g.name AS group_name
      FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.id = ? AND u.void IS NULL`
   ).bind(userId).first();
@@ -310,9 +311,9 @@ authRoutes.put('/users/:id', async (c) => {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Anggota tidak ditemukan' } }, 404);
   }
 
-  const { nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, password } = await c.req.json() as {
+  const { nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, password, phone } = await c.req.json() as {
     nama?: string; nickname?: string | null; birth_date?: string | null; avatar_url?: string | null;
-    family_role?: string; generasi?: string; group_role?: string; password?: string;
+    family_role?: string; generasi?: string; group_role?: string; password?: string; phone?: string | null;
   };
 
   // Validasi enum
@@ -359,17 +360,18 @@ authRoutes.put('/users/:id', async (c) => {
   const newFamilyRole = family_role !== undefined ? family_role : existing.family_role;
   const newGenerasi = generasi !== undefined ? generasi : existing.generasi;
   const newGroupRole = group_role !== undefined ? group_role : existing.group_role;
+  const newPhone = phone !== undefined ? (typeof phone === 'string' ? phone.trim().slice(0, 30) || null : null) : existing.phone;
 
   const newHash = password !== undefined && password !== '' ? await hashPassword(password) : existing.password_hash;
 
   await c.env.DB.prepare(
-    `UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, family_role = ?, generasi = ?, group_role = ?, password_hash = ?, updated_at = ?
+    `UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, family_role = ?, generasi = ?, group_role = ?, phone = ?, password_hash = ?, updated_at = ?
      WHERE id = ? AND void IS NULL`
-  ).bind(newNama, newNick, newBirth, newAvatar, newFamilyRole, newGenerasi, newGroupRole, newHash, now, targetId).run();
+  ).bind(newNama, newNick, newBirth, newAvatar, newFamilyRole, newGenerasi, newGroupRole, newPhone, newHash, now, targetId).run();
   await logAudit(c.env, callerId, existing.group_id, 'update_member', 'users', targetId);
 
   const updated = await c.env.DB.prepare(
-    `SELECT u.id, u.username, u.nama, u.nickname, u.family_role, u.generasi, u.birth_date, u.avatar_url, u.created_at,
+    `SELECT u.id, u.username, u.nama, u.nickname, u.family_role, u.generasi, u.birth_date, u.avatar_url, u.phone, u.created_at,
             u.group_id, u.group_role, g.name AS group_name
      FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.id = ? AND u.void IS NULL`
