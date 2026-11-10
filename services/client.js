@@ -526,14 +526,38 @@ export const momentsApi = {
     const token = getToken();
     const form = new FormData();
     form.append('photo', file);
-    const response = await fetch(`${API_BASE}/moment/upload`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE}/moment/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+    } catch (e) {
+      throw new Error('Tidak bisa terhubung ke server. Periksa koneksi internet.');
+    }
+    if (!response.ok) {
+      // Server bisa balas body non-JSON (mis. halaman 502 dari Cloudflare
+      // saat worker crash). Baca apa adanya supaya pesan selalu muncul.
+      let detail = '';
+      try {
+        const raw = await response.text();
+        if (!raw) {
+          detail = `(HTTP ${response.status}, body kosong)`;
+        } else if (raw.trim().startsWith('{')) {
+          const j = JSON.parse(raw);
+          detail = j?.error?.message || j?.error?.code || raw.slice(0, 120);
+        } else {
+          detail = raw.slice(0, 120);
+        }
+      } catch {
+        detail = `(HTTP ${response.status})`;
+      }
+      throw new Error(`Upload gagal (${response.status}). ${detail}`);
+    }
     const result = await response.json();
-    if (!result.ok || !response.ok) {
-      throw new Error(result.error?.message || 'API error');
+    if (!result.ok) {
+      throw new Error(result.error?.message || result.error?.code || 'API error');
     }
     return result.data;
   },

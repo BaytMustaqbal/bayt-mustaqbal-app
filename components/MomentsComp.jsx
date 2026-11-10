@@ -249,9 +249,9 @@ function MomentForm({ initial, canWrite, onCancel, onSubmit, onUploadPhoto, goog
           placeholder="Tuliskan kenangan di sini…"
           className={`${inputCls} resize-none py-2.5`}
         />
-
-        {error && <p role="alert" className="mt-2 text-xs font-medium text-danger">{error}</p>}
         </div>
+
+        {error && <p role="alert" className="mb-3 text-xs font-medium text-danger">{error}</p>}
 
         <div className="mt-5 flex gap-2.5">
           <button type="button" onClick={requestClose} className="min-h-[48px] flex-1 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-mutedfg transition-colors hover:text-ink">
