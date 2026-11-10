@@ -42,7 +42,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi, scheduledTasksApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -67,6 +67,16 @@ let tagihanMigrationStarted = false;
 
 /* ---- Computed data (derived from expenses, NOT stored) ---- */
 const pad2 = (n) => String(n).padStart(2, '0');
+
+/* Ubah VAPID public key base64-url → Uint8Array (untuk pushManager.subscribe). */
+const urlBase64ToUint8Array = (base64) => {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+};
 const monthLabel = (d) => new Intl.DateTimeFormat('id-ID', { month: 'short' }).format(d).replace('.', '');
 const dayLabel = (d) => new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(d).replace('.', '');
 
@@ -466,6 +476,7 @@ const mapUsersToFamily = (users) =>
     name: u.nama,
     nickname: u.nickname || null,
     email: u.username || null,
+    phone: u.phone || null,
     // Peran grup menang atas status keluarga: Kepala Keluarga tampil sebagai
     // "Kepala Keluarga" (bukan "Suami") di papan keluarga.
     role: u.group_role === 'kepala_keluarga' ? 'Kepala Keluarga' : FAMILY_ROLE_LABEL[u.family_role] || 'Anak',
@@ -1445,6 +1456,28 @@ const deleteGoal = async (id) => {
       });
   }, []);
 
+  // ---- Web Push: subscribe saat login (authReady) ----
+  useEffect(() => {
+    if (!isLoggedIn || !authReady) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        const reg = await navigator.serviceWorker.ready;
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY || ''),
+        });
+        if (!cancelled) await pushApi.subscribe(sub);
+      } catch {
+        /* izin ditolak / tidak didukung — abaikan */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isLoggedIn, authReady]);
+
   // ---- Fetch data from API when logged in ----
   const loadFromAPI = async () => {
     if (!isOnline) {
@@ -2399,6 +2432,16 @@ const deleteGoal = async (id) => {
 
   // Logout � clear token + kembali ke login screen
   const handleLogout = () => {
+    // Hapus langganan push (sebelum token dibersihkan).
+    try {
+      navigator.serviceWorker?.ready?.then((reg) =>
+        reg.pushManager?.getSubscription().then((sub) => {
+          if (sub) { pushApi.unsubscribe(sub.endpoint).catch(() => {}); sub.unsubscribe().catch(() => {}); }
+        })
+      );
+    } catch {
+      /* abaikan */
+    }
     if (isOnline) auth.logout().catch(() => {});
     clearUser();
     setIsLoggedIn(false);

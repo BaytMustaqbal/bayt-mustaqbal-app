@@ -546,3 +546,23 @@ export const scheduledTasksApi = {
     return apiFetch(`/rec/scheduled/${id}`, { method: 'DELETE' });
   },
 };
+
+/* ---- Web Push (backend /api/push) ---- */
+export const pushApi = {
+  subscribe: async (subscription) => {
+    return apiFetch('/push/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({
+        endpoint: subscription.endpoint,
+        p256dh: subscription.getKey('p256dh') ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')))) : '',
+        auth: subscription.getKey('auth') ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')))) : '',
+      }),
+    });
+  },
+  unsubscribe: async (endpoint) => {
+    return apiFetch('/push/subscribe', {
+      method: 'DELETE',
+      body: JSON.stringify({ endpoint }),
+    });
+  },
+};
