@@ -71,6 +71,23 @@ googleAuthRoutes.get('/login', async (c) => {
 
 // GET /api/auth/google/callback — tujuan balik Google (publik).
 googleAuthRoutes.get('/callback', async (c) => {
+  try {
+    return await handleCallback(c);
+  } catch (e) {
+    console.error('Google auth callback exception:', e);
+    const origin = (() => {
+      try {
+        const s = verifyLoginState(c.env.JWT_SECRET, c.req.query('state'));
+        return s?.origin || DEFAULT_ORIGIN;
+      } catch {
+        return DEFAULT_ORIGIN;
+      }
+    })();
+    return c.redirect(`${origin}/?google=error&reason=${encodeURIComponent('callback_error')}`, 302);
+  }
+});
+
+async function handleCallback(c: any) {
   const state = verifyLoginState(c.env.JWT_SECRET, c.req.query('state'));
   const origin = state?.origin || DEFAULT_ORIGIN;
   const fail = (reason: string) =>
@@ -129,17 +146,21 @@ googleAuthRoutes.get('/callback', async (c) => {
   const expiresAt = tokens.expires_in
     ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
     : new Date(Date.now() + 3600 * 1000).toISOString();
-  const existingConn = await c.env.DB.prepare('SELECT id FROM gcal_connections WHERE user_id = ?').bind(user.id).first();
+  const accessToken = tokens.access_token || '';
+  const refreshToken = tokens.refresh_token || '';
+  console.log('gcal save debug:', JSON.stringify({ hasSub: !!sub, hasEmail: !!email, hasAccess: !!accessToken, hasRefresh: !!refreshToken, expiresAt, scopeStr }));
+  const existingConn = await c.env.DB.prepare('SELECT id, refresh_token FROM gcal_connections WHERE user_id = ?').bind(user.id).first();
   if (existingConn) {
+    const oldRefresh = existingConn.refresh_token || '';
     await c.env.DB.prepare(
       'UPDATE gcal_connections SET google_sub = ?, google_email = ?, access_token = ?, refresh_token = ?, token_expires_at = ?, google_scopes = ?, updated_at = ? WHERE user_id = ?'
-    ).bind(sub, email, tokens.access_token || '', tokens.refresh_token || existingConn.refresh_token, expiresAt, scopeStr, now, user.id).run();
+    ).bind(sub, email, accessToken, refreshToken || oldRefresh, expiresAt, scopeStr, now, user.id).run();
   } else {
     const cid = crypto.randomUUID();
     await c.env.DB.prepare(
       `INSERT INTO gcal_connections (id, user_id, google_sub, google_email, calendar_id, access_token, refresh_token, token_expires_at, google_scopes, created_at, updated_at)
        VALUES (?, ?, ?, ?, 'primary', ?, ?, ?, ?, ?, ?)`
-    ).bind(cid, user.id, sub, email, tokens.access_token || '', tokens.refresh_token || '', expiresAt, scopeStr, now, now).run();
+    ).bind(cid, user.id, sub, email, accessToken, refreshToken, expiresAt, scopeStr, now, now).run();
   }
 
   const token = signToken(
@@ -148,4 +169,4 @@ googleAuthRoutes.get('/callback', async (c) => {
     await createSession(c.env, user.id, (c.req.header('User-Agent') || 'browser').slice(0, 120))
   );
   return c.redirect(`${origin}/?google=success&token=${encodeURIComponent(token)}`, 302);
-});
+}
