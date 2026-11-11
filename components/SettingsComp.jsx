@@ -69,21 +69,21 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
   // ---- Konfigurasi Tombol Aksi Cepat di Dashboard ----
   // Pengguna bisa memilih 4 dari 6 pilihan tombol di bawah ini
   // Hasil disimpan di localStorage key 'bayt_qac'
-  // Default: Momen, Agenda, Service, Foto Struk
+  // Default: Album, Agenda, Service, Foto Struk
   const QUICK_ACTION_OPTIONS = [
-    { icon: 'image', label: 'Momen', path: 'momen' },
+    { icon: 'image', label: 'Album', path: 'album' },
     { icon: 'calendar', label: 'Agenda', path: 'agenda' },
     { icon: 'wrench', label: 'Service', path: 'service' },
-    { icon: 'camera', label: 'Foto Struk', path: 'momen' },
+    { icon: 'camera', label: 'Foto Struk', path: 'scan' },
     { icon: 'shoppingBag', label: 'Belanja', path: 'shopping' },
     { icon: 'note', label: 'Catatan', path: 'notes' },
   ];
 
   const DEFAULT_QUICK_ACTIONS = [
-    { icon: 'image', label: 'Momen', path: 'momen' },
+    { icon: 'image', label: 'Album', path: 'album' },
     { icon: 'calendar', label: 'Agenda', path: 'agenda' },
     { icon: 'wrench', label: 'Service', path: 'service' },
-    { icon: 'camera', label: 'Foto Struk', path: 'momen' },
+    { icon: 'camera', label: 'Foto Struk', path: 'scan' },
   ];
 
   // Tombol yang sudah dipilih user (dari localStorage), atau default
@@ -97,7 +97,7 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
         }
       }
     } catch (e) {}
-    // Default: Momen, Agenda, Service, Foto Struk
+    // Default: Album, Agenda, Service, Foto Struk
     return [...DEFAULT_QUICK_ACTIONS];
   });
 
@@ -571,7 +571,6 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
             <div className="divide-y divide-line rounded-xl border border-line bg-canvas">
               {[
                 { nama: 'Google Calendar', ket: 'Agenda & tagihan', status: gcal.connected ? 'Tersambung' : 'Belum terhubung', tone: gcal.connected ? 'green' : 'gray' },
-                { nama: 'Penyimpanan Foto', ket: 'Foto Momen Keluarga (Cloudflare R2)', status: 'Terpasang', tone: 'green' },
                 { nama: 'WhatsApp / Fonnte', ket: 'Pengingat & digest', status: 'Terpasang', tone: 'green' },
               ].map((row) => (
                 <div key={row.nama} className="flex items-center gap-3 px-3.5 py-2.5">

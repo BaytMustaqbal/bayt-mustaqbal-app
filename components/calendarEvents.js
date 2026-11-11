@@ -10,7 +10,6 @@ export const EVENT_COLORS = {
   service: 'bg-red-500',
   tabungan: 'bg-violet-500',
   tagihan: 'bg-orange-500',
-  momen: 'bg-pink-500',
 };
 
 /* ---- Konversi semua data ke calendar events ----
@@ -128,25 +127,6 @@ export const toCalendarEvents = (data) => {
           amount: b.amount,
           color: lunas ? 'bg-orange-300' : EVENT_COLORS.tagihan,
           data: { type: 'tagihan', item: b },
-        });
-      }
-    });
-  }
-
-  // Momen Keluarga — kenangan bertanggal (halaman Momen + timeline + kalender)
-  if (data?.moments) {
-    data.moments.forEach((m) => {
-      if (m.date) {
-        events.push({
-          id: `momen-${m.id}`,
-          title: m.title || 'Momen',
-          date: m.date,
-          time: null,
-          category: 'momen',
-          location: m.location,
-          photo_url: m.photo_url,
-          color: EVENT_COLORS.momen,
-          data: { type: 'momen', item: m },
         });
       }
     });

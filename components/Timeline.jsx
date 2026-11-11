@@ -32,14 +32,13 @@ const FILTERS = [
   { id: 'tugas', label: 'Tugas', icon: 'tasks' },
   { id: 'keuangan', label: 'Keuangan', icon: 'wallet' },
   { id: 'catatan', label: 'Catatan', icon: 'note' },
-  { id: 'momen', label: 'Momen', icon: 'camera' },
 ];
 
 const PRIORITY_TONE = { high: 'red', medium: 'amber', low: 'green' };
 const PRIORITY_LABEL = { high: 'Tinggi', medium: 'Sedang', low: 'Rendah' };
 
-// Urutan dalam satu hari: agenda dulu (punya jam), lalu tugas → keuangan → catatan → momen.
-const KIND_ORDER = { agenda: 0, tugas: 1, keuangan: 2, catatan: 3, momen: 4 };
+// Urutan dalam satu hari: agenda dulu (punya jam), lalu tugas → keuangan → catatan.
+const KIND_ORDER = { agenda: 0, tugas: 1, keuangan: 2, catatan: 3 };
 
 // ---------- Tanggal ----------
 // Semua perhitungan berangkat dari string "YYYY-MM-DD". Tanggal diurai manual
@@ -80,7 +79,6 @@ const rowIcon = (row) => {
   if (row.kind === 'agenda') return getCategoryMeta(AGENDA_CATEGORIES, row.item.category)?.icon || 'calendar';
   if (row.kind === 'keuangan') return getCategoryMeta(FINANCE_CATEGORIES, row.item.category)?.icon || 'wallet';
   if (row.kind === 'catatan') return getCategoryMeta(NOTE_CATEGORIES, row.item.category)?.icon || 'note';
-  if (row.kind === 'momen') return 'camera';
   return 'tasks';
 };
 
@@ -139,19 +137,6 @@ function Row({ row, onEdit, formatCurrency }) {
                 </span>
               )}
               <span>{getCategoryMeta(NOTE_CATEGORIES, item.category)?.label || item.category}</span>
-            </>
-          )}
-
-          {row.kind === 'momen' && (
-            <>
-              <span className="capitalize">{item.category || 'lainnya'}</span>
-              {item.location && <span>{item.location}</span>}
-              {item.photo_url && (
-                <span className="inline-flex items-center gap-1 text-brandfg">
-                  <Icon name="camera" size={11} />
-                  Ada foto
-                </span>
-              )}
             </>
           )}
         </span>
@@ -234,9 +219,6 @@ export function Timeline({
     );
     (data.notes || []).forEach((item) =>
       rows.push({ key: `catatan-${item.id}`, kind: 'catatan', section: 'notes', date: item.updatedAt, time: '', item })
-    );
-    (data.moments || []).forEach((item) =>
-      rows.push({ key: `momen-${item.id}`, kind: 'momen', section: 'momen', date: item.date, time: '', item })
     );
     return rows.filter((row) => row.date);
   }, [data]);

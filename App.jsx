@@ -16,7 +16,6 @@ import ShoppingList from './components/ShoppingListComp';
 import Service from './components/ServiceComp';
 import SubscriptionsComp from './components/SubscriptionsComp';
 import SettingsComp from './components/SettingsComp';
-import MomentsComp from './components/MomentsComp';
 import InsightComp from './components/InsightComp';
 import TargetTabunganComp from './components/TargetTabunganComp';
 import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
@@ -43,8 +42,9 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, momentsApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
+import { openAlbum } from './components/album';
 import './App.css';
 
 /* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
@@ -632,9 +632,6 @@ export default function App() {
   // Tagihan & Utang-Piutang yang dikelola pengguna
   // Setiap tagihan: { id, nama, kategori, amount, dueDate, dibayar, lastPaidDate, lastNotified, createdAt }
   const [tagihans, setTagihans] = useState([]);
-  // Momen Keluarga (API /api/moment)
-  // Setiap momen: { id, title, description, date, location, category, photo_url, createdAt }
-  const [moments, setMoments] = useState([]);
   // Langganan & Utilitas (API /api/sub)
   const [subs, setSubs] = useState([]);
   // Analitik & insight (API /api/insight)
@@ -700,9 +697,6 @@ const deleteGoal = async (id) => {
 
   // Pemindai struk: foto dibaca OCR di perangkat, disimpan sebagai pengeluaran biasa
   const [scanOpen, setScanOpen] = useState(false);
-
-  // Sinyal auto-buka form "Momen Baru" dari FAB (timestamp berubah tiap klik)
-  const [momentAddSignal, setMomentAddSignal] = useState(null);
 
   // Sidebar navigasi (desktop-trigger header, mobile-tetap bottom navbar)
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -856,23 +850,6 @@ const deleteGoal = async (id) => {
     };
   }, [isLoggedIn, authReady]);
 
-  // Muat momen keluarga dari API (setelah login). Gagal → diam-diam kosong.
-  useEffect(() => {
-    if (!isLoggedIn || !authReady) return;
-    let alive = true;
-    momentsApi
-      .fetch()
-      .then((rows) => {
-        if (alive) setMoments(rows || []);
-      })
-      .catch(() => {
-        /* momen non-kritis; coba lagi saat buka halaman */
-      });
-    return () => {
-      alive = false;
-    };
-  }, [isLoggedIn, authReady]);
-
   // Muat langganan & utilitas.
   useEffect(() => {
     if (!isLoggedIn || !authReady) return;
@@ -937,29 +914,6 @@ const deleteGoal = async (id) => {
       /* biarkan */
     }
   };
-
-  // Simpan (tambah/ubah) momen → API lalu segarkan state.
-  const saveMoment = async (id, data) => {
-    const saved = id ? await momentsApi.update(id, data) : await momentsApi.create(data);
-    setMoments((prev) => {
-      if (id) return prev.map((m) => (m.id === id ? saved : m));
-      return [saved, ...prev];
-    });
-    pushToast({ message: id ? 'Momen diperbarui' : 'Momen tersimpan', duration: 2500 });
-    return saved;
-  };
-
-  // Hapus momen (soft delete).
-  const deleteMoment = async (moment) => {
-    const ok = window.confirm(`Hapus momen "${moment.title}"?`);
-    if (!ok) return;
-    await momentsApi.delete(moment.id);
-    setMoments((prev) => prev.filter((m) => m.id !== moment.id));
-    pushToast({ message: 'Momen dihapus', duration: 2500 });
-  };
-
-  // Unggah foto momen → R2 (opsional; gagal dilempar ke form).
-  const uploadMomentPhoto = (file) => momentsApi.uploadPhoto(file);
 
   // ---- Status & aksi integrasi Google Calendar (halaman Pengaturan) ----
   const refreshGcalStatus = async () => {
@@ -2540,8 +2494,8 @@ const deleteGoal = async (id) => {
   // bukan di dalam case switch: hook conditional bikin React crash
   // ("Rendered more hooks") saat pengguna berpindah section dari Agenda.
   const calendarEvents = useMemo(
-    () => toCalendarEvents({ ...data, bills: tagihans, moments }),
-    [data, tagihans, moments]
+    () => toCalendarEvents({ ...data, bills: tagihans }),
+    [data, tagihans]
   );
 
   // ---- Daftar Belanja (catatan kategori 'belanja') ----
@@ -2794,7 +2748,7 @@ const deleteGoal = async (id) => {
                 )}
               </>
             ) : agendaMode === 'timeline' ? (
-              <Timeline data={{ ...data, moments }} onEdit={openEdit} formatCurrency={formatCurrency} />
+              <Timeline data={data} onEdit={openEdit} formatCurrency={formatCurrency} />
             ) : (
               <>
                 {agendaMode === 'jadwal' ? (
@@ -2831,13 +2785,6 @@ const deleteGoal = async (id) => {
                       lunas ? 'sudah lunas' : `sisa ${formatCurrency(item.amount - (item.dibayar || 0))}`
                     }`,
                     duration: 4000,
-                  });
-                  return;
-                }
-                if (type === 'momen') {
-                  pushToast({
-                    message: `${item.title}${item.location ? ` • ${item.location}` : ''} • ${item.date}`,
-                    duration: 3500,
                   });
                   return;
                 }
@@ -2891,19 +2838,6 @@ const deleteGoal = async (id) => {
             goals={goals}
             formatCurrency={formatCurrency}
             formatCurrencyShort={formatCurrencyShort}
-          />
-        );
-      }
-
-      case 'momen': {
-        return (
-          <MomentsComp
-            moments={moments}
-            canWrite={canWrite}
-            onSave={saveMoment}
-            onDelete={deleteMoment}
-            onUploadPhoto={uploadMomentPhoto}
-            autoOpenAdd={momentAddSignal}
           />
         );
       }
@@ -3518,7 +3452,6 @@ const deleteGoal = async (id) => {
             onOpenTimeline={handleOpenAgendaTimeline}
             onEditItem={openEdit}
             onScanReceipt={canWrite ? () => setScanOpen(true) : null}
-            moments={moments}
             insight={insight}
           />
         );
@@ -3595,7 +3528,7 @@ const deleteGoal = async (id) => {
           if (action === 'expenses') openAdd('expenses');
           else if (action === 'notes') openAdd('notes');
           else if (action === 'scan') { if (canWrite) setScanOpen(true); else openAdd('expenses'); }
-          else if (action === 'momen') { setActiveSection('momen'); setMomentAddSignal(Date.now()); }
+          else if (action === 'album') openAlbum();
         }}
       />
 

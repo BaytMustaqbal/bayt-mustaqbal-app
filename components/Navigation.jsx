@@ -10,7 +10,6 @@ import {
 } from './categories';
 
 const NAV_ITEMS = [
-  { id: 'momen', label: 'Momen Keluarga', icon: 'camera' },
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
   { id: 'wawasan', label: 'Wawasan', icon: 'barChart' },
   { id: 'agenda', label: 'Agenda', icon: 'calendar' },
@@ -389,7 +388,7 @@ export function Navigation({
                     <input ref={qaToggleRef} type="checkbox" id="qa-fab-toggle" className="qa-fab-toggle" />
                     <label
                       htmlFor="qa-fab-toggle"
-                      aria-label="Aksi cepat (buat pengeluaran, foto struk, catatan, momen)"
+                      aria-label="Aksi cepat (buat pengeluaran, foto struk, catatan, album)"
                       className="qa-fab-trigger grid place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition-colors"
                     >
                       <span className="qa-fab-logo" aria-hidden="true">
@@ -400,7 +399,7 @@ export function Navigation({
                       </span>
                     </label>
                     <div className="qa-fab-menu" aria-hidden="true">
-                      <button type="button" className="qa-fab-item qf-1 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Momen Keluarga" onClick={() => handleQuickAction('momen')}>
+                      <button type="button" className="qa-fab-item qf-1 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Album Foto Keluarga" onClick={() => handleQuickAction('album')}>
                         <Icon name="image" size={18} />
                       </button>
                       <button type="button" className="qa-fab-item qf-2 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Pengeluaran Baru" onClick={() => handleQuickAction('expenses')}>

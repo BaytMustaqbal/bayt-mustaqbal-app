@@ -3,6 +3,7 @@ import { Icon } from './Icon';
 import { Card, GlassCard, StatCard, QuickAction, ProgressBar, Badge, CTA_CLASS } from './ui';
 import { Timeline } from './Timeline';
 import { getBudget } from './budget';
+import { openAlbum } from './album';
 import { readUiPrefs } from '../services/uiPrefs';
 
 /* =========================================================
@@ -30,7 +31,7 @@ function Panel({ icon, title, action, children }) {
   );
 }
 
-export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem, onScanReceipt, moments = [], insight = null }) {
+export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem, onScanReceipt, insight = null }) {
   // Jumlah uang di kartu hero disembunyikan secara default (privasi saat
   // orang lain melirik layar). Tombol mata menampilkannya sementara —
   // sengaja TIDAK disimpan, supaya tiap kali app dibuka kembali tersembunyi.
@@ -71,13 +72,6 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
     const projectedNet = Math.round(incomeMonth - projectedExpense);
     return { totalExpense, totalIncome, incomeMonth, expenseMonth, net: incomeMonth - expenseMonth, tasksDone, budgetLeft, delta, avgMonth, dailyAvg, projectedExpense, projectedNet, daysInMonth, dayToday };
   }, [data]);
-
-  // Momen terbaru untuk ringkasan dashboard (paling baru dulu).
-  const recentMoments = useMemo(() => {
-    return [...(moments || [])]
-      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
-      .slice(0, 4);
-  }, [moments]);
 
   const hour = new Date().getHours();
   const greeting =
@@ -199,10 +193,10 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
             </button>
           )}
         </div>
-        <div className="grid grid-cols-4 gap-2.5 sm:gap-3">
-          <QuickAction icon="image" label="Momen" tone="amber" onClick={() => onNavigate('momen')} />
+        {/* "Foto Struk" sudah ada di header baris ini — jangan digandakan. */}
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+          <QuickAction icon="image" label="Album" tone="amber" onClick={openAlbum} />
           <QuickAction icon="calendar" label="Agenda" tone="blue" onClick={() => onNavigate('agenda')} />
-          <QuickAction icon="camera" label="Foto Struk" tone="amber" onClick={() => onNavigate('momen')} />
           <QuickAction icon="note" label="Catatan" tone="violet" onClick={() => onNavigate('notes')} />
         </div>
       </div>
@@ -361,55 +355,28 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         />
       </Panel>
 
-      {/* ---------- Ringkasan Momen Keluarga (paling bawah) ---------- */}
-      {moments.length > 0 && (
-        <Card className="p-4 sm:p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <Icon name="camera" size={18} className="shrink-0 text-brandfg" />
-              <h2 className="truncate font-bold text-ink">Momen Terbaru</h2>
-              <Badge tone="brand">{moments.length}</Badge>
-            </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('momen')}
-              className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-brandfg transition-colors hover:bg-brandtint"
-            >
-              Lihat semua
-              <Icon name="chevronRight" size={15} />
-            </button>
+      {/* ---------- Ajakan ke Album Foto Keluarga (situs terpisah) ---------- */}
+      <Card className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brandtint text-brandfg" aria-hidden="true">
+            <Icon name="image" size={20} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate font-bold text-ink">Album Foto Keluarga</h2>
+            <p className="mt-0.5 text-xs text-mutedfg">
+              Kenangan keluarga bertimeline, lengkap dengan galeri dan lightbox.
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {recentMoments.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => onNavigate('momen')}
-                className="group overflow-hidden rounded-xl border border-line bg-surface text-left transition-colors hover:border-brand/40"
-              >
-                <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
-                  {m.photo_url ? (
-                    <img
-                      src={m.photo_url}
-                      alt={m.title}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-slow ease-crisp group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center bg-gradient-to-br from-brandtint to-muted text-brandfg">
-                      <Icon name="camera" size={22} />
-                    </div>
-                  )}
-                </div>
-                <div className="p-2.5">
-                  <p className="truncate text-xs font-semibold text-ink">{m.title}</p>
-                  <p className="mt-0.5 text-[11px] text-mutedfg">{m.date}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </Card>
-      )}
+        </div>
+        <button
+          type="button"
+          onClick={openAlbum}
+          className={`${CTA_CLASS} shrink-0`}
+        >
+          Buka Album
+          <Icon name="chevronRight" size={16} />
+        </button>
+      </Card>
     </section>
   );
 }
