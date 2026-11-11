@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Icon } from './Icon';
-import { Card, GlassCard, StatCard, QuickAction, ProgressBar, Badge, CTA_CLASS } from './ui';
+import { Card, GlassCard, StatCard, ProgressBar, Badge, CTA_CLASS } from './ui';
 import { Timeline } from './Timeline';
 import { getBudget } from './budget';
 import { openAlbum } from './album';
@@ -31,7 +31,7 @@ function Panel({ icon, title, action, children }) {
   );
 }
 
-export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem, onScanReceipt, insight = null }) {
+export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem, insight = null }) {
   // Jumlah uang di kartu hero disembunyikan secara default (privasi saat
   // orang lain melirik layar). Tombol mata menampilkannya sementara —
   // sengaja TIDAK disimpan, supaya tiap kali app dibuka kembali tersembunyi.
@@ -177,29 +177,6 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           </div>
         </div>
       </GlassCard>
-
-      {/* ---------- Aksi cepat ---------- */}
-      <div>
-        <div className="mb-2.5 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-ink">Aksi Cepat</h2>
-          {onScanReceipt && (
-            <button
-              type="button"
-              onClick={onScanReceipt}
-              className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border border-brand/25 bg-brandtint px-3.5 text-sm font-semibold text-brandfg transition-colors hover:bg-brand/10"
-            >
-              <Icon name="camera" size={17} />
-              Foto Struk
-            </button>
-          )}
-        </div>
-        {/* "Foto Struk" sudah ada di header baris ini — jangan digandakan. */}
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-          <QuickAction icon="image" label="Album" tone="amber" onClick={openAlbum} />
-          <QuickAction icon="calendar" label="Agenda" tone="blue" onClick={() => onNavigate('agenda')} />
-          <QuickAction icon="note" label="Catatan" tone="violet" onClick={() => onNavigate('notes')} />
-        </div>
-      </div>
 
       {/* ---------- KPI ---------- */}
       {/* Hanya menampilkan Agenda dan Tugas di ringkasan dashboard */}

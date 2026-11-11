@@ -167,7 +167,7 @@ Latar **bukan** kanvas datar; ia berlapis dan jadi dasar yang membuat kartu kaca
 - Grid yang sama masih dipakai ulang secara lokal di belakang chart & layar gerbang (`.grid-lines`).
 
 ### Layout Patterns (aktual)
-- **Dashboard**: sapaan → kartu hero glass (keuangan bulan ini + realisasi anggaran) → aksi cepat 4 tile → KPI 2→4 kolom (`lg`) → tren (line, full width) → donat "Komposisi" (full width; dulu berdempetan dengan bar chart "7 Hari Terakhir" yang sudah dihapus) → 1 panel "Pengeluaran Terbaru" (full width; "Agenda Terdekat" dilepas karena tumpang tindih) → Panel "Timeline Agenda" **ringkas** (preview hari ini + 2 hari, tanpa blok Riwayat & chip filter; tombol "Lihat semua" → Agenda sub-tab Timeline)
+- **Dashboard**: sapaan → kartu hero glass (keuangan bulan ini + realisasi anggaran) → KPI 2→4 kolom (`lg`) → tren (line, full width) → donat "Komposisi" (full width; dulu berdempetan dengan bar chart "7 Hari Terakhir" yang sudah dihapus) → 1 panel "Pengeluaran Terbaru" (full width; "Agenda Terdekat" dilepas karena tumpang tindih) → Panel "Timeline Agenda" **ringkas** (preview hari ini + 2 hari, tanpa blok Riwayat & chip filter; tombol "Lihat semua" → Agenda sub-tab Timeline) → kartu ajakan **Album Foto Keluarga** (buka tab baru ke album.baytmustaqbal.my.id). Section "Aksi Cepat" **dihapus** (2026-11-11) — pemindai struk pindah ke baris tab mode di halaman Keuangan
 - **Layar gerbang**: kartu sentral max-w-md, konten vertikal: identitas → **logo besar** (mark merek, tanpa ilustrasi terpisah) → pilih pengguna → tombol masuk
 - **Daftar kartu** (agenda/keuangan/keluarga/tugas): grid 1 → 2 (`md`) → 3/4 kolom (`lg`)
 - **Form / isi konten**: satu kolom, label di atas input
@@ -205,7 +205,7 @@ Glass Card: .glass — gradient putih 6%→2%, border cyan 16%, backdrop blur 14
             Fallback solid via @supports (HP tanpa backdrop-filter).
 Hover     : konstanta `CARD_INTERACTIVE` (ui.jsx) — kartu data naik 2px (`-translate-y-0.5`)
             + elevasi e1→e2 + border → brand; `transform` tidak menggeser layout (aman di grid);
-            dipakai kartu agenda/pengeluaran/tugas/catatan/keluarga + QuickAction
+            dipakai kartu agenda/pengeluaran/tugas/catatan/keluarga
 Status    : Badge bertinta translucent (cyan/emerald/amber/rose/gray) + teks
 ```
 
@@ -227,8 +227,6 @@ Hero (GlassCard) : label + nilai mono besar + tombol mata (sembunyikan/tampilkan
                    ringkasan "rata-rata" tren, label chart/tooltip, dan nominal di
                    panel "Pengeluaran Terbaru" — sengaja DIBIARKAN tampil. Terukur:
                    24 simpul teks ber-"Rp" di #main, hanya 3 yang berubah saat tombol ditekan.
-QuickAction      : tile 4-kolom, min-h 76px, ikon tile 40px ber-warna (Pengeluaran=cyan,
-                   Agenda=blue, Catatan=violet, Keluarga=emerald) — lihat D19
 StatCard (KPI)   : ikon tile ber-warna + nilai mono + label + hint opsional (+ sparkline sm+)
 Chart            : BarChart (div), DonutChart & LineChart (SVG) — lihat components/charts.jsx
                    SEMUA label di HTML (bukan di SVG) agar tajam di semua lebar;
@@ -328,7 +326,7 @@ Avatar           : komponen bersama (ui.jsx) — foto (`object-cover`: data URL 
 ## 6. Screen Hierarchy & Information Architecture
 
 ### Primary Screens (5 section, in-file switch, tanpa router)
-1. **Dashboard**: sapaan, hero keuangan, aksi cepat, KPI, tren 6 bulan, komposisi, panel "Pengeluaran Terbaru", lalu **Timeline Agenda ringkas** (preview 3 hari + "Lihat semua"). **Tombol mata** jumlah uang = **hanya memengaruhi kartu hero** (keputusan Kakang); nilai di KPI/chart/daftar tetap tampil
+1. **Dashboard**: sapaan, hero keuangan, KPI, tren 6 bulan, komposisi, panel "Pengeluaran Terbaru", **Timeline Agenda ringkas** (preview 3 hari + "Lihat semua"), lalu kartu ajakan album. **Tombol mata** jumlah uang = **hanya memengaruhi kartu hero** (keputusan Kakang); nilai di KPI/chart/daftar tetap tampil
 2. **Agenda**: dropdown kategori di tab Agenda (Semua/Keluarga/Anak/Ibadah/Kesehatan/Rumah Tangga/Kendaraan, badge jumlah) — **satu-satunya filter kategori** (deretan chip filter di dalam section dihapus; nama filter aktif sudah tampil sebagai judul `SectionHeader`, jumlah di sub-judul); sub-tampilan **Jadwal | Tugas | Kalender | Timeline** (default Jadwal) — **Jadwal** = grid `ScheduleItem`; **Tugas** = chip filter status/prioritas (Semua Tugas/Belum Selesai/Sudah Selesai/Prioritas Tinggi/Sedang/Rendah) + `TaskList` (toggle selesai + badge prioritas); **Kalender** = kalender gabungan anggota (`Calendar.jsx`): view **Minggu/Bulan/Tahun** (default Bulan), **warna per member + legenda** (Rezki YT cyan, Hilda AK violet, RAGASUCI emerald, RAJABRANA amber, Keluarga sky), dot member di sel + bar bawah = ada tugas jatuh tempo, klik tanggal → daftar agenda hari itu, nav prev/next + "Hari Ini", filter kategori ikut memfilter kalender; **Timeline** = alur kronologis gabungan 4 modul (`Timeline.jsx`): rel vertikal + titik per hari + cabang ke tiap baris, kelompok **hari ini ke depan** lalu blok **Riwayat**, chip filter jenis (Semua/Agenda/Tugas/Keuangan/Catatan)
 3. **Keuangan**: sub-tampilan **Pengeluaran | Anggaran** (default Pengeluaran — D26). **Pengeluaran**: dropdown kategori di tab Keuangan (Semua Pengeluaran/Belanja Bulanan/Utilitas/Pendidikan/Transportasi/Kesehatan/Ibadah & Sosial/**Rumah & Cicilan**/**Hiburan & Liburan**/**Tabungan & Utang**) — satu-satunya filter; grid `ExpenseCard` berikon kategori + total terfilter di header. **Anggaran** (`Budgeting.jsx`): kartu pemasukan + editor gaji/rasio **di tempat** (bukan FormSheet; simpan hanya bila rasio tepat 100%) → 3 kartu keranjang **Kebutuhan/Keinginan/Tabungan & Utang** (alokasi 50/30/20 vs realisasi pengeluaran, status Aman/Hati-hati/Lebih) + pos saran yang bisa ditambah/ubah/dihapus/dipindah keranjang lewat FormSheet `budgetPos`
 4. **Keluarga** (**papan profil anggota** — D17): dropdown bagian di tab Keluarga (Semua/Anggota/**Info Medis**/**Kontak & Darurat**/**Dokumen Penting**, badge jumlah) — satu-satunya filter; "Semua Keluarga" = semua bagian bertumpuk. **Anggota** = grid `FamilyMemberCard` berisi data diri (avatar foto bila ada — mis. Rezki dari seed `/avatars/profile-rezki.jpg` — atau inisial, nama, peran, umur dari tanggal lahir, golongan darah, alergi, WA) — **1 kolom di HP** (kartu memuat detail, butuh lebar), `sm`+ berjejer; sisanya `FamilyList`. Kesehatan→Informasi medis ringkas (dokter/asuransi/obat, **statis**), Pendidikan Anak→dihapus dari modul ini (jadwal & biaya milik Agenda/Keuangan)
@@ -348,7 +346,7 @@ Avatar           : komponen bersama (ui.jsx) — foto (`object-cover`: data URL 
 
 ## 7. Touch Targets & Interaction Patterns
 
-- **Minimum**: 44×44 px semua elemen interaktif; QuickAction 76px; tab bar 56px
+- **Minimum**: 44×44 px semua elemen interaktif; tab bar 56px
 - **Spacing**: 12px antar target (`gap-3`); area sentuh boleh lebih besar dari visual (checkbox 28px + `-m-2 h-11 w-11`)
 - **Thumb zone**: aksi utama di bottom tab bar
 - **Dropdown kategori (Agenda, Keuangan, Keluarga & Catatan)** (nav HP + desktop): buka = slide-up + fade 300ms `cubic-bezier(0.22,1,0.36,1)`, item berundak 30ms (`--i`), tutup = exit cepat 150ms; trigger `aria-expanded`/`aria-controls`/`aria-haspopup`, item `role="menuitemradio"` + `aria-checked`, tutup via Escape/klik luar, fokus item pertama di desktop; hanya satu dropdown terbuka pada satu waktu; `prefers-reduced-motion` → muncul langsung tanpa animasi

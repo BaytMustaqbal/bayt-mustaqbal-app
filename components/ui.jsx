@@ -222,32 +222,6 @@ export function ProgressBar({ value, max, className = '' }) {
   );
 }
 
-/* Ikon aksi cepat di dashboard (kotak sentuh ≥ 76px). */
-export function QuickAction({ icon, label, onClick, tone = 'cyan' }) {
-  const tones = {
-    cyan: 'bg-tonecyan/15 text-tonecyanfg',
-    blue: 'bg-toneblue/15 text-tonebluefg',
-    violet: 'bg-toneviolet/15 text-tonevioletfg',
-    emerald: 'bg-toneemerald/15 text-toneemeraldfg',
-    amber: 'bg-toneamber/15 text-toneamberfg',
-  };
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-2.5 text-center shadow-e1 transition-[color,background-color,border-color,box-shadow,transform] duration-base ease-crisp hover:-translate-y-0.5 hover:border-brand/50 hover:bg-muted hover:shadow-e2`}
-    >
-      <span
-        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-transform duration-base ease-crisp group-hover:scale-105 ${tones[tone]}`}
-        aria-hidden="true"
-      >
-        <Icon name={icon} size={19} />
-      </span>
-      <span className="text-[11px] font-medium leading-tight text-ink sm:text-xs">{label}</span>
-    </button>
-  );
-}
-
 /* Empty state dengan ikon + pesan */
 export function EmptyState({ icon = 'inbox', title, message }) {
   return (

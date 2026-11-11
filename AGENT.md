@@ -40,7 +40,7 @@ bayt-mustaqbal-app/
 ├── components/
 │   ├── Icon.jsx            # Set ikon SVG inline (home, calendar, wallet, users, tasks, note, pin, utensils, edit, trash, search, undo, barChart, target, chevron, lock, eye/eyeOff, camera, sun/moon/monitor (tema) dll.)
 │   ├── ui.jsx              # Primitif UI: Card, GlassCard, SectionHeader, StatCard, ProgressBar,
-│   │                       #   QuickAction, EmptyState, ExpenseCard, ItemActions, Badge, FamilyList, CTA_CLASS,
+│   │                       #   EmptyState, ExpenseCard, ItemActions, Badge, FamilyList, CTA_CLASS,
 │   │                       #   Avatar (foto/inisial) + initialsOf(nama)
 │   ├── Navigation.jsx      # Header sticky glass (merek + nav lg+ + tombol tema (sun/moon, 44px) + lonceng notifikasi + chip pengguna) + bottom tab bar 56px glass;
 │   │                       #   tab Agenda, Keuangan, Keluarga & Catatan = dropdown filter (animasi, badge jumlah, a11y menu);

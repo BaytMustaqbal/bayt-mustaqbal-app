@@ -2920,58 +2920,72 @@ const deleteGoal = async (id) => {
               </>
             )}
 
-            {/* Sub-tampilan Keuangan: Ringkasan | Pengeluaran | Anggaran | Pemasukan */}
-            <div
-              className="mb-5 grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
-              role="group"
-              aria-label="Mode tampilan keuangan"
-            >
-              <button
-                type="button"
-                onClick={() => setFinanceMode('ringkasan')}
-                aria-pressed={financeMode === 'ringkasan'}
-                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                  financeMode === 'ringkasan' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
-                }`}
+            {/* Sub-tampilan Keuangan: Ringkasan | Pengeluaran | Anggaran | Pemasukan.
+                Baris tab + tombol "Foto Struk" (pemindai struk) berjajar. */}
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div
+                className="grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
+                role="group"
+                aria-label="Mode tampilan keuangan"
               >
-                <Icon name="barChart" size={16} />
-                Ringkasan
-              </button>
-              <button
-                type="button"
-                onClick={() => setFinanceMode('pengeluaran')}
-                aria-pressed={financeMode === 'pengeluaran'}
-                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                  financeMode === 'pengeluaran'
-                    ? 'bg-brandtint text-brandfg'
-                    : 'text-mutedfg hover:text-ink'
-                }`}
-              >
-                <Icon name="wallet" size={16} />
-                Pengeluaran
-              </button>
-              <button
-                type="button"
-                onClick={() => setFinanceMode('pemasukan')}
-                aria-pressed={financeMode === 'pemasukan'}
-                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                  financeMode === 'pemasukan' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
-                }`}
-              >
-                <Icon name="trendingUp" size={16} />
-                Pemasukan
-              </button>
-              <button
-                type="button"
-                onClick={() => setFinanceMode('anggaran')}
-                aria-pressed={financeMode === 'anggaran'}
-                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                  financeMode === 'anggaran' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
-                }`}
-              >
-                <Icon name="pieChart" size={16} />
-                Anggaran
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setFinanceMode('ringkasan')}
+                  aria-pressed={financeMode === 'ringkasan'}
+                  className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                    financeMode === 'ringkasan' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                  }`}
+                >
+                  <Icon name="barChart" size={16} />
+                  Ringkasan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFinanceMode('pengeluaran')}
+                  aria-pressed={financeMode === 'pengeluaran'}
+                  className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                    financeMode === 'pengeluaran'
+                      ? 'bg-brandtint text-brandfg'
+                      : 'text-mutedfg hover:text-ink'
+                  }`}
+                >
+                  <Icon name="wallet" size={16} />
+                  Pengeluaran
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFinanceMode('pemasukan')}
+                  aria-pressed={financeMode === 'pemasukan'}
+                  className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                    financeMode === 'pemasukan' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                  }`}
+                >
+                  <Icon name="trendingUp" size={16} />
+                  Pemasukan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFinanceMode('anggaran')}
+                  aria-pressed={financeMode === 'anggaran'}
+                  className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                    financeMode === 'anggaran' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                  }`}
+                >
+                  <Icon name="pieChart" size={16} />
+                  Anggaran
+                </button>
+              </div>
+
+              {canWrite && (
+                <button
+                  type="button"
+                  onClick={() => setScanOpen(true)}
+                  className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border border-brand/25 bg-brandtint px-3.5 text-sm font-semibold text-brandfg transition-colors hover:bg-brand/10"
+                >
+                  <Icon name="camera" size={17} />
+                  Foto Struk
+                </button>
+              )}
             </div>
 
             {/* Chip filter kategori pemasukan (pola sama dengan chip tugas) */}
@@ -3451,7 +3465,6 @@ const deleteGoal = async (id) => {
             onNavigate={setActiveSection}
             onOpenTimeline={handleOpenAgendaTimeline}
             onEditItem={openEdit}
-            onScanReceipt={canWrite ? () => setScanOpen(true) : null}
             insight={insight}
           />
         );

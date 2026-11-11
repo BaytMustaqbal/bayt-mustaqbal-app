@@ -66,49 +66,6 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
 
-  // ---- Konfigurasi Tombol Aksi Cepat di Dashboard ----
-  // Pengguna bisa memilih 4 dari 6 pilihan tombol di bawah ini
-  // Hasil disimpan di localStorage key 'bayt_qac'
-  // Default: Album, Agenda, Service, Foto Struk
-  const QUICK_ACTION_OPTIONS = [
-    { icon: 'image', label: 'Album', path: 'album' },
-    { icon: 'calendar', label: 'Agenda', path: 'agenda' },
-    { icon: 'wrench', label: 'Service', path: 'service' },
-    { icon: 'camera', label: 'Foto Struk', path: 'scan' },
-    { icon: 'shoppingBag', label: 'Belanja', path: 'shopping' },
-    { icon: 'note', label: 'Catatan', path: 'notes' },
-  ];
-
-  const DEFAULT_QUICK_ACTIONS = [
-    { icon: 'image', label: 'Album', path: 'album' },
-    { icon: 'calendar', label: 'Agenda', path: 'agenda' },
-    { icon: 'wrench', label: 'Service', path: 'service' },
-    { icon: 'camera', label: 'Foto Struk', path: 'scan' },
-  ];
-
-  // Tombol yang sudah dipilih user (dari localStorage), atau default
-  const [quickActionButtons, setQuickActionButtons] = useState(() => {
-    try {
-      const stored = localStorage.getItem('bayt_qac');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length === 4 && parsed.every(b => b && b.icon && b.label && b.path)) {
-          return parsed;
-        }
-      }
-    } catch (e) {}
-    // Default: Album, Agenda, Service, Foto Struk
-    return [...DEFAULT_QUICK_ACTIONS];
-  });
-
-  // Simpan konfigurasi tombol aksi cepat
-  const saveQuickActionButtons = (buttons) => {
-    try {
-      localStorage.setItem('bayt_qac', JSON.stringify(buttons));
-      setQuickActionButtons(buttons);
-    } catch (e) {}
-  };
-
   // ---- Privasi & tampilan (preferensi per perangkat) ----
   const [uiPrefs, setUiPrefs] = useState(() => readUiPrefs());
   // Area accordion yang sedang terbuka (default: Integrasi).
@@ -801,64 +758,6 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
           onToggle={() => toggleKey('otomasi')}
         >
           <RulesComp />
-        </SettingSection>
-
-        {/* ---- Konfigurasi Tombol Aksi Cepat ---- */}
-        <SettingSection
-          icon="quickaction"
-          title="Tombol Aksi Cepat"
-          subtitle="Pilih 4 tombol dari 6 pilihan di bawah"
-          open={openKey === 'quickaction'}
-          onToggle={() => toggleKey('quickaction')}
-        >
-          <div className="space-y-4">
-            {QUICK_ACTION_OPTIONS.map((opt, i) => (
-              <div key={i} className="checkbox-container">
-                <label>
-                  <input
-                    type="checkbox"
-                    name="quickaction-set"
-                    value={i}
-                    checked={quickActionButtons.some((b) => b.path === opt.path)}
-                    onChange={() => {
-                      // Hitung berapa checkbox yang sedang dicentang
-                      const count = document.querySelectorAll('input[name="quickaction-set"]:checked').length;
-                      
-                      // Hanya izinkan tepat 4 pilihan
-                      if (count >= 4 && !quickActionButtons.some((b) => b.path === opt.path)) {
-                        // Sudah 4 dipilih dan tombol ini belum terpilih -> tolak pilihannya
-                        alert('Hanya boleh memilih tepat 4 tombol. Hapus salah satu terlebih dahulu.');
-                        this.checked = false;
-                        return;
-                      }
-                      
-                      const newButtons = [...quickActionButtons];
-                      
-                      // Jika checkbox ini sudah dicentang, hapus dari daftar
-                      const idx = newButtons.findIndex((b) => b.path === opt.path);
-                      if (idx >= 0) {
-                        newButtons.splice(idx, 1);
-                      } else {
-                        // Tambah ke posisi baru (gantikan yang pertama jika sudah 4)
-                        if (newButtons.length >= 4) {
-                          newButtons[0] = opt;
-                        } else {
-                          newButtons.push(opt);
-                        }
-                      }
-                      setQuickActionButtons(newButtons);
-                      saveQuickActionButtons(newButtons);
-                    }}
-                  />
-                  <span className="ml-2 text-sm text-ink">{opt.label}</span>
-                </label>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 pt-4 border-t border-line text-xs text-mutedfg">
-            <p>Pilih tepat 4 tombol dari 6 opsi di atas.</p>
-            <p>Urutan tombol akan muncul di Dashboard Aksi Cepat.</p>
-          </div>
         </SettingSection>
 
         {/* ---- Audit Log ---- */}
