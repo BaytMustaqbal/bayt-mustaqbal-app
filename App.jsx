@@ -609,7 +609,7 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const stored = getUser();
   const transformedUser = stored
-    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, nickname: stored.nickname || null, avatar: stored.avatar || stored.avatar_url || null, initials: initialsOf(stored.nickname || stored.nama || stored.name), group_id: stored.group_id || null, group_role: stored.group_role || 'anak', group_name: stored.group_name || null }
+    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, nickname: stored.nickname || null, phone: stored.phone || null, avatar: stored.avatar || stored.avatar_url || null, initials: initialsOf(stored.nickname || stored.nama || stored.name), group_id: stored.group_id || null, group_role: stored.group_role || 'anak', group_name: stored.group_name || null }
     : null;
   const [currentUser, setCurrentUser] = useState(transformedUser);
   // Hak tulis data keluarga: kepala_keluarga, suami, istri. anak & cucu = baca saja
@@ -1426,6 +1426,7 @@ const deleteGoal = async (id) => {
           generasi: user.generasi || 'orangtua',
           birthDate: user.birth_date || null,
           nickname: user.nickname || null,
+          phone: user.phone || null,
           avatar: user.avatar_url || null,
           initials: initialsOf(user.nickname || user.nama),
           group_id: user.group_id || null,
@@ -1726,14 +1727,14 @@ const deleteGoal = async (id) => {
       }),
     });
     // Cache lokal (optimistic) supaya modal langsung terisi
-    storeUser({ id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, nickname: currentUser.nickname, birth_date: currentUser.birthDate, avatar_url: patch.avatar });
+    storeUser({ id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, nickname: currentUser.nickname, birth_date: currentUser.birthDate, phone: currentUser.phone, avatar_url: patch.avatar });
     // Simpan nama + avatar ke server (PUT /auth/me) supaya tampil di semua perangkat
     auth.updateProfile({ nama: patch.name, nickname: currentUser.nickname, avatarUrl: patch.avatar || null })
       .then((updated) => {
         setCurrentUser((prev) => (prev
           ? { ...prev, name: updated.nama, avatar: updated.avatar_url || null }
           : prev));
-        storeUser({ id: currentUser.id, nama: updated.nama, username: currentUser.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, birth_date: currentUser.birthDate, avatar_url: updated.avatar_url });
+        storeUser({ id: currentUser.id, nama: updated.nama, username: currentUser.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, birth_date: currentUser.birthDate, phone: updated.phone ?? currentUser.phone, avatar_url: updated.avatar_url });
         loadFromAPI(); // segarkan tree (avatar/nama)
         pushToast({ message: 'Profil akun diperbarui', duration: 2500 });
       })
@@ -2194,12 +2195,13 @@ const deleteGoal = async (id) => {
         name: updatedUser.nama || currentUser.name,
         nickname: updatedUser.nickname ?? currentUser.nickname ?? null,
         birthDate: updatedUser.birth_date ?? currentUser.birthDate,
+        phone: updatedUser.phone ?? currentUser.phone ?? null,
       };
       setCurrentUser(merged);
       storeUser({
         id: merged.id, nama: merged.name, username: merged.username, role: merged.role,
         family_role: merged.family_role, generasi: merged.generasi, nickname: merged.nickname,
-        birth_date: merged.birthDate, avatar_url: merged.avatar_url,
+        birth_date: merged.birthDate, phone: merged.phone, avatar_url: merged.avatar_url,
       });
     }
     setAccountInitialGenerasi(null); // reset preset ? klik "+" berikutnya tetap bekerja

@@ -99,6 +99,7 @@ export function AccountModal({
 
   const [profileNickname, setProfileNickname] = useState('');
   const [profileBirthDate, setProfileBirthDate] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState('');
 
@@ -198,8 +199,9 @@ export function AccountModal({
     if (open) {
       setProfileNickname(user?.nickname || '');
       setProfileBirthDate(user?.birthDate || '');
+      setProfilePhone(user?.phone || '');
     }
-  }, [open, user?.nickname, user?.birthDate]);
+  }, [open, user?.nickname, user?.birthDate, user?.phone]);
 
   const fieldRefs = useRef({});
   const fileRef = useRef(null);
@@ -310,6 +312,7 @@ export function AccountModal({
         nama: name.trim(),
         nickname: profileNickname.trim() || null,
         birthDate: profileBirthDate || null,
+        phone: profilePhone.trim() || null,
       });
       onSaved?.(updated);
       setProfileSaved('Profil tersimpan.');
@@ -504,6 +507,19 @@ export function AccountModal({
                   className={inputCls}
                 />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="profile-phone" className="mb-1 block text-xs font-semibold text-mutedfg">No. telepon</label>
+              <input
+                id="profile-phone"
+                type="tel"
+                inputMode="tel"
+                value={profilePhone}
+                onChange={(e) => { setProfilePhone(e.target.value); setProfileSaved(''); }}
+                placeholder="cth. 0812-3456-7890"
+                className={inputCls}
+              />
             </div>
 
             <button
@@ -891,6 +907,19 @@ export function AccountModal({
                   className={inputCls}
                 />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="profile-phone" className="mb-1 block text-xs font-semibold text-mutedfg">No. telepon</label>
+              <input
+                id="profile-phone"
+                type="tel"
+                inputMode="tel"
+                value={profilePhone}
+                onChange={(e) => { setProfilePhone(e.target.value); setProfileSaved(''); }}
+                placeholder="cth. 0812-3456-7890"
+                className={inputCls}
+              />
             </div>
 
             <button
