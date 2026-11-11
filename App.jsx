@@ -645,7 +645,6 @@ export default function App() {
     connecting: false,
     connected: false,
     email: null,
-    photosEnabled: false,
     error: null,
     notConfigured: false,
   });
@@ -973,7 +972,6 @@ const deleteGoal = async (id) => {
         connected: !!s.connected,
         email: s.email || null,
         calendarId: s.calendar_id || null,
-        photosEnabled: !!s.photosEnabled,
         error: null,
         notConfigured: false,
       });
@@ -2905,7 +2903,6 @@ const deleteGoal = async (id) => {
             onSave={saveMoment}
             onDelete={deleteMoment}
             onUploadPhoto={uploadMomentPhoto}
-            googleConnected={gcal.connected}
             autoOpenAdd={momentAddSignal}
           />
         );

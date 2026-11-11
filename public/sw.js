@@ -9,9 +9,14 @@ self.skipWaiting();
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
-// API: network first, fallback cache
+// API: network first, fallback cache.
+// Pengecualian: foto momen (path /api/moment/photo/) ditangani route gambar
+// di bawah — URL-nya immutable, jadi tak perlu network-first tiap kali.
 registerRoute(
-  ({ url }) => url.origin === 'https://api.baytmustaqbal.my.id' && url.pathname.startsWith('/api/'),
+  ({ url }) =>
+    url.origin === 'https://api.baytmustaqbal.my.id' &&
+    url.pathname.startsWith('/api/') &&
+    !url.pathname.startsWith('/api/moment/photo/'),
   new NetworkFirst({
     cacheName: 'api-cache',
     networkTimeoutSeconds: 10,
