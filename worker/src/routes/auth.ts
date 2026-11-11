@@ -169,7 +169,7 @@ authRoutes.get('/me', async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DB.prepare(
     `SELECT u.id, u.username, u.nama, u.nickname, u.avatar_url, u.role, u.family_role, u.generasi, u.birth_date,
-            u.group_id, u.group_role, u.google_sub, g.name AS group_name
+            u.phone, u.group_id, u.group_role, u.google_sub, g.name AS group_name
      FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.id = ? AND u.void IS NULL`
   ).bind(userId).first();
