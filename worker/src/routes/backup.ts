@@ -19,13 +19,13 @@ function hasScope(groupRole: string | null): boolean {
   return groupRole === 'kepala_keluarga';
 }
 
-const TABLES = ['transactions', 'calendar_events', 'notes', 'family_moments', 'settings'];
+const TABLES = ['transactions', 'calendar_events', 'notes', 'settings'];
 
 async function gatherBackup(env: Env, groupId: string | null, userId: string) {
   const scope = groupScope(groupId, userId);
   const data: Record<string, unknown[]> = {};
   for (const t of TABLES) {
-    const hasGroupCol = t === 'transactions' || t === 'calendar_events' || t === 'notes' || t === 'family_moments' || t === 'settings';
+    const hasGroupCol = t === 'transactions' || t === 'calendar_events' || t === 'notes' || t === 'settings';
     const sql = hasGroupCol
       ? `SELECT * FROM ${t} WHERE ${scope.sql} AND void IS NULL`
       : `SELECT * FROM ${t} WHERE user_id = ? AND void IS NULL`;
@@ -100,7 +100,7 @@ backupRoutes.post('/import', async (c) => {
   const now = new Date().toISOString();
   for (const t of TABLES) {
     try {
-      const hasGroupCol = t === 'transactions' || t === 'calendar_events' || t === 'notes' || t === 'family_moments' || t === 'settings';
+      const hasGroupCol = t === 'transactions' || t === 'calendar_events' || t === 'notes' || t === 'settings';
       const sql = hasGroupCol
         ? `UPDATE ${t} SET void = ? WHERE ${scope.sql} AND void IS NULL`
         : `UPDATE ${t} SET void = ? WHERE user_id = ? AND void IS NULL`;

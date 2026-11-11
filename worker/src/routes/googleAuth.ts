@@ -40,7 +40,7 @@ function buildLoginConsentUrl(env: Env, origin: string, state: string): string {
     redirect_uri: resolveLoginRedirectUri(origin),
     response_type: 'code',
     // Scope: Calendar (agenda/tagihan) + Drive (backup) + identitas.
-    // Foto momen TIDAK lagi butuh Google Photos — disimpan di Cloudflare R2.
+    // Album foto keluarga hidup di situs terpisah — tak butuh Google Photos.
     scope: 'openid email profile https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file',
     access_type: 'offline',
     prompt: 'consent',

@@ -5,13 +5,13 @@ import { groupScope } from './group';
 
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 
-const TABLES = ['transactions', 'calendar_events', 'notes', 'family_moments', 'settings'];
+const TABLES = ['transactions', 'calendar_events', 'notes', 'settings'];
 
 async function gatherBackup(env: Env, groupId: string | null, userId: string) {
   const scope = groupScope(groupId, userId);
   const data: Record<string, unknown[]> = {};
   for (const t of TABLES) {
-    const hasGroupCol = t === 'transactions' || t === 'calendar_events' || t === 'notes' || t === 'family_moments' || t === 'settings';
+    const hasGroupCol = t === 'transactions' || t === 'calendar_events' || t === 'notes' || t === 'settings';
     const sql = hasGroupCol
       ? `SELECT * FROM ${t} WHERE ${scope.sql} AND void IS NULL`
       : `SELECT * FROM ${t} WHERE user_id = ? AND void IS NULL`;
