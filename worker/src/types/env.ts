@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 
 export interface Env {
   DB: D1Database;
+  // Bucket R2 untuk foto momen keluarga (foto tidak butuh OAuth Google).
+  MOMENTS_R2: R2Bucket;
   JWT_SECRET: string;
   FONNTE_TOKEN: string;
   FONNTE_TARGET: string;

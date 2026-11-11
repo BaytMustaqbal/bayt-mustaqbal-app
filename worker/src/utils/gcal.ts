@@ -45,11 +45,6 @@ export interface GcalConnection {
   google_scopes?: string | null;
 }
 
-/** Cek apakah koneksi memiliki scope Google tertentu. */
-export function hasGcalScope(conn: GcalConnection | null | undefined, scope: string): boolean {
-  return !!(conn?.google_scopes && conn.google_scopes.split(' ').includes(scope));
-}
-
 export interface GcalEventInput {
   summary: string;
   description?: string;
@@ -139,7 +134,7 @@ export function buildConsentUrl(env: Env, origin: string, state: string): string
     client_id: clientId,
     redirect_uri: resolveRedirectUri(origin),
     response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/photoslibrary.appendonly https://www.googleapis.com/auth/drive.file openid email',
+    scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file openid email',
     access_type: 'offline',
     prompt: 'consent',
     include_granted_scopes: 'true',

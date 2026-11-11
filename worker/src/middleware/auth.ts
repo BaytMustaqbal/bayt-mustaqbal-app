@@ -13,6 +13,12 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
   ) {
     return next();
   }
+  // Foto momen: <img src> tak bisa mengirim header Authorization, jadi route
+  // ini publik. Aksesnya dijaga tanda tangan HMAC (query ?sig=) yang hanya
+  // bisa dibuat worker — lihat routes/moment.ts.
+  if (path.startsWith('/api/moment/photo/')) {
+    return next();
+  }
   const authHeader = c.req.header('Authorization');
   const token = authHeader?.replace('Bearer ', '') ||
     c.req.header('Cookie')?.match(/token=([^;]+)/)?.[1] || null;

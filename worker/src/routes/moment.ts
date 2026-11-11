@@ -1,8 +1,17 @@
 import { Hono } from 'hono';
 import { Env } from '../types/env';
 import { canWriteGroup, forbiddenWrite, groupScope } from '../utils/group';
-import { getConnection, resolveConnectionUserId, hasGcalScope } from '../utils/gcal';
-import { uploadMomentPhoto } from '../utils/photos';
+import {
+  MAX_PHOTO_BYTES,
+  buildPhotoKey,
+  deleteMomentPhoto,
+  extractPhotoKey,
+  getMomentPhoto,
+  isValidPhotoKey,
+  putMomentPhoto,
+  signPhotoKey,
+  verifyPhotoSignature,
+} from '../utils/storage';
 
 // Daftar kategori momen yang tetap (sinkron dengan frontend).
 export const MOMENT_CATEGORIES = [
@@ -14,7 +23,18 @@ export const MOMENT_CATEGORIES = [
   'lainnya',
 ];
 
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
+/**
+ * URL absolut foto. Foto disimpan di R2 dan disajikan lewat route Worker
+ * sendiri (bukan r2.dev publik) supaya bucket tak perlu dibuat publik.
+ * Origin diambil dari request agar sama di produksi maupun dev lokal.
+ */
+function photoOrigin(c: { req: { url: string } }): string {
+  try {
+    return new URL(c.req.url).origin;
+  } catch {
+    return 'https://api.baytmustaqbal.my.id';
+  }
+}
 
 export const momentRoutes = new Hono<{ Bindings: Env }>();
 
@@ -76,37 +96,10 @@ momentRoutes.post('/', async (c) => {
   return c.json({ ok: true, data: created, error: null });
 });
 
-// POST /api/moment/upload — unggah foto momen ke Google Photos, balikan URL.
+// POST /api/moment/upload — unggah foto momen ke R2, balikan URL absolut.
 momentRoutes.post('/upload', async (c) => {
   if (!canWriteGroup(c.get('groupRole'))) {
     return c.json(forbiddenWrite(), 403);
-  }
-  const writerUserId = c.get('userId');
-  const groupId = c.get('groupId');
-  const ownerUserId = await resolveConnectionUserId(c.env, writerUserId, groupId);
-  if (!ownerUserId) {
-    return c.json({
-      ok: false,
-      data: null,
-      error: {
-        code: 'GCAL_NOT_CONNECTED',
-        message: 'Hubungkan akun Google dulu (menu Pengaturan) untuk mengunggah foto.',
-      },
-    }, 400);
-  }
-  const conn = await getConnection(c.env, ownerUserId);
-  if (!conn) {
-    return c.json({ ok: false, data: null, error: { code: 'GCAL_NOT_CONNECTED', message: 'Koneksi Google tidak ditemukan.' } }, 400);
-  }
-  if (!hasGcalScope(conn, 'https://www.googleapis.com/auth/photoslibrary.appendonly')) {
-    return c.json({
-      ok: false,
-      data: null,
-      error: {
-        code: 'PHOTOS_SCOPE_MISSING',
-        message: 'Izin Google Photos belum diberikan. Putuskan lalu hubungkan ulang Google dan setujui izin foto.',
-      },
-    }, 400);
   }
 
   const form = await c.req.formData();
@@ -118,19 +111,49 @@ momentRoutes.post('/upload', async (c) => {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Foto maksimal 5MB' } }, 400);
   }
 
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const key = buildPhotoKey(ext);
   try {
-    const result = await uploadMomentPhoto(
+    await putMomentPhoto(
       c.env,
-      conn,
-      { bytes: await file.arrayBuffer(), name: file.name, type: file.type || 'image/jpeg' },
-      'Momen Keluarga',
-      writerUserId
+      key,
+      await file.arrayBuffer(),
+      file.type || 'image/jpeg'
     );
-    return c.json({ ok: true, data: { photo_url: result.photo_url }, error: null });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return c.json({ ok: false, data: null, error: { code: 'PHOTOS_UPLOAD_FAILED', message: msg } }, 502);
+    return c.json({ ok: false, data: null, error: { code: 'PHOTO_UPLOAD_FAILED', message: msg } }, 502);
   }
+
+  const sig = await signPhotoKey(c.env, key);
+  return c.json({
+    ok: true,
+    data: { photo_url: `${photoOrigin(c)}/api/moment/photo/${key}?sig=${sig}` },
+    error: null,
+  });
+});
+
+// GET /api/moment/photo/:key — sajikan foto dari R2.
+// Route ini TIDAK lewat auth middleware (lihat middleware/auth.ts): <img src>
+// tak bisa mengirim header Authorization. Akses dijaga tanda tangan HMAC di
+// query string, jadi URL foto hanya sah kalau ditandatangani worker.
+momentRoutes.get('/photo/:key', async (c) => {
+  const key = c.req.param('key');
+  if (!isValidPhotoKey(key)) {
+    return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Foto tidak ditemukan' } }, 404);
+  }
+  const sig = c.req.query('sig');
+  if (!(await verifyPhotoSignature(c.env, key, sig))) {
+    return c.json({ ok: false, data: null, error: { code: 'FORBIDDEN', message: 'Akses foto tidak sah' } }, 403);
+  }
+  const object = await getMomentPhoto(c.env, key);
+  if (!object) {
+    return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Foto tidak ditemukan' } }, 404);
+  }
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('Cache-Control', 'private, max-age=31536000, immutable');
+  return new Response(object.body, { headers });
 });
 
 // PUT /api/moment/:id — update (increment rev). Butuh peran tulis.
@@ -161,6 +184,13 @@ momentRoutes.put('/:id', async (c) => {
   await c.env.DB.prepare(
     `UPDATE family_moments SET title = ?, description = ?, date = ?, location = ?, category = ?, photo_url = ?, rev = rev + 1, updated_at = ? WHERE id = ?`
   ).bind(title, description || null, date, location || null, cat, photo_url || null, now, id).run();
+
+  // Foto diganti → objek lama di R2 jadi sia-sia, hapus biar bucket tak menumpuk.
+  const oldKey = extractPhotoKey(existing.photo_url);
+  const newKey = extractPhotoKey(photo_url);
+  if (oldKey && oldKey !== newKey) {
+    await deleteMomentPhoto(c.env, oldKey);
+  }
 
   const updated = await c.env.DB.prepare(
     'SELECT * FROM family_moments WHERE id = ? AND void IS NULL'

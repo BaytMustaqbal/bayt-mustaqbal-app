@@ -9,7 +9,6 @@ import {
   getConnection,
   pendingOutboxCount,
   processOutbox,
-  hasGcalScope,
 } from '../utils/gcal';
 
 const GOOGLE_AUTH = 'https://oauth2.googleapis.com';
@@ -23,7 +22,6 @@ export const gcalRoutes = new Hono<{ Bindings: Env }>();
 // GET /api/gcal/status — status koneksi Google Calendar milik user ini
 gcalRoutes.get('/status', async (c) => {
   const conn = await getConnection(c.env, c.get('userId'));
-  const photosScope = 'https://www.googleapis.com/auth/photoslibrary.appendonly';
   return c.json({
     ok: true,
     data: {
@@ -31,7 +29,6 @@ gcalRoutes.get('/status', async (c) => {
       email: conn?.google_email ?? null,
       calendar_id: conn?.calendar_id ?? null,
       expires_at: conn?.token_expires_at ?? null,
-      photosEnabled: hasGcalScope(conn, photosScope),
     },
     error: null,
   });

@@ -39,9 +39,11 @@ function buildLoginConsentUrl(env: Env, origin: string, state: string): string {
     client_id: clientId,
     redirect_uri: resolveLoginRedirectUri(origin),
     response_type: 'code',
-    scope: 'openid email profile https://www.googleapis.com/auth/photoslibrary.appendonly https://www.googleapis.com/auth/calendar.events',
+    // Scope: Calendar (agenda/tagihan) + Drive (backup) + identitas.
+    // Foto momen TIDAK lagi butuh Google Photos — disimpan di Cloudflare R2.
+    scope: 'openid email profile https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file',
     access_type: 'offline',
-    prompt: 'select_account',
+    prompt: 'consent',
     include_granted_scopes: 'true',
     state,
   });
@@ -114,7 +116,7 @@ async function handleCallback(c: any) {
     console.error('Google login token exchange gagal:', res.status);
     return fail('token_exchange_failed');
   }
-  const tokens = (await res.json()) as { id_token?: string; access_token?: string; refresh_token?: string; expires_in?: number };
+  const tokens = (await res.json()) as { id_token?: string; access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
   const idToken = tokens.id_token || tokens.access_token;
   if (!idToken) return fail('no_id_token');
 
@@ -141,8 +143,10 @@ async function handleCallback(c: any) {
       .run();
   }
 
-  // Simpan / perbarui koneksi Google (Photos + Calendar) — integrasi otomatis.
-  const scopeStr = 'https://www.googleapis.com/auth/photoslibrary.appendonly https://www.googleapis.com/auth/calendar.events';
+  // Simpan / perbarui koneksi Google (Calendar + Drive) — integrasi otomatis.
+  // Simpan scope yang benar-benar diberikan Google (bukan hardcode) supaya
+  // status izin di app selalu jujur.
+  const scopeStr = tokens.scope || '';
   const expiresAt = tokens.expires_in
     ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
     : new Date(Date.now() + 3600 * 1000).toISOString();
@@ -150,6 +154,11 @@ async function handleCallback(c: any) {
   const refreshToken = tokens.refresh_token || '';
   console.log('gcal save debug:', JSON.stringify({ hasSub: !!sub, hasEmail: !!email, hasAccess: !!accessToken, hasRefresh: !!refreshToken, expiresAt, scopeStr }));
   const existingConn = await c.env.DB.prepare('SELECT id, refresh_token FROM gcal_connections WHERE user_id = ?').bind(user.id).first();
+  // Tanpa refresh_token, koneksi lumpuh setelah access_token kedaluwarsa
+  // (tidak bisa refresh otomatis). Gagal lebih awal daripada simpan koneksi cacat.
+  if (!refreshToken && !existingConn?.refresh_token) {
+    return fail('no_refresh_token');
+  }
   if (existingConn) {
     const oldRefresh = existingConn.refresh_token || '';
     await c.env.DB.prepare(

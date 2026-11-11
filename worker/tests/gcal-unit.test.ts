@@ -112,7 +112,7 @@ assert('consent → arah ke accounts.google.com', consent.startsWith('https://ac
 assert('consent → berisi client_id', consent.includes('client_id=cid-123'), consent);
 assert('consent → redirect_uri ter-encode', consent.includes(encodeURIComponent('https://api.baytmustaqbal.my.id/api/gcal/callback')), consent);
 assert('consent → scope calendar.events', consent.includes(encodeURIComponent('https://www.googleapis.com/auth/calendar.events')), consent);
-assert('consent → scope photoslibrary.appendonly', consent.includes(encodeURIComponent('https://www.googleapis.com/auth/photoslibrary.appendonly')), consent);
+assert('consent → TANPA scope photoslibrary (foto momen pakai R2)', !consent.includes(encodeURIComponent('photoslibrary')), consent);
 assert('consent → scope drive.file', consent.includes(encodeURIComponent('https://www.googleapis.com/auth/drive.file')), consent);
 assert('consent → access_type=offline', consent.includes('access_type=offline'), consent);
 assert('consent → prompt=consent (refresh token pasti dikasih)', consent.includes('prompt=consent'), consent);
