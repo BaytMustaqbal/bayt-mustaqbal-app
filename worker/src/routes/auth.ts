@@ -164,6 +164,35 @@ authRoutes.post('/logout', async (c) => {
   return c.json({ ok: true, data: null, error: null });
 });
 
+// GET /api/auth/album-verify — verifikasi identitas dari album foto.
+// Dipanggil Pages Functions album (service-to-service) memakai secret bersama
+// `ALBUM_API_TOKEN` di header `X-Album-Token`. Tanpa JWT user biasa.
+authRoutes.get('/album-verify', async (c) => {
+  const expected = c.env.ALBUM_API_TOKEN;
+  if (!expected || expected.startsWith('dev-')) {
+    return c.json({ ok: false, data: null, error: { code: 'ALBUM_NOT_CONFIGURED', message: 'ALBUM_API_TOKEN belum di-set' } }, 503);
+  }
+  const token = c.req.header('X-Album-Token');
+  if (!token || token !== expected) {
+    return c.json({ ok: false, data: null, error: { code: 'FORBIDDEN', message: 'Token album tidak sah' } }, 403);
+  }
+  const email = (c.req.query('email') || '').trim().toLowerCase();
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Email tidak valid' } }, 400);
+  }
+  const user = await c.env.DB.prepare(
+    'SELECT id, username, nama, nickname, avatar_url FROM users WHERE username = ? AND void IS NULL'
+  ).bind(email).first() as { id: string; username: string; nama: string; nickname: string | null; avatar_url: string | null } | null;
+  if (!user) {
+    return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Akun tidak ditemukan' } }, 404);
+  }
+  return c.json({
+    ok: true,
+    data: { email: user.username, nama: user.nama, nickname: user.nickname, avatar_url: user.avatar_url },
+    error: null,
+  });
+});
+
 // GET /api/auth/me
 authRoutes.get('/me', async (c) => {
   const userId = c.get('userId');
