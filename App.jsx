@@ -3553,6 +3553,7 @@ const deleteGoal = async (id) => {
         onClose={() => setSidebarOpen(false)}
         activeSection={activeSection}
         onSectionChange={setActiveSection}
+        onLogout={handleLogout}
         schedule={data.schedule}
         expenses={data.expenses}
         family={familyAll}

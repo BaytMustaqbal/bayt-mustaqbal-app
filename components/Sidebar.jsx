@@ -40,6 +40,7 @@ export function Sidebar({
   noteFilter,
   onNoteSelect,
   onOpenAccount,
+  onLogout,
   theme = 'dark',
 }) {
   const sidebarRef = useRef(null);
@@ -226,7 +227,10 @@ export function Sidebar({
           </button>
           <button
             type="button"
-            onClick={() => (window.location.href = '/')}
+            onClick={() => {
+              onLogout?.();
+              onClose();
+            }}
             className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-mutedfg transition-colors hover:bg-muted hover:text-ink"
           >
             <Icon name="logOut" size={14} />
