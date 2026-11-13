@@ -298,6 +298,33 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         )}
       </Panel>
 
+      {/* ---------- Timeline Agenda (ringkas) ----------
+          Dashboard hanya memuat hari ini + 2 hari ke depan, tanpa blok riwayat
+          dan tanpa chip filter — tampilan penuh tetap di halaman Agenda.
+          "Lihat semua" membuka halaman Agenda langsung di sub-tab Timeline. */}
+      <Panel
+        icon="calendar"
+        title="Timeline Agenda"
+        action={
+          <button
+            type="button"
+            onClick={() => onOpenTimeline?.()}
+            className="grid h-11 shrink-0 place-items-center rounded-full px-3 text-xs font-medium text-brandfg transition-colors hover:bg-brandtint"
+          >
+            Lihat semua
+          </button>
+        }
+      >
+        <Timeline
+          data={data}
+          onEdit={onEditItem}
+          formatCurrency={formatCurrencyShort}
+          limitDays={3}
+          showHistory={false}
+          showFilters={false}
+        />
+      </Panel>
+
       {/* ---------- Wawasan ringkas ---------- */}
       {insight && (
         <Card className="p-4 sm:p-5">
@@ -350,33 +377,6 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           </div>
         </Card>
       )}
-
-      {/* ---------- Timeline Agenda (ringkas) ----------
-          Dashboard hanya memuat hari ini + 2 hari ke depan, tanpa blok riwayat
-          dan tanpa chip filter — tampilan penuh tetap di halaman Agenda.
-          "Lihat semua" membuka halaman Agenda langsung di sub-tab Timeline. */}
-      <Panel
-        icon="calendar"
-        title="Timeline Agenda"
-        action={
-          <button
-            type="button"
-            onClick={() => onOpenTimeline?.()}
-            className="grid h-11 shrink-0 place-items-center rounded-full px-3 text-xs font-medium text-brandfg transition-colors hover:bg-brandtint"
-          >
-            Lihat semua
-          </button>
-        }
-      >
-        <Timeline
-          data={data}
-          onEdit={onEditItem}
-          formatCurrency={formatCurrencyShort}
-          limitDays={3}
-          showHistory={false}
-          showFilters={false}
-        />
-      </Panel>
 
       {/* ---------- Ajakan ke Album Foto Keluarga (situs terpisah) ---------- */}
       <Card className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
