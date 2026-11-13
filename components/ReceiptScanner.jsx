@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { CTA_CLASS, CurrencyInput } from './ui';
 import { saranDariTeks, daftarItemDariTeks, jumlahItemDariTeks } from './receiptOcr';
+import { useFocusTrap } from './useFocusTrap';
 
 /* Pemindai struk: mode semi-auto.
    Foto (JPEG/PNG) hanya dibaca lewat OCR di browser, TIDAK pernah disimpan.
@@ -22,6 +23,9 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
   const camRef = useRef(null);
   const galRef = useRef(null);
   const urlRef = useRef('');
+  const panelRef = useRef(null);
+  const [openState, setOpenState] = useState(true);
+  useFocusTrap(panelRef, openState);
 
   const [preview, setPreview] = useState('');
   const [form, setForm] = useState({
@@ -160,6 +164,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
       />
 
       <form
+        ref={panelRef}
         onSubmit={simpan}
         noValidate
         className={`sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl ${closing ? 'sheet-panel--closing' : ''}`}

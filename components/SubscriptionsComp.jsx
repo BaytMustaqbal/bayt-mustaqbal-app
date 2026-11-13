@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { Badge, CTA_CLASS, EmptyState } from './ui';
+import { useFocusTrap } from './useFocusTrap';
 
 const CATEGORIES = [
   { id: 'listrik', label: 'Listrik', icon: 'zap' },
@@ -20,6 +21,8 @@ const EMPTY = { name: '', category: 'lainnya', amount: 0, billing_day: 1, active
 function SubForm({ initial, onCancel, onSave }) {
   const [f, setF] = useState(initial || EMPTY);
   const [err, setErr] = useState('');
+  const panelRef = useRef(null);
+  useFocusTrap(panelRef, true);
   const set = (k) => (e) => setF((prev) => ({ ...prev, [k]: e.target.value }));
 
   const submit = (e) => {
@@ -34,7 +37,7 @@ function SubForm({ initial, onCancel, onSave }) {
   return (
     <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true">
       <button type="button" aria-label="Tutup" onClick={onCancel} className="sheet-backdrop absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm" />
-      <form onSubmit={submit} noValidate className="sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl">
+      <form ref={panelRef} onSubmit={submit} noValidate className="sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-base font-bold text-ink">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brandtint text-brandfg" aria-hidden="true">

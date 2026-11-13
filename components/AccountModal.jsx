@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { Avatar, CTA_CLASS } from './ui';
 import { auth } from '../services/client';
+import { useFocusTrap } from './useFocusTrap';
 
 /* Username master — bisa daftarkan akun baru dari sini */
 const MASTER_USER = 'baytmustaqbal@gmail.com';
@@ -96,6 +97,12 @@ export function AccountModal({
   const [notice, setNotice] = useState('');
 
   const isMaster = user?.username === MASTER_USER;
+
+  const mainPanelRef = useRef(null);
+  const editPanelRef = useRef(null);
+  // Focus trap: modal akun (bukan mode page) dan form edit anggota.
+  useFocusTrap(mainPanelRef, !page && open);
+  useFocusTrap(editPanelRef, !!editingMember);
 
   const [profileNickname, setProfileNickname] = useState('');
   const [profileBirthDate, setProfileBirthDate] = useState('');
@@ -208,7 +215,7 @@ export function AccountModal({
           onClick={() => setEditingMember(null)}
           className="absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm"
         />
-        <div className="modal-panel relative max-h-[calc(100dvh_-_2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-surface/95 p-5 shadow-pop backdrop-blur-xl">
+        <div ref={editPanelRef} className="modal-panel relative max-h-[calc(100dvh_-_2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-surface/95 p-5 shadow-pop backdrop-blur-xl">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="flex items-center gap-2 text-base font-bold text-ink">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brandtint text-brandfg" aria-hidden="true">
@@ -774,7 +781,7 @@ export function AccountModal({
         className="modal-backdrop absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm"
       />
 
-      <div className="modal-panel relative max-h-[calc(100dvh_-_2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-surface/95 p-5 shadow-pop backdrop-blur-xl">
+      <div ref={mainPanelRef} className="modal-panel relative max-h-[calc(100dvh_-_2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-surface/95 p-5 shadow-pop backdrop-blur-xl">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 id={titleId} className="flex items-center gap-2 text-base font-bold text-ink">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brandtint text-brandfg" aria-hidden="true">

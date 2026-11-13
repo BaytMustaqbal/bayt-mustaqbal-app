@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { CTA_CLASS, CurrencyInput } from './ui';
+import { useFocusTrap } from './useFocusTrap';
 
 /* ============================================================================
    Bottom sheet "Tambah / Ubah" — formulir generik per section.
@@ -31,7 +32,12 @@ export function FormSheet({
   const [errors, setErrors] = useState({});
   const [closing, setClosing] = useState(false);
   const firstFieldRef = useRef(null);
+  const panelRef = useRef(null);
   const titleId = useId();
+
+  // Focus trap: Tab tersiklus di dalam panel (FormSheet sudah fokus ke field
+  // pertama, jadi autoFocus dimatikan).
+  useFocusTrap(panelRef, open, { autoFocus: false });
 
   // Tutup dengan animasi keluar (slide-down) lalu baru panggil onClose.
   const requestClose = () => {
@@ -106,6 +112,7 @@ export function FormSheet({
 
       {/* Panel */}
       <form
+        ref={panelRef}
         onSubmit={handleSubmit}
         noValidate
         className={`sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl ${closing ? 'sheet-panel--closing' : ''}`}
