@@ -432,9 +432,27 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
 
     // Pengingat WA eksplisit tetap dikirim walau quiet window (permintaan user).
     await checkWaReminders(env);
+    await sendChoreReminders(env);
   }
 
-  // Pengingat WA sekali pakai (dari bot). Dikirim ke nomor pribadi user.
+  // Pengingat tugas rumah tangga (chores) yang jatuh tempo besok (WIB).
+async function sendChoreReminders(env: Env): Promise<void> {
+  const tomorrow = new Date(Date.now() + 7 * 3600 * 1000 + 86400 * 1000).toISOString().slice(0, 10);
+  const rows = await env.DB.prepare(
+    `SELECT ch.title, u.phone
+     FROM chores ch
+     JOIN users u ON u.id = ch.assignee_id
+     WHERE ch.status = 'open' AND ch.void IS NULL AND ch.due_date = ?
+       AND u.void IS NULL AND u.phone IS NOT NULL AND u.phone != ''`
+  ).bind(tomorrow).all() as any;
+  const list = rows?.results || [];
+  for (const r of list) {
+    await sendWA(env, `🧹 Pengingat tugas rumah tangga besok:\n${r.title}`, r.phone);
+  }
+  if (list.length > 0) console.log(`Chore reminders sent: ${list.length}`);
+}
+
+// Pengingat WA sekali pakai (dari bot). Dikirim ke nomor pribadi user.
 async function checkWaReminders(env: Env): Promise<void> {
   const nowIso = new Date().toISOString();
   const rows = await env.DB.prepare(
