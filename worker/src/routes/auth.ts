@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { hashPassword, verifyPassword, signToken, verifyToken, createSession, voidSessionByJti } from '../utils/auth';
 import { logAudit } from '../utils/audit';
+import { checkRateLimit, recordFailedAttempt, clearRateLimit } from '../utils/rateLimit';
 import { Env } from '../types/env';
 
 export const authRoutes = new Hono<{ Bindings: Env }>();
@@ -118,17 +119,28 @@ authRoutes.post('/login', async (c) => {
   if (!username || !password) {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Field wajib: username, password' } }, 400);
   }
+
+  // Rate-limit anti brute-force (per username+IP).
+  const ip = c.req.header('cf-connecting-ip') || 'unknown';
+  const rlKey = `${username.toLowerCase()}|${ip}`;
+  if (!(await checkRateLimit(c.env, rlKey))) {
+    return c.json({ ok: false, data: null, error: { code: 'TOO_MANY_ATTEMPTS', message: 'Terlalu banyak percobaan login. Coba lagi nanti.' } }, 429);
+  }
+
   const user = await c.env.DB.prepare(
     `SELECT u.*, g.name AS group_name FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.username = ? AND u.void IS NULL`
   ).bind(username).first() as any;
   if (!user) {
+    await recordFailedAttempt(c.env, rlKey);
     return c.json({ ok: false, data: null, error: { code: 'UNAUTHENTICATED', message: 'Username atau password salah' } }, 401);
   }
   const valid = await verifyPassword(password, user.password_hash);
   if (!valid) {
+    await recordFailedAttempt(c.env, rlKey);
     return c.json({ ok: false, data: null, error: { code: 'UNAUTHENTICATED', message: 'Username atau password salah' } }, 401);
   }
+  await clearRateLimit(c.env, rlKey);
   const device = (c.req.header('User-Agent') || 'browser').slice(0, 120);
   const jti = await createSession(c.env, user.id, device);
   const token = signToken({ userId: user.id, role: user.role }, c.env.JWT_SECRET, jti);

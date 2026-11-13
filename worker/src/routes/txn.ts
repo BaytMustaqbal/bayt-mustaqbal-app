@@ -42,6 +42,15 @@ txnRoutes.post('/', async (c) => {
   if (amount == null || !type || !date) {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Field wajib: amount, type, date' } }, 400);
   }
+  if (!['in', 'out'].includes(type)) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'type harus "in" atau "out"' } }, 400);
+  }
+  if (!Number.isFinite(Number(amount)) || Number(amount) < 0) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Jumlah harus angka non-negatif' } }, 400);
+  }
+  if (description && description.length > 500) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Deskripsi maksimal 500 karakter' } }, 400);
+  }
   if (!canWriteGroup(c.get('groupRole'))) {
     return c.json(forbiddenWrite(), 403);
   }
