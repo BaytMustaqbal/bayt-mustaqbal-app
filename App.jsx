@@ -42,7 +42,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, tasksApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import { openAlbum } from './components/album';
 import './App.css';
@@ -216,7 +216,7 @@ const buildDataBundle = (apiData, currentUser) => {
     expenses,
     income,
     scheduledExpenses: apiData?.scheduledExpenses || [],
-    tasks: LOCAL_SEED.tasks,
+    tasks: apiData?.tasks || [],
     notes: apiData?.notes || [],
     budget: {
       month: budget.month || monthName(new Date()),
@@ -281,6 +281,16 @@ const saveBudgetCategories = (categories) => {
 const SECTION_KEY = { agenda: 'schedule', expenses: 'expenses', income: 'income', tasks: 'tasks', notes: 'notes' };
 const SECTION_LABEL = { agenda: 'Agenda', expenses: 'Pengeluaran', income: 'Pemasukan', tasks: 'Tugas', notes: 'Catatan', family: 'Keluarga' };
 const sectionItemLabel = (item) => item.title || item.description || item.name || 'Item';
+
+// Map baris tasks backend (snake_case) → bentuk frontend (camelCase).
+const mapTask = (t) => ({
+  id: t.id,
+  title: t.title,
+  dueDate: t.due_date || '',
+  priority: t.priority || 'sedang',
+  assignedTo: t.assigned_to || '',
+  completed: !!t.completed,
+});
 
 // Nilai awal form ubah: bentuknya persis seperti `values` yang dikirim FormSheet
 // (angka dijadikan string agar cocok dengan <input type="number">).
@@ -410,7 +420,7 @@ const buildMergedData = (apiData, currentUser) => {
       ...bundle,
       // family sekarang dari daftar akun backend (bukan localStorage-only lagi)
       family: bundle.family,
-      tasks: snapshot.tasks || bundle.tasks,
+      tasks: bundle.tasks,
       familyMedical: snapshot.familyMedical || bundle.familyMedical,
       familyDocuments: snapshot.familyDocuments || bundle.familyDocuments,
       familyContacts: snapshot.familyContacts || bundle.familyContacts,
@@ -423,7 +433,7 @@ const buildMergedData = (apiData, currentUser) => {
 
 // Fetch all API data (schedule, expenses, income, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, income, notes, settings, users, scheduledTasks] = await Promise.all([
+  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
     txn.fetchIncome().catch(() => []),
@@ -431,6 +441,7 @@ const fetchApiData = async () => {
     settingsApi.fetchAll().catch(() => []),
     auth.users().catch(() => []),
     scheduledTasksApi.fetch().catch(() => []),
+    tasksApi.fetch().catch(() => []),
   ]);
 
   // Parse budget settings
@@ -461,7 +472,7 @@ const fetchApiData = async () => {
         .map((t) => ({ id: t.id, name: t.name, amount: t.amount, category: t.category, day: t.day, active: t.active }))
     : [];
 
-  return { schedule, expenses, income, notes, budget, scheduledExpenses, users };
+  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [] };
 };
 
 /* Label status keluarga dari kolom family_role backend */
@@ -1742,12 +1753,16 @@ const deleteGoal = async (id) => {
   const pushToast = (t) => setToast({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...t });
   const dismissToast = (id) => setToast((prev) => (prev && prev.id === id ? null : prev));
 
-  // Toggle selesai tugas ? disimpan (tasks = localStorage-only, tidak ada backend)
+  // Toggle selesai tugas — update state (optimistic) + sinkron ke backend.
   const toggleTask = (taskId) => {
+    const target = dataRef.current.tasks.find((t) => t.id === taskId);
+    if (!target) return;
+    const nextCompleted = !target.completed;
     saveData({
       ...dataRef.current,
-      tasks: dataRef.current.tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)),
+      tasks: dataRef.current.tasks.map((t) => (t.id === taskId ? { ...t, completed: nextCompleted } : t)),
     });
+    tasksApi.update(taskId, { completed: nextCompleted }).catch(() => {});
   };
 
   // Reset data ke seed (tombol di LoginScreen � hanya untuk dev)
@@ -1933,8 +1948,11 @@ const deleteGoal = async (id) => {
       } else if (section === 'notes') {
         const result = await notesApi.create({ title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned }, currentUser);
         addItemToState(section, result);
+      } else if (section === 'tasks') {
+        const result = await tasksApi.create({ title: values.title, dueDate: values.dueDate || null, priority: values.priority, assignedTo: values.assignedTo });
+        addItemToState(section, mapTask(result));
       } else {
-        // Local-only: tasks, family
+        // Local-only: family
         const id = Date.now();
         const item = buildLocalItem(section, values, id);
         addItemToState(section, item);
@@ -2002,6 +2020,11 @@ const deleteGoal = async (id) => {
       } else if (section === 'notes') {
         const result = await notesApi.update(id, noteTransform.toPayload({ title: values.title, body: values.body, category: values.category, pinned: !!values.pinned }), currentUser);
         const updated = noteTransform.toNote(result, currentUser);
+        const list = current[key] || [];
+        saveData({ ...current, [key]: list.map((it) => (it.id === id ? updated : it)) });
+      } else if (section === 'tasks') {
+        const result = await tasksApi.update(id, { title: values.title, dueDate: values.dueDate || null, priority: values.priority, assignedTo: values.assignedTo });
+        const updated = mapTask(result);
         const list = current[key] || [];
         saveData({ ...current, [key]: list.map((it) => (it.id === id ? updated : it)) });
       } else {
@@ -2121,6 +2144,8 @@ const deleteGoal = async (id) => {
           await txn.delete(item.id);
         } else if (section === 'notes') {
           await notesApi.delete(item.id);
+        } else if (section === 'tasks') {
+          await tasksApi.remove(item.id);
         }
       } catch (err) {
         // API gagal ? restore ke state, tampilkan error
@@ -2146,6 +2171,7 @@ const deleteGoal = async (id) => {
           else if (section === 'expenses') txn.create(item).catch(() => {});
           else if (section === 'income') txn.create(item).catch(() => {});
           else if (section === 'notes') notesApi.create(item, currentUser).catch(() => {});
+          else if (section === 'tasks') tasksApi.create({ title: item.title, dueDate: item.dueDate || null, priority: item.priority, assignedTo: item.assignedTo }).catch(() => {});
         }
       },
     });

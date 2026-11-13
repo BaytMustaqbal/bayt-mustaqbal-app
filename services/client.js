@@ -151,6 +151,17 @@ export const auth = {
   },
 };
 
+/* ---- Tugas keluarga (backend /api/task) ---- */
+export const tasksApi = {
+  fetch: async () => apiFetch('/task'),
+  create: async (payload) =>
+    apiFetch('/task', { method: 'POST', body: JSON.stringify(payload) }),
+  update: async (id, payload) =>
+    apiFetch(`/task/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: async (id) =>
+    apiFetch(`/task/${id}`, { method: 'DELETE' }),
+};
+
 /* ---- Data transform: Transaction (backend) ↔ Expense/Income (frontend) ---- */
 export const txnTransform = {
   // API response → frontend transaction (`type` = 'out' pengeluaran | 'in' pemasukan)
