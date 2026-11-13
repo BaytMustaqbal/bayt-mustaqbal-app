@@ -44,6 +44,11 @@ export function FamilyMemberCard({ member }) {
       />
       <h2 className="mt-2.5 truncate font-semibold text-ink sm:mt-3">{member.name}</h2>
       <p className="truncate text-sm text-mutedfg">{member.role}</p>
+      {member.childOrdinal && (
+        <div className="mt-1.5 flex justify-center">
+          <Badge tone="brand">{`Anak ke-${member.childOrdinal}`}</Badge>
+        </div>
+      )}
       <div className="mt-3 flex justify-center">
         <Badge tone={isActive ? 'green' : 'gray'}>
           {isActive ? 'Aktif' : 'Tidak aktif'}

@@ -469,8 +469,8 @@ const FAMILY_ROLE_LABEL = { suami: 'Suami', istri: 'Istri', anak: 'Anak', lainny
 
 /* Map akun backend ? format anggota keluarga (FamilyTree) */
 const VALID_GENERASI = ['orangtua', 'anak', 'cucu'];
-const mapUsersToFamily = (users) =>
-  (users || []).map((u) => ({
+const mapUsersToFamily = (users) => {
+  const list = (users || []).map((u) => ({
     id: u.id,
     name: u.nama,
     nickname: u.nickname || null,
@@ -489,6 +489,17 @@ const mapUsersToFamily = (users) =>
     family_role: u.family_role || 'anak',
     group_role: u.group_role || 'anak',
   }));
+
+  // Urutan anak: tertua = ke-1, dst. Dalam pohon saat ini hanya ada satu
+  // pasangan orangtua inti, sehingga "per pasangan" = urutkan semua anak dalam
+  // keluarga ini berdasarkan tanggal lahir. Yang belum punya tanggal lahir
+  // ditaruh di akhir.
+  const anak = list.filter((m) => m.generasi === 'anak');
+  anak.sort((a, b) => String(a.birthDate || '9999-99-99').localeCompare(String(b.birthDate || '9999-99-99')));
+  anak.forEach((m, i) => { m.childOrdinal = i + 1; });
+
+  return list;
+};
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('id-ID', {

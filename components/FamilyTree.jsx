@@ -67,6 +67,11 @@ function MemberBox({ member, onSelect }) {
           <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-mutedfg">
             {member.role}
           </span>
+          {member.childOrdinal && (
+            <span className="ml-1 inline-block rounded-full border border-brand/25 bg-brandtint px-2 py-0.5 text-[10px] font-semibold text-brandfg">
+              Anak ke-{member.childOrdinal}
+            </span>
+          )}
         </span>
         {birth && <span className="mt-1.5 block text-[11px] text-mutedfg">{birth}</span>}
       </span>
