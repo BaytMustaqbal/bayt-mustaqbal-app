@@ -619,3 +619,13 @@ export const serviceHistoryApi = {
   remove: async (id) =>
     apiFetch(`/service-history/${id}`, { method: 'DELETE' }),
 };
+
+export const debtApi = {
+  fetch: async () => apiFetch('/debt'),
+  create: async (payload) =>
+    apiFetch('/debt', { method: 'POST', body: JSON.stringify(payload) }),
+  update: async (id, payload) =>
+    apiFetch(`/debt/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: async (id) =>
+    apiFetch(`/debt/${id}`, { method: 'DELETE' }),
+};

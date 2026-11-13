@@ -19,6 +19,7 @@ const SettingsComp = lazy(() => import('./components/SettingsComp'));
 const InsightComp = lazy(() => import('./components/InsightComp').then((m) => ({ default: m.InsightComp })));
 import ChoresComp from './components/ChoresComp';
 const TargetTabunganComp = lazy(() => import('./components/TargetTabunganComp'));
+const DebtComp = lazy(() => import('./components/DebtComp'));
 import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
@@ -3506,6 +3507,7 @@ const deleteGoal = async (id) => {
           { id: 'belanja', label: 'Belanja', icon: 'shoppingBag' },
           { id: 'service', label: 'Services', icon: 'wrench' },
           { id: 'langganan', label: 'Langganan', icon: 'repeat' },
+          { id: 'utang', label: 'Utang', icon: 'handCoins' },
         ];
         return (
           <section className="app-fade-in">
@@ -3651,6 +3653,10 @@ const deleteGoal = async (id) => {
                   setSubs((prev) => prev.filter((s) => s.id !== id));
                 }}
               />
+            )}
+
+            {terjadwalTab === 'utang' && (
+              <DebtComp users={data.family} canWrite={canWrite} formatCurrency={formatCurrency} />
             )}
           </section>
         );
