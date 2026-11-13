@@ -43,7 +43,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, tasksApi, familyEntryApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import { openAlbum } from './components/album';
 import './App.css';
@@ -218,6 +218,7 @@ const buildDataBundle = (apiData, currentUser) => {
     income,
     scheduledExpenses: apiData?.scheduledExpenses || [],
     tasks: apiData?.tasks || [],
+    serviceHistory: apiData?.serviceHistory || [],
     notes: apiData?.notes || [],
     budget: {
       month: budget.month || monthName(new Date()),
@@ -304,6 +305,17 @@ const mapFamilyEntry = (e) => ({
 
 // Kunci state frontend untuk masing-masing bagian family.
 const FAMILY_SECTION_KEY = { medis: 'familyMedical', dokumen: 'familyDocuments', kontak: 'familyContacts' };
+
+// Map baris service_history backend → bentuk frontend (dibaca ServiceComp).
+const mapServiceHistory = (r) => ({
+  id: r.id,
+  date: r.tanggal,
+  odometer: Number(r.odometer) || 0,
+  items: r.items || [],
+  total: Number(r.total) || 0,
+  technician: r.technician || '',
+  notes: r.notes || '',
+});
 
 // Nilai awal form ubah: bentuknya persis seperti `values` yang dikirim FormSheet
 // (angka dijadikan string agar cocok dengan <input type="number">).
@@ -438,7 +450,7 @@ const buildMergedData = (apiData, currentUser) => {
       familyDocuments: bundle.familyDocuments,
       familyContacts: bundle.familyContacts,
       serviceInventory: snapshot.serviceInventory || [],
-      serviceHistory: snapshot.serviceHistory || [],
+      serviceHistory: bundle.serviceHistory,
     };
   }
   return bundle;
@@ -446,7 +458,7 @@ const buildMergedData = (apiData, currentUser) => {
 
 // Fetch all API data (schedule, expenses, income, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries] = await Promise.all([
+  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries, serviceHistory] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
     txn.fetchIncome().catch(() => []),
@@ -456,6 +468,7 @@ const fetchApiData = async () => {
     scheduledTasksApi.fetch().catch(() => []),
     tasksApi.fetch().catch(() => []),
     familyEntryApi.fetch().catch(() => []),
+    serviceHistoryApi.fetch().catch(() => []),
   ]);
 
   // Parse budget settings
@@ -490,8 +503,9 @@ const fetchApiData = async () => {
   const familyMedical = rows.filter((r) => r.bagian === 'medis').map(mapFamilyEntry);
   const familyDocuments = rows.filter((r) => r.bagian === 'dokumen').map(mapFamilyEntry);
   const familyContacts = rows.filter((r) => r.bagian === 'kontak').map(mapFamilyEntry);
+  const mappedHistory = Array.isArray(serviceHistory) ? serviceHistory.map(mapServiceHistory) : [];
 
-  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts };
+  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts, serviceHistory: mappedHistory };
 };
 
 /* Label status keluarga dari kolom family_role backend */
@@ -2505,7 +2519,6 @@ const deleteGoal = async (id) => {
 
   const addServiceRecord = async (vals) => {
     if (!canWrite) return;
-    const record = serviceRecordToPayload(vals);
     const currentHistory = dataRef.current?.serviceHistory || [];
     const currentInv = dataRef.current?.serviceInventory || [];
     // Update sparepart service dates
@@ -2527,19 +2540,34 @@ const deleteGoal = async (id) => {
         }
       }
     }
-    saveData({
-      ...dataRef.current,
-      serviceHistory: [...currentHistory, { ...record, id: `service-${Date.now()}` }],
-      serviceInventory: updatedInv,
-    });
-    // Also save to notes for sync
+    const newRec = {
+      id: `service-${Date.now()}`,
+      date: vals.date,
+      odometer: vals.odometer,
+      items: vals.items,
+      total: vals.total,
+      technician: vals.technician,
+      notes: vals.notes,
+    };
+    let savedRec = newRec;
     if (isOnline) {
       try {
-        await notesApi.create(record, currentUser);
-      } catch (err) {
-        /* sync gagal - tetap tersimpan local */
-      }
+        const created = await serviceHistoryApi.create({
+          tanggal: vals.date,
+          odometer: vals.odometer,
+          items: JSON.stringify(vals.items),
+          total: vals.total,
+          technician: vals.technician,
+          notes: vals.notes,
+        });
+        savedRec = mapServiceHistory(created);
+      } catch { /* simpan lokal */ }
     }
+    saveData({
+      ...dataRef.current,
+      serviceHistory: [...currentHistory, savedRec],
+      serviceInventory: updatedInv,
+    });
     pushToast({ message: `Service ${vals.date} dicatat`, duration: 2500 });
   };
 

@@ -609,3 +609,13 @@ export const serviceInvApi = {
     return apiFetch(`/service-inv/${id}`, { method: 'DELETE' });
   },
 };
+
+export const serviceHistoryApi = {
+  fetch: async () => apiFetch('/service-history'),
+  create: async (payload) =>
+    apiFetch('/service-history', { method: 'POST', body: JSON.stringify(payload) }),
+  update: async (id, payload) =>
+    apiFetch(`/service-history/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: async (id) =>
+    apiFetch(`/service-history/${id}`, { method: 'DELETE' }),
+};
