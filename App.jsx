@@ -1399,13 +1399,52 @@ const deleteGoal = async (id) => {
   // Jika ada token di localStorage, verifikasi dengan /auth/me.
   // Jika valid ? mark logged in + fetch data. Jika invalid ? clear & show login.
   useEffect(() => {
-    // Dev: clear token lama agar auto-login pakai akun dari .env
     if (import.meta.env.DEV) {
-      clearAuthToken();
-      localStorage.removeItem('bayt-mustaqbal-data-v2'); /* clear cache lama */
-      setIsLoggedIn(false);
-      setAuthChecking(false);
-      setAuthReady(true);
+      // Dev: auto-login tanpa lewat Google, pakai akun dari .env.development
+      // (VITE_DEV_USER / VITE_DEV_PASS). Kalau tidak diset, kembali ke login biasa.
+      const devUser = import.meta.env.VITE_DEV_USER;
+      const devPass = import.meta.env.VITE_DEV_PASS;
+      if (!devUser || !devPass) {
+        clearAuthToken();
+        setIsLoggedIn(false);
+        setAuthChecking(false);
+        setAuthReady(true);
+        return;
+      }
+      auth.login(devUser, devPass, true)
+        .then((data) => {
+          const u = data.user;
+          const fresh = {
+            id: u.id,
+            name: u.nama,
+            username: u.username,
+            role: u.role,
+            family_role: u.family_role || 'anak',
+            generasi: u.generasi || 'orangtua',
+            birthDate: u.birth_date || null,
+            nickname: u.nickname || null,
+            phone: u.phone || null,
+            avatar: u.avatar_url || null,
+            initials: initialsOf(u.nickname || u.nama),
+            group_id: u.group_id || null,
+            group_role: u.group_role || 'anak',
+            group_name: u.group_name || null,
+          };
+          setCurrentUser(fresh);
+          storeUser(fresh);
+          setIsLoggedIn(true);
+          setAuthError('');
+          setEntered(true);
+        })
+        .catch(() => {
+          clearAuthToken();
+          setIsLoggedIn(false);
+          setAuthError('Auto-login dev gagal. Periksa VITE_DEV_USER / VITE_DEV_PASS di .env.development.');
+        })
+        .finally(() => {
+          setAuthChecking(false);
+          setAuthReady(true);
+        });
       return;
     }
     if (!storedToken()) {
