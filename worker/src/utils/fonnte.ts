@@ -3,12 +3,14 @@ import { Env } from '../types/env';
 /**
  * Send a WhatsApp message via Fonnte API.
  *
- * @param env   - Worker Env binding (FONNTE_TOKEN, FONNTE_TARGET, FONNTE_DEVICE)
+ * @param env    - Worker Env binding (FONNTE_TOKEN, FONNTE_TARGET, FONNTE_DEVICE)
  * @param message - WhatsApp message text
  * @param target  - Optional phone number (defaults to env.FONNTE_TARGET)
+ * @param inboxId - Optional inbox id (dari payload webhook). Kalau diisi, Fonnte
+ *                  membalas pesan dalam percakapan yang sama (bukan chat baru).
  * @returns true if sent successfully, false on failure
  */
-export async function sendWA(env: Env, message: string, target?: string): Promise<boolean> {
+export async function sendWA(env: Env, message: string, target?: string, inboxId?: string): Promise<boolean> {
   const token = env.FONNTE_TOKEN;
   const recipient = target || env.FONNTE_TARGET;
 
@@ -18,17 +20,20 @@ export async function sendWA(env: Env, message: string, target?: string): Promis
   }
 
   try {
+    const body: Record<string, unknown> = {
+      target: recipient,
+      message,
+      countryCode: '62',
+    };
+    if (inboxId) body.inboxid = inboxId;
+
     const res = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
       headers: {
         'Authorization': token,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        target: recipient,
-        message,
-        countryCode: '62',
-      }),
+      body: JSON.stringify(body),
     });
 
     const result = await res.json() as any;

@@ -10,7 +10,8 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
     path === '/api/gcal/callback' ||
     path === '/api/auth/google/login' ||
     path === '/api/auth/google/callback' ||
-    path === '/api/auth/album-verify'
+    path === '/api/auth/album-verify' ||
+    path === '/api/wa/webhook'
   ) {
     return next();
   }
