@@ -129,6 +129,47 @@ export function buildNotifications(data, formatShort, now = new Date()) {
     });
   }
 
+  // ---- 2b) Tugas rumah tangga (chores): yang mendekati/lewat tenggat ----
+  const choresOpen = (data.chores || [])
+    .filter((c) => c.status === 'open' && c.dueDate)
+    .map((c) => ({ ...c, sisa: daysUntil(c.dueDate, today) }))
+    .filter((c) => c.sisa !== null)
+    .sort((a, b) => a.sisa - b.sisa);
+  const nearChores = choresOpen.filter((c) => c.sisa <= NEAR_DAYS);
+  if (nearChores.length > 0) {
+    const lateChores = nearChores.filter((c) => c.sisa < 0);
+    const soonestChore = nearChores[0];
+    const kapanChore = soonestChore.sisa < 0 ? 'terlambat' : soonestChore.sisa === 0 ? 'hari ini' : `${soonestChore.sisa} hari lagi`;
+    out.push({
+      id: `chores-jatuh:${today}`,
+      tone: lateChores.length > 0 ? 'rose' : 'amber',
+      icon: 'handCoins',
+      title: lateChores.length > 0 ? `${lateChores.length} tugas rumah tangga terlambat` : `${nearChores.length} tugas rumah tangga dekat`,
+      message: `Terdekat: ${soonestChore.title} · ${dayLabel(soonestChore.dueDate)} (${kapanChore}).`,
+      target: { section: 'family' },
+    });
+  }
+
+  // ---- 2c) Perawatan/jadwal service: next due mendekati/lewat ----
+  const dueServices = (data.serviceInventory || [])
+    .filter((s) => s.nextDue && typeof s.nextDue === 'string' && s.nextDue.includes('-'))
+    .map((s) => ({ ...s, sisa: daysUntil(s.nextDue, today) }))
+    .filter((s) => s.sisa !== null && s.sisa <= NEAR_DAYS)
+    .sort((a, b) => a.sisa - b.sisa);
+  if (dueServices.length > 0) {
+    const lateSvc = dueServices.filter((s) => s.sisa < 0);
+    const soonestSvc = dueServices[0];
+    const kapanSvc = soonestSvc.sisa < 0 ? 'terlambat' : soonestSvc.sisa === 0 ? 'hari ini' : `${soonestSvc.sisa} hari lagi`;
+    out.push({
+      id: `service-due:${today}`,
+      tone: lateSvc.length > 0 ? 'rose' : 'amber',
+      icon: 'wrench',
+      title: lateSvc.length > 0 ? `${lateSvc.length} perawatan terlambat` : `${dueServices.length} perawatan mendekati jadwal`,
+      message: `${soonestSvc.nama || 'Perawatan'} · ${dayLabel(soonestSvc.nextDue)} (${kapanSvc}).`,
+      target: { section: 'terjadwal', terjadwalTab: 'service' },
+    });
+  }
+
   // ---- 3) Agenda terdekat dalam 2 pekan ----
   const upcoming = (data.schedule || [])
     .filter((s) => s.date)

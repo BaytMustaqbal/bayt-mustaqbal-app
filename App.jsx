@@ -18,6 +18,7 @@ const SubscriptionsComp = lazy(() => import('./components/SubscriptionsComp'));
 const SettingsComp = lazy(() => import('./components/SettingsComp'));
 const InsightComp = lazy(() => import('./components/InsightComp').then((m) => ({ default: m.InsightComp })));
 import ChoresComp from './components/ChoresComp';
+import { PerMemberSummary } from './components/PerMemberSummary';
 const TargetTabunganComp = lazy(() => import('./components/TargetTabunganComp'));
 const DebtComp = lazy(() => import('./components/DebtComp'));
 import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
@@ -44,7 +45,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 const Budgeting = lazy(() => import('./components/Budgeting').then((m) => ({ default: m.Budgeting })));
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import { openAlbum } from './components/album';
 import './App.css';
@@ -219,6 +220,8 @@ const buildDataBundle = (apiData, currentUser) => {
     income,
     scheduledExpenses: apiData?.scheduledExpenses || [],
     tasks: apiData?.tasks || [],
+    chores: apiData?.chores || [],
+    debts: apiData?.debts || [],
     serviceHistory: apiData?.serviceHistory || [],
     notes: apiData?.notes || [],
     budget: {
@@ -302,6 +305,15 @@ const mapFamilyEntry = (e) => ({
   meta: e.meta || '',
   badge: e.badge || 'Catatan',
   tone: e.tone || 'gray',
+});
+
+// Map baris chores backend (snake_case) → bentuk frontend.
+const mapChore = (c) => ({
+  id: c.id,
+  title: c.title,
+  dueDate: c.due_date || '',
+  status: c.status || 'open',
+  assigneeId: c.assignee_id || '',
 });
 
 // Kunci state frontend untuk masing-masing bagian family.
@@ -459,7 +471,7 @@ const buildMergedData = (apiData, currentUser) => {
 
 // Fetch all API data (schedule, expenses, income, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries, serviceHistory] = await Promise.all([
+  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries, serviceHistory, chores, debts] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
     txn.fetchIncome().catch(() => []),
@@ -470,6 +482,8 @@ const fetchApiData = async () => {
     tasksApi.fetch().catch(() => []),
     familyEntryApi.fetch().catch(() => []),
     serviceHistoryApi.fetch().catch(() => []),
+    choresApi.fetch().catch(() => []),
+    debtApi.fetch().catch(() => []),
   ]);
 
   // Parse budget settings
@@ -505,8 +519,10 @@ const fetchApiData = async () => {
   const familyDocuments = rows.filter((r) => r.bagian === 'dokumen').map(mapFamilyEntry);
   const familyContacts = rows.filter((r) => r.bagian === 'kontak').map(mapFamilyEntry);
   const mappedHistory = Array.isArray(serviceHistory) ? serviceHistory.map(mapServiceHistory) : [];
+  const mappedChores = Array.isArray(chores) ? chores.map(mapChore) : [];
+  const mappedDebts = Array.isArray(debts) ? debts : [];
 
-  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts, serviceHistory: mappedHistory };
+  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts, serviceHistory: mappedHistory, chores: mappedChores, debts: mappedDebts };
 };
 
 /* Label status keluarga dari kolom family_role backend */
@@ -2598,6 +2614,7 @@ const deleteGoal = async (id) => {
     if (t.financeFilter) setFinanceFilter(t.financeFilter);
     if (t.financeMode) setFinanceMode(t.financeMode);
     if (t.noteFilter) setNoteFilter(t.noteFilter);
+    if (t.terjadwalTab) setTerjadwalTab(t.terjadwalTab);
     if (t.section) setActiveSection(t.section);
     if (t.openForm) openAdd(t.openForm);
   };
@@ -3419,6 +3436,16 @@ const deleteGoal = async (id) => {
             />
 
             <div className="space-y-8">
+              {familyFilter === 'semua' && (
+                <PerMemberSummary
+                  family={data.family}
+                  chores={data.chores}
+                  tasks={data.tasks}
+                  schedule={data.schedule}
+                  debts={data.debts}
+                  formatCurrency={formatCurrency}
+                />
+              )}
               {showAnggota && (
                 <FamilyTree
                   members={data.family}
