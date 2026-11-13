@@ -22,10 +22,10 @@ const NAV_ITEMS = [
 ];
 
 const BOTTOM_NAV_ITEMS = [
-  { id: 'agenda' },
+  { id: 'family' },
   { id: 'expenses' },
   { id: 'dashboard' },
-  { id: 'family' },
+  { id: 'agenda' },
   { id: 'notes' },
 ];
 
