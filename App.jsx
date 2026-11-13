@@ -1525,6 +1525,35 @@ const deleteGoal = async (id) => {
       });
   }, []);
 
+  // Migrasi sekali: tasks lama dari localStorage → backend (kalau backend masih
+  // kosong). Cegah data yang sudah dipakai hilang setelah pindah ke D1.
+  useEffect(() => {
+    if (!isLoggedIn || !authReady || !data) return;
+    const snap = loadSnapshot();
+    const localTasks = Array.isArray(snap?.tasks) ? snap.tasks : [];
+    const backendEmpty = !data.tasks || data.tasks.length === 0;
+    if (localTasks.length > 0 && backendEmpty) {
+      (async () => {
+        for (const t of localTasks) {
+          try {
+            await tasksApi.create({ title: t.title, dueDate: t.dueDate || null, priority: t.priority, assignedTo: t.assignedTo });
+          } catch { /* lanjutkan */ }
+        }
+        // hapus tasks dari snapshot lokal supaya tidak migrasi ulang
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const p = JSON.parse(raw);
+            delete p.tasks;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+          }
+        } catch {}
+        loadFromAPI();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, authReady, data]);
+
   // ---- Web Push: subscribe saat login (authReady) ----
   useEffect(() => {
     if (!isLoggedIn || !authReady) return;
