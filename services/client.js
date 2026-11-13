@@ -162,6 +162,28 @@ export const tasksApi = {
     apiFetch(`/task/${id}`, { method: 'DELETE' }),
 };
 
+/* ---- Tugas rumah tangga bersama (backend /api/chore) ---- */
+export const choresApi = {
+  fetch: async () => apiFetch('/chore'),
+  create: async (payload) =>
+    apiFetch('/chore', { method: 'POST', body: JSON.stringify(payload) }),
+  update: async (id, payload) =>
+    apiFetch(`/chore/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: async (id) =>
+    apiFetch(`/chore/${id}`, { method: 'DELETE' }),
+};
+
+/* ---- Entri keluarga (backend /api/family): medis/dokumen/kontak ---- */
+export const familyEntryApi = {
+  fetch: async () => apiFetch('/family'),
+  create: async (payload) =>
+    apiFetch('/family', { method: 'POST', body: JSON.stringify(payload) }),
+  update: async (id, payload) =>
+    apiFetch(`/family/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: async (id) =>
+    apiFetch(`/family/${id}`, { method: 'DELETE' }),
+};
+
 /* ---- Data transform: Transaction (backend) ↔ Expense/Income (frontend) ---- */
 export const txnTransform = {
   // API response → frontend transaction (`type` = 'out' pengeluaran | 'in' pemasukan)

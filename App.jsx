@@ -17,6 +17,7 @@ import Service from './components/ServiceComp';
 import SubscriptionsComp from './components/SubscriptionsComp';
 import SettingsComp from './components/SettingsComp';
 import InsightComp from './components/InsightComp';
+import ChoresComp from './components/ChoresComp';
 import TargetTabunganComp from './components/TargetTabunganComp';
 import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
@@ -42,7 +43,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 import { Budgeting } from './components/Budgeting';
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, tasksApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, tasksApi, familyEntryApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import { openAlbum } from './components/album';
 import './App.css';
@@ -210,9 +211,9 @@ const buildDataBundle = (apiData, currentUser) => {
     users: mapUsersToFamily(fallbackUsers),
     family: mapUsersToFamily(fallbackUsers),
     schedule: apiData?.schedule || [],
-    familyMedical: LOCAL_SEED.familyMedical,
-    familyDocuments: LOCAL_SEED.familyDocuments,
-    familyContacts: LOCAL_SEED.familyContacts,
+    familyMedical: apiData?.familyMedical || [],
+    familyDocuments: apiData?.familyDocuments || [],
+    familyContacts: apiData?.familyContacts || [],
     expenses,
     income,
     scheduledExpenses: apiData?.scheduledExpenses || [],
@@ -291,6 +292,18 @@ const mapTask = (t) => ({
   assignedTo: t.assigned_to || '',
   completed: !!t.completed,
 });
+
+// Map baris family_entries backend (snake_case) → bentuk frontend.
+const mapFamilyEntry = (e) => ({
+  id: e.id,
+  title: e.title,
+  meta: e.meta || '',
+  badge: e.badge || 'Catatan',
+  tone: e.tone || 'gray',
+});
+
+// Kunci state frontend untuk masing-masing bagian family.
+const FAMILY_SECTION_KEY = { medis: 'familyMedical', dokumen: 'familyDocuments', kontak: 'familyContacts' };
 
 // Nilai awal form ubah: bentuknya persis seperti `values` yang dikirim FormSheet
 // (angka dijadikan string agar cocok dengan <input type="number">).
@@ -421,9 +434,9 @@ const buildMergedData = (apiData, currentUser) => {
       // family sekarang dari daftar akun backend (bukan localStorage-only lagi)
       family: bundle.family,
       tasks: bundle.tasks,
-      familyMedical: snapshot.familyMedical || bundle.familyMedical,
-      familyDocuments: snapshot.familyDocuments || bundle.familyDocuments,
-      familyContacts: snapshot.familyContacts || bundle.familyContacts,
+      familyMedical: bundle.familyMedical,
+      familyDocuments: bundle.familyDocuments,
+      familyContacts: bundle.familyContacts,
       serviceInventory: snapshot.serviceInventory || [],
       serviceHistory: snapshot.serviceHistory || [],
     };
@@ -433,7 +446,7 @@ const buildMergedData = (apiData, currentUser) => {
 
 // Fetch all API data (schedule, expenses, income, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks] = await Promise.all([
+  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
     txn.fetchIncome().catch(() => []),
@@ -442,6 +455,7 @@ const fetchApiData = async () => {
     auth.users().catch(() => []),
     scheduledTasksApi.fetch().catch(() => []),
     tasksApi.fetch().catch(() => []),
+    familyEntryApi.fetch().catch(() => []),
   ]);
 
   // Parse budget settings
@@ -472,7 +486,12 @@ const fetchApiData = async () => {
         .map((t) => ({ id: t.id, name: t.name, amount: t.amount, category: t.category, day: t.day, active: t.active }))
     : [];
 
-  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [] };
+  const rows = Array.isArray(familyEntries) ? familyEntries : [];
+  const familyMedical = rows.filter((r) => r.bagian === 'medis').map(mapFamilyEntry);
+  const familyDocuments = rows.filter((r) => r.bagian === 'dokumen').map(mapFamilyEntry);
+  const familyContacts = rows.filter((r) => r.bagian === 'kontak').map(mapFamilyEntry);
+
+  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts };
 };
 
 /* Label status keluarga dari kolom family_role backend */
@@ -1935,6 +1954,15 @@ const deleteGoal = async (id) => {
 
   // Helper: delete item dari state
   const removeItemFromState = (section, item) => {
+    if (section === 'family') {
+      const bagian = ['medis', 'dokumen', 'kontak'].find((b) => ((dataRef.current[FAMILY_SECTION_KEY[b]] || []).some((i) => i.id === item.id)));
+      if (bagian) {
+        const key = FAMILY_SECTION_KEY[bagian];
+        const next = { ...dataRef.current, [key]: (dataRef.current[key] || []).filter((it) => it.id !== item.id) };
+        saveData(next);
+      }
+      return;
+    }
     const key = SECTION_KEY[section];
     const list = dataRef.current[key] || [];
     const next = { ...dataRef.current, [key]: list.filter((it) => it.id !== item.id) };
@@ -1980,6 +2008,9 @@ const deleteGoal = async (id) => {
       } else if (section === 'tasks') {
         const result = await tasksApi.create({ title: values.title, dueDate: values.dueDate || null, priority: values.priority, assignedTo: values.assignedTo });
         addItemToState(section, mapTask(result));
+      } else if (section === 'family' && values.bagian && values.bagian !== 'anggota') {
+        const result = await familyEntryApi.create({ bagian: values.bagian, title: values.title, meta: values.meta || '' });
+        addItemToState(section, { ...mapFamilyEntry(result), bagian: values.bagian });
       } else {
         // Local-only: family
         const id = Date.now();
@@ -2056,6 +2087,17 @@ const deleteGoal = async (id) => {
         const updated = mapTask(result);
         const list = current[key] || [];
         saveData({ ...current, [key]: list.map((it) => (it.id === id ? updated : it)) });
+      } else if (section === 'family') {
+        const bagian = ['medis', 'dokumen', 'kontak'].find((b) => (current[FAMILY_SECTION_KEY[b]] || []).some((i) => i.id === id));
+        if (bagian) {
+          const result = await familyEntryApi.update(id, { bagian, title: values.title, meta: values.meta || '' });
+          const updated = mapFamilyEntry(result);
+          const key = FAMILY_SECTION_KEY[bagian];
+          const list = current[key] || [];
+          saveData({ ...current, [key]: list.map((it) => (it.id === id ? updated : it)) });
+        } else {
+          updateItemInState(section, id, values);
+        }
       } else {
         // Local-only
         updateItemInState(section, id, values);
@@ -2154,8 +2196,13 @@ const deleteGoal = async (id) => {
       pushToast({ message: 'Peran Anda hanya boleh melihat data keluarga.', duration: 3500, tone: 'danger' });
       return;
     }
-    const key = SECTION_KEY[section];
-    const list = dataRef.current[key] || [];
+    let key = SECTION_KEY[section];
+    let bagian = null;
+    if (section === 'family') {
+      bagian = ['medis', 'dokumen', 'kontak'].find((b) => ((dataRef.current[FAMILY_SECTION_KEY[b]] || []).some((i) => i.id === item.id)));
+      key = bagian ? FAMILY_SECTION_KEY[bagian] : null;
+    }
+    const list = (key ? dataRef.current[key] : []) || [];
     const index = list.findIndex((it) => it.id === item.id);
     if (index < 0) return;
 
@@ -2175,6 +2222,8 @@ const deleteGoal = async (id) => {
           await notesApi.delete(item.id);
         } else if (section === 'tasks') {
           await tasksApi.remove(item.id);
+        } else if (section === 'family' && bagian) {
+          await familyEntryApi.remove(item.id);
         }
       } catch (err) {
         // API gagal ? restore ke state, tampilkan error
@@ -2201,6 +2250,7 @@ const deleteGoal = async (id) => {
           else if (section === 'income') txn.create(item).catch(() => {});
           else if (section === 'notes') notesApi.create(item, currentUser).catch(() => {});
           else if (section === 'tasks') tasksApi.create({ title: item.title, dueDate: item.dueDate || null, priority: item.priority, assignedTo: item.assignedTo }).catch(() => {});
+          else if (section === 'family' && bagian) familyEntryApi.create({ bagian, title: item.title, meta: item.meta || '' }).catch(() => {});
         }
       },
     });
@@ -3351,6 +3401,11 @@ const deleteGoal = async (id) => {
               {showMedis && <FamilyList title="Info Medis" icon="activity" items={data.familyMedical} onAdd={() => openAdd('family', { bagian: 'medis' })} />}
               {showKontak && <FamilyList title="Kontak & Darurat" icon="phone" items={data.familyContacts} onAdd={() => openAdd('family', { bagian: 'kontak' })} />}
               {showDokumen && <FamilyList title="Dokumen Penting" icon="file" items={data.familyDocuments} onAdd={() => openAdd('family', { bagian: 'dokumen' })} />}
+            </div>
+
+            {/* Tugas rumah tangga bersama */}
+            <div className="mt-8 border-t border-line pt-6">
+              <ChoresComp users={data.family} />
             </div>
           </section>
         );
