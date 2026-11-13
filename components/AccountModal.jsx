@@ -100,9 +100,6 @@ export function AccountModal({
 
   const mainPanelRef = useRef(null);
   const editPanelRef = useRef(null);
-  // Focus trap: modal akun (bukan mode page) dan form edit anggota.
-  useFocusTrap(mainPanelRef, !page && open);
-  useFocusTrap(editPanelRef, !!editingMember);
 
   const [profileNickname, setProfileNickname] = useState('');
   const [profileBirthDate, setProfileBirthDate] = useState('');
@@ -115,6 +112,11 @@ export function AccountModal({
   const [memberForm, setMemberForm] = useState({});
   const [memberSaving, setMemberSaving] = useState(false);
   const [memberNotice, setMemberNotice] = useState('');
+
+  // Focus trap: modal akun (bukan mode page) dan form edit anggota.
+  // Ditempatkan setelah semua deklarasi state (menghindari TDZ).
+  useFocusTrap(mainPanelRef, !page && open);
+  useFocusTrap(editPanelRef, !!editingMember);
 
   const startEditMember = (u) => {
     setEditingMember(u);
