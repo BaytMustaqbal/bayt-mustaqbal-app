@@ -40,6 +40,12 @@ assert('0812-3456-7890 → 6281234567890', normalizePhone('0812-3456-7890') === 
 console.log('\n=== parseIntent ===');
 assert('menu → menu', parseIntent('menu') === 'menu', parseIntent('menu'));
 assert('halo → menu', parseIntent('halo') === 'menu', parseIntent('halo'));
+assert('neuro → menu', parseIntent('neuro') === 'menu', parseIntent('neuro'));
+assert('Neuro (kapital) → menu', parseIntent('Neuro') === 'menu', parseIntent('Neuro'));
+assert('neuro rangkuman → 1', parseIntent('neuro rangkuman') === '1', parseIntent('neuro rangkuman'));
+assert('Neuro saldo → 2', parseIntent('Neuro saldo') === '2', parseIntent('Neuro saldo'));
+assert('neuro agenda → 3', parseIntent('neuro agenda') === '3', parseIntent('neuro agenda'));
+assert('neuro: menu → menu', parseIntent('neuro: menu') === 'menu', parseIntent('neuro: menu'));
 assert('"1" → 1', parseIntent('1') === '1', parseIntent('1'));
 assert('"2" → 2', parseIntent('2') === '2', parseIntent('2'));
 assert('"3" → 3', parseIntent('3') === '3', parseIntent('3'));

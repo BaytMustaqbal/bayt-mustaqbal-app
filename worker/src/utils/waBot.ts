@@ -38,9 +38,12 @@ export async function findUserByPhone(env: Env, senderPhone: string) {
 /** Teks menu utama. */
 export function menuText(): string {
   return [
-    'Halo! Saya asisten Bayt Mustaqbal 🤖',
+    'Halo! Saya Neuro, asisten keluarga Bayt Mustaqbal 🤖',
     '',
-    'Pilih menu (balas angka):',
+    'Panggil saya dengan "Neuro" lalu perintah, misal:',
+    '  "Neuro rangkuman bulan ini"',
+    '',
+    'Atau pilih menu (balas angka):',
     '  1. Rangkuman pengeluaran bulan ini',
     '  2. Cek saldo bulan ini',
     '  3. Agenda hari ini',
@@ -51,11 +54,19 @@ export function menuText(): string {
 
 /** Parsing intent dari teks pesan. Kembalikan key menu atau null. */
 export function parseIntent(text: string): 'menu' | '1' | '2' | '3' | null {
-  const t = (text || '').trim().toLowerCase();
+  let t = (text || '').trim().toLowerCase();
   if (!t) return null;
 
+  // Wake word "neuro": kalau pesan diawali "neuro", buang prefix itu lalu
+  // parse sisa. "neuro" sendirian → menu.
+  const wake = t.match(/^neuro[\s:,-]*/);
+  if (wake) {
+    t = t.slice(wake[0].length).trim();
+    if (!t) return 'menu';
+  }
+
   // Menu / bantuan / sapaan.
-  if (['menu', 'bantuan', 'help', 'halo', 'hai', 'hi', 'assalamualaikum'].includes(t)) {
+  if (['menu', 'bantuan', 'help', 'halo', 'hai', 'hi', 'assalamualaikum', 'neuro'].includes(t)) {
     return 'menu';
   }
 
