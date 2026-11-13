@@ -57,16 +57,15 @@ export function parseIntent(text: string): 'menu' | '1' | '2' | '3' | null {
   let t = (text || '').trim().toLowerCase();
   if (!t) return null;
 
-  // Wake word "neuro": kalau pesan diawali "neuro", buang prefix itu lalu
-  // parse sisa. "neuro" sendirian → menu.
-  const wake = t.match(/^neuro[\s:,-]*/);
-  if (wake) {
-    t = t.slice(wake[0].length).trim();
+  // Wake word "neuro": buang semua kemunculan kata "neuro" yang berdiri sendiri
+  // (bisa di awal, tengah, atau akhir). Lalu parse sisa. Kalau sisa kosong → menu.
+  if (/\bneuro\b/.test(t)) {
+    t = t.replace(/\bneuro\b/g, ' ').replace(/^[\s:,-]+/, '').replace(/\s+/g, ' ').trim();
     if (!t) return 'menu';
   }
 
   // Menu / bantuan / sapaan.
-  if (['menu', 'bantuan', 'help', 'halo', 'hai', 'hi', 'assalamualaikum', 'neuro'].includes(t)) {
+  if (['menu', 'bantuan', 'help', 'halo', 'hai', 'hi', 'assalamualaikum'].includes(t)) {
     return 'menu';
   }
 

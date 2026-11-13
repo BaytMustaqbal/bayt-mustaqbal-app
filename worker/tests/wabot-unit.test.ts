@@ -46,6 +46,11 @@ assert('neuro rangkuman → 1', parseIntent('neuro rangkuman') === '1', parseInt
 assert('Neuro saldo → 2', parseIntent('Neuro saldo') === '2', parseIntent('Neuro saldo'));
 assert('neuro agenda → 3', parseIntent('neuro agenda') === '3', parseIntent('neuro agenda'));
 assert('neuro: menu → menu', parseIntent('neuro: menu') === 'menu', parseIntent('neuro: menu'));
+assert('halo neuro → menu', parseIntent('halo neuro') === 'menu', parseIntent('halo neuro'));
+assert('tolong neuro buatkan rangkuman → 1', parseIntent('tolong neuro buatkan rangkuman') === '1', parseIntent('tolong neuro buatkan rangkuman'));
+assert('buatkan rangkuman neuro → 1', parseIntent('buatkan rangkuman neuro') === '1', parseIntent('buatkan rangkuman neuro'));
+assert('apa kabar neuro → null', parseIntent('apa kabar neuro') === null, parseIntent('apa kabar neuro'));
+assert('neurobion → null (bukan wake word)', parseIntent('neurobion') === null, parseIntent('neurobion'));
 assert('"1" → 1', parseIntent('1') === '1', parseIntent('1'));
 assert('"2" → 2', parseIntent('2') === '2', parseIntent('2'));
 assert('"3" → 3', parseIntent('3') === '3', parseIntent('3'));
