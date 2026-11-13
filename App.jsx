@@ -1420,9 +1420,19 @@ const deleteGoal = async (id) => {
         setAuthReady(true);
         return;
       }
-      auth.login(devUser, devPass, true)
-        .then((data) => {
-          const u = data.user;
+      // Login langsung ke API produksi (bukan lewat proxy Vite yang tidak andal
+      // untuk POST). Kredensial dev adalah akun produksi.
+      (async () => {
+        try {
+          const res = await fetch('https://api.baytmustaqbal.my.id/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: devUser, password: devPass }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+          setToken(data.data.token, true);
+          const u = data.data.user;
           const fresh = {
             id: u.id,
             name: u.nama,
@@ -1444,16 +1454,15 @@ const deleteGoal = async (id) => {
           setIsLoggedIn(true);
           setAuthError('');
           setEntered(true);
-        })
-        .catch(() => {
+        } catch {
           clearAuthToken();
           setIsLoggedIn(false);
           setAuthError('Auto-login dev gagal. Periksa VITE_DEV_USER / VITE_DEV_PASS di .env.development.');
-        })
-        .finally(() => {
+        } finally {
           setAuthChecking(false);
           setAuthReady(true);
-        });
+        }
+      })();
       return;
     }
     if (!storedToken()) {
