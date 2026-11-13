@@ -12,6 +12,12 @@ import {
   formatSummary,
   formatSaldo,
   formatAgenda,
+  formatBills,
+  formatGoals,
+  formatCategoryDetail,
+  formatReminders,
+  formatReminderSaved,
+  parseReminder,
 } from '../src/utils/waBot';
 
 let passCount = 0;
@@ -62,10 +68,13 @@ assert('kosong → null', parseIntent('') === null, parseIntent(''));
 
 // === formatSummary ===
 console.log('\n=== formatSummary ===');
-const summary = formatSummary([
-  { label: 'Belanja', total: 850000 },
-  { label: 'Transportasi', total: 200000 },
-]);
+const summary = formatSummary(
+  [
+    { label: 'Belanja', total: 850000 },
+    { label: 'Transportasi', total: 200000 },
+  ],
+  '*Rangkuman Pengeluaran*'
+);
 assert('summary memuat kategori', summary.includes('Belanja') && summary.includes('Transportasi'), summary);
 assert('summary total benar', summary.includes('Rp 1.050.000'), summary);
 assert('summary pakai bintang markdown', summary.includes('*Rangkuman Pengeluaran*'), summary);
@@ -91,6 +100,51 @@ assert('agenda memuat jam', agenda.includes('08:00') && agenda.includes('08:00 R
 assert('agenda memuat tanggal', agenda.includes('2026-11-13'), agenda);
 const agendaKosong = formatAgenda([], '2026-11-13');
 assert('agenda kosong memberi pesan', agendaKosong.includes('Tidak ada agenda'), agendaKosong);
+
+// === parseIntent ekstensi ===
+console.log('\n=== parseIntent ekstensi ===');
+assert('tagihan → 4', parseIntent('tagihan belum lunas') === '4', parseIntent('tagihan belum lunas'));
+assert('tabungan → 5', parseIntent('progres tabungan') === '5', parseIntent('progres tabungan'));
+assert('minggu lalu → 6', parseIntent('rangkuman minggu lalu') === '6', parseIntent('rangkuman minggu lalu'));
+assert('rekap rinci → 7', parseIntent('rekap rinci per kategori') === '7', parseIntent('rekap rinci per kategori'));
+assert('ingatkan → 8', parseIntent('ingatkan aku besok jam 9 beli beras') === '8', parseIntent('ingatkan aku besok jam 9 beli beras'));
+
+// === formatBills ===
+console.log('\n=== formatBills ===');
+const bills = formatBills([
+  { name: 'Listrik', amount: 300000, due_date: '2026-11-15' },
+  { name: 'Internet', amount: 200000, due_date: '2026-11-18' },
+]);
+assert('bills memuat nama', bills.includes('Listrik') && bills.includes('Internet'), bills);
+assert('bills total benar', bills.includes('Rp 500.000'), bills);
+assert('bills kosong memberi pesan', formatBills([]).includes('tidak ada tagihan'), formatBills([]));
+
+// === formatGoals ===
+console.log('\n=== formatGoals ===');
+const goals = formatGoals([{ nama: 'Mobil', target: 50000000, current: 15000000, achieved: 0 }]);
+assert('goals memuat persen', goals.includes('30%'), goals);
+assert('goals memuat sisa', goals.includes('Rp 35.000.000'), goals);
+
+// === formatCategoryDetail ===
+console.log('\n=== formatCategoryDetail ===');
+const catDetail = formatCategoryDetail([{ label: 'Belanja', total: 400000, count: 3 }]);
+assert('detail memuat jumlah', catDetail.includes('3x'), catDetail);
+assert('detail memuat total', catDetail.includes('Rp 400.000'), catDetail);
+
+// === formatReminders / formatReminderSaved ===
+console.log('\n=== formatReminders ===');
+const rem = formatReminders([{ message: 'bayar cicilan', remind_at: '2026-11-14T02:00:00.000Z' }]);
+assert('reminder memuat pesan', rem.includes('bayar cicilan'), rem);
+assert('reminder kosong memberi pesan', formatReminders([]).includes('Tidak ada pengingat'), formatReminders([]));
+assert('reminder saved konfirmasi', formatReminderSaved('"x"').includes('Pengingat disimpan'), formatReminderSaved('"x"'));
+
+// === parseReminder ===
+console.log('\n=== parseReminder ===');
+const r1 = parseReminder('besok jam 9 bayar cicilan');
+assert('reminder besok jam 9', r1?.dayOffset === 1 && r1?.hour === 9 && r1?.message === 'bayar cicilan', r1);
+const r2 = parseReminder('sore ini beli beras');
+assert('reminder sore ini', r2?.dayOffset === 0 && r2?.hour === 17 && r2?.message === 'beli beras', r2);
+assert('reminder tanpa pesan → null', parseReminder('besok jam 9') === null, parseReminder('besok jam 9'));
 
 // === SUMMARY ===
 console.log(`\n=== SUMMARY ===`);

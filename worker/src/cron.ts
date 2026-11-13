@@ -429,9 +429,31 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
     }
 
     await processOutbox(env);
+
+    // Pengingat WA eksplisit tetap dikirim walau quiet window (permintaan user).
+    await checkWaReminders(env);
   }
 
-  // Day 1, 00:30 WIB — generate monthly bills + backup Drive otomatis
+  // Pengingat WA sekali pakai (dari bot). Dikirim ke nomor pribadi user.
+async function checkWaReminders(env: Env): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const rows = await env.DB.prepare(
+    `SELECT w.id, w.message, u.phone
+     FROM wa_reminders w
+     JOIN users u ON u.id = w.user_id
+     WHERE w.done = 0 AND w.remind_at <= ?
+       AND u.void IS NULL AND u.phone IS NOT NULL AND u.phone != ''`
+  ).bind(nowIso).all() as any;
+
+  const list = rows?.results || [];
+  for (const r of list) {
+    await sendWA(env, `⏰ Pengingat:\n${r.message}`, r.phone);
+    await env.DB.prepare('UPDATE wa_reminders SET done = 1 WHERE id = ?').bind(r.id).run();
+  }
+  if (list.length > 0) console.log(`WA reminders sent: ${list.length}`);
+}
+
+// Day 1, 00:30 WIB — generate monthly bills + backup Drive otomatis
   if (date === 1 && hour === 0 && event.cron === '30 17 * * *') {
     await generateMonthlyBills(env);
     const scopes = await listGroupScopes(env);
