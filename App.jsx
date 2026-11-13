@@ -1481,11 +1481,12 @@ const deleteGoal = async (id) => {
         setAuthReady(true);
         return;
       }
-      // Login langsung ke API produksi (bukan lewat proxy Vite yang tidak andal
-      // untuk POST). Kredensial dev adalah akun produksi.
+      // Dev: login lewat proxy Vite (/api → API produksi) agar sama-origin,
+      // tidak terganggu CORS untuk origin localhost.
       (async () => {
         try {
-          const res = await fetch('https://api.baytmustaqbal.my.id/api/auth/login', {
+          const apiBase = import.meta.env.VITE_API_URL || '/api';
+          const res = await fetch(`${apiBase}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: devUser, password: devPass }),
