@@ -2509,12 +2509,11 @@ const deleteGoal = async (id) => {
     pushToast({ message: 'Perawatan ditambahkan', duration: 2500 });
   };
 
-  const updateSparepart = async (sparepartId) => {
+  const updateSparepart = async (sparepartId, vals) => {
     if (!canWrite) return;
     const sparepart = serviceInventory.find((s) => s.id === sparepartId);
     if (!sparepart) return;
-    const record = serviceHistory[0];
-    const updated = { ...sparepart };
+    const updated = vals ? sparepartToPayload({ ...sparepart, ...vals }) : { ...sparepart };
     if (isOnline) {
       try { await serviceInvApi.update(sparepartId, updated); } catch { /* abaikan */ }
     }
@@ -2523,6 +2522,7 @@ const deleteGoal = async (id) => {
       ...dataRef.current,
       serviceInventory: currentInv.map((s) => (s.id === sparepartId ? updated : s)),
     });
+    pushToast({ message: 'Perawatan diperbarui', duration: 2500 });
   };
 
   const removeSparepart = async (sparepartId) => {

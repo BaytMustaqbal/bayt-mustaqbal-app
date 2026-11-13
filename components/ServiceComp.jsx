@@ -24,6 +24,16 @@ export function Service({
     technician: '',
     notes: '',
   });
+  // Form inventaris (tambah/ubah) — mencegah buat data kosong langsung.
+  const [showInvForm, setShowInvForm] = useState(false);
+  const [invErr, setInvErr] = useState('');
+  const [invForm, setInvForm] = useState({
+    id: null,
+    nama: '',
+    jenis: '',
+    intervalType: 'km',
+    intervalValue: 3000,
+  });
 
   const handleAddServiceItem = (sparepartId, sparepartNama) => {
     setServiceForm((prev) => ({
@@ -58,6 +68,38 @@ export function Service({
       technician: '',
       notes: '',
     });
+  };
+
+  const openAddInv = () => {
+    setInvErr('');
+    setInvForm({ id: null, nama: '', jenis: '', intervalType: 'km', intervalValue: 3000 });
+    setShowInvForm(true);
+  };
+
+  const openEditInv = (it) => {
+    setInvErr('');
+    setInvForm({
+      id: it.id,
+      nama: it.nama || '',
+      jenis: it.jenis || '',
+      intervalType: it.intervalType || 'km',
+      intervalValue: it.intervalValue || 3000,
+    });
+    setShowInvForm(true);
+  };
+
+  const saveInv = () => {
+    if (!invForm.nama.trim()) {
+      setInvErr('Nama perawatan wajib diisi.');
+      return;
+    }
+    setInvErr('');
+    if (invForm.id) {
+      onUpdateSparepart(invForm.id, invForm);
+    } else {
+      onAddSparepart(invForm);
+    }
+    setShowInvForm(false);
   };
 
   const totalService = sumServiceItems(history);
@@ -97,16 +139,7 @@ export function Service({
             <Card className="p-4 sm:p-5">
               <button
                 type="button"
-                onClick={() => {
-                  const newSp = inventory.reduce((max, i) => Math.max(max, parseInt(i.id.split('-').pop()) || 0), 0) + 1;
-                  onAddSparepart({
-                    id: `sparepart-${Date.now()}-${newSp}`,
-                    nama: '',
-                    jenis: '',
-                    intervalType: 'km',
-                    intervalValue: 3000,
-                  });
-                }}
+                onClick={openAddInv}
                 className={`${CTA_CLASS} w-full sm:w-auto`}
               >
                 <Icon name="plus" size={16} />
@@ -140,8 +173,8 @@ export function Service({
                       <div className="flex shrink-0 gap-1">
                         <button
                           type="button"
-                          onClick={() => onUpdateSparepart(it.id)}
-                          aria-label="Update service terakhir"
+                          onClick={() => openEditInv(it)}
+                          aria-label="Ubah perawatan"
                           className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg hover:bg-muted hover:text-ink"
                         >
                           <Icon name="edit" size={14} />
@@ -322,6 +355,74 @@ export function Service({
                 onClick={saveService}
                 className={CTA_CLASS}
               >
+                Simpan
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
+      {/* Modal tambah/ubah inventaris perawatan */}
+      {showInvForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="w-full max-w-md mx-4 p-4 sm:p-5">
+            <h3 className="mb-4 text-lg font-bold text-ink">
+              {invForm.id ? 'Ubah Perawatan' : 'Tambah Perawatan'}
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-mutedfg mb-1">Nama</label>
+                <input
+                  type="text"
+                  value={invForm.nama}
+                  onChange={(e) => setInvForm({ ...invForm, nama: e.target.value })}
+                  placeholder="mis. Ganti oli mesin"
+                  className="input-field w-full rounded-xl border border-line bg-canvas px-3"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-mutedfg mb-1">Jenis</label>
+                <input
+                  type="text"
+                  value={invForm.jenis}
+                  onChange={(e) => setInvForm({ ...invForm, jenis: e.target.value })}
+                  placeholder="mis. Oli, Filter, Aki"
+                  className="input-field w-full rounded-xl border border-line bg-canvas px-3"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-mutedfg mb-1">Selang</label>
+                  <select
+                    value={invForm.intervalType}
+                    onChange={(e) => setInvForm({ ...invForm, intervalType: e.target.value })}
+                    className="input-field w-full rounded-xl border border-line bg-canvas px-3"
+                  >
+                    <option value="km">Kilometer</option>
+                    <option value="month">Bulan</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-mutedfg mb-1">Nilai</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={invForm.intervalValue}
+                    onChange={(e) => setInvForm({ ...invForm, intervalValue: Number(e.target.value) || 0 })}
+                    className="input-field w-full rounded-xl border border-line bg-canvas px-3"
+                  />
+                </div>
+              </div>
+              {invErr && <p className="text-xs font-medium text-danger">{invErr}</p>}
+            </div>
+            <div className="mt-4 flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowInvForm(false)}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-mutedfg hover:bg-muted hover:text-ink"
+              >
+                Batal
+              </button>
+              <button type="button" onClick={saveInv} className={CTA_CLASS}>
                 Simpan
               </button>
             </div>
