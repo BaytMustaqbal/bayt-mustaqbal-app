@@ -102,6 +102,42 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         </div>
       </div>
 
+      {/* ---------- Panduan pertama kali (saat keuangan masih kosong) ---------- */}
+      {totals.totalExpense === 0 && totals.totalIncome === 0 && (
+        <Card className="border-brand/30 bg-brandtint/40 p-4 sm:p-5">
+          <div className="flex items-center gap-2">
+            <Icon name="zap" size={18} className="shrink-0 text-brandfg" />
+            <h2 className="truncate font-bold text-ink">Mulai Bayt Mustaqbal</h2>
+          </div>
+          <p className="mt-1 text-sm text-mutedfg">
+            Isi pemasukan & anggaran dulu, lalu catat pengeluaran supaya wawasan dan proyeksi hidup.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => onNavigate('income')}
+              className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-3 text-xs font-semibold text-ink transition-colors hover:bg-muted"
+            >
+              <Icon name="arrowDown" size={14} /> 1. Catat Pemasukan
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('expenses')}
+              className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-3 text-xs font-semibold text-ink transition-colors hover:bg-muted"
+            >
+              <Icon name="arrowUp" size={14} /> 2. Anggaran & Perlu
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('agenda')}
+              className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-line bg-canvas px-3 text-xs font-semibold text-ink transition-colors hover:bg-muted"
+            >
+              <Icon name="calendar" size={14} /> 3. Agenda Keluarga
+            </button>
+          </div>
+        </Card>
+      )}
+
       {/* ---------- Kartu hero: keuangan bulan ini ---------- */}
       <GlassCard className="relative p-5 sm:p-6">
         <div className="grid-lines pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
@@ -234,7 +270,17 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
         }
       >
         {(data.expenses || []).length === 0 ? (
-          <p className="py-6 text-center text-sm text-mutedfg">Belum ada pengeluaran.</p>
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <p className="text-sm text-mutedfg">Belum ada pengeluaran.</p>
+            <button
+              type="button"
+              onClick={() => onNavigate('expenses')}
+              className={`${CTA_CLASS}`}
+            >
+              <Icon name="plus" size={16} />
+              Catat pengeluaran
+            </button>
+          </div>
         ) : (
           <ul className="divide-y divide-line">
             {(data.expenses || []).slice(0, 4).map((item) => (
