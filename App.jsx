@@ -47,7 +47,6 @@ import { getBudget } from './components/budget';
 const Budgeting = lazy(() => import('./components/Budgeting').then((m) => ({ default: m.Budgeting })));
 import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
-import { openAlbum } from './components/album';
 import './App.css';
 
 /* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
@@ -3847,7 +3846,7 @@ const deleteGoal = async (id) => {
           if (action === 'expenses') openAdd('expenses');
           else if (action === 'notes') openAdd('notes');
           else if (action === 'scan') { if (canWrite) setScanOpen(true); else openAdd('expenses'); }
-          else if (action === 'album') openAlbum();
+          else if (action === 'terjadwal') setActiveSection('terjadwal');
         }}
       />
 

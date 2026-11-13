@@ -413,8 +413,8 @@ export function Navigation({
                       </span>
                     </label>
                     <div className="qa-fab-menu" aria-hidden="true">
-                      <button type="button" className="qa-fab-item qf-1 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Album Foto Keluarga" onClick={() => handleQuickAction('album')}>
-                        <Icon name="image" size={18} />
+                      <button type="button" className="qa-fab-item qf-1 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Tugas Terjadwal" onClick={() => handleQuickAction('terjadwal')}>
+                        <Icon name="clock" size={18} />
                       </button>
                       <button type="button" className="qa-fab-item qf-2 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Pengeluaran Baru" onClick={() => handleQuickAction('expenses')}>
                         <Icon name="receipt" size={18} />
