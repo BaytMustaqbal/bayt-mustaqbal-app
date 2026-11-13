@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { Icon } from './components/Icon';
 import { Navigation } from './components/Navigation';
 import { Sidebar } from './components/Sidebar';
@@ -12,13 +12,13 @@ import { RegisterScreen } from './components/RegisterScreen';
 import { AccountModal } from './components/AccountModal';
 import { ReceiptScanner } from './components/ReceiptScanner';
 import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, FamilyList, initialsOf, Badge } from './components/ui';
-import ShoppingList from './components/ShoppingListComp';
-import Service from './components/ServiceComp';
-import SubscriptionsComp from './components/SubscriptionsComp';
-import SettingsComp from './components/SettingsComp';
-import InsightComp from './components/InsightComp';
+const ShoppingList = lazy(() => import('./components/ShoppingListComp'));
+const Service = lazy(() => import('./components/ServiceComp'));
+const SubscriptionsComp = lazy(() => import('./components/SubscriptionsComp'));
+const SettingsComp = lazy(() => import('./components/SettingsComp'));
+const InsightComp = lazy(() => import('./components/InsightComp').then((m) => ({ default: m.InsightComp })));
 import ChoresComp from './components/ChoresComp';
-import TargetTabunganComp from './components/TargetTabunganComp';
+const TargetTabunganComp = lazy(() => import('./components/TargetTabunganComp'));
 import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
@@ -42,7 +42,7 @@ import {
   countByTaskFilter,
 } from './components/categories';
 import { getBudget } from './components/budget';
-import { Budgeting } from './components/Budgeting';
+const Budgeting = lazy(() => import('./components/Budgeting').then((m) => ({ default: m.Budgeting })));
 import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import { openAlbum } from './components/album';
@@ -3790,7 +3790,9 @@ const deleteGoal = async (id) => {
             <span>Mode baca-saja: hanya Kepala Keluarga, Suami &amp; Istri yang bisa menambah atau mengubah data keluarga.</span>
           </div>
         )}
-        {renderSection()}
+        <Suspense fallback={<div className="py-10 text-center text-sm text-mutedfg">Memuat…</div>}>
+          {renderSection()}
+        </Suspense>
       </main>
 
       {/* Pemindai struk: foto dibaca OCR, hasilnya jadi pengeluaran biasa */}
