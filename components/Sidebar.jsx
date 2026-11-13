@@ -9,10 +9,8 @@ import {
   countByNoteFilter,
 } from './categories';
 import { SHOPPING_CATEGORY } from './shoppingList';
-import { ALBUM_URL } from './album';
 
 const NAV_ITEMS = [
-  { id: 'album', label: 'Album Foto', icon: 'image', dropdown: null, external: ALBUM_URL },
   { id: 'wawasan', label: 'Wawasan', icon: 'barChart', dropdown: null },
   { id: 'agenda', label: 'Agenda', icon: 'calendar', dropdown: AGENDA_CATEGORIES },
   { id: 'expenses', label: 'Keuangan', icon: 'wallet', dropdown: FINANCE_CATEGORIES },
@@ -132,27 +130,6 @@ export function Sidebar({
               const isDropdown = !!item.dropdown;
               const isActive = activeSection === item.id;
               const isOpen = isDropdown && openKey === item.id;
-
-              // Item eksternal (album foto, situs terpisah) → link tab baru.
-              if (item.external) {
-                return (
-                  <li key={item.id}>
-                    <a
-                      href={item.external}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={closeMenu}
-                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-mutedfg transition-colors hover:bg-muted hover:text-ink [&_svg]:shrink-0 [&_svg]:opacity-70"
-                    >
-                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-mutedfg" aria-hidden="true">
-                        <Icon name={item.icon} size={16} />
-                      </span>
-                      <span className="flex-1 truncate">{item.label}</span>
-                      <Icon name="chevronRight" size={14} />
-                    </a>
-                  </li>
-                );
-              }
 
               return (
                 <li key={item.id}>
