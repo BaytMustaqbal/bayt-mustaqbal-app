@@ -3608,7 +3608,6 @@ const deleteGoal = async (id) => {
         noteFilter={noteFilter}
         onNoteSelect={handleNoteSelect}
         service={serviceInventory}
-        onOpenAccount={() => { setSidebarOpen(false); setAccountInitialTab('profil'); setAccountInitialGenerasi(null); setActiveSection('akun'); }}
       />
 
       <main

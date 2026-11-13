@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
+import { Avatar } from './ui';
 import {
   AGENDA_CATEGORIES,
   FINANCE_CATEGORIES,
@@ -159,6 +160,8 @@ export function Navigation({
   onMarkAllNotificationsRead,
   onOpenSidebar,
   onQuickAction,
+  user,
+  onOpenAccount,
 }) {
   const [openKey, setOpenKey] = useState(null);
   const [closingKey, setClosingKey] = useState(null);
@@ -346,6 +349,17 @@ export function Navigation({
               className={`grid h-11 w-11 place-items-center rounded-full border transition-colors ${activeSection === 'dashboard' ? 'border-brand/30 bg-brandtint text-brandfg' : 'border-line text-mutedfg hover:bg-muted hover:text-ink'}`}
             >
               <Icon name="home" size={19} />
+            </button>
+
+            {/* Akun Saya (avatar) */}
+            <button
+              type="button"
+              onClick={onOpenAccount}
+              aria-label="Akun Saya"
+              title="Akun Saya"
+              className={`grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full border transition-colors ${activeSection === 'akun' ? 'border-brand/30 ring-2 ring-brand/15' : 'border-line hover:bg-muted'}`}
+            >
+              <Avatar user={user} className="h-full w-full text-sm font-bold" />
             </button>
           </div>
 

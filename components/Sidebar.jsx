@@ -39,7 +39,6 @@ export function Sidebar({
   onFamilySelect,
   noteFilter,
   onNoteSelect,
-  onOpenAccount,
   onLogout,
   theme = 'dark',
 }) {
@@ -217,14 +216,6 @@ export function Sidebar({
 
         {/* Footer */}
         <div className="border-t border-line p-3 space-y-1">
-          <button
-            type="button"
-            onClick={onOpenAccount}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-muted"
-          >
-            <Icon name="userCheck" size={16} />
-            Akun Saya
-          </button>
           <button
             type="button"
             onClick={() => {
