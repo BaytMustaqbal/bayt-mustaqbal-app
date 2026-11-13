@@ -112,9 +112,9 @@ export function AccountModal({
   const startEditMember = (u) => {
     setEditingMember(u);
     setMemberForm({
-      nama: u.nama || '',
+      nama: u.name || u.nama || '',
       nickname: u.nickname || '',
-      birth_date: u.birth_date || '',
+      birth_date: u.birthDate || u.birth_date || '',
       family_role: u.family_role || 'anak',
       generasi: u.generasi || 'orangtua',
       group_role: u.group_role || 'anak',

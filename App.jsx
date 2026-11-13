@@ -487,6 +487,9 @@ const mapUsersToFamily = (users) =>
     // supaya anggota tak "hilang" dari pohon.
     generasi: VALID_GENERASI.includes(u.generasi) ? u.generasi : 'orangtua',
     birthDate: u.birth_date || null,
+    // Field mentah dari backend (dipakai form edit anggota di AccountModal).
+    family_role: u.family_role || 'anak',
+    group_role: u.group_role || 'anak',
   }));
 
 const formatCurrency = (value) =>
@@ -2205,6 +2208,7 @@ const deleteGoal = async (id) => {
       });
     }
     setAccountInitialGenerasi(null); // reset preset ? klik "+" berikutnya tetap bekerja
+    pushToast({ message: 'Perubahan tersimpan', duration: 2500 });
     loadFromAPI();
   };
   const openEdit = (section, item) => {
