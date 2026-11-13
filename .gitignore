@@ -20,5 +20,8 @@ Thumbs.db
 # Scratch workspace alur kerja agent (ledger/brief) — bukan bagian aplikasi
 .superpowers/
 
+# Output knowledge graph (graphify) — dihasilkan, bukan source
+graphify-out/
+
 # Backend Cloudflare Worker — REPO & deploy terpisah (api.baytmustaqbal.my.id)
 worker/
