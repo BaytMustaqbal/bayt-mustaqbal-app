@@ -207,9 +207,7 @@ const buildDataBundle = (apiData, currentUser) => {
     ? [{ id: currentUser.id, nama: currentUser.nama, family_role: currentUser.family_role || 'anak', avatar_url: null }]
     : apiUsers;
   return {
-    users: apiUsers.length > 0
-      ? apiUsers.map((u) => ({ id: u.id, name: u.nama, username: u.username, role: u.family_role, initials: initialsOf(u.nama) }))
-      : (currentUser ? [{ id: currentUser.id, name: currentUser.nama, username: currentUser.username, role: currentUser.role, initials: initialsOf(currentUser.nama) }] : []),
+    users: mapUsersToFamily(fallbackUsers),
     family: mapUsersToFamily(fallbackUsers),
     schedule: apiData?.schedule || [],
     familyMedical: LOCAL_SEED.familyMedical,
