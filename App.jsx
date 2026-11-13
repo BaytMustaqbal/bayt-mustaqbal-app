@@ -2383,6 +2383,25 @@ const deleteGoal = async (id) => {
     pushToast({ message: 'Template pengeluaran terjadwal dihapus', duration: 2500 });
   };
 
+  // Konfirmasi sebelum catat: pengeluaran terjadwal yang jatuh tempo bulan ini
+  // tetapi belum tercatat, baru dibuat transaksinya setelah user menekan "Catat".
+  const recordScheduledExpense = async (tpl) => {
+    if (!canWrite) return;
+    try {
+      const result = await txn.create({
+        category: tpl.category || 'lainnya',
+        description: tpl.name,
+        amount: Number(tpl.amount) || 0,
+        date: todayKey(),
+        bucket: 'auto',
+      });
+      addItemToState('expenses', result);
+      pushToast({ message: `${tpl.name} dicatat sebagai pengeluaran`, duration: 2500 });
+    } catch (e) {
+      pushToast({ message: 'Gagal mencatat: ' + e.message, duration: 4000, tone: 'danger' });
+    }
+  };
+
 // Setelah daftar akun / simpan profil: segarkan data + perbarui currentUser
   // (hindari field tanggal lahir basi) + reset preset agar bisa trigger lagi.
   const handleProfileSaved = (updatedUser) => {
@@ -3564,6 +3583,58 @@ const deleteGoal = async (id) => {
 
             {terjadwalTab === 'pengeluaran' && (
               <div className="space-y-3">
+                {(() => {
+                  const now = new Date();
+                  const y = now.getFullYear();
+                  const m = now.getMonth() + 1;
+                  const monthPrefix = `${y}-${String(m).padStart(2, '0')}`;
+                  const todayStr = `${monthPrefix}-${String(now.getDate()).padStart(2, '0')}`;
+                  const lastDay = new Date(y, m, 0).getDate();
+                  const recordedNames = new Set(
+                    (data.expenses || [])
+                      .filter((e) => (e.date || '').startsWith(monthPrefix))
+                      .map((e) => e.description)
+                  );
+                  const pending = (data.scheduledExpenses || []).filter((t) => {
+                    if (t.active === false) return false;
+                    const d = Math.min(Number(t.day) || 1, lastDay);
+                    const due = `${monthPrefix}-${String(d).padStart(2, '0')}`;
+                    return due <= todayStr && !recordedNames.has(t.name);
+                  });
+                  if (pending.length === 0) return null;
+                  return (
+                    <Card className="border-amber/40 bg-amber/5 p-4">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Icon name="bell" size={16} className="shrink-0 text-toneamberfg" />
+                        <h3 className="text-sm font-bold text-ink">Menunggu Konfirmasi ({pending.length})</h3>
+                      </div>
+                      <p className="mb-3 text-xs text-mutedfg">
+                        Jadwal ini jatuh tempo bulan ini tetapi belum dicatat. Konfirmasi kalau sudah benar-benar dibayar /
+                        dilakukan.
+                      </p>
+                      <ul className="space-y-2">
+                        {pending.map((t) => (
+                          <li key={t.id} className="flex items-center gap-3 rounded-xl border border-line bg-canvas p-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-ink">{t.name}</p>
+                              <p className="text-[11px] text-mutedfg">{formatCurrency(t.amount)}</p>
+                            </div>
+                            {canWrite && (
+                              <button
+                                type="button"
+                                onClick={() => recordScheduledExpense(t)}
+                                className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-brand px-3 text-xs font-semibold text-white transition-colors hover:bg-brand/90"
+                              >
+                                <Icon name="check" size={14} />
+                                Catat
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </Card>
+                  );
+                })()}
                 {(!data.scheduledExpenses || data.scheduledExpenses.length === 0) ? (
                   <p className="text-sm text-mutedfg">Belum ada pengeluaran terjadwal.</p>
                 ) : (
