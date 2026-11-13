@@ -23,16 +23,19 @@ export function normalizePhone(raw: string): string {
 
 /**
  * Cocokkan nomor pengirim ke user keluarga via kolom `phone`.
+ * Nomor di DB bisa tersimpan sebagai 08xx maupun 628xx; karena itu
+ * perbandingan dilakukan setelah normalisasi (8 vs 628 dianggap sama).
  * Mengembalikan user yang cocok, atau null.
  */
 export async function findUserByPhone(env: Env, senderPhone: string) {
   const norm = normalizePhone(senderPhone);
   if (!norm) return null;
-  const row = await env.DB.prepare(
-    `SELECT id, nama, group_id, group_role, username FROM users
-     WHERE void IS NULL AND phone = ? LIMIT 1`
-  ).bind(norm).first();
-  return (row as { id: string; nama: string; group_id: string | null; group_role: string | null; username: string } | null) ?? null;
+  const rows = await env.DB.prepare(
+    `SELECT id, nama, group_id, group_role, username, phone FROM users
+     WHERE void IS NULL AND phone IS NOT NULL AND phone != ''`
+  ).all();
+  const list = (rows.results || []) as { id: string; nama: string; group_id: string | null; group_role: string | null; username: string; phone: string }[];
+  return list.find((r) => normalizePhone(r.phone) === norm) ?? null;
 }
 
 /** Teks menu utama. */
