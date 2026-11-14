@@ -3,6 +3,7 @@ import { Icon } from './Icon';
 import { Badge, Card, CTA_CLASS, ProgressBar, CurrencyInput } from './ui';
 import { sumServiceItems } from './service';
 import VehicleComp from './VehicleComp';
+import { SlideTabs } from './SlideTabs';
 
 /* Komponen Service - kendaraan, inventaris perawatan, riwayat service motor */
 export function Service({
@@ -199,16 +200,13 @@ export function Service({
     <div className="space-y-4">
       {/* Toolbar ringkas: Jenis + Kendaraan + aksi */}
       <div className="flex flex-wrap items-center gap-2">
-        <label className="text-xs font-medium text-mutedfg">Jenis:</label>
-        <select
-          value={activeTab}
-          onChange={(e) => onTabChange?.(e.target.value)}
-          className="input-field min-h-[36px] flex-1 rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
-        >
-          {tabs.map((t) => (
-            <option key={t.id} value={t.id}>{t.label}</option>
-          ))}
-        </select>
+        <div className="min-w-[180px] flex-1">
+          <SlideTabs
+            tabs={tabs.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
+            active={activeTab}
+            onChange={(id) => onTabChange?.(id)}
+          />
+        </div>
         {vehicles.length > 0 && activeTab !== "kendaraan" && (
           <>
             <label className="text-xs font-medium text-mutedfg">Kendaraan:</label>
