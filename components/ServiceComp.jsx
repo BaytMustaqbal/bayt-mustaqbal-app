@@ -17,6 +17,7 @@ export function Service({
   onRemoveSparepart,
   onAddService,
   onUpdateService,
+  onDeleteRecord,
   onAddVehicle,
   onUpdateVehicle,
   onRemoveVehicle,
@@ -438,8 +439,8 @@ export function Service({
 
       {/* Modal catat service baru */}
       {showServiceForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-md mx-4 p-4 sm:p-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto p-4">
+          <Card className="w-full max-w-md my-4 p-4 sm:p-5 max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <h3 className="mb-4 text-lg font-bold text-ink">{editingRecord ? "Ubah Service" : "Catat Service Baru"}</h3>
             <div className="space-y-3">
               <div>
@@ -562,6 +563,22 @@ export function Service({
               <span className="text-sm text-ink">Sertakan sebagai pengeluaran</span>
             </label>
             <div className="flex gap-2 justify-end">
+              {editingRecord && canWrite && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Hapus riwayat service ini?')) {
+                      onDeleteRecord?.(editingRecord, serviceForm.vehicleId || null);
+                      setShowServiceForm(false);
+                      setEditingRecord(null);
+                    }
+                  }}
+                  className="mr-auto inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-rose/30 bg-rose/10 px-3 text-sm font-semibold text-tonerosefg transition-colors hover:bg-rose/20"
+                >
+                  <Icon name="trash" size={14} />
+                  Hapus
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setShowServiceForm(false)}

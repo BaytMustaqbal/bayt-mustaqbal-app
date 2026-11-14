@@ -3968,6 +3968,12 @@ const deleteGoal = async (id) => {
                 onRemoveSparepart={removeSparepart}
                 onAddService={addServiceRecord}
                 onUpdateService={updateServiceRecord}
+                onDeleteRecord={async (id) => {
+                  if (isOnline) { try { await serviceHistoryApi.remove(id); } catch { /* abaikan */ } }
+                  const cur = dataRef.current?.serviceHistory || [];
+                  saveData({ ...dataRef.current, serviceHistory: cur.filter((h) => h.id !== id) });
+                  pushToast({ message: 'Riwayat service dihapus', duration: 2500 });
+                }}
                 onAddVehicle={addVehicle}
                 onUpdateVehicle={updateVehicle}
                 onRemoveVehicle={removeVehicle}
