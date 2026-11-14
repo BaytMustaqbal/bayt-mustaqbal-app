@@ -269,19 +269,6 @@ export function Service({
       {/* Inventory tab */}
       {activeTab === 'inventory' && (
         <>
-          {vehicles.length > 0 && vehicleSelector}
-          {canWrite && (
-            <Card className="p-4 sm:p-5">
-              <button
-                type="button"
-                onClick={openAddInv}
-                className={`${CTA_CLASS} min-h-[36px] w-full sm:w-auto text-xs`}
-              >
-                <Icon name="plus" size={14} />
-                Tambah
-              </button>
-            </Card>
-          )}
 
           {filteredInventory.length === 0 ? (
             <Card className="px-5 py-10 text-center">
@@ -338,33 +325,6 @@ export function Service({
       {/* History tab */}
       {activeTab === 'history' && (
         <>
-          {vehicles.length > 0 && vehicleSelector}
-          {canWrite && (
-            <Card className="p-4 sm:p-5">
-              <button
-                type="button"
-                onClick={() => {
-                  const vid = activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle;
-                  const v = vehicles.find((x) => x.id === vid);
-                  setEditingRecord(null);
-                  setServiceForm({
-                    date: new Date().toISOString().split('T')[0],
-                    odometer: v?.odometer != null ? String(v.odometer) : '',
-                    items: [],
-                    technician: '',
-                    notes: '',
-                    vehicleId: vid,
-                    kategori: 'service',
-                  });
-                  setShowServiceForm(true);
-                }}
-                className={`${CTA_CLASS} min-h-[36px] w-full sm:w-auto text-xs`}
-              >
-                <Icon name="plus" size={14} />
-                Catat
-              </button>
-            </Card>
-          )}
 
           {filteredHistory.length === 0 ? (
             <Card className="px-5 py-10 text-center">
