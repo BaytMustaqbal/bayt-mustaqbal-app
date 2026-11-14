@@ -385,8 +385,8 @@ export function Service({
               <ul className="stagger space-y-2">
                 {filteredHistory.map((it) => (
                   <li key={it.id}>
-                    <Card className="p-4 sm:p-5">
-                      <div className="flex flex-col gap-2">
+                    <Card className="p-3 sm:p-3.5">
+                      <div className="flex flex-col gap-1">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-semibold text-ink">
@@ -414,7 +414,7 @@ export function Service({
                           </div>
                         </div>
                         {it.items.length > 0 && (
-                          <ul className="text-xs space-y-1">
+                          <ul className="text-xs space-y-0.5">
                             {it.items.map((item, idx) => (
                               <li key={idx} className="text-mutedfg">
                                 {item.sparepartNama} × {item.qty} @ {formatCurrency(item.price)}
@@ -422,7 +422,7 @@ export function Service({
                             ))}
                           </ul>
                         )}
-                        {it.notes && <p className="text-sm text-mutedfg">{it.notes}</p>}
+                        {it.notes && <p className="text-xs text-mutedfg">{it.notes}</p>}
                         <div className="flex justify-end pt-0.5">
                           <Badge tone={KATEGORI_TONE[it.kategori] || 'gray'}>{KATEGORI_LABEL[it.kategori] || it.kategori}</Badge>
                         </div>
