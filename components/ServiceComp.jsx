@@ -224,7 +224,7 @@ export function Service({
           </>
         )}
         {canWrite && activeTab === "inventory" && (
-          <button type="button" onClick={openAddInv} className={`${CTA_CLASS} min-h-[30px] shrink-0 text-xs`}>
+          <button type="button" onClick={openAddInv} className={`${CTA_CLASS} !min-h-[30px] shrink-0 text-xs`}>
             <Icon name="plus" size={14} />
             Tambah
           </button>
