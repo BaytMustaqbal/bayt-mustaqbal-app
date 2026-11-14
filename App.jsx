@@ -3530,32 +3530,6 @@ const deleteGoal = async (id) => {
                 </button>
               </div>
 
-              {canWrite && (
-                <button
-                  type="button"
-                  onClick={() => setScanOpen(true)}
-                  className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border border-brand/25 bg-brandtint px-3.5 text-sm font-semibold text-brandfg transition-colors hover:bg-brand/10"
-                >
-                  <Icon name="camera" size={17} />
-                  Foto Struk
-                </button>
-              )}
-              {canWrite && voiceSupported && (
-                <button
-                  type="button"
-                  onClick={startVoiceExpense}
-                  disabled={voiceListening}
-                  className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition-colors ${
-                    voiceListening
-                      ? 'border-rose/40 bg-rose/10 text-rosefg'
-                      : 'border-brand/25 bg-brandtint text-brandfg hover:bg-brand/10'
-                  }`}
-                  aria-label="Input suara"
-                >
-                  <Icon name={voiceListening ? 'loader' : 'mic'} size={17} />
-                  {voiceListening ? 'Mendengar…' : 'Suara'}
-                </button>
-              )}
             </div>
 
             {/* Chip filter kategori pemasukan (pola sama dengan chip tugas) */}
