@@ -17,16 +17,13 @@ export function SlideTabs({ tabs = [], active, onChange }) {
   };
 
   useEffect(() => {
-    const idx = tabs.findIndex((t) => t.id === active);
-    if (idx >= 0) moveTo(idx);
+    const raf = requestAnimationFrame(() => {
+      const idx = tabs.findIndex((t) => t.id === active);
+      if (idx >= 0) moveTo(idx);
+    });
+    return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
-
-  useEffect(() => {
-    const idx = tabs.findIndex((t) => t.id === active);
-    if (idx >= 0) moveTo(idx);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <ul className="relative mx-auto flex w-full min-w-max rounded-full border border-line bg-muted/50 p-1">
