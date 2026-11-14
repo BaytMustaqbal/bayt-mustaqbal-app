@@ -4068,6 +4068,10 @@ const deleteGoal = async (id) => {
         onNotificationOpen={openNotification}
         onMarkAllNotificationsRead={markAllNotifRead}
         onOpenSidebar={() => setSidebarOpen(true)}
+        voiceSupported={voiceSupported}
+        voiceListening={voiceListening}
+        onVoiceStart={startVoiceExpense}
+        onVoiceStop={() => { if (voiceRecRef.current) { try { voiceRecRef.current.stop(); } catch {} } setVoiceListening(false); }}
         onQuickAction={(action) => {
           if (action === 'expenses') openAdd('expenses');
           else if (action === 'notes') openAdd('notes');

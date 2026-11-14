@@ -162,6 +162,10 @@ export function Navigation({
   onQuickAction,
   user,
   onOpenAccount,
+  voiceSupported = false,
+  voiceListening = false,
+  onVoiceStart,
+  onVoiceStop,
 }) {
   const [openKey, setOpenKey] = useState(null);
   const [closingKey, setClosingKey] = useState(null);
@@ -173,11 +177,38 @@ export function Navigation({
   const lastScrollY = useRef(0);
   // Ref untuk checkbox FAB aksi cepat (dipakai menutup menu setelah klik mini).
   const qaToggleRef = useRef(null);
+  const pressTimerRef = useRef(null);
+  const longPressRef = useRef(false);
 
   // Jalankan aksi cepat lalu tutup menu (uncheck checkbox).
   const handleQuickAction = (action) => {
     onQuickAction?.(action);
     if (qaToggleRef.current) qaToggleRef.current.checked = false;
+  };
+
+  // Long-press FAB untuk input suara.
+  const startPress = () => {
+    if (!voiceSupported) return;
+    longPressRef.current = false;
+    pressTimerRef.current = setTimeout(() => {
+      longPressRef.current = true;
+      if (navigator.vibrate) navigator.vibrate(30);
+      onVoiceStart?.();
+    }, 500);
+  };
+  const cancelPress = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+  const endPress = () => {
+    cancelPress();
+    if (longPressRef.current) {
+      onVoiceStop?.();
+      // reset setelah animasi selesai
+      setTimeout(() => { longPressRef.current = false; }, 300);
+    }
   };
 
   // ---- Indikator aktif bergeser (bottom nav) ----
@@ -402,11 +433,30 @@ export function Navigation({
                     <input ref={qaToggleRef} type="checkbox" id="qa-fab-toggle" className="qa-fab-toggle" />
                     <label
                       htmlFor="qa-fab-toggle"
-                      aria-label="Aksi cepat (buat pengeluaran, foto struk, catatan, album)"
-                      className="qa-fab-trigger grid place-items-center rounded-full bg-cta shadow-e2 ring-4 ring-canvas transition-colors"
+                      aria-label={voiceListening ? 'Sedang mendengarkan (input suara)' : 'Aksi cepat (buat pengeluaran, foto struk, catatan, album)'}
+                      className={`qa-fab-trigger grid place-items-center rounded-full shadow-e2 ring-4 ring-canvas transition-colors ${voiceListening ? 'bg-rose qa-fab-listening' : 'bg-cta'}`}
+                      onPointerDown={startPress}
+                      onPointerUp={endPress}
+                      onPointerLeave={cancelPress}
+                      onPointerCancel={cancelPress}
+                      onClick={(e) => {
+                        if (longPressRef.current) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }
+                      }}
                     >
                       <span className="qa-fab-logo" aria-hidden="true">
-                        <img src="/icons/icon-mark-square.png" alt="" />
+                        {voiceListening ? (
+                          <>
+                            <Icon name="mic" size={24} className="text-white" />
+                            <span className="qa-fab-wave" aria-hidden="true">
+                              <i></i><i></i><i></i><i></i>
+                            </span>
+                          </>
+                        ) : (
+                          <img src="/icons/icon-mark-square.png" alt="" />
+                        )}
                       </span>
                       <span className="qa-fab-close" aria-hidden="true">
                         <Icon name="close" size={20} />

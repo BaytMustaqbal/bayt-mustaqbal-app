@@ -796,7 +796,39 @@ html.ui-compact .app-fade-in.space-y-5 > * + * {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-/* Latar bulat pas di belakang tombol + (pangung lingkaran) */
+/* Long-press voice listening state */
+.qa-fab-listening {
+  animation: qaFabPulse 1.2s ease-in-out infinite;
+}
+@keyframes qaFabPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(244 63 94 / 0.45); }
+  50% { box-shadow: 0 0 0 14px rgb(244 63 94 / 0); }
+}
+.qa-fab-wave {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.qa-fab-wave i {
+  display: block;
+  width: 2px;
+  height: 4px;
+  background: #fff;
+  border-radius: 2px;
+  animation: qaFabBar 0.9s ease-in-out infinite;
+}
+.qa-fab-wave i:nth-child(2) { animation-delay: 0.15s; }
+.qa-fab-wave i:nth-child(3) { animation-delay: 0.3s; }
+.qa-fab-wave i:nth-child(4) { animation-delay: 0.45s; }
+@keyframes qaFabBar {
+  0%, 100% { height: 4px; }
+  50% { height: 10px; }
+}
 .qa-fab-trigger::before {
   content: '';
   position: absolute;
