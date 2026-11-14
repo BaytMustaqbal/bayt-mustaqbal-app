@@ -3480,6 +3480,7 @@ const deleteGoal = async (id) => {
                 )}
                 <button
                   type="button"
+                  ref={(el) => { financeTabRefs.current['ringkasan'] = el; }}
                   onClick={() => setFinanceMode('ringkasan')}
                   aria-pressed={financeMode === 'ringkasan'}
                   className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
@@ -3491,6 +3492,7 @@ const deleteGoal = async (id) => {
                 </button>
                 <button
                   type="button"
+                  ref={(el) => { financeTabRefs.current['pengeluaran'] = el; }}
                   onClick={() => setFinanceMode('pengeluaran')}
                   aria-pressed={financeMode === 'pengeluaran'}
                   className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
@@ -3504,6 +3506,7 @@ const deleteGoal = async (id) => {
                 </button>
                 <button
                   type="button"
+                  ref={(el) => { financeTabRefs.current['pemasukan'] = el; }}
                   onClick={() => setFinanceMode('pemasukan')}
                   aria-pressed={financeMode === 'pemasukan'}
                   className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
@@ -3515,6 +3518,7 @@ const deleteGoal = async (id) => {
                 </button>
                 <button
                   type="button"
+                  ref={(el) => { financeTabRefs.current['anggaran'] = el; }}
                   onClick={() => setFinanceMode('anggaran')}
                   aria-pressed={financeMode === 'anggaran'}
                   className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
