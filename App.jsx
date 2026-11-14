@@ -742,6 +742,17 @@ export default function App() {
   const [agendaFilter, setAgendaFilter] = useState('semua');
   // Sub-tampilan Agenda: jadwal (daftar) | tugas | kalender keluarga
   const [agendaMode, setAgendaMode] = useState('jadwal');
+  const agendaTabsRef = useRef(null);
+  const agendaTabRefs = useRef({});
+  const [agendaPill, setAgendaPill] = useState(null);
+  useEffect(() => {
+    const bar = agendaTabsRef.current;
+    const btn = agendaTabRefs.current[agendaMode];
+    if (!bar || !btn) { setAgendaPill(null); return; }
+    const barRect = bar.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    setAgendaPill({ left: btnRect.left - barRect.left, width: btnRect.width });
+  }, [agendaMode]);
   // Filter kategori pengeluaran (default: semua) � pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
   const [incomeFilter, setIncomeFilter] = useState('semua');
