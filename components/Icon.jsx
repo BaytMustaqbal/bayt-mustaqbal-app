@@ -17,6 +17,13 @@ const PATHS = {
       <path d="M16 2v4M8 2v4M3 10h18" />
     </>
   ),
+  banknote: (
+    <>
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6 12h.01M18 12h.01" />
+    </>
+  ),
   wallet: (
     <>
       <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
