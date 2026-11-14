@@ -57,17 +57,23 @@ export function Service({
   const [showInvForm, setShowInvForm] = useState(false);
 
   // Buka modal 'Catat Service Baru' dari event global (FAB).
+  const latestOdometer = (vid) => {
+    const recs = (vid ? history.filter((h) => h.vehicleId === vid) : history);
+    return recs.reduce((max, h) => Math.max(max, Number(h.odometer) || 0), 0);
+  };
+
   useEffect(() => {
     const open = () => {
       if (!canWrite) return;
+      const vid = vehicles[0]?.id || '';
       setEditingRecord(null);
       setServiceForm({
         date: new Date().toISOString().split('T')[0],
-        odometer: '',
+        odometer: latestOdometer(vid) ? String(latestOdometer(vid)) : '',
         items: [],
         technician: '',
         notes: '',
-        vehicleId: vehicles[0]?.id || '',
+        vehicleId: vid,
         kategori: 'service',
       });
       setShowServiceForm(true);
