@@ -387,7 +387,11 @@ export function Service({
                       <div className="flex flex-col gap-2">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="font-semibold text-ink">{it.date}</p>
+                            <p className="font-semibold text-ink">
+                              {KATEGORI_LABEL[it.kategori] || 'Service'}
+                              {it.vehicleId && vehicleName(it.vehicleId) ? ` · ${vehicleName(it.vehicleId)}` : ''}
+                            </p>
+                            <p className="text-xs text-mutedfg">{it.date}</p>
                             <p className="text-xs text-mutedfg">
                               {it.odometer} km • {it.technician}
                               {it.vehicleId && vehicleName(it.vehicleId) ? ` · ${vehicleName(it.vehicleId)}` : ''}
