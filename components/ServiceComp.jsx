@@ -47,7 +47,9 @@ export function Service({
     const btnRect = btn.getBoundingClientRect();
     setVehiclePill({
       left: btnRect.left - barRect.left + bar.scrollLeft,
+      top: btnRect.top - barRect.top,
       width: btnRect.width,
+      height: btnRect.height,
     });
   }, [activeVehicle, vehicles]);
 
@@ -178,15 +180,15 @@ export function Service({
   const vehicleSelector = (
     <div
       ref={vehicleBarRef}
-      className="relative flex gap-1.5 overflow-x-auto rounded-xl bg-muted/50 p-1"
+      className="relative flex flex-wrap gap-1.5 rounded-xl bg-muted/50 p-1"
       role="tablist"
       aria-label="Pilih kendaraan"
     >
       {vehiclePill && (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]"
-          style={{ left: vehiclePill.left, width: vehiclePill.width }}
+          className="pointer-events-none absolute rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]"
+          style={{ left: vehiclePill.left, top: vehiclePill.top, width: vehiclePill.width, height: vehiclePill.height }}
         />
       )}
       <button
