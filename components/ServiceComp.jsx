@@ -206,6 +206,19 @@ export function Service({
 
   const vehicleName = (id) => (vehicles.find((v) => v.id === id)?.nama || '');
 
+  const KATEGORI_TONE = {
+    service: 'blue',
+    ganti_part: 'amber',
+    perbaikan: 'rose',
+    lainnya: 'gray',
+  };
+  const KATEGORI_LABEL = {
+    service: 'Service',
+    ganti_part: 'Ganti Part',
+    perbaikan: 'Perbaikan',
+    lainnya: 'Lainnya',
+  };
+
   const vehicleSelector = (
     <div className="flex items-center gap-2">
       <label className="text-xs font-medium text-mutedfg">Kendaraan:</label>
@@ -381,7 +394,6 @@ export function Service({
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
-                            <Badge tone="gray">{it.kategori || 'service'}</Badge>
                             {canWrite && (
                               <button
                                 type="button"
@@ -405,6 +417,9 @@ export function Service({
                           </ul>
                         )}
                         {it.notes && <p className="text-sm text-mutedfg">{it.notes}</p>}
+                        <div className="flex justify-end pt-0.5">
+                          <Badge tone={KATEGORI_TONE[it.kategori] || 'gray'}>{KATEGORI_LABEL[it.kategori] || it.kategori}</Badge>
+                        </div>
                       </div>
                     </Card>
                   </li>
