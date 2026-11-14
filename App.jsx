@@ -1458,9 +1458,29 @@ const deleteGoal = async (id) => {
   const dataRef = useRef(data);
 
   const saveData = (next) => {
-    dataRef.current = next;
-    setData(next);
-    persist(next);
+    const normalized = {
+      schedule: [],
+      expenses: [],
+      income: [],
+      notes: [],
+      tasks: [],
+      chores: [],
+      debts: [],
+      vehicles: [],
+      family: [],
+      familyMedical: [],
+      familyDocuments: [],
+      familyContacts: [],
+      serviceInventory: [],
+      serviceHistory: [],
+      scheduledExpenses: [],
+      subs: [],
+      goals: [],
+      ...next,
+    };
+    dataRef.current = normalized;
+    setData(normalized);
+    persist(normalized);
   };
 
   // Tema: pilihan pengguna ('system' | 'light' | 'dark') + preferensi perangkat.
@@ -2959,7 +2979,7 @@ const deleteGoal = async (id) => {
                   : {
                       icon: 'calendar',
                       title: activeMeta.label,
-                      subtitle: `${filtered.length} jadwal • ${calendarEvents.length} aktivitas`,
+                      subtitle: `${(filtered || []).length} jadwal • ${(calendarEvents || []).length} aktivitas`,
                       actionLabel: 'Tambah',
                       onAction: () => openAdd('agenda'),
                     })}
