@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { id: 'wawasan', label: 'Wawasan', icon: 'barChart' },
   { id: 'agenda', label: 'Agenda', icon: 'calendar' },
   { id: 'expenses', label: 'Keuangan', icon: 'wallet' },
-  { id: 'terjadwal', label: 'Tugas Terjadwal', icon: 'clock' },
+  { id: 'terjadwal', label: 'Tugas', icon: 'clock' },
   { id: 'family', label: 'Keluarga', icon: 'users' },
   { id: 'notes', label: 'Catatan', icon: 'note' },
   { id: 'pengaturan', label: 'Pengaturan', icon: 'settings' },
