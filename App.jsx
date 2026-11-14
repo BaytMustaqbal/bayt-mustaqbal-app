@@ -1559,13 +1559,28 @@ const deleteGoal = async (id) => {
       (async () => {
         try {
           const apiBase = import.meta.env.VITE_API_URL || '/api';
-          const res = await fetch(`${apiBase}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: devUser, password: devPass }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || !data.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+          // Proxy lokal Kadang terputus sesaat (ECONNRESET) → coba beberapa kali.
+          let data = null;
+          let lastErr = null;
+          for (let attempt = 1; attempt <= 3 && !data; attempt += 1) {
+            try {
+              const res = await fetch(`${apiBase}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: devUser, password: devPass }),
+              });
+              data = await res.json().catch(() => ({}));
+              if (!res.ok || !data.ok) {
+                lastErr = new Error(data.error?.message || `HTTP ${res.status}`);
+                data = null;
+              }
+            } catch (err) {
+              lastErr = err;
+              data = null;
+              if (attempt < 3) await new Promise((r) => setTimeout(r, 600 * attempt));
+            }
+          }
+          if (!data) throw lastErr || new Error('Login gagal');
           setToken(data.data.token, true);
           const u = data.data.user;
           const fresh = {
