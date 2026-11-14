@@ -2,11 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 
 /**
- * SlideTabs — tab dengan pill yang meluncur (hover highlight + klik pilih).
- * Props:
- *   tabs: [{ id, label, icon? }]
- *   active: id aktif
- *   onChange: (id) => void
+ * SlideTabs — tab dengan pill yang meluncur hanya saat klik (tanpa hover).
+ * Controlled: `active` + `onChange`.
  */
 export function SlideTabs({ tabs = [], active, onChange }) {
   const [position, setPosition] = useState({ left: 0, width: 0, opacity: 0 });
@@ -19,14 +16,12 @@ export function SlideTabs({ tabs = [], active, onChange }) {
     setPosition({ left: el.offsetLeft, width, opacity: 1 });
   };
 
-  // Saat active berubah, pill kembali ke tab aktif.
   useEffect(() => {
     const idx = tabs.findIndex((t) => t.id === active);
     if (idx >= 0) moveTo(idx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, tabs]);
 
-  // Saat mount, posisikan pill.
   useEffect(() => {
     const idx = tabs.findIndex((t) => t.id === active);
     if (idx >= 0) moveTo(idx);
@@ -34,19 +29,12 @@ export function SlideTabs({ tabs = [], active, onChange }) {
   }, []);
 
   return (
-    <ul
-      onMouseLeave={() => {
-        const idx = tabs.findIndex((t) => t.id === active);
-        if (idx >= 0) moveTo(idx);
-      }}
-      className="relative mx-auto flex w-full rounded-full border border-line bg-muted/50 p-1"
-    >
+    <ul className="relative mx-auto flex w-full rounded-full border border-line bg-muted/50 p-1">
       {tabs.map((tab, i) => (
         <li
           key={tab.id}
           ref={(el) => (refs.current[i] = el)}
           onClick={() => onChange?.(tab.id)}
-          onMouseEnter={() => moveTo(i)}
           className={`relative z-10 flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-semibold transition-colors duration-[400ms] ${
             active === tab.id ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
           }`}
