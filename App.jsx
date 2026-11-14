@@ -2824,6 +2824,25 @@ const deleteGoal = async (id) => {
       serviceHistory: [...currentHistory, savedRec],
       serviceInventory: updatedInv,
     });
+    // Opsi: sertakan sebagai pengeluaran.
+    if (vals.includeExpense && Number(vals.total) > 0) {
+      const expensePayload = {
+        category: 'transportasi',
+        description: `${vals.kategori === 'ganti_part' ? 'Ganti Part' : vals.kategori === 'perbaikan' ? 'Perbaikan' : 'Service'} · ${(dataRef.current.vehicles || []).find((v) => v.id === vehicleId)?.nama || 'Kendaraan'}`,
+        amount: Number(vals.total),
+        date: vals.date,
+        bucket: 'auto',
+      };
+      if (isOnline) {
+        try {
+          const result = await txn.create(expensePayload);
+          addItemToState('expenses', result);
+          pushToast({ message: 'Service dicatat sebagai pengeluaran', duration: 2500 });
+        } catch { /* abaikan */ }
+      } else {
+        addItemToState('expenses', { id: Date.now(), ...expensePayload });
+      }
+    }
     pushToast({ message: `Service ${vals.date} dicatat`, duration: 2500 });
   };
 

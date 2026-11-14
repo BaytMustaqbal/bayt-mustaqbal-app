@@ -33,6 +33,7 @@ export function Service({
     notes: '',
     vehicleId: '',
     kategori: 'service',
+    includeExpense: false,
   });
 
   const [activeVehicle, setActiveVehicle] = useState('all');
@@ -132,6 +133,7 @@ export function Service({
       notes: '',
       vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle,
       kategori: 'service',
+      includeExpense: false,
     });
   };
 
@@ -550,7 +552,16 @@ export function Service({
                 </select>
               </div>
             </div>
-            <div className="mt-4 flex gap-2 justify-end">
+            <label className="mt-4 flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-canvas px-3.5">
+              <input
+                type="checkbox"
+                checked={!!serviceForm.includeExpense}
+                onChange={(e) => setServiceForm({ ...serviceForm, includeExpense: e.target.checked })}
+                className="h-5 w-5 shrink-0 rounded accent-[#2563EB]"
+              />
+              <span className="text-sm text-ink">Sertakan sebagai pengeluaran</span>
+            </label>
+            <div className="flex gap-2 justify-end">
               <button
                 type="button"
                 onClick={() => setShowServiceForm(false)}
