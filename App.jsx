@@ -3420,7 +3420,7 @@ const deleteGoal = async (id) => {
               <SectionHeader
                 icon="trendingUp"
                 title={incomeMeta.label}
-                subtitle={`Total: ${formatCurrency(incomeTotal)} - bulan ini ${formatCurrency(incomeThisMonth)}`}
+                subtitle={`Total: ${formatCurrencyShort(incomeTotal)} - bulan ini ${formatCurrencyShort(incomeThisMonth)}`}
                 actionLabel={canWrite ? 'Tambah' : undefined}
                 actionTone="accent"
                 actionIconOnly
@@ -3431,7 +3431,7 @@ const deleteGoal = async (id) => {
                 <SectionHeader
                   icon="wallet"
                   title={activeMeta.label}
-                  subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
+                  subtitle={`Total: ${formatCurrencyShort(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
                   actionLabel={canWrite ? 'Tambah' : undefined}
                   actionTone="accent"
                   actionIconOnly
