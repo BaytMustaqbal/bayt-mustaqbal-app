@@ -29,6 +29,7 @@ import { Timeline } from './components/Timeline';
 import { FormSheet } from './components/FormSheet';
 import { FamilyTree } from './components/FamilyTree';
 import { SlideTabs } from './components/SlideTabs';
+import { SegmentedControl } from './components/SegmentedControl';
 import { Toast } from './components/Toast';
 import { buildNotifications } from './components/notifications';
 import {
@@ -3855,11 +3856,12 @@ const deleteGoal = async (id) => {
               title="Tugas Terjadwal"
               subtitle="Semua aktivitas terjadwal keluarga"
             />
-            <div className="mb-4 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Jenis tugas terjadwal">
-              <SlideTabs
-                tabs={terjadwalTabs.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
-                active={terjadwalTab}
-                onChange={setTerjadwalTab}
+            <div className="mb-4" role="tablist" aria-label="Jenis tugas terjadwal">
+              <SegmentedControl
+                label="Jenis tugas terjadwal"
+                options={terjadwalTabs.map((t) => ({ value: t.id, label: t.label, icon: t.icon }))}
+                value={terjadwalTab}
+                onValueChange={setTerjadwalTab}
               />
             </div>
 
