@@ -31,13 +31,13 @@ export function SlideTabs({ tabs = [], active, onChange }) {
   };
 
   return (
-    <ul className="relative mx-auto flex w-full min-w-max rounded-full border border-line bg-muted/50 p-1">
+    <ul className="relative mx-auto flex w-full min-w-max gap-1 rounded-xl border border-line bg-surface p-1">
       {tabs.map((tab, i) => (
         <li
           key={tab.id}
           ref={(el) => (refs.current[i] = el)}
           onClick={(e) => handleClick(e, tab, i)}
-          className={`relative z-10 flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-semibold transition-colors duration-[400ms] ${
+          className={`relative z-10 flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors duration-[400ms] ${
             active === tab.id ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
           }`}
         >
@@ -47,7 +47,7 @@ export function SlideTabs({ tabs = [], active, onChange }) {
       ))}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute top-1 bottom-1 rounded-full bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]"
+        className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]"
         style={{ left: position.left, width: position.width, opacity: position.opacity }}
       />
     </ul>
