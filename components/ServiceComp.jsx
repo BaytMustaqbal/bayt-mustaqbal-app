@@ -247,7 +247,7 @@ export function Service({
             });
             setShowServiceForm(true);
           }}
-            className={`${CTA_CLASS} min-h-[36px] shrink-0 text-xs`}
+            className={`${CTA_CLASS} !min-h-[30px] shrink-0 text-xs`}
           >
             <Icon name="plus" size={14} />
             Catat
