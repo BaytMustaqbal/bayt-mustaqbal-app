@@ -210,6 +210,8 @@ export function Service({
           ))}
         </select>
       </div>
+
+      {activeTab === 'kendaraan' && (
         <VehicleComp
           vehicles={vehicles}
           canWrite={canWrite}
