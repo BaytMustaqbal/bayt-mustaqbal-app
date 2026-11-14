@@ -416,16 +416,16 @@ export function Service({
                         {it.items.length > 0 && (
                           <ul className="text-xs space-y-0.5">
                             {it.items.map((item, idx) => (
-                              <li key={idx} className="text-mutedfg">
-                                {item.sparepartNama} × {item.qty} @ {formatCurrency(item.price)}
+                              <li key={idx} className="flex items-center gap-2 text-mutedfg">
+                                <span>{item.sparepartNama} × {item.qty} @ {formatCurrency(item.price)}</span>
+                                {idx === 0 && (
+                                  <Badge tone={KATEGORI_TONE[it.kategori] || 'gray'}>{KATEGORI_LABEL[it.kategori] || it.kategori}</Badge>
+                                )}
                               </li>
                             ))}
                           </ul>
                         )}
                         {it.notes && <p className="text-xs text-mutedfg">{it.notes}</p>}
-                        <div className="flex justify-end pt-0.5">
-                          <Badge tone={KATEGORI_TONE[it.kategori] || 'gray'}>{KATEGORI_LABEL[it.kategori] || it.kategori}</Badge>
-                        </div>
                       </div>
                     </Card>
                   </li>
