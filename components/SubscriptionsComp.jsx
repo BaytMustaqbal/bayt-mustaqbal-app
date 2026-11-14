@@ -93,7 +93,7 @@ function SubForm({ initial, onCancel, onSave }) {
 }
 
 export default function SubscriptionsComp({ subs = [], canWrite = false, formatCurrency, onSave, onDelete }) {
-  const [form, setForm] = useState(null);
+  const [form, setForm] = useState(undefined);
   const monthlyTotal = useMemo(() => subs.filter((s) => s.active).reduce((sum, s) => sum + (Number(s.amount) || 0), 0), [subs]);
 
   return (
