@@ -15,7 +15,9 @@ export const AGENDA_CATEGORIES = [
 
 export const FINANCE_CATEGORIES = [
   { id: 'semua', label: 'Semua Pengeluaran', icon: 'wallet' },
-  { id: 'belanja', label: 'Belanja Bulanan', icon: 'shoppingBag' },
+  { id: 'belanja', label: 'Belanja', icon: 'shoppingBag' },
+  { id: 'kuliner', label: 'Kuliner', icon: 'utensils' },
+  { id: 'hobi', label: 'Hobi', icon: 'sparkles' },
   { id: 'utilitas', label: 'Utilitas', icon: 'zap' },
   { id: 'pendidikan', label: 'Pendidikan', icon: 'book' },
   { id: 'transportasi', label: 'Transportasi', icon: 'car' },
@@ -52,6 +54,8 @@ export const BUCKETS = [
 // `ibadah` (zakat/infak) tidak ada di rumus 50/30/20 → masuk Kebutuhan.
 export const CATEGORY_BUCKET = {
   belanja: 'needs',
+  kuliner: 'needs',
+  hobi: 'wants',
   utilitas: 'needs',
   pendidikan: 'needs',
   transportasi: 'needs',

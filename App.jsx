@@ -138,6 +138,8 @@ const computeCategories = (items, categories = FINANCE_CATEGORIES, colorMap) => 
     rumah: 'rgb(var(--chart8))',
     hiburan: 'rgb(var(--chart7))',
     belanja: 'rgb(var(--chart1))',
+    kuliner: 'rgb(var(--chart2))',
+    hobi: 'rgb(var(--chart4))',
     tabungan: 'rgb(var(--chart9))',
     pendidikan: 'rgb(var(--chart2))',
     utilitas: 'rgb(var(--chart3))',
