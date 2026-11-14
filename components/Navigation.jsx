@@ -164,6 +164,7 @@ export function Navigation({
   onOpenAccount,
   voiceSupported = false,
   voiceListening = false,
+  voiceLevels = [],
   onVoiceStart,
   onVoiceStop,
 }) {
@@ -451,7 +452,9 @@ export function Navigation({
                           <>
                             <Icon name="mic" size={24} className="text-white" />
                             <span className="qa-fab-wave" aria-hidden="true">
-                              <i></i><i></i><i></i><i></i>
+                              {(voiceLevels.length ? voiceLevels : [0,0,0,0]).slice(0,4).map((lvl, i) => (
+                                <i key={i} style={{ height: Math.max(4, Math.round(lvl * 22)) + "px" }}></i>
+                              ))}
                             </span>
                           </>
                         ) : (

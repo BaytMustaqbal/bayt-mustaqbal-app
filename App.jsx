@@ -814,8 +814,10 @@ const deleteGoal = async (id) => {
   // Pemindai struk: foto dibaca OCR di perangkat, disimpan sebagai pengeluaran biasa
   const [scanOpen, setScanOpen] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceLevels, setVoiceLevels] = useState(() => Array(8).fill(0));
   const voiceSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   const voiceRecRef = useRef(null);
+  const voiceCleanupRef = useRef(null);
 
   // Sidebar navigasi (desktop-trigger header, mobile-tetap bottom navbar)
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2370,7 +2372,7 @@ const deleteGoal = async (id) => {
     setSheetOpen(section);
   };
 
-  const startVoiceExpense = () => {
+  const startVoiceExpense = async () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
       pushToast({ message: 'Browser tidak mendukung input suara.', tone: 'warning', duration: 4000 });
@@ -2383,6 +2385,10 @@ const deleteGoal = async (id) => {
     rec.maxAlternatives = 1;
     rec.onresult = async (e) => {
       const text = e.results?.[0]?.[0]?.transcript || '';
+      if (!text.trim()) {
+        pushToast({ message: 'Tidak ada suara terdeteksi.', tone: 'warning', duration: 3500 });
+        return;
+      }
       const parsed = parseVoiceExpense(text);
       if (parsed.amount > 0) {
         if (!canWrite) {
@@ -2412,17 +2418,59 @@ const deleteGoal = async (id) => {
         pushToast({ message: 'Suara terbaca; lengkapi form lalu simpan.', duration: 3500 });
       }
     };
-    rec.onerror = () => {
+    rec.onerror = (ev) => {
       setVoiceListening(false);
-      pushToast({ message: 'Gagal mendengar suara.', tone: 'danger', duration: 3000 });
+      if (ev?.error === 'no-speech') {
+        pushToast({ message: 'Tidak ada suara terdeteksi.', tone: 'warning', duration: 3500 });
+      } else {
+        pushToast({ message: 'Gagal mendengar suara.', tone: 'danger', duration: 3000 });
+      }
+      if (voiceCleanupRef.current) { voiceCleanupRef.current(); voiceCleanupRef.current = null; }
     };
-    rec.onend = () => setVoiceListening(false);
+    rec.onend = () => {
+      setVoiceListening(false);
+      if (voiceCleanupRef.current) { voiceCleanupRef.current(); voiceCleanupRef.current = null; }
+    };
     voiceRecRef.current = rec;
     setVoiceListening(true);
+    setVoiceLevels(Array(8).fill(0));
     try {
       rec.start();
     } catch {
       setVoiceListening(false);
+    }
+
+    // Level mic untuk animasi gelombang (best-effort).
+    try {
+      if (navigator.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioCtx();
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 64;
+        source.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        let raf = 0;
+        const tick = () => {
+          analyser.getByteFrequencyData(data);
+          const levels = Array.from({ length: 8 }, (_, i) => {
+            const idx = Math.floor((i + 0.5) * (data.length / 8));
+            return Math.min(1, (data[idx] || 0) / 255);
+          });
+          setVoiceLevels(levels);
+          raf = requestAnimationFrame(tick);
+        };
+        tick();
+        voiceCleanupRef.current = () => {
+          cancelAnimationFrame(raf);
+          stream.getTracks().forEach((t) => t.stop());
+          try { ctx.close(); } catch {}
+          setVoiceLevels(Array(8).fill(0));
+        };
+      }
+    } catch {
+      /* tidak bisa akses mic level; animasi tetap jalan via CSS */
     }
   };
 
@@ -4077,8 +4125,9 @@ const deleteGoal = async (id) => {
         onOpenSidebar={() => setSidebarOpen(true)}
         voiceSupported={voiceSupported}
         voiceListening={voiceListening}
+        voiceLevels={voiceLevels}
         onVoiceStart={startVoiceExpense}
-        onVoiceStop={() => { if (voiceRecRef.current) { try { voiceRecRef.current.stop(); } catch {} } setVoiceListening(false); }}
+        onVoiceStop={() => { if (voiceRecRef.current) { try { voiceRecRef.current.stop(); } catch {} } if (voiceCleanupRef.current) { voiceCleanupRef.current(); voiceCleanupRef.current = null; } setVoiceListening(false); }}
         onQuickAction={(action) => {
           if (action === 'expenses') openAdd('expenses');
           else if (action === 'notes') openAdd('notes');
