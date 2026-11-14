@@ -199,29 +199,31 @@ export function Service({
   return (
     <div className="space-y-4">
       {/* Toolbar ringkas: Jenis + Kendaraan + aksi */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-[180px] flex-1">
-          <SlideTabs
-            tabs={tabs.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
-            active={activeTab}
-            onChange={(id) => onTabChange?.(id)}
-          />
+      <div className="min-w-[180px] w-full">
+        <SlideTabs
+          tabs={tabs.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
+          active={activeTab}
+          onChange={(id) => onTabChange?.(id)}
+        />
+      </div>
+
+      {vehicles.length > 0 && activeTab !== "kendaraan" && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-mutedfg">Kendaraan:</label>
+          <select
+            value={activeVehicle}
+            onChange={(e) => setActiveVehicle(e.target.value)}
+            className="input-field min-h-[36px] flex-1 rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
+          >
+            <option value="all">Semua</option>
+            {vehicles.map((v) => (
+              <option key={v.id} value={v.id}>{v.nama}</option>
+            ))}
+          </select>
         </div>
-        {vehicles.length > 0 && activeTab !== "kendaraan" && (
-          <>
-            <label className="text-xs font-medium text-mutedfg">Kendaraan:</label>
-            <select
-              value={activeVehicle}
-              onChange={(e) => setActiveVehicle(e.target.value)}
-              className="input-field min-h-[36px] flex-1 rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
-            >
-              <option value="all">Semua</option>
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>{v.nama}</option>
-              ))}
-            </select>
-          </>
-        )}
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
         {canWrite && activeTab === "inventory" && (
           <button type="button" onClick={openAddInv} className={`${CTA_CLASS} min-h-[36px] shrink-0 text-xs`}>
             <Icon name="plus" size={14} />
