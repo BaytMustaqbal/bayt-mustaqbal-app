@@ -742,17 +742,6 @@ export default function App() {
   const [agendaFilter, setAgendaFilter] = useState('semua');
   // Sub-tampilan Agenda: jadwal (daftar) | tugas | kalender keluarga
   const [agendaMode, setAgendaMode] = useState('jadwal');
-  const agendaTabsRef = useRef(null);
-  const agendaTabRefs = useRef({});
-  const [agendaPill, setAgendaPill] = useState(null);
-  useEffect(() => {
-    const bar = agendaTabsRef.current;
-    const btn = agendaTabRefs.current[agendaMode];
-    if (!bar || !btn) { setAgendaPill(null); return; }
-    const barRect = bar.getBoundingClientRect();
-    const btnRect = btn.getBoundingClientRect();
-    setAgendaPill({ left: btnRect.left - barRect.left, width: btnRect.width });
-  }, [agendaMode]);
   // Filter kategori pengeluaran (default: semua) � pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
   const [incomeFilter, setIncomeFilter] = useState('semua');
@@ -3197,58 +3186,17 @@ const deleteGoal = async (id) => {
             />
 
             {/* Sub-tampilan Agenda: Jadwal | Tugas | Kalender | Timeline */}
-            <div
-              ref={agendaTabsRef}
-              className="relative mb-5 grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
-              aria-label="Mode tampilan agenda"
-            >
-              {agendaPill && (
-                <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: agendaPill.left, width: agendaPill.width }} />
-              )}
-              <button
-                type="button"
-                onClick={() => setAgendaMode('jadwal')}
-                aria-pressed={agendaMode === 'jadwal'}
-                className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
-                  agendaMode === 'jadwal' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
-                }`}
-              >
-                <Icon name="clock" size={16} />
-                Jadwal
-              </button>
-              <button
-                type="button"
-                onClick={() => setAgendaMode('tugas')}
-                aria-pressed={agendaMode === 'tugas'}
-                className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
-                  agendaMode === 'tugas' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
-                }`}
-              >
-                <Icon name="tasks" size={16} />
-                Tugas
-              </button>
-              <button
-                type="button"
-                onClick={() => setAgendaMode('kalender')}
-                aria-pressed={agendaMode === 'kalender'}
-                className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
-                  agendaMode === 'kalender' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
-                }`}
-              >
-                <Icon name="calendar" size={16} />
-                Kalender
-              </button>
-              <button
-                type="button"
-                onClick={() => setAgendaMode('timeline')}
-                aria-pressed={agendaMode === 'timeline'}
-                className={`flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] font-medium transition-colors sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
-                  agendaMode === 'timeline' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
-                }`}
-              >
-                <Icon name="activity" size={16} />
-                Timeline
-              </button>
+            <div className="mb-5 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Mode tampilan agenda">
+              <SlideTabs
+                tabs={[
+                  { id: "jadwal", label: "Jadwal", icon: "clock" },
+                  { id: "tugas", label: "Tugas", icon: "tasks" },
+                  { id: "kalender", label: "Kalender", icon: "calendar" },
+                  { id: "timeline", label: "Timeline", icon: "activity" },
+                ]}
+                active={agendaMode}
+                onChange={setAgendaMode}
+              />
             </div>
 
             {agendaMode === 'tugas' ? (
