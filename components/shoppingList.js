@@ -1,4 +1,4 @@
-/* Daftar Belanja bulanan: helper murni (tanpa React).
+/* Daftar Belanja (mingguan & bulanan): helper murni (tanpa React).
    Data disimpan sebagai catatan kategori `belanja` supaya tidak ada sumber
    data kedua. Backend note hanya punya title/content/category/important,
    jadi item (nama, qty, harga, centang) ditulis sebagai JSON di `content`.
@@ -7,15 +7,43 @@
 
 export const SHOPPING_CATEGORY = 'belanja';
 export const SHOPPING_MONTH_PREFIX = 'Daftar Belanja · ';
+export const SHOPPING_WEEK_PREFIX = 'Daftar Belanja Pekan · ';
 export const SHOPPING_TEMPLATE_TITLE = 'Template Daftar Belanja';
 
 export const monthTitle = (monthKey) => `${SHOPPING_MONTH_PREFIX}${monthKey}`;
+export const weekTitle = (weekKey) => `${SHOPPING_WEEK_PREFIX}${weekKey}`;
 
-// Catatan khusus (bulanan atau template) yang dikelola halaman Daftar Belanja.
+// Judul catatan untuk periode aktif ("mingguan" | "bulanan").
+export const shoppingTitleFor = (period, refDate = new Date()) =>
+  period === 'mingguan' ? weekTitle(isoWeekKey(refDate)) : monthTitle(monthKey(refDate));
+
+// Kunci bulan lokal YYYY-MM (hindari toISOString yang UTC).
+export const monthKey = (d) => {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+};
+
+// Kunci pekan ISO YYYY-Www (Senin sebagai hari pertama).
+export const isoWeekKey = (d) => {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (date.getUTCDay() + 6) % 7; // Senin = 0
+  date.setUTCDate(date.getUTCDate() - dayNum + 3); // Kamis pekan ini
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+  const week = 1 + Math.round((date - firstThursday) / (7 * 86400000));
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+};
+
+// Catatan khusus (mingguan/bulanan/template) yang dikelola halaman Daftar Belanja.
 export const isShoppingNote = (note) => {
   if (!note || note.category !== SHOPPING_CATEGORY) return false;
   const title = note.title || '';
-  return title.startsWith(SHOPPING_MONTH_PREFIX) || title === SHOPPING_TEMPLATE_TITLE;
+  return (
+    title.startsWith(SHOPPING_MONTH_PREFIX) ||
+    title.startsWith(SHOPPING_WEEK_PREFIX) ||
+    title === SHOPPING_TEMPLATE_TITLE
+  );
 };
 
 export const emptyShopping = () => ({ v: 1, items: [], selesai: false, expenseId: null });

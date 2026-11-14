@@ -124,9 +124,9 @@ export function ShoppingList({
           <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
             <Icon name="shoppingBag" size={24} />
           </span>
-          <p className="mt-4 font-semibold text-ink">Daftar belanja bulan ini masih kosong</p>
+          <p className="mt-4 font-semibold text-ink">Daftar belanja periode ini masih kosong</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-mutedfg">
-            Tambahkan item di atas. Kalau sudah punya daftar rutin, simpan sebagai template supaya bulan depan terisi otomatis.
+            Tambahkan item di atas. Kalau sudah punya daftar rutin, simpan sebagai template supaya periode berikutnya terisi otomatis.
           </p>
         </Card>
       ) : (
@@ -134,16 +134,16 @@ export function ShoppingList({
           {items.map((it) => (
             <li key={it.id}>
               <Card className={`flex items-center gap-2 p-2.5 sm:p-3 ${it.checked ? 'opacity-60' : ''}`}>
-                <button
-                  type="button"
-                  onClick={() => canWrite && onToggle(it.id)}
-                  aria-pressed={it.checked}
-                  aria-label={`${it.checked ? 'Batalkan centang' : 'Centang'} ${it.nama}`}
-                  disabled={!canWrite}
-                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border transition-colors ${it.checked ? 'border-success/40 bg-success/15 text-success' : 'border-line bg-canvas text-mutedfg hover:border-brand/50 hover:text-brandfg'}`}
-                >
-                  <Icon name="check" size={17} />
-                </button>
+                <label className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-xl">
+                  <input
+                    type="checkbox"
+                    checked={!!it.checked}
+                    disabled={!canWrite}
+                    onChange={() => canWrite && onToggle(it.id)}
+                    aria-label={`${it.checked ? 'Batalkan centang' : 'Tandai sudah dibeli'} ${it.nama}`}
+                    className="h-5 w-5 shrink-0 cursor-pointer rounded accent-[#2563EB] disabled:cursor-not-allowed"
+                  />
+                </label>
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-sm font-medium text-ink ${it.checked ? 'line-through' : ''}`}>{it.nama}</p>
                   <p className="truncate text-xs text-mutedfg">

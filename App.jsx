@@ -18,10 +18,9 @@ const SubscriptionsComp = lazy(() => import('./components/SubscriptionsComp'));
 const SettingsComp = lazy(() => import('./components/SettingsComp'));
 const InsightComp = lazy(() => import('./components/InsightComp').then((m) => ({ default: m.InsightComp })));
 import ChoresComp from './components/ChoresComp';
-import { PerMemberSummary } from './components/PerMemberSummary';
 const TargetTabunganComp = lazy(() => import('./components/TargetTabunganComp'));
 const DebtComp = lazy(() => import('./components/DebtComp'));
-import { monthTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
+import { monthTitle, weekTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_WEEK_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
 import { GroupedBarChart, DonutChart, BarChart } from './components/charts';
@@ -1439,6 +1438,8 @@ const deleteGoal = async (id) => {
   const [notifRead, setNotifRead] = useState(readNotifRead);
   // Tab aktif di halaman "Tugas Terjadwal" (pengeluaran/tabungan/belanja/service)
   const [terjadwalTab, setTerjadwalTab] = useState('pengeluaran');
+  // Periode daftar belanja: 'mingguan' | 'bulanan'.
+  const [shoppingPeriod, setShoppingPeriod] = useState('bulanan');
   // Tab awal saat halaman Akun dibuka (default 'profil'; 'keamanan' dari Pengaturan)
   const [accountInitialTab, setAccountInitialTab] = useState('profil');
   // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
@@ -2732,18 +2733,50 @@ const deleteGoal = async (id) => {
   );
 
   // ---- Daftar Belanja (catatan kategori 'belanja') ----
-  // Daftar belanja bulanan dikelola sebagai catatan khusus (judul
-  // "Daftar Belanja · YYYY-MM"); item disimpan sebagai JSON di `body`.
+  // Daftar belanja mingguan & bulanan dikelola sebagai catatan khusus
+  // ("Daftar Belanja Pekan · YYYY-Www" / "Daftar Belanja · YYYY-MM");
+  // item disimpan sebagai JSON di `body`.
   const shoppingMonthKey = () => monthKeyOf(new Date());
-  const findShoppingNote = () =>
+  // Pekan ISO berjalan (Senin-Minggu), dipakai judul catatan mingguan.
+  const shoppingWeekKey = () => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const d = new Date();
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = (date.getUTCDay() + 6) % 7; // Senin = 0
+    date.setUTCDate(date.getUTCDate() - dayNum + 3); // Kamis pekan ini
+    const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+    const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+    const week = 1 + Math.round((date - firstThursday) / (7 * 86400000));
+    return `${date.getUTCFullYear()}-W${pad(week)}`;
+  };
+  const shoppingTitleFor = (period = shoppingPeriod) =>
+    period === 'mingguan' ? weekTitle(shoppingWeekKey()) : monthTitle(shoppingMonthKey());
+
+  const findShoppingNote = (period = shoppingPeriod) =>
     (dataRef.current.notes || []).find(
-      (n) => n.category === SHOPPING_CATEGORY && n.title === monthTitle(shoppingMonthKey())
+      (n) => n.category === SHOPPING_CATEGORY && n.title === shoppingTitleFor(period)
     ) || null;
 
+  const findTemplateNote = () =>
+    (dataRef.current.notes || []).find(
+      (n) => n.category === SHOPPING_CATEGORY && n.title === SHOPPING_TEMPLATE_TITLE
+    ) || null;
+
+  // Tampilan: pakai catatan periode ini kalau ada; kalau belum, salin isi
+  // template (centang direset) supaya daftar baru tidak mulai kosong.
+  const displayShoppingState = (period = shoppingPeriod) => {
+    const existing = findShoppingNote(period);
+    if (existing) return parseShoppingNote(existing);
+    const tpl = findTemplateNote();
+    if (tpl) return { ...emptyShopping(), items: copyForMonth(parseShoppingNote(tpl).items) };
+    return emptyShopping();
+  };
+
   // Simpan state belanja: optimis ke lokal, lalu sinkron ke backend.
-  const applyShoppingState = async (state) => {
+  const applyShoppingState = async (state, period = shoppingPeriod) => {
     const current = dataRef.current;
-    const title = monthTitle(shoppingMonthKey());
+    const title = shoppingTitleFor(period);
     const body = serializeShopping(state);
     const nextNotes = current.notes || [];
     const idx = nextNotes.findIndex(
@@ -2774,27 +2807,27 @@ const deleteGoal = async (id) => {
     }
   };
 
-  const getOrCreateShoppingNote = () => {
-    const existing = findShoppingNote();
-    return { note: existing, state: existing ? parseShoppingNote(existing) : emptyShopping() };
+  const getOrCreateShoppingNote = (period = shoppingPeriod) => {
+    const existing = findShoppingNote(period);
+    return { note: existing, state: existing ? parseShoppingNote(existing) : displayShoppingState(period) };
   };
 
-  const addShoppingItem = async (values) => {
-    const { state } = getOrCreateShoppingNote();
-    await applyShoppingState({ ...state, items: [...state.items, newShoppingItem(values)] });
+  const addShoppingItem = async (values, period = shoppingPeriod) => {
+    const { state } = getOrCreateShoppingNote(period);
+    await applyShoppingState({ ...state, items: [...state.items, newShoppingItem(values)] }, period);
   };
 
-  const toggleShoppingItem = async (id) => {
-    const { state } = getOrCreateShoppingNote();
+  const toggleShoppingItem = async (id, period = shoppingPeriod) => {
+    const { state } = getOrCreateShoppingNote(period);
     await applyShoppingState({
       ...state,
       items: state.items.map((it) => (it.id === id ? { ...it, checked: !it.checked } : it)),
-    });
+    }, period);
   };
 
-  const removeShoppingItem = async (id) => {
-    const { state } = getOrCreateShoppingNote();
-    await applyShoppingState({ ...state, items: state.items.filter((it) => it.id !== id) });
+  const removeShoppingItem = async (id, period = shoppingPeriod) => {
+    const { state } = getOrCreateShoppingNote(period);
+    await applyShoppingState({ ...state, items: state.items.filter((it) => it.id !== id) }, period);
   };
 
   const saveShoppingAsTemplate = async () => {
@@ -2827,20 +2860,24 @@ const deleteGoal = async (id) => {
     }
   };
 
-  const finishShopping = async () => {
-    const { note, state } = getOrCreateShoppingNote();
-    if (!note || !state.items.length) return;
+  const finishShopping = async (period = shoppingPeriod) => {
+    const { state } = getOrCreateShoppingNote(period);
+    if (!state.items.length) return;
     const total = sumItems(state.items, true);
+    if (total <= 0) {
+      pushToast({ message: 'Belum ada item tercentang dengan harga.', duration: 3500, tone: 'warning' });
+      return;
+    }
     try {
       const result = await txn.create({
         category: SHOPPING_CATEGORY,
-        description: `${monthTitle(shoppingMonthKey())} (beres)`,
+        description: `${shoppingTitleFor(period)} (beres)`,
         amount: total,
         date: todayKey(),
         bucket: 'auto',
       });
       addItemToState('expenses', result);
-      await applyShoppingState({ ...state, selesai: true, expenseId: result.id });
+      await applyShoppingState({ ...state, selesai: true, expenseId: result.id }, period);
     } catch {
       pushToast({ message: 'Gagal mencatat belanja sebagai pengeluaran.', duration: 4000, tone: 'danger' });
     }
@@ -3455,16 +3492,6 @@ const deleteGoal = async (id) => {
             />
 
             <div className="space-y-8">
-              {familyFilter === 'semua' && (
-                <PerMemberSummary
-                  family={data.family}
-                  chores={data.chores}
-                  tasks={data.tasks}
-                  schedule={data.schedule}
-                  debts={data.debts}
-                  formatCurrency={formatCurrency}
-                />
-              )}
               {showAnggota && (
                 <FamilyTree
                   members={data.family}
@@ -3699,18 +3726,42 @@ const deleteGoal = async (id) => {
 
             {terjadwalTab === 'belanja' && (
               (() => {
-                const { note, state } = getOrCreateShoppingNote();
+                const period = shoppingPeriod;
+                const title = shoppingTitleFor(period);
+                const state = displayShoppingState(period);
+                const periods = [
+                  { id: 'mingguan', label: 'Mingguan', icon: 'calendar' },
+                  { id: 'bulanan', label: 'Bulanan', icon: 'receipt' },
+                ];
                 return (
                   <div className="space-y-3">
+                    <div className="flex gap-1.5 rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Periode daftar belanja">
+                      {periods.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={period === p.id}
+                          onClick={() => setShoppingPeriod(p.id)}
+                          className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition-colors ${
+                            period === p.id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'
+                          }`}
+                        >
+                          <Icon name={p.icon} size={15} />
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-mutedfg">{title}</p>
                     <ShoppingList
                       state={state}
                       formatCurrency={formatCurrency}
                       canWrite={canWrite}
-                      onAddItem={addShoppingItem}
-                      onToggle={toggleShoppingItem}
-                      onRemove={removeShoppingItem}
+                      onAddItem={(v) => addShoppingItem(v, period)}
+                      onToggle={(id) => toggleShoppingItem(id, period)}
+                      onRemove={(id) => removeShoppingItem(id, period)}
                       onSaveTemplate={saveShoppingAsTemplate}
-                      onFinish={finishShopping}
+                      onFinish={() => finishShopping(period)}
                     />
                   </div>
                 );
