@@ -365,6 +365,53 @@ async function sendServiceReminders(env: Env): Promise<void> {
   }
 }
 
+/** Notif WA untuk utang/piutang yang belum lunas (mingguan). */
+async function sendDebtReminders(env: Env): Promise<void> {
+  const scopes = await listGroupScopes(env);
+  const target = await readFonnteTarget(env);
+  if (!target) return;
+
+  const today = new Date();
+  // Kunci mingguan supaya tidak spam tiap hari.
+  const weekKey = `${today.getUTCFullYear()}-W${String(Math.ceil((today.getUTCDate() + new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)).getUTCDay()) / 7)).padStart(2, '0')}`;
+
+  for (const scope of scopes) {
+    const rows = await env.DB.prepare(
+      `SELECT * FROM debts WHERE group_id = ? AND void IS NULL AND status = 'open'`
+    ).bind(scope.group_id).all();
+    const debts = (rows.results || []) as any[];
+    for (const d of debts) {
+      const key = `debt_alert:${d.id}:${weekKey}`;
+      const notif = await env.DB.prepare(
+        `SELECT id FROM notification_log WHERE message = ? AND void IS NULL LIMIT 1`
+      ).bind(key).first();
+      if (notif) continue;
+
+      const amount = Number(d.amount) || 0;
+      const lender = d.lender_id ? await env.DB.prepare('SELECT nama FROM users WHERE id = ?').bind(d.lender_id).first() as any : null;
+      const borrower = d.borrower_id ? await env.DB.prepare('SELECT nama FROM users WHERE id = ?').bind(d.borrower_id).first() as any : null;
+      const who = lender?.nama && borrower?.nama
+        ? `${borrower.nama} berutang ke ${lender.nama}`
+        : (d.title || 'Utang keluarga');
+
+      const message = `💸 *Utang Belum Lunas*\n${d.title || 'Utang'}\n${who}\nJumlah: Rp ${amount.toLocaleString('id-ID')}`;
+      await sendWA(env, message, target);
+
+      const nid = crypto.randomUUID();
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `INSERT INTO notification_log (id, user_id, type, message, read, rev, created_at) VALUES (?, ?, 'info', ?, 0, 1, ?)`
+      ).bind(nid, scope.sample_user, key, now).run();
+
+      await sendPushToUser(env, scope.sample_user, {
+        title: 'Utang Belum Lunas',
+        body: `${d.title || 'Utang'} · Rp ${amount.toLocaleString('id-ID')}`,
+        url: '/#terjadwal',
+      });
+    }
+  }
+}
+
 export async function handleCron(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
   const now = new Date();
   const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -389,6 +436,7 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
         await sendSubscriptionReminders(env);
         await sendGoalReminders(env);
         await sendServiceReminders(env);
+        await sendDebtReminders(env);
       }
     }
 
