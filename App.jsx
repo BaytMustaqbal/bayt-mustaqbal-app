@@ -671,6 +671,42 @@ const systemPrefersLight = () => {
   }
 };
 
+// ---- Helper parsing perintah suara untuk pengeluaran cepat ----
+const VOICE_CATEGORY_KEYWORDS = [
+  { id: 'belanja', words: ['belanja', 'sayur', 'beras', 'makanan', 'pasar', 'sembako'] },
+  { id: 'utilitas', words: ['listrik', 'air', 'internet', 'token', 'pulsa', 'gas'] },
+  { id: 'transportasi', words: ['bensin', 'bbm', 'transport', 'ojek', 'grab', 'gojek', 'parkir', 'tol'] },
+  { id: 'pendidikan', words: ['sekolah', 'buku', 'les', 'kursus'] },
+  { id: 'kesehatan', words: ['obat', 'dokter', 'rumah sakit', 'vitamin', 'apotek'] },
+  { id: 'ibadah', words: ['zakat', 'infak', 'sedekah', 'donasi'] },
+  { id: 'rumah', words: ['cicilan', 'sewa', 'rumah', 'listrik rumah'] },
+  { id: 'hiburan', words: ['hiburan', 'nonton', 'bioskop', 'game'] },
+  { id: 'tabungan', words: ['tabungan', 'nabung'] },
+];
+
+const parseVoiceExpense = (text) => {
+  const t = String(text || '').toLowerCase();
+  let amount = 0;
+  const m = t.match(/(\d[\d.,]*)\s*(ribu|rb|ratus|juta|k)?/);
+  if (m) {
+    let num = m[1].replace(/\./g, '').replace(',', '.');
+    let val = parseFloat(num) || 0;
+    const mult = m[2];
+    if (mult === 'ribu' || mult === 'rb' || mult === 'k') val *= 1000;
+    else if (mult === 'ratus') val *= 100;
+    else if (mult === 'juta') val *= 1000000;
+    amount = Math.round(val);
+  }
+  let category = 'belanja';
+  for (const c of VOICE_CATEGORY_KEYWORDS) {
+    if (c.words.some((w) => t.includes(w))) {
+      category = c.id;
+      break;
+    }
+  }
+  return { amount, category, description: String(text || '').trim() };
+};
+
 export default function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -772,6 +808,9 @@ const deleteGoal = async (id) => {
 
   // Pemindai struk: foto dibaca OCR di perangkat, disimpan sebagai pengeluaran biasa
   const [scanOpen, setScanOpen] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const voiceSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const voiceRecRef = useRef(null);
 
   // Sidebar navigasi (desktop-trigger header, mobile-tetap bottom navbar)
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2326,6 +2365,62 @@ const deleteGoal = async (id) => {
     setSheetOpen(section);
   };
 
+  const startVoiceExpense = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      pushToast({ message: 'Browser tidak mendukung input suara.', tone: 'warning', duration: 4000 });
+      return;
+    }
+    if (voiceListening) return;
+    const rec = new SR();
+    rec.lang = 'id-ID';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = async (e) => {
+      const text = e.results?.[0]?.[0]?.transcript || '';
+      const parsed = parseVoiceExpense(text);
+      if (parsed.amount > 0) {
+        if (!canWrite) {
+          pushToast({ message: 'Peran Anda hanya boleh melihat data.', tone: 'danger', duration: 3500 });
+          return;
+        }
+        const payload = {
+          category: parsed.category,
+          description: parsed.description,
+          amount: parsed.amount,
+          date: todayKey(),
+          bucket: 'auto',
+        };
+        if (isOnline) {
+          try {
+            const result = await txn.create(payload);
+            addItemToState('expenses', result);
+            pushToast({ message: `Tercatat: ${parsed.description} (${formatCurrency(parsed.amount)})`, duration: 3500 });
+            return;
+          } catch { /* fallback lokal */ }
+        }
+        const id = Date.now();
+        addItemToState('expenses', { id, ...payload });
+        pushToast({ message: `Tercatat (offline): ${parsed.description}`, duration: 3500 });
+      } else {
+        openAdd('expenses', { description: text, amount: '', category: parsed.category });
+        pushToast({ message: 'Suara terbaca; lengkapi form lalu simpan.', duration: 3500 });
+      }
+    };
+    rec.onerror = () => {
+      setVoiceListening(false);
+      pushToast({ message: 'Gagal mendengar suara.', tone: 'danger', duration: 3000 });
+    };
+    rec.onend = () => setVoiceListening(false);
+    voiceRecRef.current = rec;
+    setVoiceListening(true);
+    try {
+      rec.start();
+    } catch {
+      setVoiceListening(false);
+    }
+  };
+
   // Buka form tambah template pengeluaran terjadwal
   const openAddScheduledTemplate = () => {
     setEditing(null);
@@ -3314,6 +3409,22 @@ const deleteGoal = async (id) => {
                 >
                   <Icon name="camera" size={17} />
                   Foto Struk
+                </button>
+              )}
+              {canWrite && voiceSupported && (
+                <button
+                  type="button"
+                  onClick={startVoiceExpense}
+                  disabled={voiceListening}
+                  className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition-colors ${
+                    voiceListening
+                      ? 'border-rose/40 bg-rose/10 text-rosefg'
+                      : 'border-brand/25 bg-brandtint text-brandfg hover:bg-brand/10'
+                  }`}
+                  aria-label="Input suara"
+                >
+                  <Icon name={voiceListening ? 'loader' : 'mic'} size={17} />
+                  {voiceListening ? 'Mendengar…' : 'Suara'}
                 </button>
               )}
             </div>
