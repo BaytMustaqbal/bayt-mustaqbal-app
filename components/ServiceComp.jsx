@@ -2,17 +2,22 @@ import React, { useState } from 'react';
 import { Icon } from './Icon';
 import { Badge, Card, CTA_CLASS, ProgressBar, CurrencyInput } from './ui';
 import { sumServiceItems } from './service';
+import VehicleComp from './VehicleComp';
 
-/* Komponen Service - inventory dan riwayat service motor */
+/* Komponen Service - kendaraan, inventaris perawatan, riwayat service motor */
 export function Service({
   inventory,
   history,
+  vehicles = [],
   formatCurrency,
   canWrite,
   onAddSparepart,
   onUpdateSparepart,
   onRemoveSparepart,
   onAddService,
+  onAddVehicle,
+  onUpdateVehicle,
+  onRemoveVehicle,
   activeTab = 'inventory',
   onTabChange,
 }) {
@@ -23,8 +28,11 @@ export function Service({
     items: [],
     technician: '',
     notes: '',
+    vehicleId: '',
   });
-  // Form inventaris (tambah/ubah) — mencegah buat data kosong langsung.
+
+  const [activeVehicle, setActiveVehicle] = useState('all');
+
   const [showInvForm, setShowInvForm] = useState(false);
   const [invErr, setInvErr] = useState('');
   const [invForm, setInvForm] = useState({
@@ -33,6 +41,7 @@ export function Service({
     jenis: '',
     intervalType: 'km',
     intervalValue: 3000,
+    vehicleId: '',
   });
 
   const handleAddServiceItem = (sparepartId, sparepartNama) => {
@@ -59,7 +68,7 @@ export function Service({
 
   const saveService = () => {
     const total = sumServiceItems(serviceForm.items);
-    onAddService({ ...serviceForm, total });
+    onAddService({ ...serviceForm, total }, serviceForm.vehicleId || null);
     setShowServiceForm(false);
     setServiceForm({
       date: new Date().toISOString().split('T')[0],
@@ -67,12 +76,13 @@ export function Service({
       items: [],
       technician: '',
       notes: '',
+      vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle,
     });
   };
 
   const openAddInv = () => {
     setInvErr('');
-    setInvForm({ id: null, nama: '', jenis: '', intervalType: 'km', intervalValue: 3000 });
+    setInvForm({ id: null, nama: '', jenis: '', intervalType: 'km', intervalValue: 3000, vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle });
     setShowInvForm(true);
   };
 
@@ -84,6 +94,7 @@ export function Service({
       jenis: it.jenis || '',
       intervalType: it.intervalType || 'km',
       intervalValue: it.intervalValue || 3000,
+      vehicleId: it.vehicleId || '',
     });
     setShowInvForm(true);
   };
@@ -94,47 +105,95 @@ export function Service({
       return;
     }
     setInvErr('');
+    const vals = {
+      nama: invForm.nama,
+      jenis: invForm.jenis,
+      intervalType: invForm.intervalType,
+      intervalValue: invForm.intervalValue,
+      vehicleId: invForm.vehicleId || null,
+    };
     if (invForm.id) {
-      onUpdateSparepart(invForm.id, invForm);
+      onUpdateSparepart(invForm.id, vals);
     } else {
-      onAddSparepart(invForm);
+      onAddSparepart(vals, invForm.vehicleId || null);
     }
     setShowInvForm(false);
   };
 
-  const totalService = sumServiceItems(history);
+  const filteredInventory = activeVehicle === 'all'
+    ? inventory
+    : inventory.filter((i) => (i.vehicleId || '') === activeVehicle);
+
+  const filteredHistory = activeVehicle === 'all'
+    ? history
+    : history.filter((h) => (h.vehicleId || '') === activeVehicle);
+
+  const tabs = [
+    { id: 'inventory', label: 'Inventaris', icon: 'wrench' },
+    { id: 'history', label: 'Riwayat', icon: 'activity' },
+    { id: 'kendaraan', label: 'Kendaraan', icon: 'car' },
+  ];
+
+  const vehicleName = (id) => (vehicles.find((v) => v.id === id)?.nama || '');
+
+  const vehicleSelector = (
+    <div className="flex gap-1.5 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Pilih kendaraan">
+      <button
+        type="button"
+        onClick={() => setActiveVehicle('all')}
+        className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${activeVehicle === 'all' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'}`}
+      >
+        Semua
+      </button>
+      {vehicles.map((v) => (
+        <button
+          key={v.id}
+          type="button"
+          onClick={() => setActiveVehicle(v.id)}
+          className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${activeVehicle === v.id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'}`}
+        >
+          <Icon name="car" size={13} />
+          {v.nama}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
       {/* Tab navigasi */}
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => onTabChange?.('inventory')}
-          className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'inventory'
-              ? 'bg-brandtint text-brandfg'
-              : 'bg-muted text-mutedfg hover:bg-canvas hover:text-ink'
-          }`}
-        >
-          Inventaris Perawatan
-        </button>
-        <button
-          type="button"
-          onClick={() => onTabChange?.('history')}
-          className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'history'
-              ? 'bg-brandtint text-brandfg'
-              : 'bg-muted text-mutedfg hover:bg-canvas hover:text-ink'
-          }`}
-        >
-          Riwayat Service
-        </button>
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onTabChange?.(t.id)}
+            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              activeTab === t.id
+                ? 'bg-brandtint text-brandfg'
+                : 'bg-muted text-mutedfg hover:bg-canvas hover:text-ink'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
+
+      {activeTab === 'kendaraan' && (
+        <VehicleComp
+          vehicles={vehicles}
+          canWrite={canWrite}
+          formatCurrency={formatCurrency}
+          onAdd={onAddVehicle}
+          onUpdate={onUpdateVehicle}
+          onRemove={onRemoveVehicle}
+        />
+      )}
 
       {/* Inventory tab */}
       {activeTab === 'inventory' && (
         <>
+          {vehicles.length > 0 && vehicleSelector}
           {canWrite && (
             <Card className="p-4 sm:p-5">
               <button
@@ -148,25 +207,28 @@ export function Service({
             </Card>
           )}
 
-          {inventory.length === 0 ? (
+          {filteredInventory.length === 0 ? (
             <Card className="px-5 py-10 text-center">
               <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
                 <Icon name="wrench" size={24} />
               </span>
               <p className="mt-4 font-semibold text-ink">Belum ada inventaris perawatan</p>
               <p className="mx-auto mt-1 max-w-sm text-sm text-mutedfg">
-                Tambahkan item perawatan rutin (ganti oli, filter, dll). Setiap service akan memperbarui odometer terakhir.
+                {vehicles.length === 0
+                  ? 'Tambahkan kendaraan dulu di tab Kendaraan, lalu daftar perawatan rutinnya.'
+                  : 'Tambahkan item perawatan rutin (ganti oli, filter, dll). Setiap service akan memperbarui odometer terakhir.'}
               </p>
             </Card>
           ) : (
             <ul className="stagger space-y-2">
-              {inventory.map((it) => (
+              {filteredInventory.map((it) => (
                 <li key={it.id}>
                   <Card className="flex items-start justify-between gap-3 p-2.5 sm:p-3">
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-ink">{it.nama || '-'}</p>
                       <p className="text-xs text-mutedfg">
                         Next: {it.nextDue || 'belum ditentukan'}
+                        {it.vehicleId && vehicles.find((v) => v.id === it.vehicleId) ? ` · ${vehicles.find((v) => v.id === it.vehicleId).nama}` : ''}
                       </p>
                     </div>
                     {canWrite && (
@@ -200,11 +262,22 @@ export function Service({
       {/* History tab */}
       {activeTab === 'history' && (
         <>
+          {vehicles.length > 0 && vehicleSelector}
           {canWrite && (
             <Card className="p-4 sm:p-5">
               <button
                 type="button"
-                onClick={() => setShowServiceForm(true)}
+                onClick={() => {
+                  setServiceForm({
+                    date: new Date().toISOString().split('T')[0],
+                    odometer: '',
+                    items: [],
+                    technician: '',
+                    notes: '',
+                    vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle,
+                  });
+                  setShowServiceForm(true);
+                }}
                 className={`${CTA_CLASS} w-full sm:w-auto`}
               >
                 <Icon name="plus" size={16} />
@@ -213,7 +286,7 @@ export function Service({
             </Card>
           )}
 
-          {history.length === 0 ? (
+          {filteredHistory.length === 0 ? (
             <Card className="px-5 py-10 text-center">
               <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
                 <Icon name="activity" size={24} />
@@ -226,11 +299,11 @@ export function Service({
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-ink">Total service: {formatCurrency(totalService)}</p>
-                <Badge tone="brand">{history.length} catatan</Badge>
+                <p className="text-sm font-semibold text-ink">Total service: {formatCurrency(filteredHistory.reduce((s, h) => s + (Number(h.total) || 0), 0))}</p>
+                <Badge tone="brand">{filteredHistory.length} catatan</Badge>
               </div>
               <ul className="stagger space-y-2">
-                {history.map((it) => (
+                {filteredHistory.map((it) => (
                   <li key={it.id}>
                     <Card className="p-4 sm:p-5">
                       <div className="flex flex-col gap-2">
@@ -239,6 +312,7 @@ export function Service({
                             <p className="font-semibold text-ink">{it.date}</p>
                             <p className="text-xs text-mutedfg">
                               {it.odometer} km • {it.technician}
+                              {it.vehicleId && vehicleName(it.vehicleId) ? ` · ${vehicleName(it.vehicleId)}` : ''}
                             </p>
                           </div>
                           <p className="font-mono text-sm font-bold text-brandfg">{formatCurrency(it.total)}</p>
@@ -263,12 +337,27 @@ export function Service({
         </>
       )}
 
-      {/* Modal tambah service */}
+      {/* Modal catat service baru */}
       {showServiceForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <Card className="w-full max-w-md mx-4 p-4 sm:p-5">
             <h3 className="mb-4 text-lg font-bold text-ink">Catat Service Baru</h3>
             <div className="space-y-3">
+              {vehicles.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-mutedfg mb-1">Kendaraan</label>
+                  <select
+                    value={serviceForm.vehicleId}
+                    onChange={(e) => setServiceForm({ ...serviceForm, vehicleId: e.target.value })}
+                    className="input-field w-full rounded-xl border border-line bg-canvas px-3"
+                  >
+                    <option value="">Belum ditetapkan</option>
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>{v.nama}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-mutedfg mb-1">Tanggal</label>
                 <input
@@ -308,7 +397,7 @@ export function Service({
                       className="flex-1 rounded-xl border border-line bg-canvas px-2 text-sm"
                     >
                       <option value="">Pilih sparepart</option>
-                      {inventory.map((sp) => (
+                      {(serviceForm.vehicleId ? inventory.filter((sp) => (sp.vehicleId || '') === serviceForm.vehicleId) : inventory).map((sp) => (
                         <option key={sp.id} value={sp.id}>{sp.nama}</option>
                       ))}
                     </select>
@@ -328,12 +417,12 @@ export function Service({
                 ))}
                 <select
                   value=""
-                  onChange={(e) => handleAddServiceItem(e.target.value, inventory.find(i => i.id === e.target.value)?.nama || '')}
+                  onChange={(e) => handleAddServiceItem(e.target.value, inventory.find((i) => i.id === e.target.value)?.nama || '')}
                   className="w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm"
                 >
                   <option value="">Tambah item...</option>
-                  {inventory.length > 0 ? (
-                    inventory.map((sp) => (
+                  {(serviceForm.vehicleId ? inventory.filter((sp) => (sp.vehicleId || '') === serviceForm.vehicleId) : inventory).length > 0 ? (
+                    (serviceForm.vehicleId ? inventory.filter((sp) => (sp.vehicleId || '') === serviceForm.vehicleId) : inventory).map((sp) => (
                       <option key={sp.id} value={sp.id}>{sp.nama}</option>
                     ))
                   ) : (
@@ -361,6 +450,7 @@ export function Service({
           </Card>
         </div>
       )}
+
       {/* Modal tambah/ubah inventaris perawatan */}
       {showInvForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -389,6 +479,21 @@ export function Service({
                   className="input-field w-full rounded-xl border border-line bg-canvas px-3"
                 />
               </div>
+              {vehicles.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-mutedfg mb-1">Kendaraan</label>
+                  <select
+                    value={invForm.vehicleId}
+                    onChange={(e) => setInvForm({ ...invForm, vehicleId: e.target.value })}
+                    className="input-field w-full rounded-xl border border-line bg-canvas px-3"
+                  >
+                    <option value="">Belum ditetapkan</option>
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>{v.nama}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-mutedfg mb-1">Selang</label>

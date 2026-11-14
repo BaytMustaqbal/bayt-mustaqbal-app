@@ -58,6 +58,7 @@ export const sparepartToPayload = (item) => ({
     item.intervalValue || 3000
   ),
   notes: String(item.notes || '').trim(),
+  vehicleId: item.vehicleId || null,
 });
 
 export const serviceRecordToPayload = (record) => ({

@@ -44,7 +44,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 const Budgeting = lazy(() => import('./components/Budgeting').then((m) => ({ default: m.Budgeting })));
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi, vehicleApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -218,6 +218,7 @@ const buildDataBundle = (apiData, currentUser) => {
     income,
     scheduledExpenses: apiData?.scheduledExpenses || [],
     tasks: apiData?.tasks || [],
+    vehicles: apiData?.vehicles || [],
     chores: apiData?.chores || [],
     debts: apiData?.debts || [],
     serviceHistory: apiData?.serviceHistory || [],
@@ -326,6 +327,7 @@ const mapServiceHistory = (r) => ({
   total: Number(r.total) || 0,
   technician: r.technician || '',
   notes: r.notes || '',
+  vehicleId: r.vehicleId || '',
 });
 
 // Nilai awal form ubah: bentuknya persis seperti `values` yang dikirim FormSheet
@@ -469,7 +471,7 @@ const buildMergedData = (apiData, currentUser) => {
 
 // Fetch all API data (schedule, expenses, income, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries, serviceHistory, chores, debts] = await Promise.all([
+  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries, serviceHistory, chores, debts, vehicles] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
     txn.fetchIncome().catch(() => []),
@@ -482,6 +484,7 @@ const fetchApiData = async () => {
     serviceHistoryApi.fetch().catch(() => []),
     choresApi.fetch().catch(() => []),
     debtApi.fetch().catch(() => []),
+    vehicleApi.fetch().catch(() => []),
   ]);
 
   // Parse budget settings
@@ -519,8 +522,9 @@ const fetchApiData = async () => {
   const mappedHistory = Array.isArray(serviceHistory) ? serviceHistory.map(mapServiceHistory) : [];
   const mappedChores = Array.isArray(chores) ? chores.map(mapChore) : [];
   const mappedDebts = Array.isArray(debts) ? debts : [];
+  const mappedVehicles = Array.isArray(vehicles) ? vehicles : [];
 
-  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts, serviceHistory: mappedHistory, chores: mappedChores, debts: mappedDebts };
+  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts, serviceHistory: mappedHistory, chores: mappedChores, debts: mappedDebts, vehicles: mappedVehicles };
 };
 
 /* Label status keluarga dari kolom family_role backend */
@@ -2516,9 +2520,10 @@ const deleteGoal = async (id) => {
   const serviceInventory = data?.serviceInventory || [];
   const serviceHistory = data?.serviceHistory || [];
 
-  const addSparepart = async (vals) => {
+  const addSparepart = async (vals, vehicleId = null) => {
     if (!canWrite) return;
     const item = sparepartToPayload(newSparepart(vals));
+    item.vehicleId = vehicleId || null;
     let saved = item;
     if (isOnline) {
       try { saved = await serviceInvApi.create(item); } catch { /* simpan lokal */ }
@@ -2554,7 +2559,41 @@ const deleteGoal = async (id) => {
     pushToast({ message: 'Perawatan dihapus', duration: 2500 });
   };
 
-  const addServiceRecord = async (vals) => {
+  const addVehicle = async (vals) => {
+    if (!canWrite) return;
+    let saved = vals;
+    if (isOnline) {
+      try { saved = await vehicleApi.create(vals); } catch { /* simpan lokal */ }
+    }
+    const current = dataRef.current?.vehicles || [];
+    saveData({ ...dataRef.current, vehicles: [...current, saved] });
+    pushToast({ message: 'Kendaraan ditambahkan', duration: 2500 });
+  };
+
+  const updateVehicle = async (id, vals) => {
+    if (!canWrite) return;
+    if (isOnline) {
+      try { await vehicleApi.update(id, vals); } catch { /* abaikan */ }
+    }
+    const current = dataRef.current?.vehicles || [];
+    saveData({
+      ...dataRef.current,
+      vehicles: current.map((v) => (v.id === id ? { ...v, ...vals } : v)),
+    });
+    pushToast({ message: 'Kendaraan diperbarui', duration: 2500 });
+  };
+
+  const removeVehicle = async (id) => {
+    if (!canWrite) return;
+    if (isOnline) {
+      try { await vehicleApi.delete(id); } catch { /* abaikan */ }
+    }
+    const current = dataRef.current?.vehicles || [];
+    saveData({ ...dataRef.current, vehicles: current.filter((v) => v.id !== id) });
+    pushToast({ message: 'Kendaraan dihapus', duration: 2500 });
+  };
+
+  const addServiceRecord = async (vals, vehicleId = null) => {
     if (!canWrite) return;
     const currentHistory = dataRef.current?.serviceHistory || [];
     const currentInv = dataRef.current?.serviceInventory || [];
@@ -2596,6 +2635,7 @@ const deleteGoal = async (id) => {
           total: vals.total,
           technician: vals.technician,
           notes: vals.notes,
+          vehicleId: vehicleId || null,
         });
         savedRec = mapServiceHistory(created);
       } catch { /* simpan lokal */ }
@@ -3772,12 +3812,16 @@ const deleteGoal = async (id) => {
               <Service
                 inventory={serviceInventory}
                 history={serviceHistory}
+                vehicles={data.vehicles}
                 formatCurrency={formatCurrency}
                 canWrite={canWrite}
                 onAddSparepart={addSparepart}
                 onUpdateSparepart={updateSparepart}
                 onRemoveSparepart={removeSparepart}
                 onAddService={addServiceRecord}
+                onAddVehicle={addVehicle}
+                onUpdateVehicle={updateVehicle}
+                onRemoveVehicle={removeVehicle}
                 activeTab={serviceActiveTab}
                 onTabChange={setServiceActiveTab}
               />

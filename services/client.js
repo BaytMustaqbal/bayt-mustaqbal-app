@@ -610,6 +610,16 @@ export const serviceInvApi = {
   },
 };
 
+export const vehicleApi = {
+  fetch: async () => apiFetch('/vehicle'),
+  create: async (payload) =>
+    apiFetch('/vehicle', { method: 'POST', body: JSON.stringify(payload) }),
+  update: async (id, payload) =>
+    apiFetch(`/vehicle/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: async (id) =>
+    apiFetch(`/vehicle/${id}`, { method: 'DELETE' }),
+};
+
 export const serviceHistoryApi = {
   fetch: async () => apiFetch('/service-history'),
   create: async (payload) =>
