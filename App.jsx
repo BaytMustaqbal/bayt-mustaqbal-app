@@ -332,6 +332,7 @@ const mapServiceHistory = (r) => ({
   total: Number(r.total) || 0,
   technician: r.technician || '',
   notes: r.notes || '',
+  kategori: r.kategori || 'service',
   vehicleId: r.vehicleId || '',
 });
 
@@ -2798,6 +2799,7 @@ const deleteGoal = async (id) => {
       total: vals.total,
       technician: vals.technician,
       notes: vals.notes,
+      kategori: vals.kategori || 'service',
     };
     let savedRec = newRec;
     if (isOnline) {
@@ -2810,6 +2812,7 @@ const deleteGoal = async (id) => {
           technician: vals.technician,
           notes: vals.notes,
           vehicleId: vehicleId || null,
+          kategori: vals.kategori || 'service',
         });
         savedRec = mapServiceHistory(created);
       } catch { /* simpan lokal */ }
@@ -2820,6 +2823,36 @@ const deleteGoal = async (id) => {
       serviceInventory: updatedInv,
     });
     pushToast({ message: `Service ${vals.date} dicatat`, duration: 2500 });
+  };
+
+  const updateServiceRecord = async (id, vals, vehicleId = null) => {
+    if (!canWrite) return;
+    const prev = (dataRef.current?.serviceHistory || []).find((h) => h.id === id);
+    const payload = {
+      tanggal: vals.date,
+      odometer: vals.odometer,
+      items: JSON.stringify(vals.items),
+      total: vals.total,
+      technician: vals.technician,
+      notes: vals.notes,
+      vehicleId: vehicleId !== null ? vehicleId : (vals.vehicleId || null),
+      kategori: vals.kategori || 'service',
+    };
+    if (isOnline) {
+      try { await serviceHistoryApi.update(id, payload); } catch { /* abaikan */ }
+    }
+    // Odometer kendaraan ikut naik bila berubah.
+    const vid = vehicleId || vals.vehicleId;
+    if (vid && Number(vals.odometer) > (prev?.odometer || 0)) {
+      if (isOnline) {
+        try { await vehicleApi.update(vid, { odometer: Number(vals.odometer) }); } catch { /* abaikan */ }
+      }
+      const currentV = dataRef.current?.vehicles || [];
+      saveData({ ...dataRef.current, vehicles: currentV.map((v) => (v.id === vid ? { ...v, odometer: Number(vals.odometer) } : v)) });
+    }
+    const current = dataRef.current?.serviceHistory || [];
+    saveData({ ...dataRef.current, serviceHistory: current.map((h) => (h.id === id ? { ...h, date: vals.date, odometer: vals.odometer, items: vals.items, total: vals.total, technician: vals.technician, notes: vals.notes, kategori: vals.kategori || h.kategori, vehicleId: vid || h.vehicleId } : h)) });
+    pushToast({ message: 'Riwayat service diperbarui', duration: 2500 });
   };
 
   // Notifikasi turunan data (tanpa backend) � lihat components/notifications.js.
@@ -4011,6 +4044,7 @@ const deleteGoal = async (id) => {
                 onUpdateSparepart={updateSparepart}
                 onRemoveSparepart={removeSparepart}
                 onAddService={addServiceRecord}
+                onUpdateService={updateServiceRecord}
                 onAddVehicle={addVehicle}
                 onUpdateVehicle={updateVehicle}
                 onRemoveVehicle={removeVehicle}

@@ -15,6 +15,7 @@ export function Service({
   onUpdateSparepart,
   onRemoveSparepart,
   onAddService,
+  onUpdateService,
   onAddVehicle,
   onUpdateVehicle,
   onRemoveVehicle,
@@ -22,6 +23,7 @@ export function Service({
   onTabChange,
 }) {
   const [showServiceForm, setShowServiceForm] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [serviceForm, setServiceForm] = useState({
     date: new Date().toISOString().split('T')[0],
     odometer: '',
@@ -29,6 +31,7 @@ export function Service({
     technician: '',
     notes: '',
     vehicleId: '',
+    kategori: 'service',
   });
 
   const [activeVehicle, setActiveVehicle] = useState('all');
@@ -68,8 +71,14 @@ export function Service({
 
   const saveService = () => {
     const total = sumServiceItems(serviceForm.items);
-    onAddService({ ...serviceForm, total }, serviceForm.vehicleId || null);
+    const payload = { ...serviceForm, total, kategori: serviceForm.kategori || 'service' };
+    if (editingRecord) {
+      onUpdateService?.(editingRecord, payload, serviceForm.vehicleId || null);
+    } else {
+      onAddService(payload, serviceForm.vehicleId || null);
+    }
     setShowServiceForm(false);
+    setEditingRecord(null);
     setServiceForm({
       date: new Date().toISOString().split('T')[0],
       odometer: '',
@@ -77,7 +86,22 @@ export function Service({
       technician: '',
       notes: '',
       vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle,
+      kategori: 'service',
     });
+  };
+
+  const openEditRecord = (rec) => {
+    setEditingRecord(rec.id);
+    setServiceForm({
+      date: rec.date || new Date().toISOString().split('T')[0],
+      odometer: rec.odometer != null ? String(rec.odometer) : '',
+      items: rec.items || [],
+      technician: rec.technician || '',
+      notes: rec.notes || '',
+      vehicleId: rec.vehicleId || '',
+      kategori: rec.kategori || 'service',
+    });
+    setShowServiceForm(true);
   };
 
   const openAddInv = () => {
@@ -275,7 +299,9 @@ export function Service({
                     technician: '',
                     notes: '',
                     vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle,
+                  kategori: 'service',
                   });
+                  setEditingRecord(null);
                   setShowServiceForm(true);
                 }}
                 className={`${CTA_CLASS} w-full sm:w-auto`}
@@ -315,7 +341,20 @@ export function Service({
                               {it.vehicleId && vehicleName(it.vehicleId) ? ` · ${vehicleName(it.vehicleId)}` : ''}
                             </p>
                           </div>
-                          <p className="font-mono text-sm font-bold text-brandfg">{formatCurrency(it.total)}</p>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Badge tone="gray">{it.kategori || 'service'}</Badge>
+                            {canWrite && (
+                              <button
+                                type="button"
+                                onClick={() => openEditRecord(it)}
+                                aria-label="Ubah riwayat service"
+                                className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg hover:bg-muted hover:text-ink"
+                              >
+                                <Icon name="edit" size={14} />
+                              </button>
+                            )}
+                            <p className="font-mono text-sm font-bold text-brandfg">{formatCurrency(it.total)}</p>
+                          </div>
                         </div>
                         {it.items.length > 0 && (
                           <ul className="text-xs space-y-1">
@@ -341,8 +380,21 @@ export function Service({
       {showServiceForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <Card className="w-full max-w-md mx-4 p-4 sm:p-5">
-            <h3 className="mb-4 text-lg font-bold text-ink">Catat Service Baru</h3>
+            <h3 className="mb-4 text-lg font-bold text-ink">{editingRecord ? "Ubah Service" : "Catat Service Baru"}</h3>
             <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-mutedfg mb-1">Kategori</label>
+                <select
+                  value={serviceForm.kategori}
+                  onChange={(e) => setServiceForm({ ...serviceForm, kategori: e.target.value })}
+                  className="input-field w-full rounded-xl border border-line bg-canvas px-3"
+                >
+                  <option value="service">Service</option>
+                  <option value="ganti_part">Ganti Part</option>
+                  <option value="perbaikan">Perbaikan</option>
+                  <option value="lainnya">Lainnya</option>
+                </select>
+              </div>
               {vehicles.length > 0 && (
                 <div>
                   <label className="block text-xs font-medium text-mutedfg mb-1">Kendaraan</label>
