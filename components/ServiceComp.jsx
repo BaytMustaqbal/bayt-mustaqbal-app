@@ -416,7 +416,7 @@ export function Service({
                         {it.items.length > 0 && (
                           <ul className="text-xs space-y-0.5">
                             {it.items.map((item, idx) => (
-                              <li key={idx} className="flex items-center gap-2 text-mutedfg">
+                              <li key={idx} className="flex items-center justify-between gap-2 text-mutedfg">
                                 <span>{item.sparepartNama} × {item.qty} @ {formatCurrency(item.price)}</span>
                                 {idx === 0 && (
                                   <Badge tone={KATEGORI_TONE[it.kategori] || 'gray'}>{KATEGORI_LABEL[it.kategori] || it.kategori}</Badge>
