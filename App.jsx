@@ -1471,17 +1471,6 @@ const deleteGoal = async (id) => {
 
   // Sub-tampilan Keuangan: 'ringkasan' (default) | 'pengeluaran' | 'anggaran' | 'pemasukan' | 'tagihan'
   const [financeMode, setFinanceMode] = useState('ringkasan');
-  const financeTabsRef = useRef(null);
-  const financeTabRefs = useRef({});
-  const [financePill, setFinancePill] = useState(null);
-  useEffect(() => {
-    const bar = financeTabsRef.current;
-    const btn = financeTabRefs.current[financeMode];
-    if (!bar || !btn) { setFinancePill(null); return; }
-    const barRect = bar.getBoundingClientRect();
-    const btnRect = btn.getBoundingClientRect();
-    setFinancePill({ left: btnRect.left - barRect.left, width: btnRect.width });
-  }, [financeMode]);
   // Bulan yang ditinjau di tab Ringkasan (YYYY-MM). Tidak bisa maju dari bulan berjalan.
   const [summaryMonth, setSummaryMonth] = useState(() => monthKeyOf(new Date()));
   // Sub-tampilan Keuangan: daftar pengeluaran | halaman Anggaran (50/30/20)
@@ -3414,71 +3403,20 @@ const deleteGoal = async (id) => {
               </>
             )}
 
-            {/* Sub-tampilan Keuangan: Ringkasan | Pengeluaran | Anggaran | Pemasukan.
-                Baris tab + tombol "Foto Struk" (pemindai struk) berjajar. */}
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div
-                ref={financeTabsRef}
-                className="relative grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
-                role="group"
-                aria-label="Mode tampilan keuangan"
-              >
-                {financePill && (
-                  <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: financePill.left, width: financePill.width }} />
-                )}
-                <button
-                  type="button"
-                  ref={(el) => { financeTabRefs.current['ringkasan'] = el; }}
-                  onClick={() => setFinanceMode('ringkasan')}
-                  aria-pressed={financeMode === 'ringkasan'}
-                  className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                    financeMode === 'ringkasan' ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
-                  }`}
-                >
-                  <Icon name="barChart" size={16} />
-                  Ringkasan
-                </button>
-                <button
-                  type="button"
-                  ref={(el) => { financeTabRefs.current['pengeluaran'] = el; }}
-                  onClick={() => setFinanceMode('pengeluaran')}
-                  aria-pressed={financeMode === 'pengeluaran'}
-                  className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                    financeMode === 'pengeluaran'
-                      ? 'bg-brandtint text-brandfg'
-                      : 'text-mutedfg hover:text-ink'
-                  }`}
-                >
-                  <Icon name="wallet" size={16} />
-                  Pengeluaran
-                </button>
-                <button
-                  type="button"
-                  ref={(el) => { financeTabRefs.current['pemasukan'] = el; }}
-                  onClick={() => setFinanceMode('pemasukan')}
-                  aria-pressed={financeMode === 'pemasukan'}
-                  className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                    financeMode === 'pemasukan' ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
-                  }`}
-                >
-                  <Icon name="trendingUp" size={16} />
-                  Pemasukan
-                </button>
-                <button
-                  type="button"
-                  ref={(el) => { financeTabRefs.current['anggaran'] = el; }}
-                  onClick={() => setFinanceMode('anggaran')}
-                  aria-pressed={financeMode === 'anggaran'}
-                  className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                    financeMode === 'anggaran' ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
-                  }`}
-                >
-                  <Icon name="pieChart" size={16} />
-                  Anggaran
-                </button>
-              </div>
-
+            {/* Sub-tampilan Keuangan: Ringkasan | Pengeluaran | Pemasukan | Anggaran */}
+            <div className="mb-5">
+              <SlideTabs
+                tabs={[
+                  { id: "ringkasan", label: "Ringkasan", icon: "barChart" },
+                  { id: "pengeluaran", label: "Pengeluaran", icon: "wallet" },
+                  { id: "pemasukan", label: "Pemasukan", icon: "trendingUp" },
+                  { id: "anggaran", label: "Anggaran", icon: "pieChart" },
+                ]}
+                active={financeMode}
+                onChange={setFinanceMode}
+              />
             </div>
+
 
             {/* Chip filter kategori pemasukan (pola sama dengan chip tugas) */}
             {financeMode === 'pemasukan' && (
