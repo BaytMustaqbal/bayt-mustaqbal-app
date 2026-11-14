@@ -1482,7 +1482,7 @@ const deleteGoal = async (id) => {
   // Pencarian catatan (judul + isi) � hanya berlaku di tab Catatan
   const [noteQuery, setNoteQuery] = useState('');
   // Tab aktif Service (inventory/history)
-  const [serviceActiveTab, setServiceActiveTab] = useState('inventory');
+  const [serviceActiveTab, setServiceActiveTab] = useState('history');
   // Notifikasi ringkas + tombol "Urungkan" (undo hapus)
   const [toast, setToast] = useState(null);
   // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
