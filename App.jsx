@@ -29,6 +29,7 @@ import { Timeline } from './components/Timeline';
 import { FormSheet } from './components/FormSheet';
 import { FamilyTree } from './components/FamilyTree';
 import { SlideTabs } from './components/SlideTabs';
+import { Toast } from './components/Toast';
 import { buildNotifications } from './components/notifications';
 import {
   AGENDA_CATEGORIES,
