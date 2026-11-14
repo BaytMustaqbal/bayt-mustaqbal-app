@@ -37,7 +37,7 @@ export function SlideTabs({ tabs = [], active, onChange }) {
           key={tab.id}
           ref={(el) => (refs.current[i] = el)}
           onClick={(e) => handleClick(e, tab, i)}
-          className={`relative z-10 flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors duration-[400ms] ${
+          className={`relative z-10 flex flex-1 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors duration-[400ms] ${
             active === tab.id ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
           }`}
         >
