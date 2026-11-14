@@ -180,63 +180,36 @@ export function Service({
   const vehicleName = (id) => (vehicles.find((v) => v.id === id)?.nama || '');
 
   const vehicleSelector = (
-    <div
-      ref={vehicleBarRef}
-      className="relative flex flex-wrap gap-1.5 rounded-xl bg-muted/50 p-1"
-      role="tablist"
-      aria-label="Pilih kendaraan"
-    >
-      {vehiclePill && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]"
-          style={{ left: vehiclePill.left, top: vehiclePill.top, width: vehiclePill.width, height: vehiclePill.height }}
-        />
-      )}
-      <button
-        ref={(el) => { vehicleBtnRefs.current['all'] = el; }}
-        type="button"
-        onClick={() => setActiveVehicle('all')}
-        className={`relative z-10 inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors duration-[400ms] ${activeVehicle === 'all' ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
+    <div className="flex items-center gap-2">
+      <label className="text-xs font-medium text-mutedfg">Kendaraan:</label>
+      <select
+        value={activeVehicle}
+        onChange={(e) => setActiveVehicle(e.target.value)}
+        className="input-field min-h-[36px] flex-1 rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
       >
-        Semua
-      </button>
-      {vehicles.map((v) => (
-        <button
-          key={v.id}
-          ref={(el) => { vehicleBtnRefs.current[v.id] = el; }}
-          type="button"
-          onClick={() => setActiveVehicle(v.id)}
-          className={`relative z-10 inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors duration-[400ms] ${activeVehicle === v.id ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
-        >
-          <Icon name={v.jenis === 'Motor' ? 'bike' : 'car'} size={13} />
-          {v.nama}
-        </button>
-      ))}
+        <option value="all">Semua</option>
+        {vehicles.map((v) => (
+          <option key={v.id} value={v.id}>{v.nama}</option>
+        ))}
+      </select>
     </div>
   );
 
   return (
     <div className="space-y-4">
-      {/* Tab navigasi */}
-      <div className="flex gap-2">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => onTabChange?.(t.id)}
-            className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              activeTab === t.id
-                ? 'bg-brandtint text-brandfg'
-                : 'bg-muted text-mutedfg hover:bg-canvas hover:text-ink'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Tab navigasi (dropdown ringkas) */}
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-mutedfg">Jenis:</label>
+        <select
+          value={activeTab}
+          onChange={(e) => onTabChange?.(e.target.value)}
+          className="input-field min-h-[36px] flex-1 rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
+        >
+          {tabs.map((t) => (
+            <option key={t.id} value={t.id}>{t.label}</option>
+          ))}
+        </select>
       </div>
-
-      {activeTab === 'kendaraan' && (
         <VehicleComp
           vehicles={vehicles}
           canWrite={canWrite}
@@ -256,10 +229,10 @@ export function Service({
               <button
                 type="button"
                 onClick={openAddInv}
-                className={`${CTA_CLASS} w-full sm:w-auto`}
+                className={`${CTA_CLASS} min-h-[36px] w-full sm:w-auto text-xs`}
               >
-                <Icon name="plus" size={16} />
-                Tambah Perawatan
+                <Icon name="plus" size={14} />
+                Tambah
               </button>
             </Card>
           )}
@@ -339,10 +312,10 @@ export function Service({
                   });
                   setShowServiceForm(true);
                 }}
-                className={`${CTA_CLASS} w-full sm:w-auto`}
+                className={`${CTA_CLASS} min-h-[36px] w-full sm:w-auto text-xs`}
               >
-                <Icon name="plus" size={16} />
-                Catat Service Baru
+                <Icon name="plus" size={14} />
+                Catat
               </button>
             </Card>
           )}
