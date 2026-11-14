@@ -469,11 +469,12 @@ export function Service({
               <div>
                 <label className="block text-xs font-medium text-mutedfg mb-1">Odometer (km)</label>
                 <input
-                  type="number"
-                  value={serviceForm.odometer}
-                  onChange={(e) => setServiceForm({ ...serviceForm, odometer: e.target.value })}
-                  placeholder="misal: 15000"
-                  className="input-field w-full rounded-xl border border-line bg-canvas px-3"
+                  type="text"
+                  inputMode="numeric"
+                  value={serviceForm.odometer ? Number(serviceForm.odometer).toLocaleString('id-ID') : ''}
+                  onChange={(e) => { const digits = e.target.value.replace(/\D/g, ''); setServiceForm({ ...serviceForm, odometer: digits }); }}
+                  placeholder="misal: 15.000"
+                  className="input-field w-full rounded-xl border border-line bg-canvas px-3 font-mono"
                 />
               </div>
               <div>
