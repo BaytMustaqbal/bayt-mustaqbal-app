@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 import { Badge, Card, CTA_CLASS, ProgressBar, CurrencyInput } from './ui';
 import { sumServiceItems } from './service';
@@ -437,8 +438,8 @@ export function Service({
         </>
       )}
 
-      {/* Modal catat service baru */}
-      {showServiceForm && (
+      {/* Modal catat service baru (portal ke body agar tidak terpotong section) */}
+      {showServiceForm && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto p-4">
           <Card className="w-full max-w-md my-4 p-4 sm:p-5 max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <h3 className="mb-4 text-lg font-bold text-ink">{editingRecord ? "Ubah Service" : "Catat Service Baru"}</h3>
@@ -595,13 +596,14 @@ export function Service({
               </button>
             </div>
           </Card>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Modal tambah/ubah inventaris perawatan */}
-      {showInvForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-md mx-4 p-4 sm:p-5">
+      {/* Modal tambah/ubah inventaris perawatan (portal ke body) */}
+      {showInvForm && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto p-4">
+          <Card className="w-full max-w-md my-4 p-4 sm:p-5 max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <h3 className="mb-4 text-lg font-bold text-ink">
               {invForm.id ? 'Ubah Perawatan' : 'Tambah Perawatan'}
             </h3>
@@ -693,7 +695,8 @@ export function Service({
               </button>
             </div>
           </Card>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
