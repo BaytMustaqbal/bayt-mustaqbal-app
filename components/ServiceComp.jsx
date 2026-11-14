@@ -62,6 +62,7 @@ export function Service({
     intervalType: 'km',
     intervalValue: 3000,
     vehicleId: '',
+    vehicleType: 'all',
   });
 
   const handleAddServiceItem = (sparepartId, sparepartNama) => {
@@ -123,7 +124,7 @@ export function Service({
 
   const openAddInv = () => {
     setInvErr('');
-    setInvForm({ id: null, nama: '', jenis: '', intervalType: 'km', intervalValue: 3000, vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle });
+    setInvForm({ id: null, nama: '', jenis: '', intervalType: 'km', intervalValue: 3000, vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle, vehicleType: 'all' });
     setShowInvForm(true);
   };
 
@@ -136,6 +137,7 @@ export function Service({
       intervalType: it.intervalType || 'km',
       intervalValue: it.intervalValue || 3000,
       vehicleId: it.vehicleId || '',
+      vehicleType: (vehicles.find((v) => v.id === it.vehicleId)?.jenis) || 'all',
     });
     setShowInvForm(true);
   };
@@ -573,17 +575,31 @@ export function Service({
                 />
               </div>
               {vehicles.length > 0 && (
-                <div>
+                <div className="space-y-2">
                   <label className="block text-xs font-medium text-mutedfg mb-1">Kendaraan</label>
+                  <div className="flex gap-1.5 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Filter jenis kendaraan">
+                    {['all', 'Motor', 'Mobil'].map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setInvForm((f) => ({ ...f, vehicleType: t, vehicleId: '' }))}
+                        className={`inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${invForm.vehicleType === t ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'}`}
+                      >
+                        {t === 'all' ? 'Semua' : t}
+                      </button>
+                    ))}
+                  </div>
                   <select
                     value={invForm.vehicleId}
                     onChange={(e) => setInvForm({ ...invForm, vehicleId: e.target.value })}
                     className="input-field w-full rounded-xl border border-line bg-canvas px-3"
                   >
                     <option value="">Belum ditetapkan</option>
-                    {vehicles.map((v) => (
-                      <option key={v.id} value={v.id}>{v.nama}</option>
-                    ))}
+                    {vehicles
+                      .filter((v) => invForm.vehicleType === 'all' || v.jenis === invForm.vehicleType)
+                      .map((v) => (
+                        <option key={v.id} value={v.id}>{v.nama}</option>
+                      ))}
                   </select>
                 </div>
               )}
