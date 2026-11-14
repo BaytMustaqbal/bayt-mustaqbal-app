@@ -23,7 +23,8 @@ export const FINANCE_CATEGORIES = [
   { id: 'transportasi', label: 'Transportasi', icon: 'car' },
   { id: 'kesehatan', label: 'Kesehatan', icon: 'activity' },
   { id: 'ibadah', label: 'Ibadah & Sosial', icon: 'handCoins' },
-  { id: 'rumah', label: 'Rumah & Cicilan', icon: 'home' },
+  { id: 'rumah', label: 'Rumah', icon: 'home' },
+  { id: 'cicilan', label: 'Cicilan', icon: 'repeat' },
   { id: 'hiburan', label: 'Hiburan & Liburan', icon: 'sparkles' },
   { id: 'tabungan', label: 'Tabungan & Utang', icon: 'trendingUp' },
 ];
@@ -62,6 +63,7 @@ export const CATEGORY_BUCKET = {
   kesehatan: 'needs',
   ibadah: 'needs',
   rumah: 'needs',
+  cicilan: 'needs',
   hiburan: 'wants',
   tabungan: 'savings',
 };

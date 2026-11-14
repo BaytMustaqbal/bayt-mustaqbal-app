@@ -136,6 +136,7 @@ const INCOME_COLOR_MAP = {
 const computeCategories = (items, categories = FINANCE_CATEGORIES, colorMap) => {
   const COLOR_MAP = colorMap || {
     rumah: 'rgb(var(--chart8))',
+    cicilan: 'rgb(var(--chart3))',
     hiburan: 'rgb(var(--chart7))',
     belanja: 'rgb(var(--chart1))',
     kuliner: 'rgb(var(--chart2))',
