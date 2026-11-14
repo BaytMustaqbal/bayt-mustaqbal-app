@@ -4082,7 +4082,7 @@ const deleteGoal = async (id) => {
             setActiveSection('terjadwal');
             setTerjadwalTab('service');
             setServiceActiveTab('history');
-            window.dispatchEvent(new Event('bm:open-service-form'));
+            setTimeout(() => window.dispatchEvent(new Event('bm:open-service-form')), 80);
           }
         }}
       />
