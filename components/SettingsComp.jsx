@@ -60,7 +60,7 @@ function SettingSection({ icon, title, subtitle, open, onToggle, badge, children
    API /api/gcal dan menangani balikan ?gcal=connected|error dari OAuth.
    ============================================================================ */
 
-export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', onThemeChange, onChangePassword }) {
+export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', onThemeChange, onChangePassword, appVersion = 'dev', buildTime = '' }) {
   // ---- Notifikasi WA (preferensi per grup) ----
   const [notif, setNotif] = useState(NOTIF_DEFAULTS);
   const [notifLoaded, setNotifLoaded] = useState(false);
@@ -817,6 +817,10 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
             {bkMsg && <p className="text-center text-xs font-medium text-mutedfg">{bkMsg}</p>}
           </div>
         </SettingSection>
+
+        <div className="rounded-xl border border-line bg-canvas px-4 py-3 text-center text-xs text-mutedfg">
+          Versi {appVersion} · build {buildTime || 'dev'}
+        </div>
       </div>
     </section>
   );

@@ -48,6 +48,11 @@ import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, ins
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
+/* eslint-disable no-undef */
+const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
+const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : '';
+/* eslint-enable no-undef */
+
 /* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
    Fitur yang ada pasangan backend (schedule, expenses, notes, budget)
    dimuat dari API. Yang tidak ada pasangannya � mulai dari kosong;
@@ -3251,6 +3256,8 @@ const deleteGoal = async (id) => {
             theme={theme}
             onThemeChange={setTheme}
             onChangePassword={openAccountSecurity}
+            appVersion={APP_VERSION}
+            buildTime={BUILD_TIME}
           />
         );
       }
@@ -4127,6 +4134,9 @@ const deleteGoal = async (id) => {
         <Suspense fallback={<div className="py-10 text-center text-sm text-mutedfg">Memuat…</div>}>
           {renderSection()}
         </Suspense>
+        <footer className="mt-6 pb-2 text-center text-[11px] text-mutedfg">
+          Bayt Mustaqbal v{APP_VERSION} · build {BUILD_TIME || 'dev'}
+        </footer>
       </main>
 
       {/* Pemindai struk: foto dibaca OCR, hasilnya jadi pengeluaran biasa */}
