@@ -292,16 +292,18 @@ export function Service({
               <button
                 type="button"
                 onClick={() => {
+                  const vid = activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle;
+                  const v = vehicles.find((x) => x.id === vid);
+                  setEditingRecord(null);
                   setServiceForm({
                     date: new Date().toISOString().split('T')[0],
-                    odometer: '',
+                    odometer: v?.odometer != null ? String(v.odometer) : '',
                     items: [],
                     technician: '',
                     notes: '',
-                    vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle,
-                  kategori: 'service',
+                    vehicleId: vid,
+                    kategori: 'service',
                   });
-                  setEditingRecord(null);
                   setShowServiceForm(true);
                 }}
                 className={`${CTA_CLASS} w-full sm:w-auto`}
@@ -400,7 +402,15 @@ export function Service({
                   <label className="block text-xs font-medium text-mutedfg mb-1">Kendaraan</label>
                   <select
                     value={serviceForm.vehicleId}
-                    onChange={(e) => setServiceForm({ ...serviceForm, vehicleId: e.target.value })}
+                    onChange={(e) => {
+                      const vid = e.target.value;
+                      const v = vehicles.find((x) => x.id === vid);
+                      setServiceForm((prev) => ({
+                        ...prev,
+                        vehicleId: vid,
+                        odometer: prev.odometer ? prev.odometer : (v?.odometer != null ? String(v.odometer) : prev.odometer),
+                      }));
+                    }}
                     className="input-field w-full rounded-xl border border-line bg-canvas px-3"
                   >
                     <option value="">Belum ditetapkan</option>
