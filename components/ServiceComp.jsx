@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { Badge, Card, CTA_CLASS, ProgressBar, CurrencyInput } from './ui';
 import { sumServiceItems } from './service';
@@ -35,6 +35,21 @@ export function Service({
   });
 
   const [activeVehicle, setActiveVehicle] = useState('all');
+  const vehicleBarRef = useRef(null);
+  const vehicleBtnRefs = useRef({});
+  const [vehiclePill, setVehiclePill] = useState(null);
+
+  useEffect(() => {
+    const bar = vehicleBarRef.current;
+    const btn = vehicleBtnRefs.current[activeVehicle];
+    if (!bar || !btn) { setVehiclePill(null); return; }
+    const barRect = bar.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    setVehiclePill({
+      left: btnRect.left - barRect.left + bar.scrollLeft,
+      width: btnRect.width,
+    });
+  }, [activeVehicle, vehicles]);
 
   const [showInvForm, setShowInvForm] = useState(false);
   const [invErr, setInvErr] = useState('');
@@ -161,22 +176,36 @@ export function Service({
   const vehicleName = (id) => (vehicles.find((v) => v.id === id)?.nama || '');
 
   const vehicleSelector = (
-    <div className="flex gap-1.5 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Pilih kendaraan">
+    <div
+      ref={vehicleBarRef}
+      className="relative flex gap-1.5 overflow-x-auto rounded-xl bg-muted/50 p-1"
+      role="tablist"
+      aria-label="Pilih kendaraan"
+    >
+      {vehiclePill && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]"
+          style={{ left: vehiclePill.left, width: vehiclePill.width }}
+        />
+      )}
       <button
+        ref={(el) => { vehicleBtnRefs.current['all'] = el; }}
         type="button"
         onClick={() => setActiveVehicle('all')}
-        className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${activeVehicle === 'all' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'}`}
+        className={`relative z-10 inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors duration-[400ms] ${activeVehicle === 'all' ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
       >
         Semua
       </button>
       {vehicles.map((v) => (
         <button
           key={v.id}
+          ref={(el) => { vehicleBtnRefs.current[v.id] = el; }}
           type="button"
           onClick={() => setActiveVehicle(v.id)}
-          className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${activeVehicle === v.id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'}`}
+          className={`relative z-10 inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors duration-[400ms] ${activeVehicle === v.id ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
         >
-          <Icon name="car" size={13} />
+          <Icon name={v.jenis === 'Motor' ? 'bike' : 'car'} size={13} />
           {v.nama}
         </button>
       ))}
