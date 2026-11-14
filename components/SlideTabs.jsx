@@ -29,7 +29,7 @@ export function SlideTabs({ tabs = [], active, onChange }) {
   }, []);
 
   return (
-    <ul className="relative mx-auto flex w-full rounded-full border border-line bg-muted/50 p-1">
+    <ul className="relative mx-auto flex w-full min-w-max rounded-full border border-line bg-muted/50 p-1">
       {tabs.map((tab, i) => (
         <li
           key={tab.id}

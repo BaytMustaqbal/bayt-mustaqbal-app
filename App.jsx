@@ -28,7 +28,7 @@ import { FamilyCalendar } from './components/Calendar';
 import { Timeline } from './components/Timeline';
 import { FormSheet } from './components/FormSheet';
 import { FamilyTree } from './components/FamilyTree';
-import { Toast } from './components/Toast';
+import { SlideTabs } from './components/SlideTabs';
 import { buildNotifications } from './components/notifications';
 import {
   AGENDA_CATEGORIES,
@@ -3854,22 +3854,12 @@ const deleteGoal = async (id) => {
               title="Tugas Terjadwal"
               subtitle="Semua aktivitas terjadwal keluarga"
             />
-            <div className="mb-4 flex gap-1.5 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Jenis tugas terjadwal">
-              {terjadwalTabs.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={terjadwalTab === t.id}
-                  onClick={() => setTerjadwalTab(t.id)}
-                  className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition-colors ${
-                    terjadwalTab === t.id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'
-                  }`}
-                >
-                  <Icon name={t.icon} size={15} />
-                  {t.label}
-                </button>
-              ))}
+            <div className="mb-4 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Jenis tugas terjadwal">
+              <SlideTabs
+                tabs={terjadwalTabs.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
+                active={terjadwalTab}
+                onChange={setTerjadwalTab}
+              />
             </div>
 
             {terjadwalTab === 'pengeluaran' && (
