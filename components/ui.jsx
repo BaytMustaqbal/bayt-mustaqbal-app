@@ -110,7 +110,7 @@ export function GlassCard({ className = '', children, ...rest }) {
 }
 
 /* Header tiap section: ikon + judul (h1) + aksi opsional */
-export function SectionHeader({ icon, title, subtitle, actionLabel, onAction, actionTone = 'brand' }) {
+export function SectionHeader({ icon, title, subtitle, actionLabel, onAction, actionTone = 'brand', actionIconOnly = false }) {
   const tones = {
     brand: 'hover:bg-brandtint hover:text-brandfg',
     accent: 'hover:bg-toneamber/15 hover:text-toneamberfg',
@@ -130,10 +130,13 @@ export function SectionHeader({ icon, title, subtitle, actionLabel, onAction, ac
         <button
           type="button"
           onClick={onAction}
-          className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border border-line px-4 text-sm font-semibold text-brandfg transition-colors ${tones[actionTone]}`}
+          aria-label={actionLabel}
+          className={actionIconOnly
+            ? `grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line text-brandfg transition-colors ${tones[actionTone]}`
+            : `inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border border-line px-4 text-sm font-semibold text-brandfg transition-colors ${tones[actionTone]}`}
         >
-          <Icon name="plus" size={16} />
-          {actionLabel}
+          <Icon name="plus" size={actionIconOnly ? 18 : 16} />
+          {!actionIconOnly && actionLabel}
         </button>
       )}
     </div>

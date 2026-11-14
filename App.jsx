@@ -3387,6 +3387,7 @@ const deleteGoal = async (id) => {
                 subtitle={`Total: ${formatCurrency(incomeTotal)} - bulan ini ${formatCurrency(incomeThisMonth)}`}
                 actionLabel={canWrite ? 'Tambah' : undefined}
                 actionTone="accent"
+                actionIconOnly
                 onAction={() => openAdd('income')}
               />
             ) : (
@@ -3397,6 +3398,7 @@ const deleteGoal = async (id) => {
                   subtitle={`Total: ${formatCurrency(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
                   actionLabel={canWrite ? 'Tambah' : undefined}
                   actionTone="accent"
+                  actionIconOnly
                   onAction={() => openAdd('expenses')}
                   className="mb-0"
                 />
