@@ -81,7 +81,7 @@ export default function VehicleComp({ vehicles = [], canWrite = true, formatCurr
           {items.map((v) => (
             <Card key={v.id} className="flex items-center gap-3 p-3.5">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brandtint text-brandfg" aria-hidden="true">
-                <Icon name="car" size={18} />
+                <Icon name={v.jenis === 'Motor' ? 'bike' : 'car'} size={18} />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-ink">{v.nama}</p>
@@ -117,7 +117,20 @@ export default function VehicleComp({ vehicles = [], canWrite = true, formatCurr
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-mutedfg mb-1">Jenis</label>
-                  <input type="text" value={form.jenis} onChange={(e) => setForm({ ...form, jenis: e.target.value })} placeholder="Motor/Mobil" className="input-field w-full rounded-xl border border-line bg-canvas px-3" />
+                  <div className="flex items-center gap-2">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brandtint text-brandfg" aria-hidden="true">
+                      <Icon name={form.jenis === 'Motor' ? 'bike' : form.jenis === 'Mobil' ? 'car' : 'car'} size={16} />
+                    </span>
+                    <select
+                      value={form.jenis}
+                      onChange={(e) => setForm({ ...form, jenis: e.target.value })}
+                      className="input-field w-full rounded-xl border border-line bg-canvas px-3"
+                    >
+                      <option value="">Pilih jenis</option>
+                      <option value="Motor">Motor</option>
+                      <option value="Mobil">Mobil</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-mutedfg mb-1">Merek</label>

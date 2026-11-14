@@ -21,7 +21,7 @@ import ChoresComp from './components/ChoresComp';
 const TargetTabunganComp = lazy(() => import('./components/TargetTabunganComp'));
 const DebtComp = lazy(() => import('./components/DebtComp'));
 import { monthTitle, weekTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_WEEK_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
-import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload } from './components/service';
+import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload, calculateNextDue } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
 import { GroupedBarChart, DonutChart, BarChart } from './components/charts';
 import { FamilyCalendar } from './components/Calendar';
@@ -2769,9 +2769,15 @@ const deleteGoal = async (id) => {
     const updatedInv = vals.items.reduce((inv, item) => {
       const sp = currentInv.find((s) => s.id === item.sparepartId);
       if (!sp) return inv;
+      const newKm = Math.max(sp.lastServiceKm || 0, vals.odometer);
       return inv.map((s) =>
         s.id === item.sparepartId
-          ? { ...s, lastServiceKm: Math.max(s.lastServiceKm || 0, vals.odometer), lastServiceDate: vals.date }
+          ? {
+              ...s,
+              lastServiceKm: newKm,
+              lastServiceDate: vals.date,
+              nextDue: calculateNextDue(newKm, vals.date, s.intervalType || 'km', s.intervalValue || 3000),
+            }
           : s
       );
     }, currentInv);
