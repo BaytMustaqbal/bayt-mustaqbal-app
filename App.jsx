@@ -3841,9 +3841,9 @@ const deleteGoal = async (id) => {
       case 'terjadwal': {
         const terjadwalTabs = [
           { id: 'pengeluaran', label: 'Pengeluaran', icon: 'receipt' },
+          { id: 'service', label: 'Services', icon: 'wrench' },
           { id: 'tabungan', label: 'Target Tabungan', icon: 'piggyBank' },
           { id: 'belanja', label: 'Belanja', icon: 'shoppingBag' },
-          { id: 'service', label: 'Services', icon: 'wrench' },
           { id: 'langganan', label: 'Langganan', icon: 'repeat' },
           { id: 'utang', label: 'Utang', icon: 'handCoins' },
         ];
