@@ -22,13 +22,6 @@ export function SlideTabs({ tabs = [], active, onChange }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sinkronkan pill saat `active` berubah dari luar (bukan dari klik).
-  useEffect(() => {
-    const idx = tabs.findIndex((t) => t.id === active);
-    if (idx >= 0) moveToIndex(idx);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
-
   const handleClick = (e, tab, i) => {
     if (e && e.preventDefault) e.preventDefault();
     if (e && e.stopPropagation) e.stopPropagation();
