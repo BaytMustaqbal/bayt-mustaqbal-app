@@ -544,7 +544,7 @@ export function AccountModal({
                 {avatar && (
                   <button
                     type="button"
-                    onClick={() => { setAvatar(''); setNotice(''); }}
+                    onClick={() => { if (window.confirm('Hapus foto profil?')) { setAvatar(''); setNotice(''); } }}
                     className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-line bg-surface px-4 text-sm font-medium text-mutedfg transition-colors hover:bg-muted hover:text-danger"
                   >
                     <Icon name="trash" size={15} />
@@ -855,7 +855,7 @@ export function AccountModal({
                   {avatar && (
                     <button
                       type="button"
-                      onClick={() => { setAvatar(''); setNotice(''); }}
+                      onClick={() => { if (window.confirm('Hapus foto profil?')) { setAvatar(''); setNotice(''); } }}
                       className="inline-flex min-h-[40px] items-center gap-1 rounded-lg px-2 text-xs font-medium text-mutedfg transition-colors hover:bg-muted hover:text-danger"
                     >
                       <Icon name="trash" size={14} />

@@ -2301,6 +2301,8 @@ const deleteGoal = async (id) => {
       pushToast({ message: 'Peran Anda hanya boleh melihat data keluarga.', duration: 3500, tone: 'danger' });
       return;
     }
+    const label = sectionItemLabel(item);
+    if (!window.confirm(`Hapus "${label}"?`)) return;
     let key = SECTION_KEY[section];
     let bagian = null;
     if (section === 'family') {

@@ -346,7 +346,7 @@ export function Service({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onRemoveSparepart(it.id)}
+                          onClick={() => { if (window.confirm(`Hapus perawatan "${it.nama || 'item ini'}"?`)) onRemoveSparepart(it.id); }}
                           aria-label="Hapus"
                           className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg hover:bg-tonerose/15 hover:text-tonerosefg"
                         >
