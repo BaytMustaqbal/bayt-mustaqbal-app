@@ -20,7 +20,7 @@ export function SlideTabs({ tabs = [], active, onChange }) {
     const idx = tabs.findIndex((t) => t.id === active);
     if (idx >= 0) moveTo(idx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, tabs]);
+  }, [active]);
 
   useEffect(() => {
     const idx = tabs.findIndex((t) => t.id === active);
