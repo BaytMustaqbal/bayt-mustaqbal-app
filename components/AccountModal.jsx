@@ -85,6 +85,17 @@ export function AccountModal({
   page = false,
 }) {
   const [tab, setTab] = useState('profil');
+  const tabBarRef = useRef(null);
+  const tabRefs = useRef({});
+  const [tabPill, setTabPill] = useState(null);
+  useEffect(() => {
+    const bar = tabBarRef.current;
+    const btn = tabRefs.current[tab];
+    if (!bar || !btn) { setTabPill(null); return; }
+    const barRect = bar.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    setTabPill({ left: btnRect.left - barRect.left, width: btnRect.width });
+  }, [tab]);
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -477,8 +488,8 @@ export function AccountModal({
   const inputCls =
     'min-h-[48px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand disabled:opacity-50';
 
-  const tabBtn = (id) => `inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-semibold transition-colors ${
-    tab === id ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'
+  const tabBtn = (id) => `relative z-10 inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-semibold transition-colors ${
+    tab === id ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
   }`;
 
   return (
@@ -493,13 +504,15 @@ export function AccountModal({
       </div>
 
       {/* Tab bar */}
-      <div role="tablist" aria-label="Bagian akun" className="mb-4 flex gap-1.5 rounded-xl bg-muted/50 p-1">
+      <div ref={tabBarRef} role="tablist" aria-label="Bagian akun" className="relative mb-4 flex gap-1.5 rounded-xl bg-muted/50 p-1">
+        <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: tabPill.left, width: tabPill.width, opacity: tabPill ? 1 : 0 }} />
         {TABS.filter((t) => t.id !== 'anggota' || isMaster).map((t) => (
           <button
             key={t.id}
             type="button"
             role="tab"
             aria-selected={tab === t.id}
+            ref={(el) => { tabRefs.current[t.id] = el; }}
             onClick={() => setTab(t.id)}
             className={tabBtn(t.id)}
           >
@@ -802,8 +815,9 @@ export function AccountModal({
         </div>
 
         {/* Tab bar */}
-        <div role="tablist" aria-label="Bagian akun" className="mb-4 flex gap-1.5 rounded-xl bg-muted/50 p-1">
-          {TABS.filter((t) => t.id !== 'anggota' || isMaster).map((t) => (
+        <div ref={tabBarRef} role="tablist" aria-label="Bagian akun" className="relative mb-4 flex gap-1.5 rounded-xl bg-muted/50 p-1">
+          <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: tabPill.left, width: tabPill.width, opacity: tabPill ? 1 : 0 }} />
+        {TABS.filter((t) => t.id !== 'anggota' || isMaster).map((t) => (
             <button
               key={t.id}
               type="button"

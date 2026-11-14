@@ -1471,6 +1471,17 @@ const deleteGoal = async (id) => {
 
   // Sub-tampilan Keuangan: 'ringkasan' (default) | 'pengeluaran' | 'anggaran' | 'pemasukan' | 'tagihan'
   const [financeMode, setFinanceMode] = useState('ringkasan');
+  const financeTabsRef = useRef(null);
+  const financeTabRefs = useRef({});
+  const [financePill, setFinancePill] = useState(null);
+  useEffect(() => {
+    const bar = financeTabsRef.current;
+    const btn = financeTabRefs.current[financeMode];
+    if (!bar || !btn) { setFinancePill(null); return; }
+    const barRect = bar.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    setFinancePill({ left: btnRect.left - barRect.left, width: btnRect.width });
+  }, [financeMode]);
   // Bulan yang ditinjau di tab Ringkasan (YYYY-MM). Tidak bisa maju dari bulan berjalan.
   const [summaryMonth, setSummaryMonth] = useState(() => monthKeyOf(new Date()));
   // Sub-tampilan Keuangan: daftar pengeluaran | halaman Anggaran (50/30/20)
@@ -3176,10 +3187,13 @@ const deleteGoal = async (id) => {
 
             {/* Sub-tampilan Agenda: Jadwal | Tugas | Kalender | Timeline */}
             <div
-              className="mb-5 grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
-              role="group"
+              ref={agendaTabsRef}
+              className="relative mb-5 grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
               aria-label="Mode tampilan agenda"
             >
+              {agendaPill && (
+                <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: agendaPill.left, width: agendaPill.width }} />
+              )}
               <button
                 type="button"
                 onClick={() => setAgendaMode('jadwal')}
@@ -3445,16 +3459,20 @@ const deleteGoal = async (id) => {
                 Baris tab + tombol "Foto Struk" (pemindai struk) berjajar. */}
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div
-                className="grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
+                ref={financeTabsRef}
+                className="relative grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-flex"
                 role="group"
                 aria-label="Mode tampilan keuangan"
               >
+                {financePill && (
+                  <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: financePill.left, width: financePill.width }} />
+                )}
                 <button
                   type="button"
                   onClick={() => setFinanceMode('ringkasan')}
                   aria-pressed={financeMode === 'ringkasan'}
-                  className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                    financeMode === 'ringkasan' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                  className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                    financeMode === 'ringkasan' ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
                   }`}
                 >
                   <Icon name="barChart" size={16} />
@@ -3464,7 +3482,7 @@ const deleteGoal = async (id) => {
                   type="button"
                   onClick={() => setFinanceMode('pengeluaran')}
                   aria-pressed={financeMode === 'pengeluaran'}
-                  className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                  className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
                     financeMode === 'pengeluaran'
                       ? 'bg-brandtint text-brandfg'
                       : 'text-mutedfg hover:text-ink'
@@ -3477,8 +3495,8 @@ const deleteGoal = async (id) => {
                   type="button"
                   onClick={() => setFinanceMode('pemasukan')}
                   aria-pressed={financeMode === 'pemasukan'}
-                  className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                    financeMode === 'pemasukan' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                  className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                    financeMode === 'pemasukan' ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
                   }`}
                 >
                   <Icon name="trendingUp" size={16} />
@@ -3488,8 +3506,8 @@ const deleteGoal = async (id) => {
                   type="button"
                   onClick={() => setFinanceMode('anggaran')}
                   aria-pressed={financeMode === 'anggaran'}
-                  className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
-                    financeMode === 'anggaran' ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+                  className={`relative z-10 flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors sm:gap-2 sm:px-3 sm:text-sm ${
+                    financeMode === 'anggaran' ? 'text-brandfg' : 'text-mutedfg hover:text-ink'
                   }`}
                 >
                   <Icon name="pieChart" size={16} />
