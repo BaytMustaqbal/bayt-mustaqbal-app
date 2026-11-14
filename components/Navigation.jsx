@@ -26,7 +26,7 @@ const BOTTOM_NAV_ITEMS = [
   { id: 'expenses' },
   { id: 'dashboard' },
   { id: 'agenda' },
-  { id: 'notes' },
+  { id: 'terjadwal' },
 ];
 
 const DROPDOWNS = {
@@ -466,7 +466,7 @@ export function Navigation({
                       </span>
                     </label>
                     <div className="qa-fab-menu" aria-hidden="true">
-                      <button type="button" className="qa-fab-item qf-1 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Tugas Terjadwal" onClick={() => handleQuickAction('terjadwal')}>
+                      <button type="button" className="qa-fab-item qf-1 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Catatan" onClick={() => handleQuickAction('notes')}>
                         <Icon name="clock" size={18} />
                       </button>
                       <button type="button" className="qa-fab-item qf-2 grid place-items-center bg-[#0A192F] text-white shadow-e2 ring-2 ring-white/15" aria-label="Pengeluaran Baru" onClick={() => handleQuickAction('expenses')}>
