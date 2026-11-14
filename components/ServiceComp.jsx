@@ -170,7 +170,7 @@ export function Service({
     : history.filter((h) => (h.vehicleId || '') === activeVehicle);
 
   const tabs = [
-    { id: 'inventory', label: 'Inventaris', icon: 'wrench' },
+    { id: 'inventory', label: 'Perawatan', icon: 'wrench' },
     { id: 'history', label: 'Riwayat', icon: 'activity' },
     { id: 'kendaraan', label: 'Kendaraan', icon: 'car' },
   ];
@@ -267,7 +267,7 @@ export function Service({
               <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
                 <Icon name="wrench" size={24} />
               </span>
-              <p className="mt-4 font-semibold text-ink">Belum ada inventaris perawatan</p>
+              <p className="mt-4 font-semibold text-ink">Belum ada item perawatan</p>
               <p className="mx-auto mt-1 max-w-sm text-sm text-mutedfg">
                 {vehicles.length === 0
                   ? 'Tambahkan kendaraan dulu di tab Kendaraan, lalu daftar perawatan rutinnya.'
