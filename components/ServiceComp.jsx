@@ -55,6 +55,26 @@ export function Service({
   }, [activeVehicle, vehicles]);
 
   const [showInvForm, setShowInvForm] = useState(false);
+
+  // Buka modal 'Catat Service Baru' dari event global (FAB).
+  useEffect(() => {
+    const open = () => {
+      if (!canWrite) return;
+      setEditingRecord(null);
+      setServiceForm({
+        date: new Date().toISOString().split('T')[0],
+        odometer: '',
+        items: [],
+        technician: '',
+        notes: '',
+        vehicleId: vehicles[0]?.id || '',
+        kategori: 'service',
+      });
+      setShowServiceForm(true);
+    };
+    window.addEventListener('bm:open-service-form', open);
+    return () => window.removeEventListener('bm:open-service-form', open);
+  }, [canWrite, vehicles]);
   const [invErr, setInvErr] = useState('');
   const [invForm, setInvForm] = useState({
     id: null,

@@ -4059,7 +4059,12 @@ const deleteGoal = async (id) => {
           if (action === 'expenses') openAdd('expenses');
           else if (action === 'notes') openAdd('notes');
           else if (action === 'scan') { if (canWrite) setScanOpen(true); else openAdd('expenses'); }
-          else if (action === 'terjadwal') setActiveSection('terjadwal');
+          else if (action === 'service') {
+            setActiveSection('terjadwal');
+            setTerjadwalTab('service');
+            setServiceActiveTab('history');
+            window.dispatchEvent(new Event('bm:open-service-form'));
+          }
         }}
       />
 
