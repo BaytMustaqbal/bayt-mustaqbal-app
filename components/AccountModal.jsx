@@ -505,7 +505,7 @@ export function AccountModal({
 
       {/* Tab bar */}
       <div ref={tabBarRef} role="tablist" aria-label="Bagian akun" className="relative mb-4 flex gap-1.5 rounded-xl bg-muted/50 p-1">
-        <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: tabPill.left, width: tabPill.width, opacity: tabPill ? 1 : 0 }} />
+        <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: tabPill ? tabPill.left : 0, width: tabPill ? tabPill.width : 0, opacity: tabPill ? 1 : 0 }} />
         {TABS.filter((t) => t.id !== 'anggota' || isMaster).map((t) => (
           <button
             key={t.id}
@@ -816,7 +816,7 @@ export function AccountModal({
 
         {/* Tab bar */}
         <div ref={tabBarRef} role="tablist" aria-label="Bagian akun" className="relative mb-4 flex gap-1.5 rounded-xl bg-muted/50 p-1">
-          <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: tabPill.left, width: tabPill.width, opacity: tabPill ? 1 : 0 }} />
+          <span aria-hidden="true" className="pointer-events-none absolute top-1 bottom-1 rounded-lg bg-brandtint transition-all duration-[400ms] ease-[cubic-bezier(0.65,0,0.35,1)]" style={{ left: tabPill ? tabPill.left : 0, width: tabPill ? tabPill.width : 0, opacity: tabPill ? 1 : 0 }} />
         {TABS.filter((t) => t.id !== 'anggota' || isMaster).map((t) => (
             <button
               key={t.id}
