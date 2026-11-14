@@ -207,23 +207,22 @@ export function Service({
         />
       </div>
 
-      {vehicles.length > 0 && activeTab !== "kendaraan" && (
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-mutedfg">Kendaraan:</label>
-          <select
-            value={activeVehicle}
-            onChange={(e) => setActiveVehicle(e.target.value)}
-            className="input-field min-h-[36px] flex-1 rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
-          >
-            <option value="all">Semua</option>
-            {vehicles.map((v) => (
-              <option key={v.id} value={v.id}>{v.nama}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
       <div className="flex flex-wrap items-center gap-2">
+        {vehicles.length > 0 && activeTab !== "kendaraan" && (
+          <>
+            <label className="text-xs font-medium text-mutedfg">Kendaraan:</label>
+            <select
+              value={activeVehicle}
+              onChange={(e) => setActiveVehicle(e.target.value)}
+              className="input-field min-h-[36px] flex-1 rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
+            >
+              <option value="all">Semua</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>{v.nama}</option>
+              ))}
+            </select>
+          </>
+        )}
         {canWrite && activeTab === "inventory" && (
           <button type="button" onClick={openAddInv} className={`${CTA_CLASS} min-h-[36px] shrink-0 text-xs`}>
             <Icon name="plus" size={14} />
@@ -234,20 +233,20 @@ export function Service({
           <button
             type="button"
             onClick={() => {
-              const vid = activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle;
-              const v = vehicles.find((x) => x.id === vid);
-              setEditingRecord(null);
-              setServiceForm({
-                date: new Date().toISOString().split('T')[0],
-                odometer: v?.odometer != null ? String(v.odometer) : '',
-                items: [],
-                technician: '',
-                notes: '',
-                vehicleId: vid,
-                kategori: 'service',
-              });
-              setShowServiceForm(true);
-            }}
+            const vid = activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle;
+            const v = vehicles.find((x) => x.id === vid);
+            setEditingRecord(null);
+            setServiceForm({
+              date: new Date().toISOString().split('T')[0],
+              odometer: v?.odometer != null ? String(v.odometer) : '',
+              items: [],
+              technician: '',
+              notes: '',
+              vehicleId: vid,
+              kategori: 'service',
+            });
+            setShowServiceForm(true);
+          }}
             className={`${CTA_CLASS} min-h-[36px] shrink-0 text-xs`}
           >
             <Icon name="plus" size={14} />
