@@ -4118,6 +4118,10 @@ const deleteGoal = async (id) => {
           if (action === 'expenses') openAdd('expenses');
           else if (action === 'notes') openAdd('notes');
           else if (action === 'scan') { if (canWrite) setScanOpen(true); else openAdd('expenses'); }
+          else if (action.startsWith('terjadwal:')) {
+            setTerjadwalTab(action.split(':')[1] || 'pengeluaran');
+            setActiveSection('terjadwal');
+          }
           else if (action === 'service') {
             setActiveSection('terjadwal');
             setTerjadwalTab('service');

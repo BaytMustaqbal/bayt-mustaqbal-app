@@ -187,6 +187,57 @@ export function Navigation({
     if (qaToggleRef.current) qaToggleRef.current.checked = false;
   };
 
+  // Dropup "Tugas" (bottom nav): daftar sub-tab Tugas Terjadwal.
+  const TUGAS_DROP_ITEMS = [
+    { id: 'terjadwal:pengeluaran', label: 'Pengeluaran', icon: 'receipt' },
+    { id: 'terjadwal:service', label: 'Services', icon: 'wrench' },
+    { id: 'terjadwal:tabungan', label: 'Whishlist', icon: 'piggyBank' },
+    { id: 'terjadwal:belanja', label: 'Belanja', icon: 'shoppingBag' },
+    { id: 'terjadwal:langganan', label: 'Langganan', icon: 'repeat' },
+    { id: 'terjadwal:utang', label: 'Utang', icon: 'handCoins' },
+  ];
+  const tugasDropRef = useRef(null);
+  const [tugasDropOpen, setTugasDropOpen] = useState(false);
+  const [tugasDropClosing, setTugasDropClosing] = useState(false);
+  const tugasCloseTimer = useRef(null);
+
+  const openTugasDrop = () => {
+    if (tugasCloseTimer.current) {
+      clearTimeout(tugasCloseTimer.current);
+      tugasCloseTimer.current = null;
+    }
+    setTugasDropClosing(false);
+    setTugasDropOpen(true);
+  };
+  const closeTugasDrop = () => {
+    if (!tugasDropOpen || tugasDropClosing) return;
+    setTugasDropClosing(true);
+    tugasCloseTimer.current = setTimeout(() => {
+      setTugasDropOpen(false);
+      setTugasDropClosing(false);
+      tugasCloseTimer.current = null;
+    }, 170);
+  };
+  const toggleTugasDrop = () => (tugasDropOpen ? closeTugasDrop() : openTugasDrop());
+
+  // Tutup dropup saat klik di luar / Escape.
+  useEffect(() => {
+    if (!tugasDropOpen) return undefined;
+    const onPointerDown = (e) => {
+      if (!tugasDropRef.current?.contains(e.target)) closeTugasDrop();
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeTugasDrop();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tugasDropOpen]);
+
   // Long-press FAB untuk input suara.
   const startPress = () => {
     if (!voiceSupported) return;
@@ -420,6 +471,7 @@ export function Navigation({
             const isDashboard = item.id === 'dashboard';
             const active = activeSection === item.id;
             const navItem = NAV_ITEMS.find((n) => n.id === item.id);
+            const isTugas = item.id === 'terjadwal';
             return (
               <li key={item.id} className="min-w-0 flex-1">
                 {isDashboard ? (
@@ -488,9 +540,12 @@ export function Navigation({
                       btnRefs.current[item.id] = el;
                     }}
                     type="button"
-                    onClick={() => onSectionChange(item.id)}
+                    onClick={() => (isTugas ? toggleTugasDrop() : onSectionChange(item.id))}
                     aria-current={active ? 'page' : undefined}
-                    className={`relative flex h-full w-full select-none flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors touch-manipulation ${active ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
+                    aria-expanded={isTugas ? tugasDropOpen : undefined}
+                    aria-haspopup={isTugas ? 'true' : undefined}
+                    aria-label={isTugas ? 'Tugas Terjadwal' : undefined}
+                    className={`relative flex h-full w-full select-none flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[11px] font-medium leading-tight transition-colors touch-manipulation ${active || (isTugas && tugasDropOpen) ? 'text-brandfg' : 'text-mutedfg hover:text-ink'}`}
                   >
                     <span
                       data-nav-icon
@@ -506,6 +561,32 @@ export function Navigation({
               </li>
             );
           })}
+          {tugasDropOpen && (
+            <div
+              ref={tugasDropRef}
+              role="menu"
+              aria-label="Tugas Terjadwal"
+              className={`absolute bottom-full z-[80] left-2 right-2 mx-auto mb-2 rounded-2xl border border-line bg-surface/95 p-1.5 shadow-pop backdrop-blur-xl ${tugasDropClosing ? 'tugas-drop--closing' : 'tugas-drop'}`}
+            >
+              {TUGAS_DROP_ITEMS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    closeTugasDrop();
+                    onQuickAction?.(t.id);
+                  }}
+                  className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-ink transition-colors hover:bg-muted"
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brandtint text-brandfg" aria-hidden="true">
+                    <Icon name={t.icon} size={16} />
+                  </span>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
         </ul>
       </nav>
     </>
