@@ -572,8 +572,6 @@ const mapUsersToFamily = (users) => {
     tiktok: u.tiktok || null,
     twitter: u.twitter || null,
     youtube: u.youtube || null,
-    bank_name: u.bank_name || null,
-    bank_account: u.bank_account || null,
     nik: u.nik || null,
   }));
 

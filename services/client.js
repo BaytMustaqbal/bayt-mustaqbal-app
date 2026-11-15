@@ -114,7 +114,7 @@ export const auth = {
     });
   },
   // Update profil sendiri (nama, panggilan, tanggal lahir, avatar, status, silsilah, peran, no telp)
-  updateProfile: async ({ nama, nickname, birthDate, avatarUrl, familyRole, generasi, groupRole, phone, blood, allergy, address, instagram, facebook, tiktok, twitter, youtube, bank_name, bank_account, nik }) => {
+  updateProfile: async ({ nama, nickname, birthDate, avatarUrl, familyRole, generasi, groupRole, phone, blood, allergy, address, instagram, facebook, tiktok, twitter, youtube, nik }) => {
     const body = {};
     if (nama !== undefined) body.nama = nama;
     if (nickname !== undefined) body.nickname = nickname;
@@ -132,8 +132,6 @@ export const auth = {
     if (tiktok !== undefined) body.tiktok = tiktok;
     if (twitter !== undefined) body.twitter = twitter;
     if (youtube !== undefined) body.youtube = youtube;
-    if (bank_name !== undefined) body.bank_name = bank_name;
-    if (bank_account !== undefined) body.bank_account = bank_account;
     if (nik !== undefined) body.nik = nik;
     return apiFetch('/auth/me', { method: 'PUT', body: JSON.stringify(body) });
   },

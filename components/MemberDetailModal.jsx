@@ -57,12 +57,6 @@ export function MemberDetailModal({ member, onClose }) {
           {row('YouTube', member.youtube)}
         </div>
 
-        <p className="mt-4 mb-1.5 text-[10px] font-semibold uppercase text-mutedfg">Rekening</p>
-        <div className="grid grid-cols-2 gap-3">
-          {row('Bank', member.bank_name)}
-          {row('No. Rekening', member.bank_account)}
-        </div>
-
         <button type="button" onClick={onClose} className={`${CTA_CLASS} w-full mt-5`}>Tutup</button>
       </div>
     </div>

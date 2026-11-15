@@ -128,8 +128,6 @@ export function AccountModal({
   const [profileTiktok, setProfileTiktok] = useState('');
   const [profileTwitter, setProfileTwitter] = useState('');
   const [profileYoutube, setProfileYoutube] = useState('');
-  const [profileBankName, setProfileBankName] = useState('');
-  const [profileBankAccount, setProfileBankAccount] = useState('');
   const [profileNik, setProfileNik] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState('');
@@ -337,8 +335,6 @@ export function AccountModal({
       setProfileTiktok(user?.tiktok || '');
       setProfileTwitter(user?.twitter || '');
       setProfileYoutube(user?.youtube || '');
-      setProfileBankName(user?.bank_name || '');
-      setProfileBankAccount(user?.bank_account || '');
       setProfileNik(user?.nik || '');
     }
   }, [open, user]);
@@ -460,8 +456,6 @@ export function AccountModal({
         tiktok: profileTiktok.trim() || null,
         twitter: profileTwitter.trim() || null,
         youtube: profileYoutube.trim() || null,
-        bank_name: profileBankName.trim() || null,
-        bank_account: profileBankAccount.trim() || null,
         nik: profileNik.trim() || null,
       });
       onSaved?.(updated);
@@ -708,17 +702,6 @@ export function AccountModal({
                   ))}
                 </div>
 
-                <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Rekening</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Bank</label>
-                    <input value={profileBankName} onChange={(e) => { setProfileBankName(e.target.value); setProfileSaved(''); }} placeholder="mis. BCA" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">No. Rekening</label>
-                    <input value={profileBankAccount} onChange={(e) => { setProfileBankAccount(e.target.value); setProfileSaved(''); }} placeholder="1234567890" className={inputCls} />
-                  </div>
-                </div>
               </div>
             </details>
 
@@ -1004,17 +987,6 @@ export function AccountModal({
                   ))}
                 </div>
 
-                <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Rekening</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Bank</label>
-                    <input value={profileBankName} onChange={(e) => { setProfileBankName(e.target.value); setProfileSaved(''); }} placeholder="mis. BCA" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">No. Rekening</label>
-                    <input value={profileBankAccount} onChange={(e) => { setProfileBankAccount(e.target.value); setProfileSaved(''); }} placeholder="1234567890" className={inputCls} />
-                  </div>
-                </div>
               </div>
             </details>
 
