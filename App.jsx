@@ -573,6 +573,7 @@ const mapUsersToFamily = (users) => {
     youtube: u.youtube || null,
     bank_name: u.bank_name || null,
     bank_account: u.bank_account || null,
+    nik: u.nik || null,
   }));
 
   // Urutan anak: tertua = ke-1, dst. Dalam pohon saat ini hanya ada satu

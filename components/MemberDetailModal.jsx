@@ -27,6 +27,7 @@ export function MemberDetailModal({ member, isMaster, onClose, onSaved }) {
       youtube: member.youtube || '',
       bank_name: member.bank_name || '',
       bank_account: member.bank_account || '',
+      nik: member.nik || '',
     });
     setError('');
   }, [member]);
@@ -56,6 +57,7 @@ export function MemberDetailModal({ member, isMaster, onClose, onSaved }) {
         youtube: form.youtube || null,
         bank_name: form.bank_name || null,
         bank_account: form.bank_account || null,
+        nik: form.nik || null,
       });
       onSaved?.();
       onClose?.();
@@ -115,6 +117,12 @@ export function MemberDetailModal({ member, isMaster, onClose, onSaved }) {
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alamat</label>
               <input value={form.address} onChange={set('address')} disabled={!canEdit} placeholder="Jl. ..." className="input-field w-full rounded-xl border border-line bg-canvas px-3 text-sm" />
+            </div>
+
+            <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Identitas</p>
+            <div>
+              <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">NIK (KTP)</label>
+              <input value={form.nik} onChange={set('nik')} disabled={!canEdit} inputMode="numeric" maxLength={16} placeholder="3271xxxxxxxxxx" className="input-field w-full rounded-xl border border-line bg-canvas px-3 text-sm font-mono" />
             </div>
 
             <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Sosial Media</p>
