@@ -103,7 +103,13 @@ export const TASK_FILTERS = [
   { id: 'low', label: 'Prioritas Rendah', icon: 'arrowDownRight' },
 ];
 
-export const getCategoryMeta = (categories, id) => categories.find((c) => c.id === id);
+// Kategori sistem: muncul di riwayat (label/ikon) tapi tidak ditawarkan di form.
+export const SYSTEM_CATEGORIES = [
+  { id: 'transfer', label: 'Transfer', icon: 'repeat' },
+];
+
+export const getCategoryMeta = (categories, id) =>
+  categories.find((c) => c.id === id) || SYSTEM_CATEGORIES.find((c) => c.id === id);
 
 // Catatan keluarga — kategori yang bisa disimpan (tanpa "semua"/"penting").
 export const NOTE_CATEGORIES = [
