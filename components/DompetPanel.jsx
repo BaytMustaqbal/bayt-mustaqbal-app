@@ -10,7 +10,7 @@ const inputCls =
 
 /* Panel Dompet/Rekening keluarga — lihat semua dompet grup, tambah/ubah/hapus,
    transfer antar dompet. canWrite=false (anak/cucu) hanya boleh melihat. */
-export function DompetPanel({ accounts = [], users = [], canWrite = true, onChanged }) {
+export function DompetPanel({ accounts = [], users = [], canWrite = true, onChanged, currentUserId = null, isKepalaKeluarga = false }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [nama, setNama] = useState('');
@@ -39,6 +39,8 @@ export function DompetPanel({ accounts = [], users = [], canWrite = true, onChan
   };
 
   const totalSaldo = accounts.reduce((sum, a) => sum + (Number(a.saldo) || 0), 0);
+  // Edit/hapus hanya pemilik dompet atau kepala keluarga
+  const canManage = (a) => canWrite && (a.user_id === currentUserId || isKepalaKeluarga);
 
   const resetForm = () => {
     setFormOpen(false);
@@ -148,7 +150,7 @@ export function DompetPanel({ accounts = [], users = [], canWrite = true, onChan
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-sm font-bold text-ink">{fmt(a.saldo)}</p>
-                  {canWrite && (
+                  {canManage(a) && (
                     <div className="mt-0.5 flex items-center justify-end gap-1">
                       <button type="button" onClick={() => startEdit(a)} aria-label={`Edit ${a.nama}`} className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-muted hover:text-ink">
                         <Icon name="edit" size={14} />

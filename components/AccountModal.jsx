@@ -87,6 +87,8 @@ export function AccountModal({
   accounts = [],
   onAccountsChanged,
   canWrite = true,
+  currentUserId = null,
+  isKepalaKeluarga = false,
 }) {
   const [tab, setTab] = useState('profil');
   const tabBarRef = useRef(null);
@@ -764,7 +766,7 @@ export function AccountModal({
         )}
 
         {tab === 'dompet' && (
-          <DompetPanel accounts={accounts} users={users} canWrite={canWrite} onChanged={onAccountsChanged} />
+          <DompetPanel accounts={accounts} users={users} canWrite={canWrite} onChanged={onAccountsChanged} currentUserId={currentUserId} isKepalaKeluarga={isKepalaKeluarga} />
         )}
 
         {tab === 'anggota' && isMaster && (
@@ -1061,7 +1063,7 @@ export function AccountModal({
 
         {/* ---------- Tab: Anggota (master only) ---------- */}
         {tab === 'dompet' && (
-          <DompetPanel accounts={accounts} users={users} canWrite={canWrite} onChanged={onAccountsChanged} />
+          <DompetPanel accounts={accounts} users={users} canWrite={canWrite} onChanged={onAccountsChanged} currentUserId={currentUserId} isKepalaKeluarga={isKepalaKeluarga} />
         )}
 
         {tab === 'anggota' && isMaster && (

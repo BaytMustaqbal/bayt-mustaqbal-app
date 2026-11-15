@@ -1341,7 +1341,7 @@ const deleteGoal = async (id) => {
     type: 'select',
     defaultValue: '',
     placeholder: 'Tanpa dompet',
-    options: accounts.map((a) => ({
+    options: accounts.filter((a) => a.user_id === currentUser?.id).map((a) => ({
       value: a.id,
       label: `${a.nama}${a.bank ? ` (${a.bank})` : ''} · ${formatCurrency(a.saldo)}`,
     })),
@@ -3382,6 +3382,8 @@ const deleteGoal = async (id) => {
             accounts={accounts}
             onAccountsChanged={reloadAccounts}
             canWrite={canWrite}
+            currentUserId={currentUser?.id || null}
+            isKepalaKeluarga={currentUser?.group_role === 'kepala_keluarga'}
           />
         );
       }
