@@ -114,6 +114,17 @@ export function AccountModal({
   const [profileNickname, setProfileNickname] = useState('');
   const [profileBirthDate, setProfileBirthDate] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
+  const [profileBlood, setProfileBlood] = useState('');
+  const [profileAllergy, setProfileAllergy] = useState('');
+  const [profileAddress, setProfileAddress] = useState('');
+  const [profileInstagram, setProfileInstagram] = useState('');
+  const [profileFacebook, setProfileFacebook] = useState('');
+  const [profileTiktok, setProfileTiktok] = useState('');
+  const [profileTwitter, setProfileTwitter] = useState('');
+  const [profileYoutube, setProfileYoutube] = useState('');
+  const [profileBankName, setProfileBankName] = useState('');
+  const [profileBankAccount, setProfileBankAccount] = useState('');
+  const [profileNik, setProfileNik] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState('');
 
@@ -313,8 +324,19 @@ export function AccountModal({
       setProfileNickname(user?.nickname || '');
       setProfileBirthDate(user?.birthDate || '');
       setProfilePhone(user?.phone || '');
+      setProfileBlood(user?.blood || '');
+      setProfileAllergy(user?.allergy || '');
+      setProfileAddress(user?.address || '');
+      setProfileInstagram(user?.instagram || '');
+      setProfileFacebook(user?.facebook || '');
+      setProfileTiktok(user?.tiktok || '');
+      setProfileTwitter(user?.twitter || '');
+      setProfileYoutube(user?.youtube || '');
+      setProfileBankName(user?.bank_name || '');
+      setProfileBankAccount(user?.bank_account || '');
+      setProfileNik(user?.nik || '');
     }
-  }, [open, user?.nickname, user?.birthDate, user?.phone]);
+  }, [open, user]);
 
   const fieldRefs = useRef({});
   const fileRef = useRef(null);
@@ -426,6 +448,17 @@ export function AccountModal({
         nickname: profileNickname.trim() || null,
         birthDate: profileBirthDate || null,
         phone: profilePhone.trim() || null,
+        blood: profileBlood.trim() || null,
+        allergy: profileAllergy.trim() || null,
+        address: profileAddress.trim() || null,
+        instagram: profileInstagram.trim() || null,
+        facebook: profileFacebook.trim() || null,
+        tiktok: profileTiktok.trim() || null,
+        twitter: profileTwitter.trim() || null,
+        youtube: profileYoutube.trim() || null,
+        bank_name: profileBankName.trim() || null,
+        bank_account: profileBankAccount.trim() || null,
+        nik: profileNik.trim() || null,
       });
       onSaved?.(updated);
       setProfileSaved('Profil tersimpan.');
@@ -637,6 +670,57 @@ export function AccountModal({
                 className={inputCls}
               />
             </div>
+
+            <details className="group rounded-2xl border border-line bg-canvas p-3">
+              <summary className="cursor-pointer list-none text-xs font-semibold text-mutedfg [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                  <Icon name="chevronDown" size={14} className="transition-transform group-open:rotate-180" />
+                  Identitas lengkap (opsional)
+                </span>
+              </summary>
+              <div className="mt-3 space-y-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Gol. Darah</label>
+                    <input value={profileBlood} onChange={(e) => { setProfileBlood(e.target.value); setProfileSaved(''); }} placeholder="mis. O+" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">NIK</label>
+                    <input value={profileNik} onChange={(e) => { setProfileNik(e.target.value); setProfileSaved(''); }} inputMode="numeric" maxLength={16} placeholder="16 digit" className={inputCls} />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alergi / Pantangan</label>
+                  <input value={profileAllergy} onChange={(e) => { setProfileAllergy(e.target.value); setProfileSaved(''); }} placeholder="mis. kacang" className={inputCls} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alamat</label>
+                  <input value={profileAddress} onChange={(e) => { setProfileAddress(e.target.value); setProfileSaved(''); }} placeholder="Jl. ..." className={inputCls} />
+                </div>
+
+                <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Sosial Media</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[['Instagram', profileInstagram, setProfileInstagram], ['Facebook', profileFacebook, setProfileFacebook], ['TikTok', profileTiktok, setProfileTiktok], ['X / Twitter', profileTwitter, setProfileTwitter], ['YouTube', profileYoutube, setProfileYoutube]].map(([label, val, setter], i) => (
+                    <div key={i}>
+                      <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">{label}</label>
+                      <input value={val} onChange={(e) => { setter(e.target.value); setProfileSaved(''); }} placeholder="@handle" className={inputCls} />
+                    </div>
+                  ))}
+                </div>
+
+                <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Rekening</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Bank</label>
+                    <input value={profileBankName} onChange={(e) => { setProfileBankName(e.target.value); setProfileSaved(''); }} placeholder="mis. BCA" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">No. Rekening</label>
+                    <input value={profileBankAccount} onChange={(e) => { setProfileBankAccount(e.target.value); setProfileSaved(''); }} placeholder="1234567890" className={inputCls} />
+                  </div>
+                </div>
+              </div>
+            </details>
 
             <button
               type="button"
@@ -882,6 +966,57 @@ export function AccountModal({
                 className={inputCls}
               />
             </div>
+
+            <details className="group rounded-2xl border border-line bg-canvas p-3">
+              <summary className="cursor-pointer list-none text-xs font-semibold text-mutedfg [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                  <Icon name="chevronDown" size={14} className="transition-transform group-open:rotate-180" />
+                  Identitas lengkap (opsional)
+                </span>
+              </summary>
+              <div className="mt-3 space-y-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Gol. Darah</label>
+                    <input value={profileBlood} onChange={(e) => { setProfileBlood(e.target.value); setProfileSaved(''); }} placeholder="mis. O+" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">NIK</label>
+                    <input value={profileNik} onChange={(e) => { setProfileNik(e.target.value); setProfileSaved(''); }} inputMode="numeric" maxLength={16} placeholder="16 digit" className={inputCls} />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alergi / Pantangan</label>
+                  <input value={profileAllergy} onChange={(e) => { setProfileAllergy(e.target.value); setProfileSaved(''); }} placeholder="mis. kacang" className={inputCls} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alamat</label>
+                  <input value={profileAddress} onChange={(e) => { setProfileAddress(e.target.value); setProfileSaved(''); }} placeholder="Jl. ..." className={inputCls} />
+                </div>
+
+                <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Sosial Media</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[['Instagram', profileInstagram, setProfileInstagram], ['Facebook', profileFacebook, setProfileFacebook], ['TikTok', profileTiktok, setProfileTiktok], ['X / Twitter', profileTwitter, setProfileTwitter], ['YouTube', profileYoutube, setProfileYoutube]].map(([label, val, setter], i) => (
+                    <div key={i}>
+                      <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">{label}</label>
+                      <input value={val} onChange={(e) => { setter(e.target.value); setProfileSaved(''); }} placeholder="@handle" className={inputCls} />
+                    </div>
+                  ))}
+                </div>
+
+                <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Rekening</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Bank</label>
+                    <input value={profileBankName} onChange={(e) => { setProfileBankName(e.target.value); setProfileSaved(''); }} placeholder="mis. BCA" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">No. Rekening</label>
+                    <input value={profileBankAccount} onChange={(e) => { setProfileBankAccount(e.target.value); setProfileSaved(''); }} placeholder="1234567890" className={inputCls} />
+                  </div>
+                </div>
+              </div>
+            </details>
 
             <button
               type="button"

@@ -114,7 +114,7 @@ export const auth = {
     });
   },
   // Update profil sendiri (nama, panggilan, tanggal lahir, avatar, status, silsilah, peran, no telp)
-  updateProfile: async ({ nama, nickname, birthDate, avatarUrl, familyRole, generasi, groupRole, phone }) => {
+  updateProfile: async ({ nama, nickname, birthDate, avatarUrl, familyRole, generasi, groupRole, phone, blood, allergy, address, instagram, facebook, tiktok, twitter, youtube, bank_name, bank_account, nik }) => {
     const body = {};
     if (nama !== undefined) body.nama = nama;
     if (nickname !== undefined) body.nickname = nickname;
@@ -124,6 +124,17 @@ export const auth = {
     if (generasi !== undefined) body.generasi = generasi;
     if (groupRole !== undefined) body.group_role = groupRole;
     if (phone !== undefined) body.phone = phone;
+    if (blood !== undefined) body.blood = blood;
+    if (allergy !== undefined) body.allergy = allergy;
+    if (address !== undefined) body.address = address;
+    if (instagram !== undefined) body.instagram = instagram;
+    if (facebook !== undefined) body.facebook = facebook;
+    if (tiktok !== undefined) body.tiktok = tiktok;
+    if (twitter !== undefined) body.twitter = twitter;
+    if (youtube !== undefined) body.youtube = youtube;
+    if (bank_name !== undefined) body.bank_name = bank_name;
+    if (bank_account !== undefined) body.bank_account = bank_account;
+    if (nik !== undefined) body.nik = nik;
     return apiFetch('/auth/me', { method: 'PUT', body: JSON.stringify(body) });
   },
   // Daftar anggota keluarga (semua akun aktif, master disembunyikan backend)
