@@ -658,73 +658,9 @@ export function AccountModal({
 
         {tab === 'keamanan' && (
           <div className="space-y-3.5">
-            <div className="relative">
-              <label htmlFor="acc-password" className="mb-1 block text-xs font-semibold text-mutedfg">Password baru</label>
-              <div className="relative">
-                <input
-                  id="acc-password"
-                  ref={(el) => { fieldRefs.current.password = el; }}
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setField('password', e.target.value)}
-                  disabled={clearPassword}
-                  autoComplete="new-password"
-                  placeholder={hasStoredPassword ? 'Tidak diubah' : 'Minimal 6 karakter'}
-                  aria-invalid={!!errors.password}
-                  aria-describedby={errors.password ? 'acc-password-err' : undefined}
-                  className={`${inputCls} pr-12`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
-                  aria-pressed={showPassword}
-                  className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-mutedfg transition-colors hover:text-brandfg"
-                >
-                  <Icon name={showPassword ? 'eyeOff' : 'eye'} size={16} />
-                </button>
-              </div>
-              {errors.password && <p id="acc-password-err" className="mt-1 text-xs font-medium text-danger">{errors.password}</p>}
-            </div>
-
-            {password && !clearPassword && (
-              <div>
-                <label htmlFor="acc-password2" className="mb-1 block text-xs font-semibold text-mutedfg">Ulangi password</label>
-                <input
-                  id="acc-password2"
-                  ref={(el) => { fieldRefs.current.password2 = el; }}
-                  type={showPassword ? 'text' : 'password'}
-                  value={password2}
-                  onChange={(e) => setField('password2', e.target.value)}
-                  autoComplete="new-password"
-                  placeholder="Ketik ulang password baru"
-                  aria-invalid={!!errors.password2}
-                  aria-describedby={errors.password2 ? 'acc-password2-err' : undefined}
-                  className={inputCls}
-                />
-                {errors.password2 && <p id="acc-password2-err" className="mt-1 text-xs font-medium text-danger">{errors.password2}</p>}
-              </div>
-            )}
-
-            {hasStoredPassword && (
-              <button
-                type="button"
-                onClick={() => {
-                  setClearPassword((prev) => !prev);
-                  setPassword('');
-                  setPassword2('');
-                  setErrors((prev) => ({ ...prev, password: undefined, password2: undefined }));
-                }}
-                className="min-h-[40px] w-full rounded-lg text-xs font-medium text-mutedfg transition-colors hover:bg-muted hover:text-danger"
-              >
-                {clearPassword ? 'Batalkan hapus password' : 'Hapus password'}
-              </button>
-            )}
-
-            <button type="button" onClick={savePassword} className={`${CTA_CLASS} min-h-[48px] w-full`}>
-              <Icon name="check" size={16} />
-              Simpan Password
-            </button>
+            <p className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-mutedfg">
+              Keamanan: password akun dikelola oleh master. Bila perlu mengganti password, hubungi master.
+            </p>
 
             <div className="mt-2 border-t border-line pt-3">
               <button
@@ -971,74 +907,6 @@ export function AccountModal({
         {/* ---------- Tab: Keamanan ---------- */}
         {tab === 'keamanan' && (
           <div className="space-y-3.5">
-            <div className="relative">
-              <label htmlFor="acc-password" className="mb-1 block text-xs font-semibold text-mutedfg">Password baru</label>
-              <div className="relative">
-                <input
-                  id="acc-password"
-                  ref={(el) => { fieldRefs.current.password = el; }}
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setField('password', e.target.value)}
-                  disabled={clearPassword}
-                  autoComplete="new-password"
-                  placeholder={hasStoredPassword ? 'Tidak diubah' : 'Minimal 6 karakter'}
-                  aria-invalid={!!errors.password}
-                  aria-describedby={errors.password ? 'acc-password-err' : undefined}
-                  className={`${inputCls} pr-12`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
-                  aria-pressed={showPassword}
-                  className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-mutedfg transition-colors hover:text-brandfg"
-                >
-                  <Icon name={showPassword ? 'eyeOff' : 'eye'} size={16} />
-                </button>
-              </div>
-              {errors.password && <p id="acc-password-err" className="mt-1 text-xs font-medium text-danger">{errors.password}</p>}
-            </div>
-
-            {password && !clearPassword && (
-              <div>
-                <label htmlFor="acc-password2" className="mb-1 block text-xs font-semibold text-mutedfg">Ulangi password</label>
-                <input
-                  id="acc-password2"
-                  ref={(el) => { fieldRefs.current.password2 = el; }}
-                  type={showPassword ? 'text' : 'password'}
-                  value={password2}
-                  onChange={(e) => setField('password2', e.target.value)}
-                  autoComplete="new-password"
-                  placeholder="Ketik ulang password baru"
-                  aria-invalid={!!errors.password2}
-                  aria-describedby={errors.password2 ? 'acc-password2-err' : undefined}
-                  className={inputCls}
-                />
-                {errors.password2 && <p id="acc-password2-err" className="mt-1 text-xs font-medium text-danger">{errors.password2}</p>}
-              </div>
-            )}
-
-            {hasStoredPassword && (
-              <button
-                type="button"
-                onClick={() => {
-                  setClearPassword((prev) => !prev);
-                  setPassword('');
-                  setPassword2('');
-                  setErrors((prev) => ({ ...prev, password: undefined, password2: undefined }));
-                }}
-                className="min-h-[40px] w-full rounded-lg text-xs font-medium text-mutedfg transition-colors hover:bg-muted hover:text-danger"
-              >
-                {clearPassword ? 'Batalkan hapus password' : 'Hapus password'}
-              </button>
-            )}
-
-            <button type="button" onClick={savePassword} className={`${CTA_CLASS} min-h-[48px] w-full`}>
-              <Icon name="check" size={16} />
-              Simpan Password
-            </button>
-
             <div className="mt-2 border-t border-line pt-3">
               <button
                 type="button"
