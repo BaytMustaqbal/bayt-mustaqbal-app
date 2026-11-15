@@ -194,11 +194,11 @@ export function DompetPanel({ accounts = [], users = [], canWrite = true, onChan
           <p className="flex items-center gap-1.5 text-xs font-semibold text-mutedfg"><Icon name="repeat" size={13} />Transfer antar dompet</p>
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             <select value={fromId} onChange={(e) => setFromId(e.target.value)} className={inputCls} aria-label="Dari dompet">
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.nama}</option>)}
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.nama} · {ownerName(a.user_id)}</option>)}
             </select>
             <Icon name="repeat" size={16} className="text-mutedfg" aria-hidden="true" />
             <select value={toId} onChange={(e) => setToId(e.target.value)} className={inputCls} aria-label="Ke dompet">
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.nama}</option>)}
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.nama} · {ownerName(a.user_id)}</option>)}
             </select>
           </div>
           <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" min="0" inputMode="decimal" placeholder="Nominal (Rp)" className={inputCls} aria-label="Nominal transfer" />
