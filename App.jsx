@@ -1329,6 +1329,11 @@ const deleteGoal = async (id) => {
       .concat([{ value: 'semua', label: 'Semua' }]);
   };
 
+  const [accounts, setAccounts] = useState([]);
+  const reloadAccounts = async () => {
+    try { setAccounts(await accountApi.fetch()); } catch { /* abaikan */ }
+  };
+
   // Opsi dompet untuk form transaksi (pengeluaran/pemasukan)
   const accountField = {
     key: 'accountId',
@@ -1536,11 +1541,6 @@ const deleteGoal = async (id) => {
   const [data, setData] = useState(null);
   // Loading state untuk data API
   const [dataLoading, setDataLoading] = useState(false);
-  // Dompet/rekening keluarga (dari /api/account) — dipakai form transaksi & tab Dompet
-  const [accounts, setAccounts] = useState([]);
-  const reloadAccounts = async () => {
-    try { setAccounts(await accountApi.fetch()); } catch { /* abaikan */ }
-  };
 
   // dataRef menjaga snapshot terbaru untuk aksi yang berjalan belakangan
   // (mis. tombol "Urungkan" dari toast) tanpa closure basi.
