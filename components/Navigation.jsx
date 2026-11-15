@@ -224,7 +224,9 @@ export function Navigation({
   useEffect(() => {
     if (!tugasDropOpen) return undefined;
     const onPointerDown = (e) => {
-      if (!tugasDropRef.current?.contains(e.target)) closeTugasDrop();
+      if (tugasDropRef.current?.contains(e.target)) return;
+      if (btnRefs.current['terjadwal']?.contains(e.target)) return; // biarkan onClick toggle
+      closeTugasDrop();
     };
     const onKey = (e) => {
       if (e.key === 'Escape') closeTugasDrop();
