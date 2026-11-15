@@ -116,7 +116,6 @@ export function AccountModal({
   const [profilePhone, setProfilePhone] = useState('');
   const [profileBlood, setProfileBlood] = useState('');
   const [profileAllergy, setProfileAllergy] = useState('');
-  const [profileAddress, setProfileAddress] = useState('');
   const [profileInstagram, setProfileInstagram] = useState('');
   const [profileFacebook, setProfileFacebook] = useState('');
   const [profileTiktok, setProfileTiktok] = useState('');
@@ -450,7 +449,6 @@ export function AccountModal({
         phone: profilePhone.trim() || null,
         blood: profileBlood.trim() || null,
         allergy: profileAllergy.trim() || null,
-        address: profileAddress.trim() || null,
         instagram: profileInstagram.trim() || null,
         facebook: profileFacebook.trim() || null,
         tiktok: profileTiktok.trim() || null,
@@ -692,10 +690,6 @@ export function AccountModal({
                 <div>
                   <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alergi / Pantangan</label>
                   <input value={profileAllergy} onChange={(e) => { setProfileAllergy(e.target.value); setProfileSaved(''); }} placeholder="mis. kacang" className={inputCls} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alamat</label>
-                  <input value={profileAddress} onChange={(e) => { setProfileAddress(e.target.value); setProfileSaved(''); }} placeholder="Jl. ..." className={inputCls} />
                 </div>
 
                 <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Sosial Media</p>
@@ -988,10 +982,6 @@ export function AccountModal({
                 <div>
                   <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alergi / Pantangan</label>
                   <input value={profileAllergy} onChange={(e) => { setProfileAllergy(e.target.value); setProfileSaved(''); }} placeholder="mis. kacang" className={inputCls} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alamat</label>
-                  <input value={profileAddress} onChange={(e) => { setProfileAddress(e.target.value); setProfileSaved(''); }} placeholder="Jl. ..." className={inputCls} />
                 </div>
 
                 <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Sosial Media</p>
