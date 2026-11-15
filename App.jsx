@@ -742,7 +742,32 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const stored = getUser();
   const transformedUser = stored
-    ? { id: stored.id, name: stored.nama || stored.name, username: stored.username, role: stored.role, family_role: stored.family_role || 'anak', generasi: stored.generasi || 'orangtua', birthDate: stored.birth_date || null, nickname: stored.nickname || null, phone: stored.phone || null, avatar: stored.avatar || stored.avatar_url || null, initials: initialsOf(stored.nickname || stored.nama || stored.name), group_id: stored.group_id || null, group_role: stored.group_role || 'anak', group_name: stored.group_name || null }
+    ? {
+        id: stored.id,
+        name: stored.nama || stored.name,
+        username: stored.username,
+        role: stored.role,
+        family_role: stored.family_role || 'anak',
+        generasi: stored.generasi || 'orangtua',
+        birthDate: stored.birth_date || stored.birthDate || null,
+        nickname: stored.nickname || null,
+        phone: stored.phone || null,
+        avatar: stored.avatar || stored.avatar_url || null,
+        avatar_url: stored.avatar_url || stored.avatar || null,
+        initials: initialsOf(stored.nickname || stored.nama || stored.name),
+        group_id: stored.group_id || null,
+        group_role: stored.group_role || 'anak',
+        group_name: stored.group_name || null,
+        blood: stored.blood || null,
+        allergy: stored.allergy || null,
+        address: stored.address || null,
+        instagram: stored.instagram || null,
+        facebook: stored.facebook || null,
+        tiktok: stored.tiktok || null,
+        twitter: stored.twitter || null,
+        youtube: stored.youtube || null,
+        nik: stored.nik || null,
+      }
     : null;
   const [currentUser, setCurrentUser] = useState(transformedUser);
   // Hak tulis data keluarga: kepala_keluarga, suami, istri. anak & cucu = baca saja
@@ -1632,10 +1657,20 @@ const deleteGoal = async (id) => {
             nickname: u.nickname || null,
             phone: u.phone || null,
             avatar: u.avatar_url || null,
+            avatar_url: u.avatar_url || null,
             initials: initialsOf(u.nickname || u.nama),
             group_id: u.group_id || null,
             group_role: u.group_role || 'anak',
             group_name: u.group_name || null,
+            blood: u.blood || null,
+            allergy: u.allergy || null,
+            address: u.address || null,
+            instagram: u.instagram || null,
+            facebook: u.facebook || null,
+            tiktok: u.tiktok || null,
+            twitter: u.twitter || null,
+            youtube: u.youtube || null,
+            nik: u.nik || null,
           };
           setCurrentUser(fresh);
           storeUser(fresh);
@@ -1676,10 +1711,20 @@ const deleteGoal = async (id) => {
           nickname: user.nickname || null,
           phone: user.phone || null,
           avatar: user.avatar_url || null,
+          avatar_url: user.avatar_url || null,
           initials: initialsOf(user.nickname || user.nama),
           group_id: user.group_id || null,
           group_role: user.group_role || 'anak',
           group_name: user.group_name || null,
+          blood: user.blood || null,
+          allergy: user.allergy || null,
+          address: user.address || null,
+          instagram: user.instagram || null,
+          facebook: user.facebook || null,
+          tiktok: user.tiktok || null,
+          twitter: user.twitter || null,
+          youtube: user.youtube || null,
+          nik: user.nik || null,
         };
         setCurrentUser((prev) => (prev && prev.id === fresh.id ? { ...prev, ...fresh } : fresh));
         storeUser(fresh);
@@ -3036,7 +3081,7 @@ const deleteGoal = async (id) => {
 
   // Called by LoginScreen setelah login sukses
   const handleLogin = (user) => {
-    // user = { id, username, nama, role, family_role, group_id, group_role } from backend
+    // user = { id, username, nama, role, family_role, group_id, group_role, ... } from backend
     const frontendUser = {
       id: user.id,
       name: user.nama,
@@ -3046,11 +3091,22 @@ const deleteGoal = async (id) => {
       generasi: user.generasi || 'orangtua',
       birthDate: user.birth_date || null,
       nickname: user.nickname || null,
+      phone: user.phone || null,
       avatar: user.avatar_url || null,
+      avatar_url: user.avatar_url || null,
       initials: initialsOf(user.nickname || user.nama),
       group_id: user.group_id || null,
       group_role: user.group_role || 'anak',
       group_name: user.group_name || null,
+      blood: user.blood || null,
+      allergy: user.allergy || null,
+      address: user.address || null,
+      instagram: user.instagram || null,
+      facebook: user.facebook || null,
+      tiktok: user.tiktok || null,
+      twitter: user.twitter || null,
+      youtube: user.youtube || null,
+      nik: user.nik || null,
     };
     storeUser(frontendUser);
     setCurrentUser(frontendUser);
