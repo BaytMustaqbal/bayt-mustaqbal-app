@@ -114,11 +114,6 @@ export function MemberDetailModal({ member, isMaster, onClose, onSaved }) {
               <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alergi / Pantangan</label>
               <input value={form.allergy} onChange={set('allergy')} disabled={!canEdit} placeholder="mis. kacang, udang" className="input-field w-full rounded-xl border border-line bg-canvas px-3 text-sm" />
             </div>
-            <div>
-              <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Alamat</label>
-              <input value={form.address} onChange={set('address')} disabled={!canEdit} placeholder="Jl. ..." className="input-field w-full rounded-xl border border-line bg-canvas px-3 text-sm" />
-            </div>
-
             <p className="pt-1 text-[10px] font-semibold uppercase text-mutedfg">Identitas</p>
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">NIK (KTP)</label>
