@@ -4213,9 +4213,7 @@ const deleteGoal = async (id) => {
       {detailMember && (
         <MemberDetailModal
           member={detailMember}
-          isMaster={currentUser?.username === 'baytmustaqbal@gmail.com'}
           onClose={() => setDetailMember(null)}
-          onSaved={() => { setDetailMember(null); loadFromAPI(); }}
         />
       )}
 
