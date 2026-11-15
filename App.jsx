@@ -28,6 +28,7 @@ import { FamilyCalendar } from './components/Calendar';
 import { Timeline } from './components/Timeline';
 import { FormSheet } from './components/FormSheet';
 import { FamilyTree } from './components/FamilyTree';
+import { MemberDetailModal } from './components/MemberDetailModal';
 import { SlideTabs } from './components/SlideTabs';
 import { SegmentedControl } from './components/SegmentedControl';
 import { Toast } from './components/Toast';
@@ -562,6 +563,16 @@ const mapUsersToFamily = (users) => {
     // Field mentah dari backend (dipakai form edit anggota di AccountModal).
     family_role: u.family_role || 'anak',
     group_role: u.group_role || 'anak',
+    blood: u.blood || null,
+    allergy: u.allergy || null,
+    address: u.address || null,
+    instagram: u.instagram || null,
+    facebook: u.facebook || null,
+    tiktok: u.tiktok || null,
+    twitter: u.twitter || null,
+    youtube: u.youtube || null,
+    bank_name: u.bank_name || null,
+    bank_account: u.bank_account || null,
   }));
 
   // Urutan anak: tertua = ke-1, dst. Dalam pohon saat ini hanya ada satu
@@ -827,6 +838,8 @@ const deleteGoal = async (id) => {
 
   // Sidebar navigasi (desktop-trigger header, mobile-tetap bottom navbar)
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Modal detail anggota keluarga (klik kartu anggota)
+  const [detailMember, setDetailMember] = useState(null);
 
   // ---- Fitur budget, tagihan & SHEET_CONFIG: WAJIB di dalam component ----
   // (sebelumnya salah tempat di module scope -> "Invalid hook call")
@@ -3691,7 +3704,7 @@ const deleteGoal = async (id) => {
                       members={data.family}
                       isMaster={currentUser?.username === 'baytmustaqbal@gmail.com'}
                       onAdd={handleTreeAdd}
-                      onSelect={() => {}}
+                      onSelect={(m) => setDetailMember(m)}
                     />
                   )}
                   {showMedis && <FamilyList title="Info Medis" icon="activity" items={data.familyMedical} onAdd={() => openAdd('family', { bagian: 'medis' })} />}
@@ -4192,6 +4205,16 @@ const deleteGoal = async (id) => {
         <RegisterScreen
           onLogin={handleLogin}
           onBack={() => setRegisterOpen(false)}
+        />
+      )}
+
+      {/* Modal detail anggota keluarga */}
+      {detailMember && (
+        <MemberDetailModal
+          member={detailMember}
+          isMaster={currentUser?.username === 'baytmustaqbal@gmail.com'}
+          onClose={() => setDetailMember(null)}
+          onSaved={() => { setDetailMember(null); loadFromAPI(); }}
         />
       )}
 

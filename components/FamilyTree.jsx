@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Icon } from './Icon';
 
 /* ============================================================================
@@ -37,14 +37,12 @@ export function formatBirthDate(iso) {
 }
 
 function MemberBox({ member, onSelect }) {
-  const [open, setOpen] = useState(false);
   const birth = formatBirthDate(member.birthDate);
 
   return (
     <button
       type="button"
-      onClick={() => { setOpen((v) => !v); onSelect?.(member); }}
-      aria-expanded={open}
+      onClick={() => onSelect?.(member)}
       className="flex w-full flex-col items-center gap-2 rounded-2xl border border-line bg-surface p-4 text-center shadow-e1 transition-colors hover:border-brand/30 sm:p-5"
     >
       <span
@@ -76,16 +74,6 @@ function MemberBox({ member, onSelect }) {
         {birth && <span className="mt-1.5 block text-[11px] text-mutedfg">{birth}</span>}
       </span>
 
-      {open && (
-        <span className="mt-1 w-full space-y-1 border-t border-line pt-2 text-left text-[11px] text-mutedfg">
-          <span className="block break-words">Nama: {member.name}</span>
-          {member.nickname && <span className="block break-words">Panggilan: {member.nickname}</span>}
-          <span className="block break-words">Email: {member.email || '—'}</span>
-          {member.phone && <span className="block break-words">Telp: {member.phone}</span>}
-          <span className="block">Status: {member.role} · Posisi: {LABEL_GENERASI[member.generasi] || 'Orangtua'}</span>
-          <span className="block">Tanggal lahir: {birth || 'belum diisi'}</span>
-        </span>
-      )}
     </button>
   );
 }
