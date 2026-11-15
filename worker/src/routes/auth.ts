@@ -105,7 +105,7 @@ authRoutes.post('/register', async (c) => {
 authRoutes.get('/users', async (c) => {
   const results = await c.env.DB.prepare(
     `SELECT u.id, u.username, u.nama, u.nickname, u.family_role, u.generasi, u.birth_date, u.avatar_url, u.phone, u.created_at,
-            u.blood, u.allergy, u.address, u.instagram, u.facebook, u.tiktok, u.twitter, u.youtube, u.bank_name, u.bank_account,
+            u.blood, u.allergy, u.address, u.instagram, u.facebook, u.tiktok, u.twitter, u.youtube, u.bank_name, u.bank_account, u.nik,
             u.group_id, u.group_role, g.name AS group_name
      FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.void IS NULL AND u.username != '${MASTER_USERNAME}'
@@ -211,7 +211,7 @@ authRoutes.get('/me', async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DB.prepare(
     `SELECT u.id, u.username, u.nama, u.nickname, u.avatar_url, u.role, u.family_role, u.generasi, u.birth_date,
-            u.phone, u.blood, u.allergy, u.address, u.instagram, u.facebook, u.tiktok, u.twitter, u.youtube, u.bank_name, u.bank_account,
+            u.phone, u.blood, u.allergy, u.address, u.instagram, u.facebook, u.tiktok, u.twitter, u.youtube, u.bank_name, u.bank_account, u.nik,
             u.group_id, u.group_role, u.google_sub, g.name AS group_name
      FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.id = ? AND u.void IS NULL`
@@ -228,12 +228,12 @@ authRoutes.put('/me', async (c) => {
   const caller = await c.env.DB.prepare('SELECT username FROM users WHERE id = ? AND void IS NULL').bind(userId).first() as any;
   const isMaster = caller?.username === MASTER_USERNAME;
   const { nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, phone,
-          blood, allergy, address, instagram, facebook, tiktok, twitter, youtube, bank_name, bank_account } = await c.req.json() as {
+          blood, allergy, address, instagram, facebook, tiktok, twitter, youtube, bank_name, bank_account, nik } = await c.req.json() as {
     nama?: string; nickname?: string | null; birth_date?: string | null; avatar_url?: string | null;
     family_role?: string; generasi?: string; group_role?: string; phone?: string | null;
     blood?: string | null; allergy?: string | null; address?: string | null;
     instagram?: string | null; facebook?: string | null; tiktok?: string | null;
-    twitter?: string | null; youtube?: string | null; bank_name?: string | null; bank_account?: string | null;
+    twitter?: string | null; youtube?: string | null; bank_name?: string | null; bank_account?: string | null; nik?: string | null;
   };
 
   const existing = await c.env.DB.prepare('SELECT id, nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, group_id, phone FROM users WHERE id = ? AND void IS NULL')
@@ -290,6 +290,7 @@ authRoutes.put('/me', async (c) => {
   const newYoutube = youtube !== undefined ? txtMe(youtube, 80) ?? null : existing.youtube;
   const newBankName = bank_name !== undefined ? txtMe(bank_name, 60) ?? null : existing.bank_name;
   const newBankAccount = bank_account !== undefined ? txtMe(bank_account, 60) ?? null : existing.bank_account;
+  const newNik = nik !== undefined ? txtMe(nik, 16) ?? null : existing.nik;
 
   // Unik Suami/Istri per grup bila status berubah
   if ((newFamilyRole === 'suami' || newFamilyRole === 'istri') && existing.group_id && newFamilyRole !== existing.family_role) {
@@ -302,13 +303,13 @@ authRoutes.put('/me', async (c) => {
   }
 
   const now = new Date().toISOString();
-  await c.env.DB.prepare('UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, family_role = ?, generasi = ?, group_role = ?, phone = ?, blood = ?, allergy = ?, address = ?, instagram = ?, facebook = ?, tiktok = ?, twitter = ?, youtube = ?, bank_name = ?, bank_account = ?, updated_at = ? WHERE id = ? AND void IS NULL')
-    .bind(newNama, newNick, newBirth, newAvatar, newFamilyRole, newGenerasi, newGroupRole, newPhone, newBlood, newAllergy, newAddress, newInstagram, newFacebook, newTiktok, newTwitter, newYoutube, newBankName, newBankAccount, now, userId).run();
+  await c.env.DB.prepare('UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, family_role = ?, generasi = ?, group_role = ?, phone = ?, blood = ?, allergy = ?, address = ?, instagram = ?, facebook = ?, tiktok = ?, twitter = ?, youtube = ?, bank_name = ?, bank_account = ?, nik = ?, updated_at = ? WHERE id = ? AND void IS NULL')
+    .bind(newNama, newNick, newBirth, newAvatar, newFamilyRole, newGenerasi, newGroupRole, newPhone, newBlood, newAllergy, newAddress, newInstagram, newFacebook, newTiktok, newTwitter, newYoutube, newBankName, newBankAccount, newNik, now, userId).run();
   await logAudit(c.env, userId, c.get('groupId'), 'update_profile', 'users', userId);
 
   const user = await c.env.DB.prepare(
     `SELECT u.id, u.username, u.nama, u.nickname, u.avatar_url, u.role, u.family_role, u.generasi, u.birth_date,
-            u.phone, u.blood, u.allergy, u.address, u.instagram, u.facebook, u.tiktok, u.twitter, u.youtube, u.bank_name, u.bank_account,
+            u.phone, u.blood, u.allergy, u.address, u.instagram, u.facebook, u.tiktok, u.twitter, u.youtube, u.bank_name, u.bank_account, u.nik,
             u.group_id, u.group_role, g.name AS group_name
      FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.id = ? AND u.void IS NULL`
@@ -371,12 +372,12 @@ authRoutes.put('/users/:id', async (c) => {
   }
 
   const { nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, password, phone,
-          blood, allergy, address, instagram, facebook, tiktok, twitter, youtube, bank_name, bank_account } = await c.req.json() as {
+          blood, allergy, address, instagram, facebook, tiktok, twitter, youtube, bank_name, bank_account, nik } = await c.req.json() as {
     nama?: string; nickname?: string | null; birth_date?: string | null; avatar_url?: string | null;
     family_role?: string; generasi?: string; group_role?: string; password?: string; phone?: string | null;
     blood?: string | null; allergy?: string | null; address?: string | null;
     instagram?: string | null; facebook?: string | null; tiktok?: string | null;
-    twitter?: string | null; youtube?: string | null; bank_name?: string | null; bank_account?: string | null;
+    twitter?: string | null; youtube?: string | null; bank_name?: string | null; bank_account?: string | null; nik?: string | null;
   };
 
   // Validasi enum
@@ -435,20 +436,21 @@ authRoutes.put('/users/:id', async (c) => {
   const newYoutube = youtube !== undefined ? txt(youtube, 80) ?? null : existing.youtube;
   const newBankName = bank_name !== undefined ? txt(bank_name, 60) ?? null : existing.bank_name;
   const newBankAccount = bank_account !== undefined ? txt(bank_account, 60) ?? null : existing.bank_account;
+  const newNik = nik !== undefined ? txt(nik, 16) ?? null : existing.nik;
 
   const newHash = password !== undefined && password !== '' ? await hashPassword(password) : existing.password_hash;
 
   await c.env.DB.prepare(
     `UPDATE users SET nama = ?, nickname = ?, birth_date = ?, avatar_url = ?, family_role = ?, generasi = ?, group_role = ?, phone = ?, password_hash = ?,
-       blood = ?, allergy = ?, address = ?, instagram = ?, facebook = ?, tiktok = ?, twitter = ?, youtube = ?, bank_name = ?, bank_account = ?, updated_at = ?
+       blood = ?, allergy = ?, address = ?, instagram = ?, facebook = ?, tiktok = ?, twitter = ?, youtube = ?, bank_name = ?, bank_account = ?, nik = ?, updated_at = ?
      WHERE id = ? AND void IS NULL`
   ).bind(newNama, newNick, newBirth, newAvatar, newFamilyRole, newGenerasi, newGroupRole, newPhone, newHash,
-         newBlood, newAllergy, newAddress, newInstagram, newFacebook, newTiktok, newTwitter, newYoutube, newBankName, newBankAccount, now, targetId).run();
+         newBlood, newAllergy, newAddress, newInstagram, newFacebook, newTiktok, newTwitter, newYoutube, newBankName, newBankAccount, newNik, now, targetId).run();
   await logAudit(c.env, callerId, existing.group_id, 'update_member', 'users', targetId);
 
   const updated = await c.env.DB.prepare(
     `SELECT u.id, u.username, u.nama, u.nickname, u.family_role, u.generasi, u.birth_date, u.avatar_url, u.phone, u.created_at,
-            u.blood, u.allergy, u.address, u.instagram, u.facebook, u.tiktok, u.twitter, u.youtube, u.bank_name, u.bank_account,
+            u.blood, u.allergy, u.address, u.instagram, u.facebook, u.tiktok, u.twitter, u.youtube, u.bank_name, u.bank_account, u.nik,
             u.group_id, u.group_role, g.name AS group_name
      FROM users u LEFT JOIN family_groups g ON g.id = u.group_id
      WHERE u.id = ? AND u.void IS NULL`
