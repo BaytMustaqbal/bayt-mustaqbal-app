@@ -2011,14 +2011,59 @@ const deleteGoal = async (id) => {
       }),
     });
     // Cache lokal (optimistic) supaya modal langsung terisi
-    storeUser({ id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, nickname: currentUser.nickname, birth_date: currentUser.birthDate, phone: currentUser.phone, avatar_url: patch.avatar });
+    storeUser({
+      id: currentUser.id, nama: patch.name, username: patch.username, role: currentUser.role,
+      family_role: currentUser.family_role, generasi: currentUser.generasi, nickname: currentUser.nickname,
+      birth_date: currentUser.birthDate, phone: currentUser.phone, avatar_url: patch.avatar,
+      blood: currentUser.blood ?? null, allergy: currentUser.allergy ?? null, address: currentUser.address ?? null,
+      instagram: currentUser.instagram ?? null, facebook: currentUser.facebook ?? null, tiktok: currentUser.tiktok ?? null,
+      twitter: currentUser.twitter ?? null, youtube: currentUser.youtube ?? null, nik: currentUser.nik ?? null,
+    });
     // Simpan nama + avatar ke server (PUT /auth/me) supaya tampil di semua perangkat
     auth.updateProfile({ nama: patch.name, nickname: currentUser.nickname, avatarUrl: patch.avatar || null })
       .then((updated) => {
         setCurrentUser((prev) => (prev
-          ? { ...prev, name: updated.nama, avatar: updated.avatar_url || null }
+          ? {
+              ...prev,
+              name: updated.nama ?? prev.name,
+              avatar: updated.avatar_url ?? prev.avatar ?? null,
+              avatar_url: updated.avatar_url ?? prev.avatar_url ?? null,
+              nickname: updated.nickname ?? prev.nickname ?? null,
+              birthDate: updated.birth_date ?? prev.birthDate ?? null,
+              phone: updated.phone ?? prev.phone ?? null,
+              blood: updated.blood ?? prev.blood ?? null,
+              allergy: updated.allergy ?? prev.allergy ?? null,
+              address: updated.address ?? prev.address ?? null,
+              instagram: updated.instagram ?? prev.instagram ?? null,
+              facebook: updated.facebook ?? prev.facebook ?? null,
+              tiktok: updated.tiktok ?? prev.tiktok ?? null,
+              twitter: updated.twitter ?? prev.twitter ?? null,
+              youtube: updated.youtube ?? prev.youtube ?? null,
+              nik: updated.nik ?? prev.nik ?? null,
+            }
           : prev));
-        storeUser({ id: currentUser.id, nama: updated.nama, username: currentUser.username, role: currentUser.role, family_role: currentUser.family_role, generasi: currentUser.generasi, birth_date: currentUser.birthDate, phone: updated.phone ?? currentUser.phone, avatar_url: updated.avatar_url });
+        const base = { ...(currentUser || {}), ...updated };
+        storeUser({
+          id: base.id || currentUser.id,
+          nama: updated.nama ?? currentUser.nama ?? currentUser.name,
+          username: base.username || currentUser.username,
+          role: base.role || currentUser.role,
+          family_role: base.family_role ?? currentUser.family_role,
+          generasi: base.generasi ?? currentUser.generasi,
+          nickname: updated.nickname ?? currentUser.nickname ?? null,
+          birth_date: updated.birth_date ?? currentUser.birthDate ?? null,
+          phone: updated.phone ?? currentUser.phone ?? null,
+          avatar_url: updated.avatar_url ?? null,
+          blood: updated.blood ?? currentUser.blood ?? null,
+          allergy: updated.allergy ?? currentUser.allergy ?? null,
+          address: updated.address ?? currentUser.address ?? null,
+          instagram: updated.instagram ?? currentUser.instagram ?? null,
+          facebook: updated.facebook ?? currentUser.facebook ?? null,
+          tiktok: updated.tiktok ?? currentUser.tiktok ?? null,
+          twitter: updated.twitter ?? currentUser.twitter ?? null,
+          youtube: updated.youtube ?? currentUser.youtube ?? null,
+          nik: updated.nik ?? currentUser.nik ?? null,
+        });
         loadFromAPI(); // segarkan tree (avatar/nama)
         pushToast({ message: 'Profil akun diperbarui', duration: 2500 });
       })
