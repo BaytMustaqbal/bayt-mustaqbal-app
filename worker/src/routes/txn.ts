@@ -59,13 +59,13 @@ txnRoutes.post('/', async (c) => {
   const now = new Date().toISOString();
   const acct = account_id || null;
 
-  const scope = groupScope(groupId, userId);
   if (acct) {
+    // Transaksi hanya boleh memakai dompet milik sendiri
     const owned = await c.env.DB.prepare(
-      `SELECT id FROM accounts WHERE id = ? AND ${scope.sql} AND void IS NULL`
-    ).bind(acct, scope.val).first();
+      'SELECT id FROM accounts WHERE id = ? AND user_id = ? AND void IS NULL'
+    ).bind(acct, userId).first();
     if (!owned) {
-      return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Dompet tidak ditemukan' } }, 400);
+      return c.json({ ok: false, data: null, error: { code: 'FORBIDDEN', message: 'Transaksi hanya boleh memakai dompet milik sendiri' } }, 403);
     }
   }
 
@@ -130,11 +130,12 @@ txnRoutes.put('/:id', async (c) => {
   const newAcct = account_id || null;
 
   if (newAcct) {
+    // Transaksi hanya boleh memakai dompet milik sendiri
     const owned = await c.env.DB.prepare(
-      `SELECT id FROM accounts WHERE id = ? AND ${scope.sql} AND void IS NULL`
-    ).bind(newAcct, scope.val).first();
+      'SELECT id FROM accounts WHERE id = ? AND user_id = ? AND void IS NULL'
+    ).bind(newAcct, userId).first();
     if (!owned) {
-      return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Dompet tidak ditemukan' } }, 400);
+      return c.json({ ok: false, data: null, error: { code: 'FORBIDDEN', message: 'Transaksi hanya boleh memakai dompet milik sendiri' } }, 403);
     }
   }
 

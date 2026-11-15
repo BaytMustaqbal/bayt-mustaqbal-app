@@ -59,6 +59,11 @@ accountRoutes.put('/:id', async (c) => {
     `SELECT * FROM accounts WHERE id = ? AND ${scope.sql} AND void IS NULL`
   ).bind(id, scope.val).first() as any;
   if (!existing) return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Dompet tidak ditemukan' } }, 404);
+  const isOwner = existing.user_id === userId;
+  const isKepala = c.get('groupRole') === 'kepala_keluarga';
+  if (!isOwner && !isKepala) {
+    return c.json({ ok: false, data: null, error: { code: 'FORBIDDEN', message: 'Hanya pemilik atau kepala keluarga yang bisa mengubah dompet ini' } }, 403);
+  }
   const { nama, bank, noRek, saldo } = await c.req.json().catch(() => ({})) as {
     nama?: string; bank?: string; noRek?: string; saldo?: number;
   };
@@ -86,6 +91,11 @@ accountRoutes.delete('/:id', async (c) => {
     `SELECT id FROM accounts WHERE id = ? AND ${scope.sql} AND void IS NULL`
   ).bind(id, scope.val).first();
   if (!existing) return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Dompet tidak ditemukan' } }, 404);
+  const isOwner = existing.user_id === userId;
+  const isKepala = c.get('groupRole') === 'kepala_keluarga';
+  if (!isOwner && !isKepala) {
+    return c.json({ ok: false, data: null, error: { code: 'FORBIDDEN', message: 'Hanya pemilik atau kepala keluarga yang bisa menghapus dompet ini' } }, 403);
+  }
   const now = new Date().toISOString();
   await c.env.DB.prepare('UPDATE accounts SET void = ?, updated_at = ? WHERE id = ?').bind(now, now, id).run();
   return c.json({ ok: true, data: { id }, error: null });
