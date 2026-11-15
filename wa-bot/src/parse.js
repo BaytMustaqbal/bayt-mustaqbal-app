@@ -1,3 +1,12 @@
+export function parseAmountToken(tok) {
+  let v = String(tok || '').replace(/^rp\.?/i, '').replace(/\./g, '').replace(/,/g, '');
+  let mm = v.match(/^(\d+)(k|rb)?$/i);
+  if (mm) return parseInt(mm[1], 10) * (mm[2] ? 1000 : 1);
+  mm = v.match(/^(\d+(?:[.,]\d+)?)jt$/i);
+  if (mm) return Math.round(parseFloat(mm[1].replace(',', '.')) * 1000000);
+  return null;
+}
+
 export function parseExpense(text) {
   const t = String(text || '').trim();
   const m = t.match(/^(?:catat|tambah)\s+(?:pengeluaran|belanja)\s*(.*)$/i);
@@ -8,15 +17,46 @@ export function parseExpense(text) {
   const noteTokens = [];
   for (const tok of tokens) {
     if (amount !== null) { noteTokens.push(tok); continue; }
-    let v = tok.replace(/^rp\.?/i, '').replace(/\./g, '').replace(/,/g, '');
-    let mm = v.match(/^(\d+)(k|rb)?$/i);
-    if (mm) { amount = parseInt(mm[1], 10) * (mm[2] ? 1000 : 1); continue; }
-    mm = v.match(/^(\d+(?:[.,]\d+)?)jt$/i);
-    if (mm) { amount = Math.round(parseFloat(mm[1].replace(',', '.')) * 1000000); continue; }
+    const parsed = parseAmountToken(tok);
+    if (parsed != null) { amount = parsed; continue; }
     noteTokens.push(tok);
   }
   if (!amount || amount <= 0) return { amount: null, note: rest || null };
   return { amount, note: noteTokens.join(' ').trim() || null };
+}
+
+/** "catat pemasukan 5jt gaji ke dompet BCA" / "tambah pemasukan 500k bonus" */
+export function parseIncome(text) {
+  const t = String(text || '').trim();
+  const m = t.match(/^(?:catat|tambah)\s+(?:pemasukan|pendapatan|income)\s*(.*)$/i);
+  if (!m) return null;
+  const rest = (m[1] || '').trim();
+  if (!rest) return { amount: null, note: null, accountHint: null };
+  const tokens = rest.split(/\s+/).filter(Boolean);
+  let amount = null;
+  const noteTokens = [];
+  for (const tok of tokens) {
+    if (amount !== null) { noteTokens.push(tok); continue; }
+    const parsed = parseAmountToken(tok);
+    if (parsed != null) { amount = parsed; continue; }
+    noteTokens.push(tok);
+  }
+  let noteStr = noteTokens.join(' ').trim();
+  let accountHint = null;
+  const ke = noteStr.match(/^(.*?)(?:\s+(?:ke|ke\s+dompet|ke\s+rekening|dompet|rekening)\s+(.+))$/i);
+  if (ke) {
+    noteStr = (ke[1] || '').trim();
+    accountHint = (ke[2] || '').trim() || null;
+  }
+  return { amount: amount && amount > 0 ? amount : null, note: noteStr || null, accountHint };
+}
+
+export function matchAccountHint(accounts, hint) {
+  if (!hint || !accounts?.length) return null;
+  const h = String(hint).toLowerCase().trim();
+  return accounts.find((a) => String(a.nama || '').toLowerCase() === h)
+    || accounts.find((a) => String(a.nama || '').toLowerCase().includes(h))
+    || null;
 }
 
 export function isYes(text) {

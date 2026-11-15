@@ -56,6 +56,59 @@ export async function monthExpenseTotal(env, { userId, groupId, ym }) {
   return Number(row?.total || 0);
 }
 
+/** Dompet milik user (untuk catat pemasukan ke akun). */
+export async function listOwnedAccounts(env, userId) {
+  if (!env.APP_DB || !userId) return [];
+  const rows = await env.APP_DB.prepare(
+    `SELECT id, nama, saldo FROM accounts WHERE user_id = ? AND void IS NULL ORDER BY created_at ASC`
+  ).bind(userId).all();
+  return (rows.results || []).map((r) => ({ id: r.id, nama: r.nama, saldo: Number(r.saldo) || 0 }));
+}
+
+/** Simpan pemasukan (type in). Opsional ke dompet milik sendiri (update saldo atomik). */
+export async function insertIncome(env, { userId, groupId, amount, note, accountId }) {
+  const nowIso = new Date().toISOString();
+  const today = nowIso.slice(0, 10);
+  const id = crypto.randomUUID();
+  const amt = Math.abs(Number(amount) || 0);
+  if (accountId) {
+    const acct = await env.APP_DB.prepare(
+      `SELECT id, nama FROM accounts WHERE id = ? AND user_id = ? AND void IS NULL`
+    ).bind(accountId, userId).first();
+    if (!acct) throw new Error('ACCOUNT_NOT_OWNED');
+    await env.APP_DB.batch([
+      env.APP_DB.prepare(
+        `INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at, void)
+         VALUES (?, ?, ?, NULL, ?, ?, 'in', ?, ?, 1, ?, ?, NULL)`
+      ).bind(id, userId, groupId || null, accountId, amt, today, note || null, nowIso, nowIso),
+      env.APP_DB.prepare(
+        `UPDATE accounts SET saldo = saldo + ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL`
+      ).bind(amt, nowIso, accountId),
+    ]);
+    return { id, today, accountName: acct.nama };
+  }
+  await env.APP_DB.prepare(
+    `INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at, void)
+     VALUES (?, ?, ?, NULL, NULL, ?, 'in', ?, ?, 1, ?, ?, NULL)`
+  ).bind(id, userId, groupId || null, amt, today, note || null, nowIso, nowIso).run();
+  return { id, today, accountName: null };
+}
+
+export async function monthIncomeTotal(env, { userId, groupId, ym }) {
+  let stmt;
+  if (groupId) {
+    stmt = env.APP_DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE void IS NULL AND type = 'in' AND group_id = ? AND date LIKE ?`
+    ).bind(groupId, `${ym}-%`);
+  } else {
+    stmt = env.APP_DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE void IS NULL AND type = 'in' AND user_id = ? AND date LIKE ?`
+    ).bind(userId, `${ym}-%`);
+  }
+  const row = await stmt.first();
+  return Number(row?.total || 0);
+}
+
 export async function querySummary(env, groupId, from, to, title) {
   const rows = await env.APP_DB.prepare(
     `SELECT COALESCE(c.name, 'lainnya') AS label, SUM(t.amount) AS total

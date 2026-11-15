@@ -1,14 +1,15 @@
 import { normalizePhone, samePhone, digits } from './phone.js';
 import {
   menuText, formatSummary, formatSaldo, formatAgenda, formatBills,
-  formatGoals, formatCategoryDetail, formatReminders, confirmExpense, confirmReminder, fmtRp,
+  formatGoals, formatCategoryDetail, formatReminders, confirmExpense, confirmIncome, confirmReminder, fmtRp,
 } from './format.js';
 import {
   wibNow, reminderIso, formatRemindAtLabel, findUserByPhone,
-  insertExpense, monthExpenseTotal, querySummary, querySaldo, queryAgenda,
+  insertExpense, monthExpenseTotal, insertIncome, monthIncomeTotal, listOwnedAccounts,
+  querySummary, querySaldo, queryAgenda,
   queryBills, queryGoals, queryCategoryDetail, insertReminder, listReminders,
 } from './db.js';
-import { parseExpense, isYes, isNo, isMenu, wantsReminderList, parseReminderLocal } from './parse.js';
+import { parseExpense, parseIncome, matchAccountHint, isYes, isNo, isMenu, wantsReminderList, parseReminderLocal } from './parse.js';
 import { detectIntent, chatReply } from './ai.js';
 import { getPending, setPending, clearPending } from './state.js';
 
@@ -98,6 +99,19 @@ async function executePending(env, pending, user) {
     const ym = new Date().toISOString().slice(0, 7);
     const total = await monthExpenseTotal(env, { userId: user.id, groupId: user.group_id, ym });
     return `Tercatat: ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}.\nTotal pengeluaran ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.`;
+  }
+  if (pending.type === 'income') {
+    const res = await insertIncome(env, {
+      userId: user.id,
+      groupId: user.group_id || null,
+      amount: pending.amount,
+      note: pending.note || null,
+      accountId: pending.accountId || null,
+    });
+    const ym = new Date().toISOString().slice(0, 7);
+    const total = await monthIncomeTotal(env, { userId: user.id, groupId: user.group_id, ym });
+    const ke = res.accountName ? ` ke dompet ${res.accountName}` : '';
+    return `Tercatat: pemasukan ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}${ke}.\nTotal pemasukan ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.`;
   }
   if (pending.type === 'reminder') {
     await insertReminder(env, {
@@ -197,7 +211,7 @@ async function handleFonnte(request, env, url) {
         await replyViaFonnte(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal, jadi aksi tidak bisa disimpan.');
         return JSON_OK();
       }
-      if ((pending.type === 'expense' || pending.type === 'reminder') && ownerId && ownerId !== user.id) {
+      if ((pending.type === 'expense' || pending.type === 'income' || pending.type === 'reminder') && ownerId && ownerId !== user.id) {
         // whitelist menunjuk id lain: tolak demi aman
         await clearPending(env, sender);
         await replyViaFonnte(env, sender, 'Nomor ini tidak diizinkan menyimpan data untuk akun tersebut.');
@@ -259,6 +273,38 @@ async function handleFonnte(request, env, url) {
     return JSON_OK();
   }
 
+  // 4b) Fast-path catat pemasukan (rule-based, minta konfirmasi)
+  const inc = parseIncome(t);
+  if (inc) {
+    if (!ownerId) {
+      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!user) {
+      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!inc.amount) {
+      await replyViaFonnte(env, sender, 'Format nominal belum jelas. Contoh: catat pemasukan 5jt gaji ke dompet BCA');
+      return JSON_OK();
+    }
+    let accountId = null; let accountName = null;
+    if (inc.accountHint) {
+      const accounts = await listOwnedAccounts(env, user.id);
+      const match = matchAccountHint(accounts, inc.accountHint);
+      if (!match) {
+        const names = accounts.map((a) => a.nama).filter(Boolean).join(', ');
+        await replyViaFonnte(env, sender, `Dompet "${inc.accountHint}" tidak ditemukan milik Anda.${names ? ` Dompet Anda: ${names}.` : ''} Sebutkan nama dompet yang benar, atau kirim tanpa dompet.`);
+        return JSON_OK();
+      }
+      accountId = match.id; accountName = match.nama;
+    }
+    const action = { type: 'income', amount: inc.amount, note: inc.note || null, accountId, accountName };
+    await setPending(env, sender, action);
+    await replyViaFonnte(env, sender, confirmIncome(action));
+    return JSON_OK();
+  }
+
   // 5) AI intent
   const ai = await detectIntent(env, t, wibContext(), personaName);
 
@@ -311,6 +357,40 @@ async function handleFonnte(request, env, url) {
     const action = { type: 'expense', amount: Math.round(amount), note };
     await setPending(env, sender, action);
     await replyViaFonnte(env, sender, confirmExpense(action));
+    return JSON_OK();
+  }
+
+  // 5b2) catat pemasukan (AI) — minta konfirmasi
+  if (ai?.intent === 'catat_pemasukan') {
+    if (!ownerId) {
+      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!user) {
+      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    const amount = Number(ai.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      await replyViaFonnte(env, sender, 'Saya belum menangkap nominal pemasukan. Contoh: "catat pemasukan 5 juta gaji ke dompet BCA".');
+      return JSON_OK();
+    }
+    const note = typeof ai.note === 'string' && ai.note.trim() ? ai.note.trim().slice(0, 200) : null;
+    const accountHint = typeof ai.account === 'string' && ai.account.trim() ? ai.account.trim().slice(0, 100) : null;
+    let accountId = null; let accountName = null;
+    if (accountHint) {
+      const accounts = await listOwnedAccounts(env, user.id);
+      const match = matchAccountHint(accounts, accountHint);
+      if (!match) {
+        const names = accounts.map((a) => a.nama).filter(Boolean).join(', ');
+        await replyViaFonnte(env, sender, `Dompet "${accountHint}" tidak ditemukan milik Anda.${names ? ` Dompet Anda: ${names}.` : ''} Sebutkan nama dompet yang benar, atau kirim tanpa dompet.`);
+        return JSON_OK();
+      }
+      accountId = match.id; accountName = match.nama;
+    }
+    const action = { type: 'income', amount: Math.round(amount), note, accountId, accountName };
+    await setPending(env, sender, action);
+    await replyViaFonnte(env, sender, confirmIncome(action));
     return JSON_OK();
   }
 

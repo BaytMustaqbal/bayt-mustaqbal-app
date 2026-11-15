@@ -8,6 +8,7 @@ export function menuText() {
     '',
     'Contoh yang bisa saya bantu:',
     '• "catat pengeluaran 50k makan siang"',
+    '• "catat pemasukan 5jt gaji ke dompet BCA"',
     '• "ingatkan aku besok jam 9 bayar listrik"',
     '• "cek pengingat"',
     '• "tagihan belum lunas" / "tenggat pembayaran"',
@@ -108,6 +109,17 @@ export function confirmExpense({ amount, note }) {
     'Saya tangkap pengeluaran ini:',
     `• Nominal: ${fmtRp(amount)}`,
     `• Catatan: ${note || '-'}`,
+    '',
+    'Balas *ya* untuk simpan, atau *batal* untuk batalkan.',
+  ].join('\n');
+}
+
+export function confirmIncome({ amount, note, accountName }) {
+  return [
+    'Saya tangkap pemasukan ini:',
+    `• Nominal: ${fmtRp(amount)}`,
+    `• Catatan: ${note || '-'}`,
+    `• Dompet: ${accountName || 'tanpa dompet'}`,
     '',
     'Balas *ya* untuk simpan, atau *batal* untuk batalkan.',
   ].join('\n');
