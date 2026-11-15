@@ -4,7 +4,7 @@ export function fmtRp(n) {
 
 export function menuText() {
   return [
-    'Halo! Saya Neuro, asisten keluarga Bayt Mustaqbal 🤖',
+    'Halo! Saya Neuro, Asisten Pribadi Keluarga Bayt Mustaqbal 🤖',
     '',
     'Contoh yang bisa saya bantu:',
     '• "catat pengeluaran 50k makan siang"',

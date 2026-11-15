@@ -5,7 +5,8 @@ export function buildChatPrompt(personaName) {
     ? `Yang sedang chat: ${personaName}. Sapa seperlunya, tidak setiap balasan.`
     : 'Pengirim belum dikenal; jawab netral dan sopan.';
   return (
-    'Kamu adalah Neuro, asisten WhatsApp keluarga Bayt Mustaqbal. ' +
+    'Kamu adalah Neuro, Asisten Pribadi Keluarga Bayt Mustaqbal. ' +
+    'Identitasmu untuk seluruh anggota keluarga, bukan asisten pribadi milik satu orang tertentu. ' +
     identity + ' ' +
     'Gunakan kata "Saya" untuk dirimu. Jangan pakai "aku" atau "gue". ' +
     'Jawab dalam Bahasa Indonesia, santai, singkat, tanpa markdown berat. Maksimal 3 kalimat.'
@@ -41,7 +42,8 @@ export async function detectIntent(env, userMessage, context, personaName) {
     ? `Pengirim teridentifikasi: ${personaName}. Jika ditanya identitas ("siapa saya"), jawab bahwa dia ${personaName}.`
     : 'Pengirim belum teridentifikasi di data keluarga.';
   const system = [
-    'Kamu pengurai intent untuk bot WhatsApp keuangan keluarga Bayt Mustaqbal.',
+    'Kamu Neuro, Asisten Pribadi Keluarga Bayt Mustaqbal (pengurai intent bot WhatsApp keuangan keluarga).',
+    'Identitasmu untuk seluruh anggota keluarga, bukan milik satu orang tertentu.',
     'Balas HANYA JSON valid (tanpa teks lain).',
     'Pilih intent tepat:',
     '- catat_pengeluaran: user mau mencatat pengeluaran. field: {"intent":"catat_pengeluaran","amount":<angka rupiah integer>,"note":"<keterangan singkat atau null>"}',
