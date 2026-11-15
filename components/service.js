@@ -59,6 +59,7 @@ export const sparepartToPayload = (item) => ({
   ),
   notes: String(item.notes || '').trim(),
   vehicleId: item.vehicleId || null,
+  vehicleType: item.vehicleType === 'Mobil' ? 'Mobil' : 'Motor',
 });
 
 export const serviceRecordToPayload = (record) => ({
@@ -95,6 +96,8 @@ export const newSparepart = (vals) => ({
     vals.intervalValue || 3000
   ),
   notes: String(vals.notes || '').trim(),
+  vehicleId: vals.vehicleId || null,
+  vehicleType: vals.vehicleType === 'Mobil' ? 'Mobil' : 'Motor',
 });
 
 export const newServiceItem = (vals) => ({

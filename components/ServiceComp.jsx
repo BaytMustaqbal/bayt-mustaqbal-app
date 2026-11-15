@@ -91,8 +91,7 @@ export function Service({
     jenis: '',
     intervalType: 'km',
     intervalValue: 3000,
-    vehicleId: '',
-    vehicleType: 'all',
+    vehicleType: 'Motor',
   });
 
   const handleAddServiceItem = (sparepartId, sparepartNama) => {
@@ -155,7 +154,7 @@ export function Service({
 
   const openAddInv = () => {
     setInvErr('');
-    setInvForm({ id: null, nama: '', jenis: '', intervalType: 'km', intervalValue: 3000, vehicleId: activeVehicle === 'all' ? (vehicles[0]?.id || '') : activeVehicle, vehicleType: 'all' });
+    setInvForm({ id: null, nama: '', jenis: '', intervalType: 'km', intervalValue: 3000, vehicleType: 'Motor' });
     setShowInvForm(true);
   };
 
@@ -167,8 +166,7 @@ export function Service({
       jenis: it.jenis || '',
       intervalType: it.intervalType || 'km',
       intervalValue: it.intervalValue || 3000,
-      vehicleId: it.vehicleId || '',
-      vehicleType: (vehicles.find((v) => v.id === it.vehicleId)?.jenis) || 'all',
+      vehicleType: it.vehicleType === 'Mobil' ? 'Mobil' : 'Motor',
     });
     setShowInvForm(true);
   };
@@ -178,25 +176,36 @@ export function Service({
       setInvErr('Nama perawatan wajib diisi.');
       return;
     }
+    if (invForm.vehicleType !== 'Motor' && invForm.vehicleType !== 'Mobil') {
+      setInvErr('Jenis kendaraan wajib dipilih (Motor atau Mobil).');
+      return;
+    }
     setInvErr('');
     const vals = {
       nama: invForm.nama,
       jenis: invForm.jenis,
       intervalType: invForm.intervalType,
       intervalValue: invForm.intervalValue,
-      vehicleId: invForm.vehicleId || null,
+      vehicleType: invForm.vehicleType,
+      vehicleId: null,
     };
     if (invForm.id) {
       onUpdateSparepart(invForm.id, vals);
     } else {
-      onAddSparepart(vals, invForm.vehicleId || null);
+      onAddSparepart(vals, null);
     }
     setShowInvForm(false);
   };
 
+  const normalizeJenis = (j) => (/mobil/i.test(String(j || '')) ? 'Mobil' : /motor/i.test(String(j || '')) ? 'Motor' : '');
+  const activeVehicleObj = activeVehicle === 'all' ? null : vehicles.find((v) => v.id === activeVehicle);
+  const activeVehicleJenis = normalizeJenis(activeVehicleObj?.jenis);
+
   const filteredInventory = activeVehicle === 'all'
     ? inventory
-    : inventory.filter((i) => (i.vehicleId || '') === activeVehicle);
+    : activeVehicleJenis
+      ? inventory.filter((i) => (i.vehicleType === activeVehicleJenis))
+      : inventory.filter((i) => (i.vehicleId || '') === activeVehicle);
 
   const filteredHistory = activeVehicle === 'all'
     ? history
@@ -332,8 +341,7 @@ export function Service({
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-ink">{it.nama || '-'}</p>
                       <p className="text-xs text-mutedfg">
-                        Next: {it.nextDue || 'belum ditentukan'}
-                        {it.vehicleId && vehicles.find((v) => v.id === it.vehicleId) ? ` · ${vehicles.find((v) => v.id === it.vehicleId).nama}` : ''}
+                        Next: {it.nextDue || 'belum ditentukan'} · {it.vehicleType === 'Mobil' ? 'Mobil' : 'Motor'}
                       </p>
                     </div>
                     {canWrite && (
@@ -511,47 +519,56 @@ export function Service({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-mutedfg mb-1">Item (harga per unit)</label>
-                {serviceForm.items.map((item, idx) => (
-                  <div key={idx} className="flex gap-2 mb-2">
-                    <select
-                      value={item.sparepartId}
-                      onChange={(e) => handleItemChange(idx, 'sparepartId', e.target.value)}
-                      className="flex-1 rounded-xl border border-line bg-canvas px-2 text-sm"
-                    >
-                      <option value="">Pilih sparepart</option>
-                      {(serviceForm.vehicleId ? inventory.filter((sp) => (sp.vehicleId || '') === serviceForm.vehicleId) : inventory).map((sp) => (
-                        <option key={sp.id} value={sp.id}>{sp.nama}</option>
+                <label className="block text-xs font-medium text-mutedfg mb-1">Perawatan</label>
+                {(() => {
+                  const sv = vehicles.find((v) => v.id === serviceForm.vehicleId);
+                  const svJenis = sv ? (/mobil/i.test(sv.jenis || '') ? 'Mobil' : /motor/i.test(sv.jenis || '') ? 'Motor' : '') : '';
+                  const invOpts = svJenis ? inventory.filter((sp) => sp.vehicleType === svJenis) : inventory;
+                  return (
+                    <>
+                      {serviceForm.items.map((item, idx) => (
+                        <div key={idx} className="flex gap-2 mb-2">
+                          <select
+                            value={item.sparepartId}
+                            onChange={(e) => handleItemChange(idx, 'sparepartId', e.target.value)}
+                            className="flex-1 rounded-xl border border-line bg-canvas px-2 text-sm"
+                          >
+                            <option value="">Pilih perawatan</option>
+                            {invOpts.map((sp) => (
+                              <option key={sp.id} value={sp.id}>{sp.nama}</option>
+                            ))}
+                          </select>
+                          <CurrencyInput
+                            value={item.price}
+                            onChange={(n) => handleItemChange(idx, 'price', n)}
+                            className="w-20 rounded-xl border border-line bg-canvas px-2 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(idx)}
+                            className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg hover:bg-tonerose/15 hover:text-tonerosefg"
+                          >
+                            <Icon name="x" size={14} />
+                          </button>
+                        </div>
                       ))}
-                    </select>
-                    <CurrencyInput
-                      value={item.price}
-                      onChange={(n) => handleItemChange(idx, 'price', n)}
-                      className="w-20 rounded-xl border border-line bg-canvas px-2 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(idx)}
-                      className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg hover:bg-tonerose/15 hover:text-tonerosefg"
-                    >
-                      <Icon name="x" size={14} />
-                    </button>
-                  </div>
-                ))}
-                <select
-                  value=""
-                  onChange={(e) => handleAddServiceItem(e.target.value, inventory.find((i) => i.id === e.target.value)?.nama || '')}
-                  className="w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm"
-                >
-                  <option value="">Tambah item...</option>
-                  {(serviceForm.vehicleId ? inventory.filter((sp) => (sp.vehicleId || '') === serviceForm.vehicleId) : inventory).length > 0 ? (
-                    (serviceForm.vehicleId ? inventory.filter((sp) => (sp.vehicleId || '') === serviceForm.vehicleId) : inventory).map((sp) => (
-                      <option key={sp.id} value={sp.id}>{sp.nama}</option>
-                    ))
-                  ) : (
-                    <option value="" disabled>Belum ada inventaris</option>
-                  )}
-                </select>
+                      <select
+                        value=""
+                        onChange={(e) => handleAddServiceItem(e.target.value, inventory.find((i) => i.id === e.target.value)?.nama || '')}
+                        className="w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm"
+                      >
+                        <option value="">Tambah perawatan...</option>
+                        {invOpts.length > 0 ? (
+                          invOpts.map((sp) => (
+                            <option key={sp.id} value={sp.id}>{sp.nama}</option>
+                          ))
+                        ) : (
+                          <option value="" disabled>Belum ada perawatan untuk jenis kendaraan ini</option>
+                        )}
+                      </select>
+                    </>
+                  );
+                })()}
               </div>
             </div>
             <label className="mt-4 flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-canvas px-3.5">
@@ -628,35 +645,24 @@ export function Service({
                   className="input-field w-full rounded-xl border border-line bg-canvas px-3"
                 />
               </div>
-              {vehicles.length > 0 && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-medium text-mutedfg mb-1">Kendaraan</label>
-                  <div className="flex gap-1.5 overflow-x-auto rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Filter jenis kendaraan">
-                    {['all', 'Motor', 'Mobil'].map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setInvForm((f) => ({ ...f, vehicleType: t, vehicleId: '' }))}
-                        className={`inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${invForm.vehicleType === t ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'}`}
-                      >
-                        {t === 'all' ? 'Semua' : t}
-                      </button>
-                    ))}
-                  </div>
-                  <select
-                    value={invForm.vehicleId}
-                    onChange={(e) => setInvForm({ ...invForm, vehicleId: e.target.value })}
-                    className="input-field w-full rounded-xl border border-line bg-canvas px-3"
-                  >
-                    <option value="">Belum ditetapkan</option>
-                    {vehicles
-                      .filter((v) => invForm.vehicleType === 'all' || v.jenis === invForm.vehicleType)
-                      .map((v) => (
-                        <option key={v.id} value={v.id}>{v.nama}</option>
-                      ))}
-                  </select>
+              <div>
+                <label className="block text-xs font-medium text-mutedfg mb-1">Jenis Kendaraan</label>
+                <div className="flex gap-1.5 overflow-x-auto rounded-xl bg-muted/50 p-1" role="radiogroup" aria-label="Jenis kendaraan">
+                  {['Motor', 'Mobil'].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      role="radio"
+                      aria-checked={invForm.vehicleType === t}
+                      onClick={() => setInvForm((f) => ({ ...f, vehicleType: t }))}
+                      className={`inline-flex min-h-[36px] flex-1 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${invForm.vehicleType === t ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:bg-muted hover:text-ink'}`}
+                    >
+                      <Icon name={t === 'Motor' ? 'bike' : 'car'} size={14} />
+                      {t}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-mutedfg mb-1">Selang</label>
