@@ -57,12 +57,28 @@ txnRoutes.post('/', async (c) => {
 
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
+  const acct = account_id || null;
 
-  await c.env.DB.prepare(
-    'INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(id, userId, groupId, category_id || null, account_id || null, amount, type, date, description || null, 1, now, now).run();
+  const scope = groupScope(groupId, userId);
+  if (acct) {
+    const owned = await c.env.DB.prepare(
+      `SELECT id FROM accounts WHERE id = ? AND ${scope.sql} AND void IS NULL`
+    ).bind(acct, scope.val).first();
+    if (!owned) {
+      return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Dompet tidak ditemukan' } }, 400);
+    }
+  }
 
-  return c.json({ ok: true, data: { id, user_id: userId, group_id: groupId, category_id, account_id, amount, type, date, description, rev: 1, created_at: now, updated_at: now }, error: null });
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      'INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, userId, groupId, category_id || null, acct, amount, type, date, description || null, 1, now, now),
+    ...(acct ? [c.env.DB.prepare(
+      `UPDATE accounts SET saldo = saldo ${type === 'in' ? '+' : '-'} ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL`
+    ).bind(Math.abs(Number(amount)), now, acct)] : []),
+  ]);
+
+  return c.json({ ok: true, data: { id, user_id: userId, group_id: groupId, category_id, account_id: acct, amount, type, date, description, rev: 1, created_at: now, updated_at: now }, error: null });
 });
 
 // GET /api/txn/:id — detail by id
@@ -110,9 +126,39 @@ txnRoutes.put('/:id', async (c) => {
   }
 
   const now = new Date().toISOString();
-  await c.env.DB.prepare(
-    'UPDATE transactions SET category_id = ?, account_id = ?, amount = ?, type = ?, date = ?, description = ?, rev = rev + 1, updated_at = ? WHERE id = ?'
-  ).bind(category_id || null, account_id || null, amount, type, date, description || null, now, id).run();
+  const oldAcct = existing.account_id || null;
+  const newAcct = account_id || null;
+
+  if (newAcct) {
+    const owned = await c.env.DB.prepare(
+      `SELECT id FROM accounts WHERE id = ? AND ${scope.sql} AND void IS NULL`
+    ).bind(newAcct, scope.val).first();
+    if (!owned) {
+      return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Dompet tidak ditemukan' } }, 400);
+    }
+  }
+
+  const amt = Math.abs(Number(amount));
+  const oldAmt = Math.abs(Number(existing.amount));
+  const oldType = existing.type === 'in' ? 'in' : 'out';
+  const newType = type === 'in' ? 'in' : 'out';
+
+  const oldEffect = oldType === 'in' ? oldAmt : -oldAmt;
+  const newEffect = newType === 'in' ? amt : -amt;
+  const batch: any[] = [
+    c.env.DB.prepare('UPDATE transactions SET category_id = ?, account_id = ?, amount = ?, type = ?, date = ?, description = ?, rev = rev + 1, updated_at = ? WHERE id = ?')
+      .bind(category_id || null, newAcct, amount, type, date, description || null, now, id),
+  ];
+
+  if (oldAcct && oldAcct === newAcct) {
+    const net = newEffect - oldEffect;
+    if (net !== 0) batch.push(c.env.DB.prepare('UPDATE accounts SET saldo = saldo + ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL').bind(net, now, oldAcct));
+  } else {
+    if (oldAcct) batch.push(c.env.DB.prepare('UPDATE accounts SET saldo = saldo - ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL').bind(oldEffect, now, oldAcct));
+    if (newAcct) batch.push(c.env.DB.prepare('UPDATE accounts SET saldo = saldo + ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL').bind(newEffect, now, newAcct));
+  }
+
+  await c.env.DB.batch(batch);
 
   const updated = await c.env.DB.prepare(
     'SELECT * FROM transactions WHERE id = ?'
@@ -140,9 +186,15 @@ txnRoutes.delete('/:id', async (c) => {
   }
 
   const now = new Date().toISOString();
-  await c.env.DB.prepare(
-    'UPDATE transactions SET void = ? WHERE id = ?'
-  ).bind(now, id).run();
+  const acct = existing.account_id || null;
+  const oldAmt = Math.abs(Number(existing.amount));
+  const oldType = existing.type === 'in' ? 'in' : 'out';
+  const oldEffect = oldType === 'in' ? oldAmt : -oldAmt;
+  const batch: any[] = [
+    c.env.DB.prepare('UPDATE transactions SET void = ? WHERE id = ?').bind(now, id),
+  ];
+  if (acct) batch.push(c.env.DB.prepare('UPDATE accounts SET saldo = saldo - ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL').bind(oldEffect, now, acct));
+  await c.env.DB.batch(batch);
 
   return c.json({ ok: true, data: { id, void: now }, error: null });
 });

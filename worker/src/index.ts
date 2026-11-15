@@ -31,6 +31,7 @@ import { pushRoutes } from './routes/push';
 import { subRoutes } from './routes/sub';
 import { serviceInvRoutes } from './routes/serviceInv';
 import { vehicleRoutes } from './routes/vehicle';
+import { accountRoutes } from './routes/account';
 import { authMiddleware } from './middleware/auth';
 import { handleCron } from './cron';
 
@@ -80,6 +81,7 @@ app.route('/api/push', pushRoutes);
 app.route('/api/sub', subRoutes);
 app.route('/api/service-inv', serviceInvRoutes);
 app.route('/api/vehicle', vehicleRoutes);
+app.route('/api/account', accountRoutes);
 
 app.get('/', (c) => c.json({ ok: true, message: 'Bayt Mustaqbal API' }));
 
