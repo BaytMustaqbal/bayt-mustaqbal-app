@@ -236,7 +236,7 @@ authRoutes.put('/me', async (c) => {
     twitter?: string | null; youtube?: string | null; bank_name?: string | null; bank_account?: string | null; nik?: string | null;
   };
 
-  const existing = await c.env.DB.prepare('SELECT id, nama, nickname, birth_date, avatar_url, family_role, generasi, group_role, group_id, phone FROM users WHERE id = ? AND void IS NULL')
+  const existing = await c.env.DB.prepare('SELECT * FROM users WHERE id = ? AND void IS NULL')
     .bind(userId).first() as any;
   if (!existing) {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } }, 404);
@@ -280,17 +280,17 @@ authRoutes.put('/me', async (c) => {
   const newGroupRole = group_role !== undefined ? group_role : existing.group_role;
   const newPhone = phone !== undefined ? (typeof phone === 'string' ? phone.trim().slice(0, 30) || null : null) : existing.phone;
   const txtMe = (v: unknown, max = 120) => (v === undefined ? undefined : (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null));
-  const newBlood = blood !== undefined ? txtMe(blood, 10) ?? null : existing.blood;
-  const newAllergy = allergy !== undefined ? txtMe(allergy, 300) ?? null : existing.allergy;
-  const newAddress = address !== undefined ? txtMe(address, 200) ?? null : existing.address;
-  const newInstagram = instagram !== undefined ? txtMe(instagram, 80) ?? null : existing.instagram;
-  const newFacebook = facebook !== undefined ? txtMe(facebook, 80) ?? null : existing.facebook;
-  const newTiktok = tiktok !== undefined ? txtMe(tiktok, 80) ?? null : existing.tiktok;
-  const newTwitter = twitter !== undefined ? txtMe(twitter, 80) ?? null : existing.twitter;
-  const newYoutube = youtube !== undefined ? txtMe(youtube, 80) ?? null : existing.youtube;
-  const newBankName = bank_name !== undefined ? txtMe(bank_name, 60) ?? null : existing.bank_name;
-  const newBankAccount = bank_account !== undefined ? txtMe(bank_account, 60) ?? null : existing.bank_account;
-  const newNik = nik !== undefined ? txtMe(nik, 16) ?? null : existing.nik;
+  const newBlood = blood !== undefined ? txtMe(blood, 10) ?? null : existing.blood ?? null;
+  const newAllergy = allergy !== undefined ? txtMe(allergy, 300) ?? null : existing.allergy ?? null;
+  const newAddress = address !== undefined ? txtMe(address, 200) ?? null : existing.address ?? null;
+  const newInstagram = instagram !== undefined ? txtMe(instagram, 80) ?? null : existing.instagram ?? null;
+  const newFacebook = facebook !== undefined ? txtMe(facebook, 80) ?? null : existing.facebook ?? null;
+  const newTiktok = tiktok !== undefined ? txtMe(tiktok, 80) ?? null : existing.tiktok ?? null;
+  const newTwitter = twitter !== undefined ? txtMe(twitter, 80) ?? null : existing.twitter ?? null;
+  const newYoutube = youtube !== undefined ? txtMe(youtube, 80) ?? null : existing.youtube ?? null;
+  const newBankName = bank_name !== undefined ? txtMe(bank_name, 60) ?? null : existing.bank_name ?? null;
+  const newBankAccount = bank_account !== undefined ? txtMe(bank_account, 60) ?? null : existing.bank_account ?? null;
+  const newNik = nik !== undefined ? txtMe(nik, 16) ?? null : existing.nik ?? null;
 
   // Unik Suami/Istri per grup bila status berubah
   if ((newFamilyRole === 'suami' || newFamilyRole === 'istri') && existing.group_id && newFamilyRole !== existing.family_role) {
