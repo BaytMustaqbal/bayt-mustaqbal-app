@@ -3395,6 +3395,7 @@ const deleteGoal = async (id) => {
             theme={theme}
             onThemeChange={setTheme}
             onChangePassword={openAccountSecurity}
+            users={data.users || []}
           />
         );
       }

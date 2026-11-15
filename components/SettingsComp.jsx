@@ -60,7 +60,7 @@ function SettingSection({ icon, title, subtitle, open, onToggle, badge, children
    API /api/gcal dan menangani balikan ?gcal=connected|error dari OAuth.
    ============================================================================ */
 
-export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', onThemeChange, onChangePassword }) {
+export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', onThemeChange, onChangePassword, users = [] }) {
   // ---- Notifikasi WA (preferensi per grup) ----
   const [notif, setNotif] = useState(NOTIF_DEFAULTS);
   const [notifLoaded, setNotifLoaded] = useState(false);
@@ -768,7 +768,7 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
           open={openKey === 'audit'}
           onToggle={() => toggleKey('audit')}
         >
-          <AuditComp />
+          <AuditComp users={users} />
         </SettingSection>
 
         {/* ---- Data & Cadangan ---- */}
