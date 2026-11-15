@@ -3549,47 +3549,23 @@ const deleteGoal = async (id) => {
                   </div>
                 )}
 
-                {/* 5 kartu KPI bulan terpilih */}
-                <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
-                  <StatCard
-                    icon="trendingUp"
-                    tone="emerald"
-                    value={formatCurrencyShort(incomeMonth)}
-                    valueTitle={formatCurrency(incomeMonth)}
-                    label="Pemasukan"
-                    hint="Gaji, side job & lainnya"
-                  />
-                  <StatCard
-                    icon="wallet"
-                    tone="cyan"
-                    value={formatCurrencyShort(expenseMonth)}
-                    valueTitle={formatCurrency(expenseMonth)}
-                    label="Pengeluaran"
-                    hint="Semua kategori"
-                  />
-                  <StatCard
-                    icon={netMonth >= 0 ? 'arrowUpRight' : 'arrowDownRight'}
-                    tone={netMonth >= 0 ? 'emerald' : 'rose'}
-                    value={`${netMonth >= 0 ? '+' : '-'}${formatCurrencyShort(Math.abs(netMonth))}`}
-                    valueTitle={`${netMonth >= 0 ? '+' : '-'}${formatCurrency(Math.abs(netMonth))}`}
-                    label="Selisih"
-                    hint="Pemasukan - Pengeluaran"
-                  />
-                  <StatCard
-                    icon="target"
-                    tone={anggaranStatus.level === 'lewat' ? 'rose' : anggaranStatus.level === 'hati-hati' ? 'amber' : anggaranStatus.level === 'aman' ? 'emerald' : 'cyan'}
-                    value={anggaranStatus.level === 'belum' ? '-' : `${anggaranStatus.pct}%`}
-                    label="Anggaran terpakai"
-                    hint={budget.income > 0 ? `dari ${formatCurrencyShort(budget.income)}` : 'Anggaran belum diisi'}
-                  />
-                  <StatCard
-                    icon={anggaranStatus.sisa >= 0 ? 'circleCheck' : 'alertTriangle'}
-                    tone={anggaranStatus.sisa >= 0 ? 'emerald' : 'rose'}
-                    value={anggaranStatus.level === 'belum' ? '-' : formatCurrencyShort(Math.abs(anggaranStatus.sisa))}
-                    valueTitle={anggaranStatus.level === 'belum' ? undefined : formatCurrency(Math.abs(anggaranStatus.sisa))}
-                    label={anggaranStatus.sisa >= 0 ? 'Sisa anggaran' : 'Melewati anggaran'}
-                    hint="Dari angka rencana"
-                  />
+                {/* Ringkasan bulan terpilih: satu baris ringkas */}
+                <div className="mb-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
+                  {[
+                    { icon: 'trendingUp', tone: 'text-toneemeraldfg', label: 'Pemasukan', value: formatCurrencyShort(incomeMonth), title: formatCurrency(incomeMonth) },
+                    { icon: 'wallet', tone: 'text-brandfg', label: 'Pengeluaran', value: formatCurrencyShort(expenseMonth), title: formatCurrency(expenseMonth) },
+                    { icon: netMonth >= 0 ? 'arrowUpRight' : 'arrowDownRight', tone: netMonth >= 0 ? 'text-toneemeraldfg' : 'text-tonerosefg', label: 'Selisih', value: `${netMonth >= 0 ? '+' : '-'}${formatCurrencyShort(Math.abs(netMonth))}`, title: `${netMonth >= 0 ? '+' : '-'}${formatCurrency(Math.abs(netMonth))}` },
+                    { icon: 'target', tone: anggaranStatus.level === 'lewat' ? 'text-tonerosefg' : anggaranStatus.level === 'hati-hati' ? 'text-toneamberfg' : anggaranStatus.level === 'aman' ? 'text-toneemeraldfg' : 'text-brandfg', label: 'Terpakai', value: anggaranStatus.level === 'belum' ? '-' : `${anggaranStatus.pct}%`, title: anggaranStatus.level === 'belum' ? 'Anggaran belum diisi' : `dari ${formatCurrency(budget.income)}` },
+                    { icon: anggaranStatus.sisa >= 0 ? 'circleCheck' : 'alertTriangle', tone: anggaranStatus.sisa >= 0 ? 'text-toneemeraldfg' : 'text-tonerosefg', label: anggaranStatus.sisa >= 0 ? 'Sisa' : 'Lewat', value: anggaranStatus.level === 'belum' ? '-' : formatCurrencyShort(Math.abs(anggaranStatus.sisa)), title: anggaranStatus.level === 'belum' ? undefined : formatCurrency(Math.abs(anggaranStatus.sisa)) },
+                  ].map((it) => (
+                    <div key={it.label} className="flex min-w-0 items-center gap-1.5 rounded-xl border border-line bg-canvas px-2 py-1.5 sm:px-3">
+                      <Icon name={it.icon} size={13} className={`shrink-0 ${it.tone}`} />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-medium leading-tight text-mutedfg">{it.label}</p>
+                        <p className={`truncate font-mono text-[11px] font-bold leading-tight sm:text-xs ${it.tone}`} title={it.title}>{it.value}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Chart: tren 6 bulan pemasukan vs pengeluaran (batang berpasangan) */}
