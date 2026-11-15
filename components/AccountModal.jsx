@@ -66,7 +66,6 @@ const FIELD_ORDER = ['name', 'username', 'password', 'password2'];
 
 const TABS = [
   { id: 'profil', label: 'Profil', icon: 'userCheck' },
-  { id: 'keamanan', label: 'Keamanan', icon: 'lock' },
   { id: 'anggota', label: 'Anggota', icon: 'users' },
 ];
 
@@ -656,11 +655,8 @@ export function AccountModal({
           </div>
         )}
 
-        {tab === 'keamanan' && (
+        {tab === 'profil' && (
           <div className="space-y-3.5">
-            <p className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-mutedfg">
-              Keamanan: password akun dikelola oleh master. Bila perlu mengganti password, hubungi master.
-            </p>
 
             <div className="mt-2 border-t border-line pt-3">
               <button
