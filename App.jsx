@@ -2647,19 +2647,37 @@ const deleteGoal = async (id) => {
     if (updatedUser) {
       const merged = {
         ...currentUser,
-        name: updatedUser.nama || currentUser.name,
-        nickname: updatedUser.nickname ?? currentUser.nickname ?? null,
-        birthDate: updatedUser.birth_date ?? currentUser.birthDate,
-        phone: updatedUser.phone ?? currentUser.phone ?? null,
+        name: updatedUser.nama ?? currentUser?.name,
+        username: updatedUser.username ?? currentUser?.username,
+        nickname: updatedUser.nickname ?? currentUser?.nickname ?? null,
+        birthDate: updatedUser.birth_date ?? currentUser?.birthDate ?? null,
+        phone: updatedUser.phone ?? currentUser?.phone ?? null,
+        avatar: updatedUser.avatar_url ?? currentUser?.avatar ?? null,
+        avatar_url: updatedUser.avatar_url ?? currentUser?.avatar_url ?? null,
+        blood: updatedUser.blood ?? currentUser?.blood ?? null,
+        allergy: updatedUser.allergy ?? currentUser?.allergy ?? null,
+        address: updatedUser.address ?? currentUser?.address ?? null,
+        instagram: updatedUser.instagram ?? currentUser?.instagram ?? null,
+        facebook: updatedUser.facebook ?? currentUser?.facebook ?? null,
+        tiktok: updatedUser.tiktok ?? currentUser?.tiktok ?? null,
+        twitter: updatedUser.twitter ?? currentUser?.twitter ?? null,
+        youtube: updatedUser.youtube ?? currentUser?.youtube ?? null,
+        nik: updatedUser.nik ?? currentUser?.nik ?? null,
+        family_role: updatedUser.family_role ?? currentUser?.family_role,
+        generasi: updatedUser.generasi ?? currentUser?.generasi,
+        group_role: updatedUser.group_role ?? currentUser?.group_role,
       };
       setCurrentUser(merged);
       storeUser({
         id: merged.id, nama: merged.name, username: merged.username, role: merged.role,
         family_role: merged.family_role, generasi: merged.generasi, nickname: merged.nickname,
         birth_date: merged.birthDate, phone: merged.phone, avatar_url: merged.avatar_url,
+        blood: merged.blood, allergy: merged.allergy, address: merged.address,
+        instagram: merged.instagram, facebook: merged.facebook, tiktok: merged.tiktok,
+        twitter: merged.twitter, youtube: merged.youtube, nik: merged.nik,
       });
     }
-    setAccountInitialGenerasi(null); // reset preset ? klik "+" berikutnya tetap bekerja
+    setAccountInitialGenerasi(null); // reset preset: klik "+" berikutnya tetap bekerja
     pushToast({ message: 'Perubahan tersimpan', duration: 2500 });
     loadFromAPI();
   };
