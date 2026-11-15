@@ -566,7 +566,7 @@ export function Navigation({
               ref={tugasDropRef}
               role="menu"
               aria-label="Tugas Terjadwal"
-              className={`absolute bottom-full z-[80] right-2 mb-2 w-56 rounded-2xl border border-line bg-surface/95 p-1.5 shadow-pop backdrop-blur-xl ${tugasDropClosing ? 'tugas-drop--closing' : 'tugas-drop'}`}
+              className={`absolute bottom-full z-[80] right-2 mb-2 w-[205px] rounded-2xl border border-line bg-surface/95 p-1.5 shadow-pop backdrop-blur-xl ${tugasDropClosing ? 'tugas-drop--closing' : 'tugas-drop'}`}
             >
               {TUGAS_DROP_ITEMS.map((t) => (
                 <button
