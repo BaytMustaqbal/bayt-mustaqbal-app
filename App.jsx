@@ -47,7 +47,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 const Budgeting = lazy(() => import('./components/Budgeting').then((m) => ({ default: m.Budgeting })));
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi, vehicleApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi, vehicleApi, accountApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -349,10 +349,10 @@ const toFormValues = (section, item) => {
     return { title: item.title, date: item.date, time: item.time, category: item.category, member: item.member };
   }
   if (section === 'expenses') {
-    return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category, bucket: item.bucket || 'auto' };
+    return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category, bucket: item.bucket || 'auto', accountId: item.accountId || '' };
   }
   if (section === 'income') {
-    return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category };
+    return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category, accountId: item.accountId || '' };
   }
   if (section === 'tasks') {
     return { title: item.title, dueDate: item.dueDate, priority: item.priority, assignedTo: item.assignedTo };
@@ -483,7 +483,7 @@ const buildMergedData = (apiData, currentUser) => {
 
 // Fetch all API data (schedule, expenses, income, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries, serviceHistory, chores, debts, vehicles] = await Promise.all([
+  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries, serviceHistory, chores, debts, vehicles, accounts] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
     txn.fetchIncome().catch(() => []),
@@ -497,6 +497,7 @@ const fetchApiData = async () => {
     choresApi.fetch().catch(() => []),
     debtApi.fetch().catch(() => []),
     vehicleApi.fetch().catch(() => []),
+    accountApi.fetch().catch(() => []),
   ]);
 
   // Parse budget settings
@@ -536,7 +537,7 @@ const fetchApiData = async () => {
   const mappedDebts = Array.isArray(debts) ? debts : [];
   const mappedVehicles = Array.isArray(vehicles) ? vehicles : [];
 
-  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts, serviceHistory: mappedHistory, chores: mappedChores, debts: mappedDebts, vehicles: mappedVehicles };
+  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts, serviceHistory: mappedHistory, chores: mappedChores, debts: mappedDebts, vehicles: mappedVehicles, accounts: Array.isArray(accounts) ? accounts : [] };
 };
 
 /* Label status keluarga dari kolom family_role backend */
@@ -1328,6 +1329,19 @@ const deleteGoal = async (id) => {
       .concat([{ value: 'semua', label: 'Semua' }]);
   };
 
+  // Opsi dompet untuk form transaksi (pengeluaran/pemasukan)
+  const accountField = {
+    key: 'accountId',
+    label: 'Dompet',
+    type: 'select',
+    defaultValue: '',
+    placeholder: 'Tanpa dompet',
+    options: accounts.map((a) => ({
+      value: a.id,
+      label: `${a.nama}${a.bank ? ` (${a.bank})` : ''} · ${formatCurrency(a.saldo)}`,
+    })),
+  };
+
   const SHEET_CONFIG = {
     agenda: {
       title: 'Tambah Agenda',
@@ -1348,6 +1362,7 @@ const deleteGoal = async (id) => {
         { key: 'amount', label: 'Nominal (Rp)', type: 'currency', required: true, min: 0, placeholder: 'Rp 0' },
         { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
         { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: getBudgetCategoryOptions()[0].value, options: getBudgetCategoryOptions() },
+        accountField,
         // Keranjang anggaran: "Otomatis" = ikut kategori (lihat CATEGORY_BUCKET
         // di components/categories.js); pilihan lain menimpanya untuk item ini.
         {
@@ -1372,6 +1387,7 @@ const deleteGoal = async (id) => {
         { key: 'amount', label: 'Nominal (Rp)', type: 'currency', required: true, min: 0, placeholder: 'Rp 0' },
         { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
         { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(INCOME_CATEGORIES)[0].value, options: catOptions(INCOME_CATEGORIES) },
+        accountField,
       ],
     },
     tasks: {
@@ -1520,6 +1536,11 @@ const deleteGoal = async (id) => {
   const [data, setData] = useState(null);
   // Loading state untuk data API
   const [dataLoading, setDataLoading] = useState(false);
+  // Dompet/rekening keluarga (dari /api/account) — dipakai form transaksi & tab Dompet
+  const [accounts, setAccounts] = useState([]);
+  const reloadAccounts = async () => {
+    try { setAccounts(await accountApi.fetch()); } catch { /* abaikan */ }
+  };
 
   // dataRef menjaga snapshot terbaru untuk aksi yang berjalan belakangan
   // (mis. tombol "Urungkan" dari toast) tanpa closure basi.
@@ -1742,6 +1763,7 @@ const deleteGoal = async (id) => {
       if (cached) {
         const merged = buildMergedData(cached, currentUser);
         saveData(merged);
+        setAccounts(cached.accounts || []);
       } else {
         // Tidak ada cache ? tetap tampilkan app dengan data lokal saja
         const merged = buildDataBundle({}, currentUser);
@@ -1756,6 +1778,7 @@ const deleteGoal = async (id) => {
       cacheApiData(apiData);
       const merged = buildMergedData(apiData, currentUser);
       saveData(merged);
+      setAccounts(apiData.accounts || []);
       setAuthError('');
     } catch (err) {
       // API fail ? fallback ke cache, tampilkan notif
@@ -1763,6 +1786,7 @@ const deleteGoal = async (id) => {
       if (cached) {
         const merged = buildMergedData(cached, currentUser);
         saveData(merged);
+        setAccounts(cached.accounts || []);
         setAuthError('Tidak dapat memuat data dari server. Menampilkan cache lokal.');
       } else {
         // Tidak ada cache sama sekali ? tampilkan app dengan data lokal
@@ -2136,11 +2160,13 @@ const deleteGoal = async (id) => {
         const result = await cal.create({ title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member });
         addItemToState(section, result);
       } else if (section === 'expenses') {
-        const result = await txn.create({ category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto' });
+        const result = await txn.create({ category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto', accountId: values.accountId || null });
         addItemToState(section, result);
+        reloadAccounts();
       } else if (section === 'income') {
-        const result = await txn.create({ type: 'in', category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date });
+        const result = await txn.create({ type: 'in', category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, accountId: values.accountId || null });
         addItemToState(section, result);
+        reloadAccounts();
       } else if (section === 'notes') {
         const result = await notesApi.create({ title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned }, currentUser);
         addItemToState(section, result);
@@ -2165,8 +2191,8 @@ const deleteGoal = async (id) => {
   // Build item object for local-only sections
   const buildLocalItem = (section, values, id) => {
     if (section === 'agenda') return { id, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
-    if (section === 'expenses') return { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' };
-    if (section === 'income') return { id, type: 'in', description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category };
+    if (section === 'expenses') return { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto', accountId: values.accountId || null };
+    if (section === 'income') return { id, type: 'in', description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, accountId: values.accountId || null };
     if (section === 'tasks') return { id, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo, completed: false };
     if (section === 'notes') return { id, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned, author: currentUser?.name || '', updatedAt: todayKey() };
     if (section === 'family') {
@@ -2198,7 +2224,8 @@ const deleteGoal = async (id) => {
         const list = current[key] || [];
         saveData({ ...current, [key]: list.map((it) => (it.id === id ? updated : it)) });
       } else if (section === 'expenses') {
-        const result = await txn.update(id, txnTransform.toPayload({ category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto' }));
+        const result = await txn.update(id, txnTransform.toPayload({ category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto', accountId: values.accountId || null }));
+        reloadAccounts();
         const updated = txnTransform.toExpense(result);
         const list = current[key] || [];
         const next = { ...current, [key]: list.map((it) => (it.id === id ? updated : it)) };
@@ -2208,7 +2235,8 @@ const deleteGoal = async (id) => {
         next.categories = d.categories;
         saveData(next);
       } else if (section === 'income') {
-        const result = await txn.update(id, txnTransform.toPayload({ type: 'in', category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date }));
+        const result = await txn.update(id, txnTransform.toPayload({ type: 'in', category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, accountId: values.accountId || null }));
+        reloadAccounts();
         const updated = txnTransform.toTxn(result);
         const list = current[key] || [];
         const next = { ...current, [key]: list.map((it) => (it.id === id ? updated : it)) };
@@ -2357,8 +2385,10 @@ const deleteGoal = async (id) => {
           await cal.delete(item.id);
         } else if (section === 'expenses') {
           await txn.delete(item.id);
+          reloadAccounts();
         } else if (section === 'income') {
           await txn.delete(item.id);
+          reloadAccounts();
         } else if (section === 'notes') {
           await notesApi.delete(item.id);
         } else if (section === 'tasks') {
@@ -3349,6 +3379,9 @@ const deleteGoal = async (id) => {
             onSave={saveAccount}
             onLogout={handleLogout}
             onRegister={() => setRegisterOpen(true)}
+            accounts={accounts}
+            onAccountsChanged={reloadAccounts}
+            canWrite={canWrite}
           />
         );
       }

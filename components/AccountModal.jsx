@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
+import { DompetPanel } from './DompetPanel';
 import { Avatar, CTA_CLASS } from './ui';
 import { auth } from '../services/client';
 import { useFocusTrap } from './useFocusTrap';
@@ -66,6 +67,7 @@ const FIELD_ORDER = ['name', 'username', 'password', 'password2'];
 
 const TABS = [
   { id: 'profil', label: 'Profil', icon: 'userCheck' },
+  { id: 'dompet', label: 'Dompet', icon: 'wallet' },
   { id: 'anggota', label: 'Anggota', icon: 'users' },
 ];
 
@@ -82,6 +84,9 @@ export function AccountModal({
   onSave,
   onRegister,
   page = false,
+  accounts = [],
+  onAccountsChanged,
+  canWrite = true,
 }) {
   const [tab, setTab] = useState('profil');
   const tabBarRef = useRef(null);
@@ -347,7 +352,7 @@ export function AccountModal({
 
   useEffect(() => {
     if (!open) return undefined;
-    setTab(initialTab === 'keamanan' ? 'keamanan' : 'profil');
+    setTab(['profil', 'dompet', 'keamanan', 'anggota'].includes(initialTab) ? initialTab : 'profil');
     setName(user?.name || '');
     setUsername(user?.username || '');
     setPassword('');
@@ -758,6 +763,10 @@ export function AccountModal({
           </div>
         )}
 
+        {tab === 'dompet' && (
+          <DompetPanel accounts={accounts} users={users} canWrite={canWrite} onChanged={onAccountsChanged} />
+        )}
+
         {tab === 'anggota' && isMaster && (
           <div className="space-y-3.5">
             <button type="button" onClick={onRegister} className={`${CTA_CLASS} min-h-[48px] w-full text-sm font-semibold`}>
@@ -1051,6 +1060,10 @@ export function AccountModal({
         )}
 
         {/* ---------- Tab: Anggota (master only) ---------- */}
+        {tab === 'dompet' && (
+          <DompetPanel accounts={accounts} users={users} canWrite={canWrite} onChanged={onAccountsChanged} />
+        )}
+
         {tab === 'anggota' && isMaster && (
           <div className="space-y-3.5">
             <button type="button" onClick={onRegister} className={`${CTA_CLASS} min-h-[48px] w-full text-sm font-semibold`}>

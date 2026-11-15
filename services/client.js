@@ -206,6 +206,7 @@ export const txnTransform = {
     amount: Number(txn.amount) || 0,
     date: txn.date,
     bucket: 'auto',
+    accountId: txn.account_id || null,
   }),
   // Alias kompatibilitas (bentuk lama tanpa `type`)
   toExpense: (txn) => txnTransform.toTxn(txn),
@@ -215,6 +216,7 @@ export const txnTransform = {
     type: item.type === 'in' ? 'in' : 'out',
     date: item.date,
     category_id: item.category,
+    account_id: item.accountId || item.account_id || null,
     description: item.description || null,
   }),
 };
@@ -649,4 +651,16 @@ export const debtApi = {
     apiFetch(`/debt/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   remove: async (id) =>
     apiFetch(`/debt/${id}`, { method: 'DELETE' }),
+};
+
+export const accountApi = {
+  fetch: async () => apiFetch('/account'),
+  create: async (payload) =>
+    apiFetch('/account', { method: 'POST', body: JSON.stringify(payload) }),
+  update: async (id, payload) =>
+    apiFetch(`/account/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  remove: async (id) =>
+    apiFetch(`/account/${id}`, { method: 'DELETE' }),
+  transfer: async (payload) =>
+    apiFetch('/account/transfer', { method: 'POST', body: JSON.stringify(payload) }),
 };
