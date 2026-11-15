@@ -125,7 +125,7 @@ export function TargetTabunganComp({ goals = [], canWrite = false, onAdd, onUpda
 
   const filtered = useMemo(() => filter === 'semua' ? goals : goals.filter((g) => g.category === filter), [goals, filter]);
 
-  const yearSave = (goal) => {
+  const handleSave = (goal) => {
     if (editing) onUpdate(goal.id, goal);
     else onAdd(goal);
     setEditing(null);
