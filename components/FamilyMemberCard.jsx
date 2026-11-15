@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Badge, CARD_INTERACTIVE, Avatar } from './ui';
+import { formatPhoneDisplay } from './phone';
 
 /* Usia dari tanggal lahir (YYYY-MM-DD) per hari ini. Dihitung saat render
    supaya tidak pernah basi (tidak disimpan sebagai angka). */
@@ -31,7 +32,7 @@ export function FamilyMemberCard({ member }) {
     ['Lahir', `${longDate(member.birthDate)}${age !== null ? ` · ${age} th` : ''}`],
     ['Gol. darah', member.blood || '—'],
     ['Alergi', member.allergy || '—'],
-    ['WA', member.phone || '—'],
+    ['WA', formatPhoneDisplay(member.phone) || '—'],
   ];
 
   return (

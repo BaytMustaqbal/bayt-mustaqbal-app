@@ -4,6 +4,7 @@ import { DompetPanel } from './DompetPanel';
 import { Avatar, CTA_CLASS } from './ui';
 import { auth } from '../services/client';
 import { useFocusTrap } from './useFocusTrap';
+import { formatPhoneDisplay, normalizePhone } from './phone';
 
 /* Username master — bisa daftarkan akun baru dari sini */
 const MASTER_USER = 'baytmustaqbal@gmail.com';
@@ -152,7 +153,7 @@ export function AccountModal({
       family_role: u.family_role || 'anak',
       generasi: u.generasi || 'orangtua',
       group_role: u.group_role || 'anak',
-      phone: u.phone || '',
+      phone: formatPhoneDisplay(u.phone || ''),
       password: '',
     });
     setMemberNotice('');
@@ -167,7 +168,7 @@ export function AccountModal({
       family_role: memberForm.family_role,
       generasi: memberForm.generasi,
       group_role: memberForm.group_role,
-      phone: memberForm.phone,
+      phone: normalizePhone(memberForm.phone) || null,
     };
     if (memberForm.password) payload.password = memberForm.password;
     setMemberSaving(true);
@@ -327,7 +328,7 @@ export function AccountModal({
     if (open) {
       setProfileNickname(user?.nickname || '');
       setProfileBirthDate(user?.birthDate || '');
-      setProfilePhone(user?.phone || '');
+      setProfilePhone(formatPhoneDisplay(user?.phone || ''));
       setProfileBlood(user?.blood || '');
       setProfileAllergy(user?.allergy || '');
       setProfileInstagram(user?.instagram || '');
@@ -448,7 +449,7 @@ export function AccountModal({
         nama: name.trim(),
         nickname: profileNickname.trim() || null,
         birthDate: profileBirthDate || null,
-        phone: profilePhone.trim() || null,
+        phone: normalizePhone(profilePhone) || null,
         blood: profileBlood.trim() || null,
         allergy: profileAllergy.trim() || null,
         instagram: profileInstagram.trim() || null,
@@ -771,7 +772,7 @@ export function AccountModal({
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-ink">{u.nama || u.name}</p>
                         <p className="truncate text-[11px] text-mutedfg">{u.username}</p>
-                        {u.phone && <p className="flex truncate items-center gap-1 text-[11px] text-mutedfg"><Icon name="phone" size={11} />{u.phone}</p>}
+                        {u.phone && <p className="flex truncate items-center gap-1 text-[11px] text-mutedfg"><Icon name="phone" size={11} />{formatPhoneDisplay(u.phone)}</p>}
                       </div>
                       <button
                         type="button"
@@ -1057,7 +1058,7 @@ export function AccountModal({
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-ink">{u.nama || u.name}</p>
                         <p className="truncate text-[11px] text-mutedfg">{u.username}</p>
-                        {u.phone && <p className="flex truncate items-center gap-1 text-[11px] text-mutedfg"><Icon name="phone" size={11} />{u.phone}</p>}
+                        {u.phone && <p className="flex truncate items-center gap-1 text-[11px] text-mutedfg"><Icon name="phone" size={11} />{formatPhoneDisplay(u.phone)}</p>}
                       </div>
                       <button
                         type="button"

@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Icon } from './Icon';
 import { CTA_CLASS } from './ui';
 import { formatBirthDate } from './FamilyTree';
+import { formatPhoneDisplay } from './phone';
 
 /* Modal detail anggota keluarga — READ ONLY. Edit dilakukan di tab Akun. */
 export function MemberDetailModal({ member, onClose }) {
@@ -40,7 +41,7 @@ export function MemberDetailModal({ member, onClose }) {
 
         <div className="grid grid-cols-2 gap-3">
           {row('Panggilan', member.nickname)}
-          {row('No. Telp', member.phone)}
+          {row('No. Telp', formatPhoneDisplay(member.phone))}
           {row('Tanggal lahir', birth)}
           {row('Gol. Darah', member.blood)}
         </div>
