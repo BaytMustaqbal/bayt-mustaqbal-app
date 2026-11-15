@@ -325,7 +325,6 @@ export function AccountModal({
       setProfilePhone(user?.phone || '');
       setProfileBlood(user?.blood || '');
       setProfileAllergy(user?.allergy || '');
-      setProfileAddress(user?.address || '');
       setProfileInstagram(user?.instagram || '');
       setProfileFacebook(user?.facebook || '');
       setProfileTiktok(user?.tiktok || '');
