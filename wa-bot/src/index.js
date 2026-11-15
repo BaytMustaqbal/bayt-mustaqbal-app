@@ -260,7 +260,7 @@ async function handleFonnte(request, env, url) {
   }
 
   // 5) AI intent
-  const ai = await detectIntent(env, t, wibContext());
+  const ai = await detectIntent(env, t, wibContext(), personaName);
 
   // 5a) set pengingat (AI) — minta konfirmasi
   if (ai?.intent === 'set_pengingat') {
@@ -321,9 +321,10 @@ async function handleFonnte(request, env, url) {
     if (msg) { await replyViaFonnte(env, sender, msg); return JSON_OK(); }
   }
 
-  // 5d) AI chat / fallback
-  if (ai?.intent === 'chat' && typeof ai.reply === 'string' && ai.reply.trim()) {
-    await replyViaFonnte(env, sender, ai.reply.trim());
+  // 5d) AI chat / fallback (selalu lewat chatReply agar konteks nama pengirim terbawa)
+  if (ai?.intent === 'chat') {
+    const fallback = await chatReply(env, t, personaName);
+    await replyViaFonnte(env, sender, fallback || menuText());
     return JSON_OK();
   }
 

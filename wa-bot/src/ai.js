@@ -35,8 +35,11 @@ export async function chatReply(env, userMessage, personaName) {
   return text && String(text).trim() ? String(text).trim() : null;
 }
 
-export async function detectIntent(env, userMessage, context) {
+export async function detectIntent(env, userMessage, context, personaName) {
   if (!env.AI) return null;
+  const who = personaName
+    ? `Pengirim teridentifikasi: ${personaName}. Jika ditanya identitas ("siapa saya"), jawab bahwa dia ${personaName}.`
+    : 'Pengirim belum teridentifikasi di data keluarga.';
   const system = [
     'Kamu pengurai intent untuk bot WhatsApp keuangan keluarga Bayt Mustaqbal.',
     'Balas HANYA JSON valid (tanpa teks lain).',
@@ -51,8 +54,9 @@ export async function detectIntent(env, userMessage, context) {
     '- rincian_kategori: rekap per kategori. {"intent":"rincian_kategori"}',
     '- target_tabungan: progres target/tabungan. {"intent":"target_tabungan"}',
     '- menu: minta bantuan/menu/halo. {"intent":"menu"}',
-    '- chat: obrolan umum/tidak terkait data di atas. {"intent":"chat","reply":"<jawaban singkat ramah dalam Bahasa Indonesia, pakai Saya>"}',
+    '- chat: obrolan umum/tidak terkait data di atas. {"intent":"chat"}',
     '',
+    who,
     `Konteks waktu WIB sekarang: tanggal ${context.today}, jam ${context.time}. Bulan: ${context.month}.`,
     'Jika ragu antara catat_pengeluaran/set_pengingat dengan chat, pilih chat. Jangan mengarang nominal/tanggal.',
   ].join('\n');
