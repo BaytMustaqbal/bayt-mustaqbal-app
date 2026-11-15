@@ -126,9 +126,22 @@ accountRoutes.post('/transfer', async (c) => {
     return c.json({ ok: false, data: null, error: { code: 'INSUFFICIENT', message: 'Saldo dompet asal tidak cukup' } }, 400);
   }
   const now = new Date().toISOString();
+  const cleanNote = typeof note === 'string' ? note.trim().slice(0, 200) : '';
+  const descOut = `Transfer ke ${to.nama}${cleanNote ? ' · ' + cleanNote : ''}`.slice(0, 500);
+  const descIn = `Transfer dari ${from.nama}${cleanNote ? ' · ' + cleanNote : ''}`.slice(0, 500);
+  const outId = crypto.randomUUID();
+  const inId = crypto.randomUUID();
+  const today = now.slice(0, 10);
   await c.env.DB.batch([
     c.env.DB.prepare('UPDATE accounts SET saldo = saldo - ?, updated_at = ?, rev = rev + 1 WHERE id = ?').bind(amt, now, fromAccountId),
     c.env.DB.prepare('UPDATE accounts SET saldo = saldo + ?, updated_at = ?, rev = rev + 1 WHERE id = ?').bind(amt, now, toAccountId),
+    // Riwayat: dua transaksi berpasangan, kategori sistem 'transfer'
+    c.env.DB.prepare(
+      'INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)'
+    ).bind(outId, userId, groupId, 'transfer', fromAccountId, amt, 'out', today, descOut, now, now),
+    c.env.DB.prepare(
+      'INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)'
+    ).bind(inId, userId, groupId, 'transfer', toAccountId, amt, 'in', today, descIn, now, now),
   ]);
-  return c.json({ ok: true, data: { fromAccountId, toAccountId, amount: amt, note: note || null }, error: null });
+  return c.json({ ok: true, data: { fromAccountId, toAccountId, amount: amt, note: note || null, outId, inId }, error: null });
 });
