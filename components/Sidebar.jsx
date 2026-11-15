@@ -39,6 +39,8 @@ export function Sidebar({
   onNoteSelect,
   onLogout,
   theme = 'dark',
+  appVersion = 'dev',
+  buildTime = '',
 }) {
   const sidebarRef = useRef(null);
   const [openKey, setOpenKey] = useState(null);
@@ -193,6 +195,9 @@ export function Sidebar({
 
         {/* Footer */}
         <div className="border-t border-line p-3 space-y-1">
+          <p className="px-3 pb-1 text-[10px] font-medium leading-tight text-mutedfg/70">
+            Bayt Mustaqbal v{appVersion} · build {buildTime || 'dev'}
+          </p>
           <button
             type="button"
             onClick={() => {

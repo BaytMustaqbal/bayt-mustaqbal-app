@@ -3395,8 +3395,6 @@ const deleteGoal = async (id) => {
             theme={theme}
             onThemeChange={setTheme}
             onChangePassword={openAccountSecurity}
-            appVersion={APP_VERSION}
-            buildTime={BUILD_TIME}
           />
         );
       }
@@ -4174,6 +4172,8 @@ const deleteGoal = async (id) => {
         noteFilter={noteFilter}
         onNoteSelect={handleNoteSelect}
         service={serviceInventory}
+        appVersion={APP_VERSION}
+        buildTime={BUILD_TIME}
       />
 
       <main
@@ -4201,9 +4201,6 @@ const deleteGoal = async (id) => {
         <Suspense fallback={<div className="py-10 text-center text-sm text-mutedfg">Memuat…</div>}>
           {renderSection()}
         </Suspense>
-        <footer className="mt-6 pb-2 text-center text-[11px] text-mutedfg">
-          Bayt Mustaqbal v{APP_VERSION} · build {BUILD_TIME || 'dev'}
-        </footer>
       </main>
 
       {/* Pemindai struk: foto dibaca OCR, hasilnya jadi pengeluaran biasa */}
