@@ -2,9 +2,19 @@ import { Hono } from 'hono';
 import { hashPassword, verifyPassword, signToken, verifyToken, createSession, voidSessionByJti } from '../utils/auth';
 import { logAudit } from '../utils/audit';
 import { checkRateLimit, recordFailedAttempt, clearRateLimit } from '../utils/rateLimit';
+import { normalizePhone } from '../utils/waBot';
 import { Env } from '../types/env';
 
 export const authRoutes = new Hono<{ Bindings: Env }>();
+
+// Nomor telepon disimpan dalam format internasional 62... (tanpa "+").
+// Input 08..., +62..., atau 62... semuanya dinormalkan. Terlalu pendek = invalid.
+function phoneTo62(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const norm = normalizePhone(raw);
+  if (norm.length < 9 || norm.length > 15) return null;
+  return norm;
+}
 
 // Peran anggota grup: kepala_keluarga | suami | istri | anak | cucu.
 const FAMILY_ROLES = ['suami', 'istri', 'anak', 'lainnya'];
@@ -278,7 +288,18 @@ authRoutes.put('/me', async (c) => {
   const newFamilyRole = family_role !== undefined ? family_role : existing.family_role;
   const newGenerasi = generasi !== undefined ? generasi : existing.generasi;
   const newGroupRole = group_role !== undefined ? group_role : existing.group_role;
-  const newPhone = phone !== undefined ? (typeof phone === 'string' ? phone.trim().slice(0, 30) || null : null) : existing.phone;
+  let newPhone: string | null = existing.phone ?? null;
+  if (phone !== undefined) {
+    if (phone === null || (typeof phone === 'string' && !phone.trim())) {
+      newPhone = null;
+    } else {
+      const norm = phoneTo62(phone);
+      if (!norm) {
+        return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Nomor telepon tidak valid. Contoh: 0812-3456-7890.' } }, 400);
+      }
+      newPhone = norm;
+    }
+  }
   const txtMe = (v: unknown, max = 120) => (v === undefined ? undefined : (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null));
   const newBlood = blood !== undefined ? txtMe(blood, 10) ?? null : existing.blood ?? null;
   const newAllergy = allergy !== undefined ? txtMe(allergy, 300) ?? null : existing.allergy ?? null;
@@ -424,7 +445,18 @@ authRoutes.put('/users/:id', async (c) => {
   const newFamilyRole = family_role !== undefined ? family_role : existing.family_role;
   const newGenerasi = generasi !== undefined ? generasi : existing.generasi;
   const newGroupRole = group_role !== undefined ? group_role : existing.group_role;
-  const newPhone = phone !== undefined ? (typeof phone === 'string' ? phone.trim().slice(0, 30) || null : null) : existing.phone;
+  let newPhone: string | null = existing.phone ?? null;
+  if (phone !== undefined) {
+    if (phone === null || (typeof phone === 'string' && !phone.trim())) {
+      newPhone = null;
+    } else {
+      const norm = phoneTo62(phone);
+      if (!norm) {
+        return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Nomor telepon tidak valid. Contoh: 0812-3456-7890.' } }, 400);
+      }
+      newPhone = norm;
+    }
+  }
   const txt = (v: unknown, max = 120) => (v === undefined ? undefined : (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null));
   const newBlood = blood !== undefined ? txt(blood, 10) ?? null : existing.blood;
   const newAllergy = allergy !== undefined ? txt(allergy, 300) ?? null : existing.allergy;
