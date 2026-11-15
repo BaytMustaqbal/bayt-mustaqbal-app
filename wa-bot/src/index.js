@@ -1,421 +1,425 @@
-// neuro-wa-bot: WA chatbot worker.
-// Dukung dua jalur:
-//   /meta/<path-secret>  -> WhatsApp Cloud API resmi (Meta)  [belum dipakai, siap nanti]
-//   /fonnte/<path-secret> -> Fonnte (WhatsApp Web bridge)    [jalur aktif sekarang]
-//
-// Secrets (dashboard Cloudflare atau `wrangler secret put`):
-//   FONNTE_TOKEN            token device Fonnte, dipakai untuk membalas via api.fonnte.com
-//   FONNTE_WEBHOOK_PATH     string rahasia di path callback URL Fonnte
-//   WA_WEBHOOK_SECRET       secret verifikasi Meta (nanti)
-//   WA_ACCESS_TOKEN         token Meta (nanti)
-//   WA_PHONE_ID             phone number id Meta (nanti)
+import { normalizePhone, samePhone, digits } from './phone.js';
+import {
+  menuText, formatSummary, formatSaldo, formatAgenda, formatBills,
+  formatGoals, formatCategoryDetail, formatReminders, confirmExpense, confirmReminder, fmtRp,
+} from './format.js';
+import {
+  wibNow, reminderIso, formatRemindAtLabel, findUserByPhone,
+  insertExpense, monthExpenseTotal, querySummary, querySaldo, queryAgenda,
+  queryBills, queryGoals, queryCategoryDetail, insertReminder, listReminders,
+} from './db.js';
+import { parseExpense, isYes, isNo, isMenu, wantsReminderList, parseReminderLocal } from './parse.js';
+import { detectIntent, chatReply } from './ai.js';
+import { getPending, setPending, clearPending } from './state.js';
 
-const JSON_OK = () => new Response("ok", { status: 200 });
-
-// Prompt gaya bicara bot. personaName = panggilan pengirim (dari DB), null kalau
-// nomor tidak terdaftar. Prompt dibangun per pesan karena identitas pengirim beda.
-const AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-
-function buildSystemPrompt(personaName) {
-  const identity = personaName
-    ? `Yang sedang chat dengan kamu: ${personaName}. Sapa ${personaName} seperlunya saja, tidak setiap balasan.`
-    : "Yang sedang chat belum terdaftar; jangan menganggap kenal, jawab netral dan sopan.";
-  return (
-    "Kamu adalah Neuro, asisten WhatsApp pribadi keluarga Bayt Mustaqbal. " +
-    identity + " " +
-    'Selalu pakai kata "Saya" untuk dirimu sendiri. Dilarang memakai "aku" atau "gue". ' +
-    "Jawab dalam bahasa Indonesia, santai dan singkat, seperti chat orang. " +
-    "Tidak perlu salam panjang atau format markdown. Maksimal 3 kalimat."
-  );
-}
+const JSON_OK = () => new Response('ok', { status: 200 });
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // ---- Verifikasi webhook Meta (GET challenge + POST pesan) ----
-    if (url.pathname === "/meta") {
+    if (url.pathname === '/meta') {
       return handleMeta(request, env);
     }
 
-    // ---- API untuk app Bayt Mustaqbal (baca data) ----
-    if (url.pathname === "/api/expenses" && request.method === "GET") {
+    if (url.pathname === '/api/expenses' && request.method === 'GET') {
       return handleGetExpenses(request, env);
     }
-    if (url.pathname === "/api/expenses" && request.method === "OPTIONS") {
+    if (url.pathname === '/api/expenses' && request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
 
-    // ---- Webhook Fonnte ----
-    if (url.pathname.startsWith("/fonnte/") && request.method === "POST") {
+    if (url.pathname.startsWith('/fonnte/') && request.method === 'POST') {
       return handleFonnte(request, env, url);
     }
 
-    return new Response("Not found", { status: 404 });
+    return new Response('Not found', { status: 404 });
   },
 };
 
 function corsHeaders() {
   return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "X-App-Token, Content-Type",
-    "Access-Control-Max-Age": "86400",
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'X-App-Token, Content-Type',
+    'Access-Control-Max-Age': '86400',
   };
 }
 
-// Nomor WA -> user_id dari secret WA_ALLOWED (JSON: {"62812xxxx":"<user_id>"}).
-// Sender Fonnte dinormalisasi jadi digit saja supaya +62/62/08 konsisten.
+// Nomor WA -> user_id dari secret WA_ALLOWED (JSON). Tetap dipakai sebagai izin tulis.
 function resolveOwner(env, sender) {
   if (!env.WA_ALLOWED) return null;
   let map;
-  try {
-    map = JSON.parse(env.WA_ALLOWED);
-  } catch (e) {
-    return null;
-  }
-  const digits = String(sender).replace(/\D/g, "");
-  if (map[digits]) return map[digits];
-  // Coba format lain: 62xxx -> 0xxx, dst
-  const alt = digits.startsWith("62") ? "0" + digits.slice(2) : "62" + digits.replace(/^0/, "");
-  return map[alt] || null;
+  try { map = JSON.parse(env.WA_ALLOWED); } catch { return null; }
+  const d = digits(sender);
+  if (map[d]) return map[d];
+  const alt = d.startsWith('62') ? '0' + d.slice(2) : '62' + d.replace(/^0/, '');
+  return map[alt] || map[normalizePhone(sender)] || null;
 }
 
-// GET /api/expenses?limit=50&ym=2026-11
-// Auth: header X-App-Token harus sama dengan secret APP_TOKEN.
-async function handleGetExpenses(request, env) {
-  const token = request.headers.get("X-App-Token");
-  if (!env.APP_TOKEN || token !== env.APP_TOKEN) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), {
-      status: 401,
-      headers: corsHeaders(),
+async function replyViaFonnte(env, target, text) {
+  const token = env.FONNTE_TOKEN;
+  if (!token) return { ok: false, text: async () => 'no token' };
+  return fetch('https://api.fonnte.com/send', {
+    method: 'POST',
+    headers: { Authorization: token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target, message: text, countryCode: '62' }),
+  });
+}
+
+function wibContext() {
+  const shifted = new Date(Date.now() + 7 * 3600 * 1000);
+  const iso = shifted.toISOString();
+  return { today: iso.slice(0, 10), month: iso.slice(0, 7), time: iso.slice(11, 16) };
+}
+
+async function ensureDbUser(env, sender, ownerId) {
+  const found = await findUserByPhone(env, sender);
+  if (found) return found;
+  // fallback: jika WA_ALLOWED menunjuk user_id, ambil recordnya
+  if (ownerId && env.APP_DB) {
+    try {
+      return await env.APP_DB.prepare(
+        `SELECT id, nama, nickname, group_id, phone FROM users WHERE id = ? AND void IS NULL`
+      ).bind(ownerId).first();
+    } catch { return null; }
+  }
+  return null;
+}
+
+async function executePending(env, pending, user) {
+  if (pending.type === 'expense') {
+    await insertExpense(env, {
+      userId: user.id,
+      groupId: user.group_id || null,
+      amount: pending.amount,
+      note: pending.note || null,
     });
+    const ym = new Date().toISOString().slice(0, 7);
+    const total = await monthExpenseTotal(env, { userId: user.id, groupId: user.group_id, ym });
+    return `Tercatat: ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}.\nTotal pengeluaran ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.`;
   }
-  const url = new URL(request.url);
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 200);
-  const ym = url.searchParams.get("ym");
-
-  if (!env.APP_DB) {
-    return new Response(JSON.stringify({ error: "db not bound" }), {
-      status: 500,
-      headers: corsHeaders(),
+  if (pending.type === 'reminder') {
+    await insertReminder(env, {
+      userId: user.id,
+      groupId: user.group_id || null,
+      message: pending.message,
+      remindAt: pending.remindAt,
     });
+    return `⏰ Pengingat disimpan: "${pending.message}".\nNanti saya ingatkan lewat WA.`;
   }
-
-  // Data dari tabel transactions app (type 'out', soft delete void IS NULL).
-  // uid opsional: filter per user; tanpa uid = semua anggota keluarga.
-  const uid = url.searchParams.get("uid");
-  let rows;
-  if (ym && uid) {
-    rows = await env.APP_DB.prepare(
-      `SELECT id, amount, description, date, created_at
-       FROM transactions WHERE void IS NULL AND type = 'out' AND user_id = ? AND date LIKE ?
-       ORDER BY date DESC, created_at DESC LIMIT ?`
-    ).bind(uid, `${ym}-%`, limit).all();
-  } else if (ym) {
-    rows = await env.APP_DB.prepare(
-      `SELECT id, amount, description, date, created_at
-       FROM transactions WHERE void IS NULL AND type = 'out' AND date LIKE ?
-       ORDER BY date DESC, created_at DESC LIMIT ?`
-    ).bind(`${ym}-%`, limit).all();
-  } else if (uid) {
-    rows = await env.APP_DB.prepare(
-      `SELECT id, amount, description, date, created_at
-       FROM transactions WHERE void IS NULL AND type = 'out' AND user_id = ?
-       ORDER BY date DESC, created_at DESC LIMIT ?`
-    ).bind(uid, limit).all();
-  } else {
-    rows = await env.APP_DB.prepare(
-      `SELECT id, amount, description, date, created_at
-       FROM transactions WHERE void IS NULL AND type = 'out'
-       ORDER BY date DESC, created_at DESC LIMIT ?`
-    ).bind(limit).all();
-  }
-
-  // Total bulan berjalan
-  const ymNow = new Date().toISOString().slice(0, 7);
-  let totalStmt;
-  if (uid) {
-    totalStmt = env.APP_DB.prepare(
-      `SELECT COALESCE(SUM(amount), 0) AS total
-       FROM transactions WHERE void IS NULL AND type = 'out' AND user_id = ? AND date LIKE ?`
-    ).bind(uid, `${ymNow}-%`);
-  } else {
-    totalStmt = env.APP_DB.prepare(
-      `SELECT COALESCE(SUM(amount), 0) AS total
-       FROM transactions WHERE void IS NULL AND type = 'out' AND date LIKE ?`
-    ).bind(`${ymNow}-%`);
-  }
-  const totalRow = await totalStmt.first();
-
-  return new Response(
-    JSON.stringify({
-      expenses: rows.results ?? [],
-      total_this_month: totalRow?.total ?? 0,
-    }),
-    { headers: { "Content-Type": "application/json", ...corsHeaders() } }
-  );
+  return 'Aksi tidak dikenal.';
 }
 
-// Parse "catat pengeluaran 50k makan siang" -> { amount: 50000, note: "makan siang" }
-// Nominal dipakai: 500000 | 50k | 2jt | 1.5jt | Rp50.000
-function parseExpenseRequest(text) {
-  const lower = text.toLowerCase().trim();
-  const match = lower.match(/^(catat|tambah)\s+(pengeluaran|belanja)\s*(.*)$/);
-  if (!match) return null;
-  const rest = match[3].trim();
-  const tokens = rest.split(/\s+/);
-
-  let amount = null;
-  let noteTokens = [];
-  for (const t of tokens) {
-    if (amount !== null) {
-      noteTokens.push(t);
-      continue;
-    }
-    let v = t.replace(/^rp\.?/i, "").replace(/\./g, "").replace(/,/g, "");
-    let m = v.match(/^(\d+)(k|rb)?$/i);
-    if (m) {
-      amount = parseInt(m[1], 10) * (m[2] ? 1000 : 1);
-      continue;
-    }
-    m = v.match(/^(\d+(?:[.,]\d+)?)jt$/i);
-    if (m) {
-      amount = Math.round(parseFloat(m[1].replace(",", ".")) * 1000000);
-      continue;
-    }
-    noteTokens.push(t);
+async function answerReadIntent(env, user, intent, obj) {
+  const { today, month } = wibNow();
+  const groupId = user?.group_id;
+  if (intent === 'menu') return menuText();
+  if (intent === 'cek_pengingat') {
+    if (!user) return 'Nomor Anda belum terdaftar di Bayt Mustaqbal.';
+    return formatReminders(await listReminders(env, user.id));
   }
-
-  if (!amount || amount <= 0) return { amount: null, note: rest };
-  return { amount, note: noteTokens.join(" ").trim() || null };
+  if (!groupId) {
+    return 'Akun belum tergabung ke grup keluarga, jadi data keluarga belum bisa ditampilkan.';
+  }
+  if (intent === 'saldo_bulan_ini') {
+    const s = await querySaldo(env, groupId, month);
+    return formatSaldo(s.inMonth, s.outMonth);
+  }
+  if (intent === 'agenda_hari_ini') {
+    return formatAgenda(await queryAgenda(env, groupId, today), today);
+  }
+  if (intent === 'cek_tagihan') {
+    return formatBills(await queryBills(env, groupId));
+  }
+  if (intent === 'target_tabungan') {
+    return formatGoals(await queryGoals(env, groupId));
+  }
+  if (intent === 'rincian_kategori') {
+    return formatCategoryDetail(await queryCategoryDetail(env, groupId, month));
+  }
+  if (intent === 'rangkuman') {
+    let from; let title;
+    if (obj?.period === '7_hari') {
+      const d = new Date(Date.now() + 7 * 3600 * 1000 - 6 * 86400 * 1000);
+      from = d.toISOString().slice(0, 10);
+      title = 'Rangkuman Pengeluaran 7 Hari Terakhir';
+    } else {
+      from = month + '-01';
+      title = 'Rangkuman Pengeluaran Bulan Ini';
+    }
+    const { rows } = await querySummary(env, groupId, from, today, title);
+    return formatSummary(rows, title);
+  }
+  return null;
 }
-
-// ============================= FONNTE =============================
 
 async function handleFonnte(request, env, url) {
-  const pathSecret = url.pathname.slice("/fonnte/".length);
+  const pathSecret = url.pathname.slice('/fonnte/'.length);
   if (!env.FONNTE_WEBHOOK_PATH || pathSecret !== env.FONNTE_WEBHOOK_PATH) {
-    return new Response("Forbidden", { status: 403 });
+    return new Response('Forbidden', { status: 403 });
   }
 
   let payload;
-  try {
-    payload = await request.json();
-  } catch (e) {
-    return new Response("Invalid JSON", { status: 400 });
-  }
+  try { payload = await request.json(); } catch { return new Response('Invalid JSON', { status: 400 }); }
 
-  // Payload Fonnte: { sender, message, name, filename?, ... }
-  const sender = payload.sender;
-  const text = payload.message || null;
-  const displayName = payload.name || null;
-  if (!sender) return JSON_OK();
+  const sender = payload.sender || payload.member || '';
+  const text = payload.message || payload.text || null;
+  if (!sender || !text) return JSON_OK();
 
-  // Dedupe: Fonnte tidak punya message id. Kunci dari pengirim + teks + menit.
+  // Dedupe + log
   const minute = new Date().toISOString().slice(0, 16);
-  const dedupeKey = `fonnte:${sender}:${minute}:${text ?? ""}`;
+  const dedupeKey = `fonnte:${sender}:${minute}:${text}`;
   if (env.WA_DEDUPE) {
     const seen = await env.WA_DEDUPE.get(dedupeKey);
     if (seen) return JSON_OK();
-    await env.WA_DEDUPE.put(dedupeKey, "1", { expirationTtl: 86400 });
+    await env.WA_DEDUPE.put(dedupeKey, '1', { expirationTtl: 86400 });
   }
-
-  // Log ke D1 (kolom void untuk soft delete)
   try {
     await env.WA_LOGS.prepare(
       `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
        VALUES (?, ?, ?, ?, ?, false)
        ON CONFLICT(message_id) DO NOTHING`
-    )
-      .bind(dedupeKey, sender, "fonnte", text, minute)
-      .run();
-  } catch (e) {
-    // Jangan gagalkan webhook karena DB
-  }
+    ).bind(dedupeKey, sender, 'fonnte', text, minute).run();
+  } catch (_) {}
 
-  // ---- Identitas pengirim: nomor WA -> user_id + panggilan dari DB ----
-  const ownerId = resolveOwner(env, sender);
-  let personaName = null;
-  if (ownerId && env.APP_DB) {
-    try {
-      const owner = await env.APP_DB.prepare(
-        `SELECT nickname, nama FROM users WHERE id = ?`
-      ).bind(ownerId).first();
-      if (owner) {
-        personaName = (owner.nickname || (owner.nama || "").split(" ")[0] || "").trim() || null;
+  const ownerId = resolveOwner(env, sender); // izin tulis (whitelist)
+  const user = await ensureDbUser(env, sender, ownerId);
+  const personaName = user ? (user.nickname || (user.nama || '').split(' ')[0] || '').trim() || null : null;
+  const t = String(text).trim();
+
+  // 1) Konfirmasi aksi tertunda
+  const pending = await getPending(env, sender);
+  if (pending) {
+    if (isYes(t)) {
+      if (!user || !user.id) {
+        await clearPending(env, sender);
+        await replyViaFonnte(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal, jadi aksi tidak bisa disimpan.');
+        return JSON_OK();
       }
-    } catch (e) {
-      personaName = null;
-    }
-  }
-
-  // ---- Intent: catat pengeluaran (rules, bukan LLM, agar nominal pasti) ----
-  const expenseReq = text ? parseExpenseRequest(text) : null;
-  if (expenseReq) {
-    // Whitelist: hanya nomor terdaftar yang boleh menulis ke DB app.
-    if (!ownerId) {
-      await replyViaFonnte(env.FONNTE_TOKEN, sender, "Nomor tidak terdaftar untuk mencatat. Hubungi admin.");
+      if ((pending.type === 'expense' || pending.type === 'reminder') && ownerId && ownerId !== user.id) {
+        // whitelist menunjuk id lain: tolak demi aman
+        await clearPending(env, sender);
+        await replyViaFonnte(env, sender, 'Nomor ini tidak diizinkan menyimpan data untuk akun tersebut.');
+        return JSON_OK();
+      }
+      try {
+        const msg = await executePending(env, pending, user);
+        await clearPending(env, sender);
+        await replyViaFonnte(env, sender, msg);
+      } catch (e) {
+        await replyViaFonnte(env, sender, 'Gagal menyimpan. Coba lagi sebentar.');
+      }
       return JSON_OK();
     }
-    if (!env.APP_DB) {
-      await replyViaFonnte(env.FONNTE_TOKEN, sender, "Database app belum tersambung. Coba lagi nanti.");
+    if (isNo(t)) {
+      await clearPending(env, sender);
+      await replyViaFonnte(env, sender, 'Baik, dibatalkan.');
       return JSON_OK();
     }
-    if (!expenseReq.amount) {
-      await replyViaFonnte(
-        env.FONNTE_TOKEN,
-        sender,
-        "Format salah. Contoh: catat pengeluaran 50k makan siang"
-      );
-      return JSON_OK();
-    }
-    const today = new Date().toISOString().slice(0, 10);
-    const ymNow = today.slice(0, 7);
-    const nowIso = new Date().toISOString();
-    let inserted = false;
-    try {
-      const res = await env.APP_DB.prepare(
-        `INSERT INTO transactions (id, user_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at, void)
-         VALUES (?, ?, NULL, NULL, ?, 'out', ?, ?, 1, ?, ?, NULL)`
-      )
-        .bind(
-          crypto.randomUUID(),
-          ownerId,
-          expenseReq.amount,
-          today,
-          expenseReq.note,
-          nowIso,
-          nowIso
-        )
-        .run();
-      inserted = res.success;
-    } catch (e) {
-      inserted = false;
-    }
-    if (!inserted) {
-      await replyViaFonnte(env.FONNTE_TOKEN, sender, "Gagal menyimpan catatan. Coba lagi nanti.");
-      return JSON_OK();
-    }
-    let total = 0;
-    try {
-      const t = await env.APP_DB.prepare(
-        `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions
-         WHERE void IS NULL AND type = 'out' AND user_id = ? AND date LIKE ?`
-      ).bind(ownerId, `${ymNow}-%`).first();
-      total = t?.total ?? 0;
-    } catch (e) {}
-    const notePart = expenseReq.note ? ` (${expenseReq.note})` : "";
-    const prefix = personaName ? `Tercatat, ${personaName}: ` : "Tercatat: ";
-    await replyViaFonnte(
-      env.FONNTE_TOKEN,
-      sender,
-      `${prefix}Rp${expenseReq.amount.toLocaleString("id-ID")}${notePart}. Total pengeluaran bulan ini: Rp${total.toLocaleString("id-ID")}`
-    );
+    // pesan lain saat ada pending: ingatkan konfirmasi
+    await replyViaFonnte(env, sender, 'Masih ada aksi yang menunggu konfirmasi. Balas *ya* untuk simpan atau *batal* untuk batalkan.');
     return JSON_OK();
   }
 
-  // Balas via Workers AI, fallback ke placeholder kalau AI gagal
-  if (text) {
-    let replyText;
-    try {
-      replyText = await generateReply(env, text, personaName);
-    } catch (e) {
-      replyText = null;
-    }
-    if (!replyText) replyText = "Anda bilang: " + text;
-
-    const res = await replyViaFonnte(env.FONNTE_TOKEN, sender, replyText);
-    if (!res.ok) {
-      try {
-        await env.WA_LOGS.prepare(
-          `INSERT INTO wa_errors (message_id, error_message) VALUES (?, ?)
-           ON CONFLICT(message_id) DO NOTHING`
-        )
-          .bind(dedupeKey, await res.text())
-          .run();
-      } catch (e) {}
-    }
+  // 2) Menu / sapaan
+  if (isMenu(t)) {
+    await replyViaFonnte(env, sender, menuText());
+    return JSON_OK();
   }
 
+  // 3) Cek pengingat (baca, tanpa konfirmasi)
+  if (wantsReminderList(t)) {
+    if (!user) {
+      await replyViaFonnte(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal.');
+      return JSON_OK();
+    }
+    await replyViaFonnte(env, sender, formatReminders(await listReminders(env, user.id)));
+    return JSON_OK();
+  }
+
+  // 4) Fast-path catat pengeluaran (rule-based, minta konfirmasi)
+  const exp = parseExpense(t);
+  if (exp) {
+    if (!ownerId) {
+      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!user) {
+      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!exp.amount) {
+      await replyViaFonnte(env, sender, 'Format nominal belum jelas. Contoh: catat pengeluaran 50k makan siang');
+      return JSON_OK();
+    }
+    const action = { type: 'expense', amount: exp.amount, note: exp.note || null };
+    await setPending(env, sender, action);
+    await replyViaFonnte(env, sender, confirmExpense(action));
+    return JSON_OK();
+  }
+
+  // 5) AI intent
+  const ai = await detectIntent(env, t, wibContext());
+
+  // 5a) set pengingat (AI) — minta konfirmasi
+  if (ai?.intent === 'set_pengingat') {
+    if (!ownerId) {
+      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk membuat pengingat. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!user) {
+      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    const spec = {
+      dayOffset: ai.dayOffset === 1 ? 1 : 0,
+      hour: Number.isInteger(ai.hour) ? Math.min(23, Math.max(0, ai.hour)) : 9,
+      minute: Number.isInteger(ai.minute) ? Math.min(59, Math.max(0, ai.minute)) : 0,
+      message: typeof ai.message === 'string' && ai.message.trim() ? ai.message.trim().slice(0, 200) : null,
+    };
+    if (!spec.message) {
+      const local = parseReminderLocal(t);
+      if (local) { spec.dayOffset = local.dayOffset; spec.hour = local.hour; spec.minute = local.minute; spec.message = local.message; }
+    }
+    if (!spec.message) {
+      await replyViaFonnte(env, sender, 'Isi pengingatnya apa? Contoh: "ingatkan aku besok jam 9 bayar listrik".');
+      return JSON_OK();
+    }
+    const action = { type: 'reminder', message: spec.message, remindAt: reminderIso(spec), remindAtLabel: formatRemindAtLabel(spec) };
+    await setPending(env, sender, action);
+    await replyViaFonnte(env, sender, confirmReminder(action));
+    return JSON_OK();
+  }
+
+  // 5b) catat pengeluaran (AI fallback) — minta konfirmasi
+  if (ai?.intent === 'catat_pengeluaran') {
+    if (!ownerId) {
+      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!user) {
+      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    const amount = Number(ai.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      await replyViaFonnte(env, sender, 'Saya belum menangkap nominalnya. Contoh: "catat pengeluaran 50 ribu makan siang".');
+      return JSON_OK();
+    }
+    const note = typeof ai.note === 'string' && ai.note.trim() ? ai.note.trim().slice(0, 200) : null;
+    const action = { type: 'expense', amount: Math.round(amount), note };
+    await setPending(env, sender, action);
+    await replyViaFonnte(env, sender, confirmExpense(action));
+    return JSON_OK();
+  }
+
+  // 5c) intent baca
+  const readIntents = new Set(['cek_pengingat','cek_tagihan','agenda_hari_ini','saldo_bulan_ini','rangkuman','rincian_kategori','target_tabungan','menu']);
+  if (ai && readIntents.has(ai.intent)) {
+    const msg = await answerReadIntent(env, user, ai.intent, ai);
+    if (msg) { await replyViaFonnte(env, sender, msg); return JSON_OK(); }
+  }
+
+  // 5d) AI chat / fallback
+  if (ai?.intent === 'chat' && typeof ai.reply === 'string' && ai.reply.trim()) {
+    await replyViaFonnte(env, sender, ai.reply.trim());
+    return JSON_OK();
+  }
+
+  const fallback = await chatReply(env, t, personaName);
+  await replyViaFonnte(env, sender, fallback || menuText());
   return JSON_OK();
 }
 
-// Panggil Workers AI untuk menghasilkan balasan chat
-async function generateReply(env, userMessage, personaName) {
-  if (!env.AI) return null;
-  const result = await env.AI.run(AI_MODEL, {
-    messages: [
-      { role: "system", content: buildSystemPrompt(personaName) },
-      { role: "user", content: userMessage },
-    ],
-    max_tokens: 200,
-  });
-  const text = result?.response;
-  return text && text.trim().length > 0 ? text.trim() : null;
+// ============================= /api/expenses =============================
+
+async function handleGetExpenses(request, env) {
+  const token = request.headers.get('X-App-Token');
+  if (!env.APP_TOKEN || token !== env.APP_TOKEN) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: corsHeaders() });
+  }
+  const reqUrl = new URL(request.url);
+  const limit = Math.min(parseInt(reqUrl.searchParams.get('limit') || '50', 10) || 50, 200);
+  const ym = reqUrl.searchParams.get('ym');
+  const uid = reqUrl.searchParams.get('uid');
+  if (!env.APP_DB) {
+    return new Response(JSON.stringify({ error: 'db not bound' }), { status: 500, headers: corsHeaders() });
+  }
+
+  let rows;
+  if (ym && uid) {
+    rows = await env.APP_DB.prepare(
+      `SELECT id, amount, description, date, created_at FROM transactions WHERE void IS NULL AND type = 'out' AND user_id = ? AND date LIKE ? ORDER BY date DESC, created_at DESC LIMIT ?`
+    ).bind(uid, `${ym}-%`, limit).all();
+  } else if (ym) {
+    rows = await env.APP_DB.prepare(
+      `SELECT id, amount, description, date, created_at FROM transactions WHERE void IS NULL AND type = 'out' AND date LIKE ? ORDER BY date DESC, created_at DESC LIMIT ?`
+    ).bind(`${ym}-%`, limit).all();
+  } else if (uid) {
+    rows = await env.APP_DB.prepare(
+      `SELECT id, amount, description, date, created_at FROM transactions WHERE void IS NULL AND type = 'out' AND user_id = ? ORDER BY date DESC, created_at DESC LIMIT ?`
+    ).bind(uid, limit).all();
+  } else {
+    rows = await env.APP_DB.prepare(
+      `SELECT id, amount, description, date, created_at FROM transactions WHERE void IS NULL AND type = 'out' ORDER BY date DESC, created_at DESC LIMIT ?`
+    ).bind(limit).all();
+  }
+
+  const ymNow = new Date().toISOString().slice(0, 7);
+  let totalStmt;
+  if (uid) {
+    totalStmt = env.APP_DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE void IS NULL AND type = 'out' AND user_id = ? AND date LIKE ?`
+    ).bind(uid, `${ymNow}-%`);
+  } else {
+    totalStmt = env.APP_DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM transactions WHERE void IS NULL AND type = 'out' AND date LIKE ?`
+    ).bind(`${ymNow}-%`);
+  }
+  const totalRow = await totalStmt.first();
+
+  return new Response(
+    JSON.stringify({ expenses: rows.results ?? [], total_this_month: totalRow?.total ?? 0 }),
+    { headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
+  );
 }
 
-async function replyViaFonnte(token, target, text) {
-  return fetch("https://api.fonnte.com/send", {
-    method: "POST",
-    headers: {
-      Authorization: token,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ target, message: text }),
-  });
-}
-
-// ============================= META =============================
+// ============================= META (tetap, tidak diubah) =============================
 
 async function handleMeta(request, env) {
-  if (request.method === "GET") {
-    // Verifikasi webhook saat setup di Meta Dashboard
+  if (request.method === 'GET') {
     const url = new URL(request.url);
     if (
-      url.searchParams.get("hub.mode") === "subscribe" &&
-      url.searchParams.get("hub.verify_token") === env.WA_WEBHOOK_SECRET
+      url.searchParams.get('hub.mode') === 'subscribe' &&
+      url.searchParams.get('hub.verify_token') === env.WA_WEBHOOK_SECRET
     ) {
-      return new Response(url.searchParams.get("hub.challenge"), { status: 200 });
+      return new Response(url.searchParams.get('hub.challenge'), { status: 200 });
     }
-    return new Response("Forbidden", { status: 403 });
+    return new Response('Forbidden', { status: 403 });
+  }
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
   }
 
-  if (request.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
-  // Verifikasi signature X-Hub-Signature-256
-  const signatureHeader = request.headers.get("X-Hub-Signature-256");
+  const signatureHeader = request.headers.get('X-Hub-Signature-256');
   const body = await request.text();
-  const secret = env.WA_WEBHOOK_SECRET || "";
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
-  const hex = Array.from(new Uint8Array(mac))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const secret = env.WA_WEBHOOK_SECRET || '';
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  const hex = Array.from(new Uint8Array(mac)).map((b) => b.toString(16).padStart(2, '0')).join('');
   if (!signatureHeader || signatureHeader !== `sha256=${hex}`) {
-    return new Response("Signature verification failed", { status: 401 });
+    return new Response('Signature verification failed', { status: 401 });
   }
 
   let payload;
-  try {
-    payload = JSON.parse(body);
-  } catch (e) {
-    return new Response("Invalid JSON", { status: 400 });
-  }
+  try { payload = JSON.parse(body); } catch { return new Response('Invalid JSON', { status: 400 }); }
 
   const entry = payload.entry?.[0];
   if (!entry) return JSON_OK();
 
   for (const change of entry.changes ?? []) {
-    const value = change.value;
+    const value = change.value || {};
     const messageId = value.id;
     const from = value.from;
     const message = value.message?.text || null;
@@ -423,10 +427,10 @@ async function handleMeta(request, env) {
     const waPhoneNumberId = value.metadata?.phone_number_id;
 
     if (env.WA_DEDUPE) {
-      const key2 = `msg:${messageId}`;
-      const existing = await env.WA_DEDUPE.get(key2);
+      const k2 = `msg:${messageId}`;
+      const existing = await env.WA_DEDUPE.get(k2);
       if (existing) continue;
-      await env.WA_DEDUPE.put(key2, "1", { expirationTtl: 86400 });
+      await env.WA_DEDUPE.put(k2, '1', { expirationTtl: 86400 });
     }
 
     try {
@@ -434,23 +438,11 @@ async function handleMeta(request, env) {
         `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
          VALUES (?, ?, ?, ?, ?, false)
          ON CONFLICT(message_id) DO NOTHING`
-      )
-        .bind(messageId, from, waPhoneNumberId, message, timestamp)
-        .run();
-    } catch (e) {}
+      ).bind(messageId, from, waPhoneNumberId, message, timestamp).run();
+    } catch (_) {}
 
     if (message) {
-      const reply = await replyViaMeta(env.WA_ACCESS_TOKEN, env.WA_PHONE_ID, from, "Anda bilang: " + message);
-      if (!reply.ok) {
-        try {
-          await env.WA_LOGS.prepare(
-            `INSERT INTO wa_errors (message_id, error_message) VALUES (?, ?)
-             ON CONFLICT(message_id) DO NOTHING`
-          )
-            .bind(messageId, await reply.text())
-            .run();
-        } catch (e) {}
-      }
+      await replyViaMeta(env.WA_ACCESS_TOKEN, env.WA_PHONE_ID, from, 'Anda bilang: ' + message);
     }
   }
   return JSON_OK();
@@ -458,16 +450,8 @@ async function handleMeta(request, env) {
 
 async function replyViaMeta(accessToken, phoneId, to, text) {
   return fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to,
-      type: "text",
-      text: { body: text },
-    }),
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } }),
   });
 }
