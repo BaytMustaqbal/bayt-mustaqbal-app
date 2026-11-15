@@ -1496,6 +1496,8 @@ const deleteGoal = async (id) => {
   const [terjadwalTab, setTerjadwalTab] = useState('pengeluaran');
   // Periode daftar belanja: 'mingguan' | 'bulanan'.
   const [shoppingPeriod, setShoppingPeriod] = useState('bulanan');
+  // Sub-tab halaman Keluarga: 'keluarga' | 'tugas'.
+  const [familyTab, setFamilyTab] = useState('keluarga');
   // Tab awal saat halaman Akun dibuka (default 'profil'; 'keamanan' dari Pengaturan)
   const [accountInitialTab, setAccountInitialTab] = useState('profil');
   // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
@@ -3684,32 +3686,44 @@ const deleteGoal = async (id) => {
         const bagianCount = familyFilter === 'semua' ? familyAll.length : countByCategory(familyAll, familyFilter);
         return (
           <section className="app-fade-in">
-            <SectionHeader
-              icon="users"
-              title={activeMeta.label}
-              subtitle={`${bagianCount} data keluarga`}
-              actionLabel={canWrite ? 'Tambah' : undefined}
-              onAction={() => openAdd('family')}
+            <SlideTabs
+              tabs={[
+                { id: 'keluarga', label: 'Keluarga', icon: 'users' },
+                { id: 'tugas', label: 'Tugas Rumah', icon: 'tasks' },
+              ]}
+              active={familyTab}
+              onChange={setFamilyTab}
             />
 
-            <div className="space-y-8">
-              {showAnggota && (
-                <FamilyTree
-                  members={data.family}
-                  isMaster={currentUser?.username === 'baytmustaqbal@gmail.com'}
-                  onAdd={handleTreeAdd}
-                  onSelect={() => {}}
+            {familyTab === 'tugas' ? (
+              <div className="mt-4">
+                <ChoresComp users={data.family} />
+              </div>
+            ) : (
+              <>
+                <SectionHeader
+                  icon="users"
+                  title={activeMeta.label}
+                  subtitle={`${bagianCount} data keluarga`}
+                  actionLabel={canWrite ? 'Tambah' : undefined}
+                  onAction={() => openAdd('family')}
                 />
-              )}
-              {showMedis && <FamilyList title="Info Medis" icon="activity" items={data.familyMedical} onAdd={() => openAdd('family', { bagian: 'medis' })} />}
-              {showKontak && <FamilyList title="Kontak & Darurat" icon="phone" items={data.familyContacts} onAdd={() => openAdd('family', { bagian: 'kontak' })} />}
-              {showDokumen && <FamilyList title="Dokumen Penting" icon="file" items={data.familyDocuments} onAdd={() => openAdd('family', { bagian: 'dokumen' })} />}
-            </div>
 
-            {/* Tugas rumah tangga bersama */}
-            <div className="mt-8 border-t border-line pt-6">
-              <ChoresComp users={data.family} />
-            </div>
+                <div className="space-y-8">
+                  {showAnggota && (
+                    <FamilyTree
+                      members={data.family}
+                      isMaster={currentUser?.username === 'baytmustaqbal@gmail.com'}
+                      onAdd={handleTreeAdd}
+                      onSelect={() => {}}
+                    />
+                  )}
+                  {showMedis && <FamilyList title="Info Medis" icon="activity" items={data.familyMedical} onAdd={() => openAdd('family', { bagian: 'medis' })} />}
+                  {showKontak && <FamilyList title="Kontak & Darurat" icon="phone" items={data.familyContacts} onAdd={() => openAdd('family', { bagian: 'kontak' })} />}
+                  {showDokumen && <FamilyList title="Dokumen Penting" icon="file" items={data.familyDocuments} onAdd={() => openAdd('family', { bagian: 'dokumen' })} />}
+                </div>
+              </>
+            )}
           </section>
         );
       }
