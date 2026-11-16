@@ -57,7 +57,7 @@ async function sendBillReminder(env: Env): Promise<void> {
 ${bill.name}
 Jumlah: Rp ${bill.amount.toLocaleString('id-ID')}
 Jatuh tempo: ${bill.due_date}`;
-    await sendWA(env, message, target);
+    if (!(await sendWA(env, message, target))) continue;
     await sendPushToUser(env, bill.user_id, {
       title: 'Reminder Tagihan',
       body: `${bill.name} jatuh tempo ${bill.due_date}`,
@@ -141,7 +141,7 @@ async function sendBudgetAlerts(env: Env): Promise<void> {
     if (alerts.length === 0 || notif) continue;
 
     const message = `📊 *Pengingat Anggaran* ${month}\n${alerts.join('\n')}`;
-    await sendWA(env, message, target);
+    if (!(await sendWA(env, message, target))) continue;
 
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -175,9 +175,12 @@ function isoDate(d: Date): string {
 }
 
 /** Hitung tanggal jatuh tempo berikutnya untuk tugas terjadwal.
- *  - pengeluaran: dari `day` bulan ini (dipangkas ke akhir bulan).
- *  - lainnya: langsung `next_due`. */
+ *  - `next_due` eksplisit dipakai apa adanya (sekali jalan).
+ *  - pengeluaran tanpa next_due: dari `day` bulan ini (dipangkas ke akhir bulan).
+ *  - lainnya tanpa next_due: tidak ada. */
 function scheduledDueDate(task: any, today: Date): string | null {
+  const explicit = String(task.next_due || '').slice(0, 10);
+  if (explicit) return explicit;
   if (task.type === 'pengeluaran' && task.day) {
     const year = today.getUTCFullYear();
     const month = today.getUTCMonth();
@@ -185,7 +188,7 @@ function scheduledDueDate(task: any, today: Date): string | null {
     const d = Math.min(Number(task.day), lastDay);
     return `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   }
-  return task.next_due || null;
+  return null;
 }
 
 /** Notif WA H-3 untuk tugas terjadwal (4 tab). */
@@ -217,7 +220,7 @@ async function sendScheduledTaskReminders(env: Env): Promise<void> {
 
       const label = task.amount != null ? ` (${formatIdr(task.amount)})` : '';
       const message = `⏰ *Tugas Terjadwal*\n${task.name}${label}\nJatuh tempo dalam 3 hari (${due}).`;
-      await sendWA(env, message, target);
+      if (!(await sendWA(env, message, target))) continue;
       await sendPushToUser(env, scope.sample_user, {
         title: 'Tugas Terjadwal',
         body: `${task.name} jatuh tempo dalam 3 hari (${due}).`,
@@ -264,7 +267,7 @@ async function sendSubscriptionReminders(env: Env): Promise<void> {
       if (notif) continue;
 
       const message = `🔌 *Langganan*\n${sub.name} (${sub.category})\nJatuh tempo dalam 3 hari (tagihan ${dueDay}).`;
-      await sendWA(env, message, target);
+      if (!(await sendWA(env, message, target))) continue;
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -306,7 +309,7 @@ async function sendGoalReminders(env: Env): Promise<void> {
 
       const sisa = Math.max(0, Number(g.target_amount) - Number(g.current_amount));
       const message = `🎯 *Target Tabungan*\n${g.nama}\nSisa Rp ${formatIdr(sisa)} — target ${due} dalam 3 hari.`;
-      await sendWA(env, message, target);
+      if (!(await sendWA(env, message, target))) continue;
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -348,7 +351,7 @@ async function sendServiceReminders(env: Env): Promise<void> {
       if (notif) continue;
 
       const message = `🔧 *Service Motor*\n${sp.nama}${sp.jenis ? ` (${sp.jenis})` : ''}\nJadwal service ${due} dalam 3 hari.`;
-      await sendWA(env, message, target);
+      if (!(await sendWA(env, message, target))) continue;
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -395,7 +398,7 @@ async function sendDebtReminders(env: Env): Promise<void> {
         : (d.title || 'Utang keluarga');
 
       const message = `💸 *Utang Belum Lunas*\n${d.title || 'Utang'}\n${who}\nJumlah: Rp ${amount.toLocaleString('id-ID')}`;
-      await sendWA(env, message, target);
+      if (!(await sendWA(env, message, target))) continue;
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -410,6 +413,43 @@ async function sendDebtReminders(env: Env): Promise<void> {
       });
     }
   }
+}
+
+// Pengingat tugas rumah tangga (chores) yang jatuh tempo besok (WIB).
+async function sendChoreReminders(env: Env): Promise<void> {
+  const tomorrow = new Date(Date.now() + 7 * 3600 * 1000 + 86400 * 1000).toISOString().slice(0, 10);
+  const rows = await env.DB.prepare(
+    `SELECT ch.title, u.phone
+     FROM chores ch
+     JOIN users u ON u.id = ch.assignee_id
+     WHERE ch.status = 'open' AND ch.void IS NULL AND ch.due_date = ?
+       AND u.void IS NULL AND u.phone IS NOT NULL AND u.phone != ''`
+  ).bind(tomorrow).all() as any;
+  const list = rows?.results || [];
+  for (const r of list) {
+    await sendWA(env, `🧹 Pengingat tugas rumah tangga besok:\n${r.title}`, r.phone);
+  }
+  if (list.length > 0) console.log(`Chore reminders sent: ${list.length}`);
+}
+
+// Pengingat WA sekali pakai (dari bot). Dikirim ke nomor pribadi user.
+async function checkWaReminders(env: Env): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const rows = await env.DB.prepare(
+    `SELECT w.id, w.message, u.phone
+     FROM wa_reminders w
+     JOIN users u ON u.id = w.user_id
+     WHERE w.done = 0 AND w.remind_at <= ?
+       AND u.void IS NULL AND u.phone IS NOT NULL AND u.phone != ''`
+  ).bind(nowIso).all() as any;
+
+  const list = rows?.results || [];
+  for (const r of list) {
+    const sent = await sendWA(env, `⏰ Pengingat:\n${r.message}`, r.phone);
+    if (!sent) continue;
+    await env.DB.prepare('UPDATE wa_reminders SET done = 1 WHERE id = ?').bind(r.id).run();
+  }
+  if (list.length > 0) console.log(`WA reminders sent: ${list.length}`);
 }
 
 export async function handleCron(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
@@ -447,43 +487,7 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
     await sendChoreReminders(env);
   }
 
-  // Pengingat tugas rumah tangga (chores) yang jatuh tempo besok (WIB).
-async function sendChoreReminders(env: Env): Promise<void> {
-  const tomorrow = new Date(Date.now() + 7 * 3600 * 1000 + 86400 * 1000).toISOString().slice(0, 10);
-  const rows = await env.DB.prepare(
-    `SELECT ch.title, u.phone
-     FROM chores ch
-     JOIN users u ON u.id = ch.assignee_id
-     WHERE ch.status = 'open' AND ch.void IS NULL AND ch.due_date = ?
-       AND u.void IS NULL AND u.phone IS NOT NULL AND u.phone != ''`
-  ).bind(tomorrow).all() as any;
-  const list = rows?.results || [];
-  for (const r of list) {
-    await sendWA(env, `🧹 Pengingat tugas rumah tangga besok:\n${r.title}`, r.phone);
-  }
-  if (list.length > 0) console.log(`Chore reminders sent: ${list.length}`);
-}
-
-// Pengingat WA sekali pakai (dari bot). Dikirim ke nomor pribadi user.
-async function checkWaReminders(env: Env): Promise<void> {
-  const nowIso = new Date().toISOString();
-  const rows = await env.DB.prepare(
-    `SELECT w.id, w.message, u.phone
-     FROM wa_reminders w
-     JOIN users u ON u.id = w.user_id
-     WHERE w.done = 0 AND w.remind_at <= ?
-       AND u.void IS NULL AND u.phone IS NOT NULL AND u.phone != ''`
-  ).bind(nowIso).all() as any;
-
-  const list = rows?.results || [];
-  for (const r of list) {
-    await sendWA(env, `⏰ Pengingat:\n${r.message}`, r.phone);
-    await env.DB.prepare('UPDATE wa_reminders SET done = 1 WHERE id = ?').bind(r.id).run();
-  }
-  if (list.length > 0) console.log(`WA reminders sent: ${list.length}`);
-}
-
-// Day 1, 00:30 WIB — generate monthly bills + backup Drive otomatis
+  // Day 1, 00:30 WIB — generate monthly bills + backup Drive otomatis
   if (date === 1 && hour === 0 && event.cron === '30 17 * * *') {
     await generateMonthlyBills(env);
     const scopes = await listGroupScopes(env);
