@@ -13,14 +13,18 @@ import { canWriteGroup, forbiddenWrite, groupScope } from '../utils/group';
 export const recurringTxnRoutes = new Hono<{ Bindings: Env }>();
 
 const HISTORY_LIMIT = 3;
+const TXN_TYPES = ['pengeluaran', 'service'];
 
 const toRow = (r: any) => ({
   id: r.id,
+  type: r.type === 'service' ? 'service' : 'pengeluaran',
   nama: r.nama,
   keyword: r.keyword,
   amount: Number(r.amount) || 0,
   categoryId: r.category_id || '',
   accountId: r.account_id || '',
+  vehicleId: r.vehicle_id || '',
+  serviceCategory: r.service_category || '',
   intervalDays: r.interval_days == null ? null : Number(r.interval_days),
   lastDate: r.last_date || '',
   nextDue: r.next_due || '',
@@ -57,6 +61,28 @@ async function recentMatches(
   return (rows.results || []) as { id: string; date: string; amount: number; description: string }[];
 }
 
+/** Ambil N riwayat service terakhir untuk kendaraan + keyword yang sama. */
+async function recentServiceMatches(
+  db: D1Database,
+  scope: { sql: string; val: string },
+  keyword: string,
+  vehicleId: string | null,
+  limit: number
+) {
+  const vehicleClause = vehicleId ? 'AND vehicle_id = ?' : '';
+  const stmt = db.prepare(
+    `SELECT id, tanggal AS date, total AS amount, items AS description FROM service_history
+     WHERE ${scope.sql} AND void IS NULL
+       AND lower(COALESCE(items, '')) LIKE ? ${vehicleClause}
+     ORDER BY tanggal DESC, created_at DESC
+     LIMIT ?`
+  );
+  const rows = vehicleId
+    ? await stmt.bind(scope.val, `%${keyword.toLowerCase()}%`, vehicleId, limit).all()
+    : await stmt.bind(scope.val, `%${keyword.toLowerCase()}%`, limit).all();
+  return (rows.results || []) as { id: string; date: string; amount: number; description: string }[];
+}
+
 /** Interval rata-rata (hari, dibulatkan) dari selisih tanggal berurutan. */
 function averageInterval(datesDesc: string[]): number | null {
   const dates = datesDesc.map((d) => String(d).slice(0, 10)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
@@ -88,22 +114,30 @@ recurringTxnRoutes.post('/', async (c) => {
   const userId = c.get('userId');
   const groupId = c.get('groupId');
   const body = await c.req.json() as {
-    nama?: string; keyword?: string; amount?: number; categoryId?: string; accountId?: string; notes?: string;
+    type?: string; nama?: string; keyword?: string; amount?: number; categoryId?: string; accountId?: string;
+    vehicleId?: string; serviceCategory?: string; notes?: string;
   };
   const nama = String(body.nama || '').trim();
   const keyword = String(body.keyword || '').trim().toLowerCase();
+  const type = TXN_TYPES.includes(String(body.type)) ? String(body.type) : 'pengeluaran';
   if (!nama || !keyword) {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Nama dan keyword wajib diisi' } }, 400);
+  }
+  if (type === 'service' && !body.vehicleId) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Kendaraan wajib dipilih untuk tipe service' } }, 400);
   }
 
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    `INSERT INTO recurring_txns (id, user_id, group_id, nama, keyword, amount, category_id, account_id, interval_days, last_date, next_due, active, notes, rev, created_at, updated_at, void)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 1, ?, 1, ?, ?, NULL)`
+    `INSERT INTO recurring_txns (id, user_id, group_id, type, nama, keyword, amount, category_id, account_id, vehicle_id, service_category, interval_days, last_date, next_due, active, notes, rev, created_at, updated_at, void)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, 1, ?, 1, ?, ?, NULL)`
   ).bind(
-    id, userId, groupId, nama, keyword, Math.abs(Number(body.amount) || 0),
-    body.categoryId || null, body.accountId || null, body.notes || null, now, now
+    id, userId, groupId, type, nama, keyword, Math.abs(Number(body.amount) || 0),
+    body.categoryId || null, body.accountId || null,
+    type === 'service' ? body.vehicleId : null,
+    type === 'service' ? (body.serviceCategory || 'service') : null,
+    body.notes || null, now, now
   ).run();
 
   const created = await c.env.DB.prepare('SELECT * FROM recurring_txns WHERE id = ?').bind(id).first();
@@ -125,23 +159,34 @@ recurringTxnRoutes.put('/:id', async (c) => {
   }
 
   const body = await c.req.json() as {
-    nama?: string; keyword?: string; amount?: number; categoryId?: string; accountId?: string;
-    notes?: string; active?: boolean;
+    type?: string; nama?: string; keyword?: string; amount?: number; categoryId?: string; accountId?: string;
+    vehicleId?: string; serviceCategory?: string; notes?: string; active?: boolean;
   };
   const nama = body.nama !== undefined ? String(body.nama).trim() : existing.nama;
   const keyword = body.keyword !== undefined ? String(body.keyword).trim().toLowerCase() : existing.keyword;
+  const type = body.type !== undefined
+    ? (TXN_TYPES.includes(String(body.type)) ? String(body.type) : 'pengeluaran')
+    : (existing.type === 'service' ? 'service' : 'pengeluaran');
   if (!nama || !keyword) {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Nama dan keyword wajib diisi' } }, 400);
+  }
+  const vehicleId = body.vehicleId !== undefined ? (body.vehicleId || null) : existing.vehicle_id;
+  if (type === 'service' && !vehicleId) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Kendaraan wajib dipilih untuk tipe service' } }, 400);
   }
 
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    `UPDATE recurring_txns SET nama = ?, keyword = ?, amount = ?, category_id = ?, account_id = ?, notes = ?, active = ?, rev = rev + 1, updated_at = ? WHERE id = ?`
+    `UPDATE recurring_txns SET type = ?, nama = ?, keyword = ?, amount = ?, category_id = ?, account_id = ?, vehicle_id = ?, service_category = ?, notes = ?, active = ?, rev = rev + 1, updated_at = ? WHERE id = ?`
   ).bind(
-    nama, keyword,
+    type, nama, keyword,
     body.amount != null ? Math.abs(Number(body.amount)) : existing.amount,
     body.categoryId !== undefined ? (body.categoryId || null) : existing.category_id,
     body.accountId !== undefined ? (body.accountId || null) : existing.account_id,
+    type === 'service' ? vehicleId : null,
+    type === 'service'
+      ? (body.serviceCategory !== undefined ? (body.serviceCategory || 'service') : (existing.service_category || 'service'))
+      : null,
     body.notes !== undefined ? (body.notes || null) : existing.notes,
     body.active === undefined ? existing.active : (body.active ? 1 : 0),
     now, id
@@ -185,6 +230,7 @@ recurringTxnRoutes.post('/:id/purchase', async (c) => {
 
   const body = await c.req.json().catch(() => ({})) as {
     amount?: number; date?: string; description?: string; accountId?: string;
+    vehicleId?: string; odometer?: number; alsoExpense?: boolean;
   };
   const amount = Math.abs(Number(body.amount) || Number(existing.amount) || 0);
   if (amount <= 0) {
@@ -192,9 +238,10 @@ recurringTxnRoutes.post('/:id/purchase', async (c) => {
   }
   const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.date || '')) ? String(body.date) : todayWib();
   const description = String(body.description || '').trim() || existing.nama;
+  const isService = existing.type === 'service';
 
-  // Dompet opsional: hanya boleh milik sendiri.
-  let accountId = body.accountId || existing.account_id || null;
+  // Dompet opsional: hanya boleh milik sendiri. `null` eksplisit = tanpa dompet.
+  let accountId = body.accountId !== undefined ? (body.accountId || null) : (existing.account_id || null);
   if (accountId) {
     const owned = await c.env.DB.prepare(
       'SELECT id FROM accounts WHERE id = ? AND user_id = ? AND void IS NULL'
@@ -202,21 +249,55 @@ recurringTxnRoutes.post('/:id/purchase', async (c) => {
     if (!owned) accountId = null;
   }
 
-  const txnId = crypto.randomUUID();
   const now = new Date().toISOString();
-  const batch: any[] = [
-    c.env.DB.prepare(
+  const batch: any[] = [];
+  let txnId: string | null = null;
+  let serviceHistoryId: string | null = null;
+  let history: { id: string; date: string }[] = [];
+
+  if (isService) {
+    const vehicleId = body.vehicleId || existing.vehicle_id || null;
+    if (!vehicleId) {
+      return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Kendaraan wajib dipilih untuk tipe service' } }, 400);
+    }
+    serviceHistoryId = crypto.randomUUID();
+    batch.push(c.env.DB.prepare(
+      `INSERT INTO service_history (id, user_id, group_id, tanggal, odometer, items, total, technician, notes, vehicle_id, kategori, rev, created_at, updated_at, void)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 1, ?, ?, NULL)`
+    ).bind(
+      serviceHistoryId, userId, groupId, date, Math.abs(Number(body.odometer) || 0), description,
+      amount, existing.notes || null, vehicleId, existing.service_category || 'service', now, now
+    ));
+
+    // Catat juga sebagai pengeluaran (default aktif).
+    if (body.alsoExpense !== false) {
+      txnId = crypto.randomUUID();
+      batch.push(c.env.DB.prepare(
+        `INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'out', ?, ?, 1, ?, ?)`
+      ).bind(txnId, userId, groupId, existing.category_id || null, accountId, amount, date, description, now, now));
+      if (accountId) {
+        batch.push(c.env.DB.prepare(
+          'UPDATE accounts SET saldo = saldo - ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL'
+        ).bind(amount, now, accountId));
+      }
+    }
+
+    history = await recentServiceMatches(c.env.DB, scope, existing.keyword, vehicleId, HISTORY_LIMIT);
+  } else {
+    txnId = crypto.randomUUID();
+    batch.push(c.env.DB.prepare(
       `INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, 'out', ?, ?, 1, ?, ?)`
-    ).bind(txnId, userId, groupId, existing.category_id || null, accountId, amount, date, description, now, now),
-  ];
-  if (accountId) {
-    batch.push(c.env.DB.prepare(
-      'UPDATE accounts SET saldo = saldo - ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL'
-    ).bind(amount, now, accountId));
+    ).bind(txnId, userId, groupId, existing.category_id || null, accountId, amount, date, description, now, now));
+    if (accountId) {
+      batch.push(c.env.DB.prepare(
+        'UPDATE accounts SET saldo = saldo - ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL'
+      ).bind(amount, now, accountId));
+    }
+    history = await recentMatches(c.env.DB, scope, existing.keyword, HISTORY_LIMIT);
   }
 
-  const history = await recentMatches(c.env.DB, scope, existing.keyword, HISTORY_LIMIT);
   const dates = [date, ...history.map((h) => h.date)].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   const uniqueDates = dates.filter((d, i) => i === 0 || d !== dates[i - 1]).slice(0, HISTORY_LIMIT);
   const intervalDays = averageInterval(uniqueDates);
@@ -232,7 +313,7 @@ recurringTxnRoutes.post('/:id/purchase', async (c) => {
   const updated = await c.env.DB.prepare('SELECT * FROM recurring_txns WHERE id = ?').bind(id).first();
   return c.json({
     ok: true,
-    data: { template: toRow(updated), transactionId: txnId, intervalDays, lastDate, nextDue },
+    data: { template: toRow(updated), transactionId: txnId, serviceHistoryId, intervalDays, lastDate, nextDue },
     error: null,
   });
 });
