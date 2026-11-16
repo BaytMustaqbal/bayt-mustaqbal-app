@@ -9,6 +9,8 @@ export function menuText() {
     'Contoh yang bisa saya bantu:',
     '• "catat pengeluaran 50k makan siang"',
     '• "catat pemasukan 5jt gaji ke dompet BCA"',
+    '• "tambah tagihan listrik 350k tgl 25"',
+    '• "tambah agenda rapat keluarga 25 nov jam 19.30"',
     '• "ingatkan aku besok jam 9 bayar listrik"',
     '• "cek pengingat"',
     '• "tagihan belum lunas" / "tenggat pembayaran"',
@@ -120,6 +122,29 @@ export function confirmIncome({ amount, note, accountName }) {
     `• Nominal: ${fmtRp(amount)}`,
     `• Catatan: ${note || '-'}`,
     `• Dompet: ${accountName || 'tanpa dompet'}`,
+    '',
+    'Balas *ya* untuk simpan, atau *batal* untuk batalkan.',
+  ].join('\n');
+}
+
+export function confirmBill({ name, amount, dueDate, kategori }) {
+  return [
+    'Saya tangkap tagihan ini:',
+    `• Nama: ${name}`,
+    `• Jumlah: ${fmtRp(amount)}`,
+    `• Jatuh tempo: ${dueDate}`,
+    `• Kategori: ${kategori || '-'}`,
+    '',
+    'Balas *ya* untuk simpan, atau *batal* untuk batalkan.',
+  ].join('\n');
+}
+
+export function confirmAgenda({ title, date, time }) {
+  return [
+    'Saya tangkap agenda ini:',
+    `• Judul: ${title}`,
+    `• Tanggal: ${date}`,
+    `• Jam: ${time || 'tanpa jam'}`,
     '',
     'Balas *ya* untuk simpan, atau *batal* untuk batalkan.',
   ].join('\n');

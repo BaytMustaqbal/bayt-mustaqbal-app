@@ -1,15 +1,20 @@
 import { normalizePhone, samePhone, digits } from './phone.js';
 import {
   menuText, formatSummary, formatSaldo, formatAgenda, formatBills,
-  formatGoals, formatCategoryDetail, formatReminders, confirmExpense, confirmIncome, confirmReminder, fmtRp,
+  formatGoals, formatCategoryDetail, formatReminders,
+  confirmExpense, confirmIncome, confirmBill, confirmAgenda, confirmReminder, fmtRp,
 } from './format.js';
 import {
   wibNow, reminderIso, formatRemindAtLabel, findUserByPhone,
   insertExpense, monthExpenseTotal, insertIncome, monthIncomeTotal, listOwnedAccounts,
+  insertBill, insertAgenda,
   querySummary, querySaldo, queryAgenda,
   queryBills, queryGoals, queryCategoryDetail, insertReminder, listReminders,
 } from './db.js';
-import { parseExpense, parseIncome, matchAccountHint, isYes, isNo, isMenu, wantsReminderList, parseReminderLocal } from './parse.js';
+import {
+  parseExpense, parseIncome, matchAccountHint, isYes, isNo, isMenu, wantsReminderList,
+  parseReminderLocal, parseDateId, parseTimeId,
+} from './parse.js';
 import { detectIntent, chatReply } from './ai.js';
 import { getPending, setPending, clearPending } from './state.js';
 
@@ -122,6 +127,28 @@ async function executePending(env, pending, user) {
     });
     return `⏰ Pengingat disimpan: "${pending.message}".\nNanti saya ingatkan lewat WA.`;
   }
+  if (pending.type === 'bill') {
+    await insertBill(env, {
+      userId: user.id,
+      name: pending.name,
+      amount: pending.amount,
+      dueDate: pending.dueDate,
+      kategori: pending.kategori || null,
+    });
+    return `🧾 Tagihan disimpan: ${pending.name} ${fmtRp(pending.amount)}, jatuh tempo ${pending.dueDate}.\nSaya ingatkan lewat WA saat jatuh tempo.`;
+  }
+  if (pending.type === 'agenda') {
+    await insertAgenda(env, {
+      userId: user.id,
+      groupId: user.group_id || null,
+      title: pending.title,
+      date: pending.date,
+      time: pending.time || null,
+      category: pending.category || 'keluarga',
+      description: pending.description || null,
+    });
+    return `📅 Agenda disimpan: ${pending.title} pada ${pending.date}${pending.time ? ` jam ${pending.time}` : ''}.\nSudah muncul di kalender aplikasi.`;
+  }
   return 'Aksi tidak dikenal.';
 }
 
@@ -211,7 +238,7 @@ async function handleFonnte(request, env, url) {
         await replyViaFonnte(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal, jadi aksi tidak bisa disimpan.');
         return JSON_OK();
       }
-      if ((pending.type === 'expense' || pending.type === 'income' || pending.type === 'reminder') && ownerId && ownerId !== user.id) {
+      if ((pending.type === 'expense' || pending.type === 'income' || pending.type === 'reminder' || pending.type === 'bill' || pending.type === 'agenda') && ownerId && ownerId !== user.id) {
         // whitelist menunjuk id lain: tolak demi aman
         await clearPending(env, sender);
         await replyViaFonnte(env, sender, 'Nomor ini tidak diizinkan menyimpan data untuk akun tersebut.');
@@ -394,14 +421,75 @@ async function handleFonnte(request, env, url) {
     return JSON_OK();
   }
 
-  // 5c) intent baca
+  // 5c) tambah tagihan (AI) — minta konfirmasi
+  if (ai?.intent === 'tambah_tagihan') {
+    if (!ownerId) {
+      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!user) {
+      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    const name = typeof ai.name === 'string' && ai.name.trim() ? ai.name.trim().slice(0, 120) : null;
+    if (!name) {
+      await replyViaFonnte(env, sender, 'Nama tagihannya apa? Contoh: "tambah tagihan listrik 350k tgl 25".');
+      return JSON_OK();
+    }
+    const amount = Number(ai.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      await replyViaFonnte(env, sender, `Nominal tagihan "${name}" berapa? Contoh: "tambah tagihan listrik 350k tgl 25".`);
+      return JSON_OK();
+    }
+    const todayIso = wibContext().today;
+    const dueDate = parseDateId(typeof ai.dueDate === 'string' ? ai.dueDate : '', todayIso) || parseDateId(t, todayIso);
+    if (!dueDate) {
+      await replyViaFonnte(env, sender, `Tanggal jatuh tempo "${name}" kapan? Sebutkan jelas, misalnya "tgl 25", "25 nov", atau "besok".`);
+      return JSON_OK();
+    }
+    const kategori = typeof ai.kategori === 'string' && ai.kategori.trim() ? ai.kategori.trim().slice(0, 40) : null;
+    const action = { type: 'bill', name, amount: Math.round(amount), dueDate, kategori };
+    await setPending(env, sender, action);
+    await replyViaFonnte(env, sender, confirmBill(action));
+    return JSON_OK();
+  }
+
+  // 5d) tambah agenda (AI) — minta konfirmasi
+  if (ai?.intent === 'tambah_agenda') {
+    if (!ownerId) {
+      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!user) {
+      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    const title = typeof ai.title === 'string' && ai.title.trim() ? ai.title.trim().slice(0, 140) : null;
+    if (!title) {
+      await replyViaFonnte(env, sender, 'Judul agendanya apa? Contoh: "tambah agenda rapat keluarga 25 nov jam 19.30".');
+      return JSON_OK();
+    }
+    const todayIso = wibContext().today;
+    const date = parseDateId(typeof ai.date === 'string' ? ai.date : '', todayIso) || parseDateId(t, todayIso);
+    if (!date) {
+      await replyViaFonnte(env, sender, `Tanggal agenda "${title}" kapan? Sebutkan jelas, misalnya "25 nov" atau "besok".`);
+      return JSON_OK();
+    }
+    const time = parseTimeId(typeof ai.time === 'string' ? ai.time : '') || parseTimeId(t);
+    const action = { type: 'agenda', title, date, time, category: 'keluarga' };
+    await setPending(env, sender, action);
+    await replyViaFonnte(env, sender, confirmAgenda(action));
+    return JSON_OK();
+  }
+
+  // 5e) intent baca
   const readIntents = new Set(['cek_pengingat','cek_tagihan','agenda_hari_ini','saldo_bulan_ini','rangkuman','rincian_kategori','target_tabungan','menu']);
   if (ai && readIntents.has(ai.intent)) {
     const msg = await answerReadIntent(env, user, ai.intent, ai);
     if (msg) { await replyViaFonnte(env, sender, msg); return JSON_OK(); }
   }
 
-  // 5d) AI chat / fallback (selalu lewat chatReply agar konteks nama pengirim terbawa)
+  // 5f) AI chat / fallback (selalu lewat chatReply agar konteks nama pengirim terbawa)
   if (ai?.intent === 'chat') {
     const fallback = await chatReply(env, t, personaName);
     await replyViaFonnte(env, sender, fallback || menuText());

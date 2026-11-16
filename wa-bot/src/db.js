@@ -146,10 +146,33 @@ export async function queryAgenda(env, groupId, today) {
 export async function queryBills(env, groupId) {
   const rows = await env.APP_DB.prepare(
     `SELECT name, amount, due_date FROM bills
-     WHERE group_id = ? AND status = 'unpaid' AND void IS NULL
+     WHERE status = 'unpaid' AND void IS NULL
+       AND user_id IN (SELECT id FROM users WHERE group_id = ? AND void IS NULL)
      ORDER BY due_date ASC LIMIT 10`
   ).bind(groupId).all();
   return (rows.results || []).map((r) => ({ name: r.name, amount: Number(r.amount) || 0, due_date: r.due_date }));
+}
+
+/** Simpan tagihan baru (status unpaid). */
+export async function insertBill(env, { userId, name, amount, dueDate, kategori }) {
+  const nowIso = new Date().toISOString();
+  const id = crypto.randomUUID();
+  await env.APP_DB.prepare(
+    `INSERT INTO bills (id, user_id, name, amount, due_date, kategori, status, paid_at, paid_amount, last_notified, recurring_id, rev, created_at, updated_at, void)
+     VALUES (?, ?, ?, ?, ?, ?, 'unpaid', NULL, 0, NULL, NULL, 1, ?, ?, NULL)`
+  ).bind(id, userId, String(name).trim().slice(0, 120), Math.abs(Number(amount) || 0), dueDate, kategori || null, nowIso, nowIso).run();
+  return { id, dueDate };
+}
+
+/** Simpan agenda baru (calendar_events). */
+export async function insertAgenda(env, { userId, groupId, title, date, time, category, description }) {
+  const nowIso = new Date().toISOString();
+  const id = crypto.randomUUID();
+  await env.APP_DB.prepare(
+    `INSERT INTO calendar_events (id, user_id, group_id, title, date, time, category, member_id, description, rev, created_at, updated_at, void)
+     VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, 1, ?, ?, NULL)`
+  ).bind(id, userId, groupId || null, String(title).trim().slice(0, 140), date, time || null, category || null, description || null, nowIso, nowIso).run();
+  return { id, date, time: time || null };
 }
 
 export async function queryGoals(env, groupId) {

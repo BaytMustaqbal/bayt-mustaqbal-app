@@ -48,6 +48,8 @@ export async function detectIntent(env, userMessage, context, personaName) {
     'Pilih intent tepat:',
     '- catat_pengeluaran: user mau mencatat pengeluaran. field: {"intent":"catat_pengeluaran","amount":<angka rupiah integer>,"note":"<keterangan singkat atau null>"}',
     '- catat_pemasukan: user mau mencatat pemasukan/pendapatan/gaji/bonus. field: {"intent":"catat_pemasukan","amount":<angka rupiah integer>,"note":"<keterangan singkat atau null>","account":"<nama dompet/akun tujuan atau null>"}. Jika dompet tidak disebut, account null.',
+    '- tambah_tagihan: user mau menambah tagihan/tenggat pembayaran baru (listrik, air, cicilan, iuran). field: {"intent":"tambah_tagihan","name":"<nama tagihan>","amount":<angka rupiah integer>,"dueDate":"<teks tanggal PERSIS dari pesan, misal \\"tgl 25\\" atau \\"25 nov\\" atau null bila tidak disebut>","kategori":"<kategori singkat atau null>"}. Jangan mengarang tanggal.',
+    '- tambah_agenda: user mau menambah agenda/kegiatan/jadwal ke kalender. field: {"intent":"tambah_agenda","title":"<judul agenda>","date":"<teks tanggal PERSIS dari pesan atau null>","time":"<teks jam PERSIS dari pesan atau null>"}. Jangan mengarang tanggal/jam.',
     '- set_pengingat: user mau dibuatkan pengingat. field: {"intent":"set_pengingat","message":"<isi pengingat>","dayOffset":0|1,"hour":0-23,"minute":0-59}. dayOffset 0=hari ini, 1=besok. Jika jam tidak disebut, tebak wajar (pagi 6, siang 12, sore 17, malam 20, default 9).',
     '- cek_pengingat: user minta daftar pengingat aktif. {"intent":"cek_pengingat"}',
     '- cek_tagihan: user tanya tagihan/tenggat/jatuh tempo/belum lunas. {"intent":"cek_tagihan"}',
@@ -61,7 +63,7 @@ export async function detectIntent(env, userMessage, context, personaName) {
     '',
     who,
     `Konteks waktu WIB sekarang: tanggal ${context.today}, jam ${context.time}. Bulan: ${context.month}.`,
-    'Jika ragu antara catat_pengeluaran/catat_pemasukan/set_pengingat dengan chat, pilih chat. Jangan mengarang nominal/tanggal.',
+    'Jika ragu antara catat_pengeluaran/catat_pemasukan/tambah_tagihan/tambah_agenda/set_pengingat dengan chat, pilih chat. Jangan mengarang nominal/tanggal.',
   ].join('\n');
 
   const result = await env.AI.run(AI_MODEL, {
