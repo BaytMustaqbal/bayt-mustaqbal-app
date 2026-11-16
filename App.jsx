@@ -15,6 +15,7 @@ import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, Fam
 import ShoppingList from './components/ShoppingListComp';
 import Service from './components/ServiceComp';
 import SubscriptionsComp from './components/SubscriptionsComp';
+import RecurringTxnPanel from './components/RecurringTxnPanel';
 const SettingsComp = lazy(() => import('./components/SettingsComp'));
 const InsightComp = lazy(() => import('./components/InsightComp').then((m) => ({ default: m.InsightComp })));
 import ChoresComp from './components/ChoresComp';
@@ -47,7 +48,7 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 const Budgeting = lazy(() => import('./components/Budgeting').then((m) => ({ default: m.Budgeting })));
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi, vehicleApi, accountApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi, vehicleApi, accountApi, recurringApi } from './services/client';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -792,6 +793,8 @@ export default function App() {
   const [tagihans, setTagihans] = useState([]);
   // Langganan & Utilitas (API /api/sub)
   const [subs, setSubs] = useState([]);
+  // Transaksi berulang berbasis pemakaian (API /api/recurring)
+  const [recurringTxns, setRecurringTxns] = useState([]);
   // Analitik & insight (API /api/insight)
   const [insight, setInsight] = useState(null);
   // Status integrasi Google Calendar (dipakai halaman Pengaturan)
@@ -1023,6 +1026,21 @@ const deleteGoal = async (id) => {
       .fetch()
       .then((rows) => {
         if (alive) setSubs(rows || []);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [isLoggedIn, authReady]);
+
+  // Muat transaksi berulang (template berbasis pemakaian).
+  useEffect(() => {
+    if (!isLoggedIn || !authReady) return;
+    let alive = true;
+    recurringApi
+      .fetch()
+      .then((rows) => {
+        if (alive) setRecurringTxns(rows || []);
       })
       .catch(() => {});
     return () => {
@@ -3936,6 +3954,7 @@ const deleteGoal = async (id) => {
           { id: 'tabungan', label: 'Whishlist', icon: 'piggyBank' },
           { id: 'belanja', label: 'Belanja', icon: 'shoppingBag' },
           { id: 'langganan', label: 'Langganan', icon: 'repeat' },
+          { id: 'berulang', label: 'Berulang', icon: 'repeat' },
           { id: 'utang', label: 'Utang', icon: 'handCoins' },
         ];
         return (
@@ -4157,6 +4176,41 @@ const deleteGoal = async (id) => {
                 onDelete={async (id) => {
                   await subApi.delete(id);
                   setSubs((prev) => prev.filter((s) => s.id !== id));
+                }}
+              />
+            )}
+
+            {terjadwalTab === 'berulang' && (
+              <RecurringTxnPanel
+                items={recurringTxns}
+                canWrite={canWrite}
+                formatCurrency={formatCurrency}
+                onSave={async (item) => {
+                  const saved = item.id
+                    ? await recurringApi.update(item.id, item)
+                    : await recurringApi.create(item);
+                  setRecurringTxns((prev) => {
+                    if (item.id) return prev.map((r) => (r.id === item.id ? saved : r));
+                    return [saved, ...prev];
+                  });
+                  pushToast({ message: item.id ? 'Transaksi berulang diperbarui' : 'Transaksi berulang ditambahkan', duration: 2500 });
+                }}
+                onDelete={async (id) => {
+                  await recurringApi.remove(id);
+                  setRecurringTxns((prev) => prev.filter((r) => r.id !== id));
+                  pushToast({ message: 'Transaksi berulang dihapus', duration: 2500 });
+                }}
+                onPurchase={async (item, payload) => {
+                  const res = await recurringApi.purchase(item.id, payload);
+                  if (res?.template) {
+                    setRecurringTxns((prev) => prev.map((r) => (r.id === item.id ? res.template : r)));
+                  }
+                  pushToast({
+                    message: res?.intervalDays
+                      ? `Tercatat. Perkiraan habis berikutnya ${res.nextDue} (pola ${res.intervalDays} hari).`
+                      : 'Tercatat. Interval belum bisa dihitung, butuh minimal 2 pembelian.',
+                    duration: 3500,
+                  });
                 }}
               />
             )}

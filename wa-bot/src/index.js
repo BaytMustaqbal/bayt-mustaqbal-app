@@ -7,7 +7,7 @@ import {
 import {
   wibNow, reminderIso, formatRemindAtLabel, findUserByPhone,
   insertExpense, monthExpenseTotal, insertIncome, monthIncomeTotal, listOwnedAccounts,
-  insertBill, insertAgenda,
+  insertBill, insertAgenda, listRecurringTemplates, matchRecurringTemplate,
   querySummary, querySaldo, queryAgenda,
   queryBills, queryGoals, queryCategoryDetail, insertReminder, listReminders,
 } from './db.js';
@@ -103,7 +103,19 @@ async function executePending(env, pending, user) {
     });
     const ym = new Date().toISOString().slice(0, 7);
     const total = await monthExpenseTotal(env, { userId: user.id, groupId: user.group_id, ym });
-    return `Tercatat: ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}.\nTotal pengeluaran ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.`;
+    let hint = '';
+    if (user.group_id) {
+      try {
+        const templates = await listRecurringTemplates(env, user.group_id);
+        const hit = matchRecurringTemplate(templates, pending.note || '');
+        if (hit) {
+          hint = hit.intervalDays
+            ? `\n\n🔄 Cocok transaksi berulang "${hit.nama}". Tekan "Sudah beli" di app (tab Berulang) supaya jadwal pengingat dihitung ulang. Perkiraan habis sekarang: ${hit.nextDue || '-'}.`
+            : `\n\n🔄 Cocok transaksi berulang "${hit.nama}". Tekan "Sudah beli" di app (tab Berulang). Interval belum bisa dihitung, butuh minimal 2 pembelian.`;
+        }
+      } catch { /* hint opsional, jangan gagalkan pencatatan */ }
+    }
+    return `Tercatat: ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}.\nTotal pengeluaran ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.${hint}`;
   }
   if (pending.type === 'income') {
     const res = await insertIncome(env, {

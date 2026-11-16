@@ -164,6 +164,30 @@ export async function insertBill(env, { userId, name, amount, dueDate, kategori 
   return { id, dueDate };
 }
 
+/** Template transaksi berulang aktif milik grup (untuk hint di chat). */
+export async function listRecurringTemplates(env, groupId) {
+  const rows = await env.APP_DB.prepare(
+    `SELECT id, nama, keyword, amount, interval_days, next_due FROM recurring_txns
+     WHERE group_id = ? AND active = 1 AND void IS NULL
+     ORDER BY nama ASC`
+  ).bind(groupId).all();
+  return (rows.results || []).map((r) => ({
+    id: r.id,
+    nama: r.nama,
+    keyword: String(r.keyword || '').toLowerCase(),
+    amount: Number(r.amount) || 0,
+    intervalDays: r.interval_days == null ? null : Number(r.interval_days),
+    nextDue: r.next_due || '',
+  }));
+}
+
+/** Cari template yang keyword-nya muncul di teks transaksi. */
+export function matchRecurringTemplate(templates, text) {
+  const t = String(text || '').toLowerCase();
+  if (!t) return null;
+  return templates.find((tpl) => tpl.keyword && t.includes(tpl.keyword)) || null;
+}
+
 /** Simpan agenda baru (calendar_events). */
 export async function insertAgenda(env, { userId, groupId, title, date, time, category, description }) {
   const nowIso = new Date().toISOString();

@@ -621,6 +621,18 @@ export const serviceInvApi = {
   },
 };
 
+/* ---- Transaksi berulang (backend /api/recurring) ---- */
+export const recurringApi = {
+  fetch: async () => apiFetch('/recurring'),
+  create: async (item) =>
+    apiFetch('/recurring', { method: 'POST', body: JSON.stringify(item) }),
+  update: async (id, item) =>
+    apiFetch(`/recurring/${id}`, { method: 'PUT', body: JSON.stringify(item) }),
+  remove: async (id) => apiFetch(`/recurring/${id}`, { method: 'DELETE' }),
+  purchase: async (id, payload) =>
+    apiFetch(`/recurring/${id}/purchase`, { method: 'POST', body: JSON.stringify(payload || {}) }),
+};
+
 export const vehicleApi = {
   fetch: async () => apiFetch('/vehicle'),
   create: async (payload) =>
