@@ -32,7 +32,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/meta') {
-      return handleMeta(request, env);
+      return handleMeta(request, env, ctx);
     }
 
     if (url.pathname === '/api/expenses' && request.method === 'GET') {
@@ -68,6 +68,33 @@ function resolveOwner(env, sender) {
   if (map[d]) return map[d];
   const alt = d.startsWith('62') ? '0' + d.slice(2) : '62' + d.replace(/^0/, '');
   return map[alt] || map[normalizePhone(sender)] || null;
+}
+
+// Kanal balasan per nomor. Fonnte dan Meta bisa hidup bersamaan:
+// nomor yang terakhir menulis lewat Meta dibalas lewat Meta, sisanya lewat Fonnte.
+const CHANNEL_PREFIX = 'channel:';
+
+async function noteChannel(env, phone, channel) {
+  if (!env.WA_DEDUPE || !phone) return;
+  try {
+    await env.WA_DEDUPE.put(CHANNEL_PREFIX + normalizePhone(phone), channel, { expirationTtl: 2592000 });
+  } catch (_) {}
+}
+
+async function channelFor(env, target) {
+  if (env.WA_DEDUPE && target) {
+    try {
+      const c = await env.WA_DEDUPE.get(CHANNEL_PREFIX + normalizePhone(target));
+      if (c) return c;
+    } catch (_) {}
+  }
+  return String(env.WA_PROVIDER || 'fonnte').toLowerCase();
+}
+
+async function replyText(env, target, text) {
+  const channel = await channelFor(env, target);
+  if (channel === 'meta') return replyViaMeta(env.WA_ACCESS_TOKEN, env.WA_PHONE_ID, target, text);
+  return replyViaFonnte(env, target, text);
 }
 
 async function replyViaFonnte(env, target, text) {
@@ -305,10 +332,16 @@ async function handleFonnte(request, env, url) {
     ).bind(dedupeKey, sender, 'fonnte', text, minute).run();
   } catch (_) {}
 
+  await handleIncomingText(env, sender, text);
+  return JSON_OK();
+}
+
+/** Alur percakapan bersama untuk semua kanal (Fonnte maupun Meta). */
+async function handleIncomingText(env, sender, text) {
   const ownerId = resolveOwner(env, sender); // izin tulis (whitelist)
   const user = await ensureDbUser(env, sender, ownerId);
   const personaName = user ? (user.nickname || (user.nama || '').split(' ')[0] || '').trim() || null : null;
-  const t = String(text).trim();
+  const t = String(text || '').trim();
 
   // 1) Konfirmasi aksi tertunda
   const pending = await getPending(env, sender);
@@ -316,31 +349,31 @@ async function handleFonnte(request, env, url) {
     if (isYes(t)) {
       if (!user || !user.id) {
         await clearPending(env, sender);
-        await replyViaFonnte(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal, jadi aksi tidak bisa disimpan.');
+        await replyText(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal, jadi aksi tidak bisa disimpan.');
         return JSON_OK();
       }
       if (!canBotWrite(user, ownerId)) {
         await clearPending(env, sender);
-        await replyViaFonnte(env, sender, WRITE_DENIED);
+        await replyText(env, sender, WRITE_DENIED);
         return JSON_OK();
       }
       try {
         const { message, undo } = await executePending(env, pending, user);
         await clearPending(env, sender);
         if (undo) await setLastAction(env, sender, undo);
-        await replyViaFonnte(env, sender, message);
+        await replyText(env, sender, message);
       } catch (e) {
-        await replyViaFonnte(env, sender, 'Gagal menyimpan. Coba lagi sebentar.');
+        await replyText(env, sender, 'Gagal menyimpan. Coba lagi sebentar.');
       }
       return JSON_OK();
     }
     if (isNo(t)) {
       await clearPending(env, sender);
-      await replyViaFonnte(env, sender, 'Baik, dibatalkan.');
+      await replyText(env, sender, 'Baik, dibatalkan.');
       return JSON_OK();
     }
     // pesan lain saat ada pending: ingatkan konfirmasi
-    await replyViaFonnte(env, sender, 'Masih ada aksi yang menunggu konfirmasi. Balas *ya* untuk simpan atau *batal* untuk batalkan.');
+    await replyText(env, sender, 'Masih ada aksi yang menunggu konfirmasi. Balas *ya* untuk simpan atau *batal* untuk batalkan.');
     return JSON_OK();
   }
 
@@ -348,11 +381,11 @@ async function handleFonnte(request, env, url) {
   if (isUndoCommand(t)) {
     const last = await getLastAction(env, sender);
     if (!last) {
-      await replyViaFonnte(env, sender, 'Tidak ada aksi yang bisa dibatalkan. Undo hanya berlaku 10 menit setelah pencatatan.');
+      await replyText(env, sender, 'Tidak ada aksi yang bisa dibatalkan. Undo hanya berlaku 10 menit setelah pencatatan.');
       return JSON_OK();
     }
     if (!canBotWrite(user, ownerId)) {
-      await replyViaFonnte(env, sender, WRITE_DENIED);
+      await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     let ok = false;
@@ -360,7 +393,7 @@ async function handleFonnte(request, env, url) {
       ok = await undoAction(env, last, user.id);
     } catch (_) { ok = false; }
     if (ok) await clearLastAction(env, sender);
-    await replyViaFonnte(env, sender, ok
+    await replyText(env, sender, ok
       ? 'Aksi terakhir sudah dibatalkan.'
       : 'Gagal membatalkan: aksi sudah tidak ada atau di luar batas waktu.');
     return JSON_OK();
@@ -368,17 +401,17 @@ async function handleFonnte(request, env, url) {
 
   // 2) Menu / sapaan
   if (isMenu(t)) {
-    await replyViaFonnte(env, sender, menuText());
+    await replyText(env, sender, menuText());
     return JSON_OK();
   }
 
   // 3) Cek pengingat (baca, tanpa konfirmasi)
   if (wantsReminderList(t)) {
     if (!user) {
-      await replyViaFonnte(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal.');
+      await replyText(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal.');
       return JSON_OK();
     }
-    await replyViaFonnte(env, sender, formatReminders(await listReminders(env, user.id)));
+    await replyText(env, sender, formatReminders(await listReminders(env, user.id)));
     return JSON_OK();
   }
 
@@ -386,20 +419,20 @@ async function handleFonnte(request, env, url) {
   const exp = parseExpense(t);
   if (exp) {
     if (!user) {
-      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
     if (!canBotWrite(user, ownerId)) {
-      await replyViaFonnte(env, sender, WRITE_DENIED);
+      await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     if (!exp.amount) {
-      await replyViaFonnte(env, sender, 'Format nominal belum jelas. Contoh: catat pengeluaran 50k makan siang');
+      await replyText(env, sender, 'Format nominal belum jelas. Contoh: catat pengeluaran 50k makan siang');
       return JSON_OK();
     }
     const action = { type: 'expense', amount: exp.amount, note: exp.note || null };
     await setPending(env, sender, action);
-    await replyViaFonnte(env, sender, confirmExpense(action));
+    await replyText(env, sender, confirmExpense(action));
     return JSON_OK();
   }
 
@@ -407,15 +440,15 @@ async function handleFonnte(request, env, url) {
   const inc = parseIncome(t);
   if (inc) {
     if (!user) {
-      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
     if (!canBotWrite(user, ownerId)) {
-      await replyViaFonnte(env, sender, WRITE_DENIED);
+      await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     if (!inc.amount) {
-      await replyViaFonnte(env, sender, 'Format nominal belum jelas. Contoh: catat pemasukan 5jt gaji ke dompet BCA');
+      await replyText(env, sender, 'Format nominal belum jelas. Contoh: catat pemasukan 5jt gaji ke dompet BCA');
       return JSON_OK();
     }
     let accountId = null; let accountName = null;
@@ -424,14 +457,14 @@ async function handleFonnte(request, env, url) {
       const match = matchAccountHint(accounts, inc.accountHint);
       if (!match) {
         const names = accounts.map((a) => a.nama).filter(Boolean).join(', ');
-        await replyViaFonnte(env, sender, `Dompet "${inc.accountHint}" tidak ditemukan milik Anda.${names ? ` Dompet Anda: ${names}.` : ''} Sebutkan nama dompet yang benar, atau kirim tanpa dompet.`);
+        await replyText(env, sender, `Dompet "${inc.accountHint}" tidak ditemukan milik Anda.${names ? ` Dompet Anda: ${names}.` : ''} Sebutkan nama dompet yang benar, atau kirim tanpa dompet.`);
         return JSON_OK();
       }
       accountId = match.id; accountName = match.nama;
     }
     const action = { type: 'income', amount: inc.amount, note: inc.note || null, accountId, accountName };
     await setPending(env, sender, action);
-    await replyViaFonnte(env, sender, confirmIncome(action));
+    await replyText(env, sender, confirmIncome(action));
     return JSON_OK();
   }
 
@@ -441,11 +474,11 @@ async function handleFonnte(request, env, url) {
   // 5a) set pengingat (AI) — minta konfirmasi
   if (ai?.intent === 'set_pengingat') {
     if (!user) {
-      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
     if (!canBotWrite(user, ownerId)) {
-      await replyViaFonnte(env, sender, WRITE_DENIED);
+      await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const spec = {
@@ -459,50 +492,50 @@ async function handleFonnte(request, env, url) {
       if (local) { spec.dayOffset = local.dayOffset; spec.hour = local.hour; spec.minute = local.minute; spec.message = local.message; }
     }
     if (!spec.message) {
-      await replyViaFonnte(env, sender, 'Isi pengingatnya apa? Contoh: "ingatkan aku besok jam 9 bayar listrik".');
+      await replyText(env, sender, 'Isi pengingatnya apa? Contoh: "ingatkan aku besok jam 9 bayar listrik".');
       return JSON_OK();
     }
     const action = { type: 'reminder', message: spec.message, remindAt: reminderIso(spec), remindAtLabel: formatRemindAtLabel(spec) };
     await setPending(env, sender, action);
-    await replyViaFonnte(env, sender, confirmReminder(action));
+    await replyText(env, sender, confirmReminder(action));
     return JSON_OK();
   }
 
   // 5b) catat pengeluaran (AI fallback) — minta konfirmasi
   if (ai?.intent === 'catat_pengeluaran') {
     if (!user) {
-      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
     if (!canBotWrite(user, ownerId)) {
-      await replyViaFonnte(env, sender, WRITE_DENIED);
+      await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const amount = Number(ai.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      await replyViaFonnte(env, sender, 'Saya belum menangkap nominalnya. Contoh: "catat pengeluaran 50 ribu makan siang".');
+      await replyText(env, sender, 'Saya belum menangkap nominalnya. Contoh: "catat pengeluaran 50 ribu makan siang".');
       return JSON_OK();
     }
     const note = typeof ai.note === 'string' && ai.note.trim() ? ai.note.trim().slice(0, 200) : null;
     const action = { type: 'expense', amount: Math.round(amount), note };
     await setPending(env, sender, action);
-    await replyViaFonnte(env, sender, confirmExpense(action));
+    await replyText(env, sender, confirmExpense(action));
     return JSON_OK();
   }
 
   // 5b2) catat pemasukan (AI) — minta konfirmasi
   if (ai?.intent === 'catat_pemasukan') {
     if (!user) {
-      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
     if (!canBotWrite(user, ownerId)) {
-      await replyViaFonnte(env, sender, WRITE_DENIED);
+      await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const amount = Number(ai.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      await replyViaFonnte(env, sender, 'Saya belum menangkap nominal pemasukan. Contoh: "catat pemasukan 5 juta gaji ke dompet BCA".');
+      await replyText(env, sender, 'Saya belum menangkap nominal pemasukan. Contoh: "catat pemasukan 5 juta gaji ke dompet BCA".');
       return JSON_OK();
     }
     const note = typeof ai.note === 'string' && ai.note.trim() ? ai.note.trim().slice(0, 200) : null;
@@ -513,75 +546,75 @@ async function handleFonnte(request, env, url) {
       const match = matchAccountHint(accounts, accountHint);
       if (!match) {
         const names = accounts.map((a) => a.nama).filter(Boolean).join(', ');
-        await replyViaFonnte(env, sender, `Dompet "${accountHint}" tidak ditemukan milik Anda.${names ? ` Dompet Anda: ${names}.` : ''} Sebutkan nama dompet yang benar, atau kirim tanpa dompet.`);
+        await replyText(env, sender, `Dompet "${accountHint}" tidak ditemukan milik Anda.${names ? ` Dompet Anda: ${names}.` : ''} Sebutkan nama dompet yang benar, atau kirim tanpa dompet.`);
         return JSON_OK();
       }
       accountId = match.id; accountName = match.nama;
     }
     const action = { type: 'income', amount: Math.round(amount), note, accountId, accountName };
     await setPending(env, sender, action);
-    await replyViaFonnte(env, sender, confirmIncome(action));
+    await replyText(env, sender, confirmIncome(action));
     return JSON_OK();
   }
 
   // 5c) tambah tagihan (AI) — minta konfirmasi
   if (ai?.intent === 'tambah_tagihan') {
     if (!user) {
-      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
     if (!canBotWrite(user, ownerId)) {
-      await replyViaFonnte(env, sender, WRITE_DENIED);
+      await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const name = typeof ai.name === 'string' && ai.name.trim() ? ai.name.trim().slice(0, 120) : null;
     if (!name) {
-      await replyViaFonnte(env, sender, 'Nama tagihannya apa? Contoh: "tambah tagihan listrik 350k tgl 25".');
+      await replyText(env, sender, 'Nama tagihannya apa? Contoh: "tambah tagihan listrik 350k tgl 25".');
       return JSON_OK();
     }
     const amount = Number(ai.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      await replyViaFonnte(env, sender, `Nominal tagihan "${name}" berapa? Contoh: "tambah tagihan listrik 350k tgl 25".`);
+      await replyText(env, sender, `Nominal tagihan "${name}" berapa? Contoh: "tambah tagihan listrik 350k tgl 25".`);
       return JSON_OK();
     }
     const todayIso = wibContext().today;
     const dueDate = parseDateId(typeof ai.dueDate === 'string' ? ai.dueDate : '', todayIso) || parseDateId(t, todayIso);
     if (!dueDate) {
-      await replyViaFonnte(env, sender, `Tanggal jatuh tempo "${name}" kapan? Sebutkan jelas, misalnya "tgl 25", "25 nov", atau "besok".`);
+      await replyText(env, sender, `Tanggal jatuh tempo "${name}" kapan? Sebutkan jelas, misalnya "tgl 25", "25 nov", atau "besok".`);
       return JSON_OK();
     }
     const kategori = typeof ai.kategori === 'string' && ai.kategori.trim() ? ai.kategori.trim().slice(0, 40) : null;
     const action = { type: 'bill', name, amount: Math.round(amount), dueDate, kategori };
     await setPending(env, sender, action);
-    await replyViaFonnte(env, sender, confirmBill(action));
+    await replyText(env, sender, confirmBill(action));
     return JSON_OK();
   }
 
   // 5d) tambah agenda (AI) — minta konfirmasi
   if (ai?.intent === 'tambah_agenda') {
     if (!user) {
-      await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
     if (!canBotWrite(user, ownerId)) {
-      await replyViaFonnte(env, sender, WRITE_DENIED);
+      await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const title = typeof ai.title === 'string' && ai.title.trim() ? ai.title.trim().slice(0, 140) : null;
     if (!title) {
-      await replyViaFonnte(env, sender, 'Judul agendanya apa? Contoh: "tambah agenda rapat keluarga 25 nov jam 19.30".');
+      await replyText(env, sender, 'Judul agendanya apa? Contoh: "tambah agenda rapat keluarga 25 nov jam 19.30".');
       return JSON_OK();
     }
     const todayIso = wibContext().today;
     const date = parseDateId(typeof ai.date === 'string' ? ai.date : '', todayIso) || parseDateId(t, todayIso);
     if (!date) {
-      await replyViaFonnte(env, sender, `Tanggal agenda "${title}" kapan? Sebutkan jelas, misalnya "25 nov" atau "besok".`);
+      await replyText(env, sender, `Tanggal agenda "${title}" kapan? Sebutkan jelas, misalnya "25 nov" atau "besok".`);
       return JSON_OK();
     }
     const time = parseTimeId(typeof ai.time === 'string' ? ai.time : '') || parseTimeId(t);
     const action = { type: 'agenda', title, date, time, category: 'keluarga' };
     await setPending(env, sender, action);
-    await replyViaFonnte(env, sender, confirmAgenda(action));
+    await replyText(env, sender, confirmAgenda(action));
     return JSON_OK();
   }
 
@@ -589,18 +622,18 @@ async function handleFonnte(request, env, url) {
   const readIntents = new Set(['cek_pengingat','cek_tagihan','agenda_hari_ini','saldo_bulan_ini','rangkuman','rincian_kategori','target_tabungan','tanya_data','menu']);
   if (ai && readIntents.has(ai.intent)) {
     const msg = await answerReadIntent(env, user, ai.intent, ai);
-    if (msg) { await replyViaFonnte(env, sender, msg); return JSON_OK(); }
+    if (msg) { await replyText(env, sender, msg); return JSON_OK(); }
   }
 
   // 5f) AI chat / fallback (selalu lewat chatReply agar konteks nama pengirim terbawa)
   if (ai?.intent === 'chat') {
     const fallback = await chatReply(env, t, personaName);
-    await replyViaFonnte(env, sender, fallback || menuText());
+    await replyText(env, sender, fallback || menuText());
     return JSON_OK();
   }
 
   const fallback = await chatReply(env, t, personaName);
-  await replyViaFonnte(env, sender, fallback || menuText());
+  await replyText(env, sender, fallback || menuText());
   return JSON_OK();
 }
 
@@ -657,73 +690,139 @@ async function handleGetExpenses(request, env) {
   );
 }
 
-// ============================= META (tetap, tidak diubah) =============================
+// ============================= META (WhatsApp Cloud API) =============================
 
-async function handleMeta(request, env) {
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+// Status pengiriman (sent/delivered/read/failed) dicatat di wa_messages
+// dengan prefix message_id agar tidak bertabrakan dengan pesan masuk.
+async function logStatus(env, status, phoneNumberId) {
+  const id = status?.id;
+  const state = status?.status || 'unknown';
+  if (!id) return;
+  if (env.WA_DEDUPE) {
+    const k = `meta-status:${id}:${state}`;
+    if (await env.WA_DEDUPE.get(k)) return;
+    await env.WA_DEDUPE.put(k, '1', { expirationTtl: 86400 });
+  }
+  const note = status.errors ? ' ' + JSON.stringify(status.errors).slice(0, 300) : '';
+  try {
+    await env.WA_LOGS.prepare(
+      `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
+       VALUES (?, ?, ?, ?, ?, true)
+       ON CONFLICT(message_id) DO NOTHING`
+    ).bind(
+      `status:${id}:${state}`,
+      status.recipient_id || '',
+      phoneNumberId,
+      `status:${state}${note}`,
+      status.timestamp || new Date().toISOString()
+    ).run();
+  } catch (_) {}
+}
+
+async function handleMeta(request, env, ctx) {
+  // Verifikasi webhook: Meta mengirim GET dengan hub.challenge.
   if (request.method === 'GET') {
     const url = new URL(request.url);
+    const verifyToken = env.WA_VERIFY_TOKEN || env.WA_WEBHOOK_SECRET || '';
     if (
       url.searchParams.get('hub.mode') === 'subscribe' &&
-      url.searchParams.get('hub.verify_token') === env.WA_WEBHOOK_SECRET
+      verifyToken &&
+      safeEqual(url.searchParams.get('hub.verify_token') || '', verifyToken)
     ) {
-      return new Response(url.searchParams.get('hub.challenge'), { status: 200 });
+      return new Response(url.searchParams.get('hub.challenge') || '', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+      });
     }
     return new Response('Forbidden', { status: 403 });
   }
-  if (request.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
-  }
+  if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
-  const signatureHeader = request.headers.get('X-Hub-Signature-256');
   const body = await request.text();
-  const secret = env.WA_WEBHOOK_SECRET || '';
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const appSecret = env.WA_APP_SECRET;
+  if (!appSecret) return new Response('WA_APP_SECRET belum diset', { status: 500 });
+
+  // Validasi X-Hub-Signature-256 (HMAC SHA-256 body dengan App Secret Meta).
+  const signatureHeader = request.headers.get('X-Hub-Signature-256') || '';
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(appSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
   const hex = Array.from(new Uint8Array(mac)).map((b) => b.toString(16).padStart(2, '0')).join('');
-  if (!signatureHeader || signatureHeader !== `sha256=${hex}`) {
+  if (!safeEqual(signatureHeader, `sha256=${hex}`)) {
     return new Response('Signature verification failed', { status: 401 });
   }
 
   let payload;
   try { payload = JSON.parse(body); } catch { return new Response('Invalid JSON', { status: 400 }); }
 
-  const entry = payload.entry?.[0];
-  if (!entry) return JSON_OK();
+  const job = (async () => {
+    for (const entry of payload.entry || []) {
+      for (const change of entry.changes || []) {
+        const value = change.value || {};
+        const phoneNumberId = value.metadata?.phone_number_id || env.WA_PHONE_ID || null;
 
-  for (const change of entry.changes ?? []) {
-    const value = change.value || {};
-    const messageId = value.id;
-    const from = value.from;
-    const message = value.message?.text || null;
-    const timestamp = value.timestamp;
-    const waPhoneNumberId = value.metadata?.phone_number_id;
+        for (const st of value.statuses || []) {
+          await logStatus(env, st, phoneNumberId);
+        }
 
-    if (env.WA_DEDUPE) {
-      const k2 = `msg:${messageId}`;
-      const existing = await env.WA_DEDUPE.get(k2);
-      if (existing) continue;
-      await env.WA_DEDUPE.put(k2, '1', { expirationTtl: 86400 });
+        for (const msg of value.messages || []) {
+          const messageId = msg.id;
+          const from = msg.from;
+          if (!messageId || !from) continue;
+
+          // Dedupe per kanal, Meta bisa mengirim ulang webhook yang sama.
+          if (env.WA_DEDUPE) {
+            const k = `meta:${messageId}`;
+            if (await env.WA_DEDUPE.get(k)) continue;
+            await env.WA_DEDUPE.put(k, '1', { expirationTtl: 86400 });
+          }
+
+          const text = msg.type === 'text' ? (msg.text?.body || null) : null;
+          const timestamp = msg.timestamp || new Date().toISOString();
+          try {
+            await env.WA_LOGS.prepare(
+              `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
+               VALUES (?, ?, ?, ?, ?, false)
+               ON CONFLICT(message_id) DO NOTHING`
+            ).bind(messageId, from, phoneNumberId, text || `[${msg.type || 'unknown'}]`, timestamp).run();
+          } catch (_) {}
+
+          await noteChannel(env, from, 'meta');
+
+          if (!text) {
+            await replyText(env, from, 'Sementara saya hanya membaca pesan teks. Contoh: "catat pengeluaran 50k makan siang".');
+            continue;
+          }
+          await handleIncomingText(env, from, text);
+        }
+      }
     }
+  })();
 
-    try {
-      await env.WA_LOGS.prepare(
-        `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
-         VALUES (?, ?, ?, ?, ?, false)
-         ON CONFLICT(message_id) DO NOTHING`
-      ).bind(messageId, from, waPhoneNumberId, message, timestamp).run();
-    } catch (_) {}
-
-    if (message) {
-      await replyViaMeta(env.WA_ACCESS_TOKEN, env.WA_PHONE_ID, from, 'Anda bilang: ' + message);
-    }
+  // Balas 200 cepat supaya Meta tidak mengulang webhook; proses jalan di background.
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(job);
+    return JSON_OK();
   }
+  await job;
   return JSON_OK();
 }
 
 async function replyViaMeta(accessToken, phoneId, to, text) {
-  return fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+  if (!accessToken || !phoneId) {
+    return { ok: false, text: async () => 'meta belum dikonfigurasi (WA_ACCESS_TOKEN / WA_PHONE_ID)' };
+  }
+  const body = String(text || '').slice(0, 4096);
+  return fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } }),
+    body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body } }),
   });
 }
