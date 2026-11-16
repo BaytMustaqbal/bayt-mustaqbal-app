@@ -315,6 +315,9 @@ async function handleFonnte(request, env, url) {
   const sender = payload.sender || payload.member || '';
   const text = payload.message || payload.text || null;
   if (!sender || !text) return JSON_OK();
+  // Bot hanya melayani chat 1:1. Pesan dari grup Fonnte (…@g.us) diabaikan
+  // supaya obrolan keluarga tidak memicu balasan atau pencatatan.
+  if (String(sender).includes('@g.us') || String(sender).includes('@broadcast')) return JSON_OK();
 
   // Dedupe + log
   const minute = new Date().toISOString().slice(0, 16);
@@ -338,6 +341,7 @@ async function handleFonnte(request, env, url) {
 
 /** Alur percakapan bersama untuk semua kanal (Fonnte maupun Meta). */
 async function handleIncomingText(env, sender, text) {
+  if (String(sender || '').includes('@')) return JSON_OK(); // grup/broadcast bukan target bot
   const ownerId = resolveOwner(env, sender); // izin tulis (whitelist)
   const user = await ensureDbUser(env, sender, ownerId);
   const personaName = user ? (user.nickname || (user.nama || '').split(' ')[0] || '').trim() || null : null;
