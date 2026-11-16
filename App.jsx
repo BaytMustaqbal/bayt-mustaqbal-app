@@ -3949,12 +3949,12 @@ const deleteGoal = async (id) => {
 
       case 'terjadwal': {
         const terjadwalTabs = [
+          { id: 'berulang', label: 'Berulang', icon: 'repeat' },
           { id: 'pengeluaran', label: 'Pengeluaran', icon: 'receipt' },
           { id: 'service', label: 'Services', icon: 'wrench' },
           { id: 'tabungan', label: 'Whishlist', icon: 'piggyBank' },
           { id: 'belanja', label: 'Belanja', icon: 'shoppingBag' },
           { id: 'langganan', label: 'Langganan', icon: 'repeat' },
-          { id: 'berulang', label: 'Berulang', icon: 'repeat' },
           { id: 'utang', label: 'Utang', icon: 'handCoins' },
         ];
         return (

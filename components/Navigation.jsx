@@ -189,6 +189,7 @@ export function Navigation({
 
   // Dropup "Tugas" (bottom nav): daftar sub-tab Tugas Terjadwal.
   const TUGAS_DROP_ITEMS = [
+    { id: 'terjadwal:berulang', label: 'Berulang', icon: 'repeat' },
     { id: 'terjadwal:pengeluaran', label: 'Pengeluaran', icon: 'receipt' },
     { id: 'terjadwal:service', label: 'Services', icon: 'wrench' },
     { id: 'terjadwal:tabungan', label: 'Whishlist', icon: 'piggyBank' },
