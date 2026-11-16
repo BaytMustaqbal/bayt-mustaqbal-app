@@ -338,7 +338,9 @@ export function AccountModal({
       setProfileYoutube(user?.youtube || '');
       setProfileNik(user?.nik || '');
     }
-  }, [open, user]);
+  // Hydrate hanya saat modal dibuka atau berganti user. Perubahan `user`
+  // karena respons server lain tidak boleh menimpa isian yang sedang diketik.
+  }, [open, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fieldRefs = useRef({});
   const fileRef = useRef(null);
@@ -437,19 +439,25 @@ export function AccountModal({
     }
     setProfileSaving(true);
     setProfileSaved('');
+    // Validasi telepon di klien: server menolak seluruh body bila nomor tidak
+    // valid, jadi lebih baik dicegah sebelum field lain ikut setengah tersimpan.
+    const rawPhone = profilePhone.trim();
+    const phoneNorm = rawPhone ? normalizePhone(rawPhone) : '';
+    if (rawPhone && (phoneNorm.length < 9 || phoneNorm.length > 15)) {
+      setProfileSaved('Gagal menyimpan: Nomor telepon tidak valid. Contoh: 0812-3456-7890.');
+      document.getElementById('profile-phone')?.focus();
+      return;
+    }
     try {
-      onSave({
-        name: name.trim(),
-        username: username.trim().toLowerCase(),
-        avatar,
-        password: undefined, // tidak menyentuh password
-      });
-      // Perbarui panggilan + tanggal lahir + nama final ke server.
+      // Satu PUT untuk semua perubahan profil. Jangan panggil onSave dengan
+      // efek remote di sini: dua PUT bersamaan bisa saling menimpa kolom users
+      // karena server melakukan partial update dari snapshot bacaan sendiri.
       const updated = await auth.updateProfile({
         nama: name.trim(),
+        avatarUrl: avatar || null,
         nickname: profileNickname.trim() || null,
         birthDate: profileBirthDate || null,
-        phone: normalizePhone(profilePhone) || null,
+        phone: phoneNorm || null,
         blood: profileBlood.trim() || null,
         allergy: profileAllergy.trim() || null,
         instagram: profileInstagram.trim() || null,
@@ -459,6 +467,11 @@ export function AccountModal({
         youtube: profileYoutube.trim() || null,
         nik: profileNik.trim() || null,
       });
+      // Sinkronkan cache lokal tanpa memicu PUT kedua.
+      onSave(
+        { name: updated?.nama || name.trim(), username, avatar, password: undefined },
+        { skipRemote: true }
+      );
       onSaved?.(updated);
       setProfileSaved('Profil tersimpan.');
     } catch (err) {

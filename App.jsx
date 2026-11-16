@@ -2055,7 +2055,7 @@ const deleteGoal = async (id) => {
   /* Simpan perubahan profil akun yang sedang aktif (nama, username, avatar,
      password). Backend belum punya endpoint PUT /users ? semua perubahan
      tetap lokal (snapshot). Ini untuk data lokal saja. */
-  const saveAccount = (patch) => {
+  const saveAccount = (patch, options = {}) => {
     if (!currentUser) return;
     const current = dataRef.current;
     saveData({
@@ -2082,50 +2082,56 @@ const deleteGoal = async (id) => {
       instagram: currentUser.instagram ?? null, facebook: currentUser.facebook ?? null, tiktok: currentUser.tiktok ?? null,
       twitter: currentUser.twitter ?? null, youtube: currentUser.youtube ?? null, nik: currentUser.nik ?? null,
     });
-    // Simpan nama + avatar ke server (PUT /auth/me) supaya tampil di semua perangkat
+    // Simpan nama + avatar ke server (PUT /auth/me) supaya tampil di semua perangkat.
+    // Dilewati saat pemanggil sudah mengirim satu PUT lengkap (simpan profil),
+    // supaya dua request tidak saling menimpa kolom users.
+    if (options.skipRemote) return;
     auth.updateProfile({ nama: patch.name, nickname: currentUser.nickname, avatarUrl: patch.avatar || null })
       .then((updated) => {
+        // null dihormati (field dikosongkan), undefined berarti tidak dikirim.
+        const has = (k) => Object.prototype.hasOwnProperty.call(updated, k);
+        const pick = (k, fallback) => (has(k) ? updated[k] : fallback);
         setCurrentUser((prev) => (prev
           ? {
               ...prev,
-              name: updated.nama ?? prev.name,
-              avatar: updated.avatar_url ?? prev.avatar ?? null,
-              avatar_url: updated.avatar_url ?? prev.avatar_url ?? null,
-              nickname: updated.nickname ?? prev.nickname ?? null,
-              birthDate: updated.birth_date ?? prev.birthDate ?? null,
-              phone: updated.phone ?? prev.phone ?? null,
-              blood: updated.blood ?? prev.blood ?? null,
-              allergy: updated.allergy ?? prev.allergy ?? null,
-              address: updated.address ?? prev.address ?? null,
-              instagram: updated.instagram ?? prev.instagram ?? null,
-              facebook: updated.facebook ?? prev.facebook ?? null,
-              tiktok: updated.tiktok ?? prev.tiktok ?? null,
-              twitter: updated.twitter ?? prev.twitter ?? null,
-              youtube: updated.youtube ?? prev.youtube ?? null,
-              nik: updated.nik ?? prev.nik ?? null,
+              name: pick('nama', prev.name),
+              avatar: pick('avatar_url', prev.avatar ?? null),
+              avatar_url: pick('avatar_url', prev.avatar_url ?? null),
+              nickname: pick('nickname', prev.nickname ?? null),
+              birthDate: pick('birth_date', prev.birthDate ?? null),
+              phone: pick('phone', prev.phone ?? null),
+              blood: pick('blood', prev.blood ?? null),
+              allergy: pick('allergy', prev.allergy ?? null),
+              address: pick('address', prev.address ?? null),
+              instagram: pick('instagram', prev.instagram ?? null),
+              facebook: pick('facebook', prev.facebook ?? null),
+              tiktok: pick('tiktok', prev.tiktok ?? null),
+              twitter: pick('twitter', prev.twitter ?? null),
+              youtube: pick('youtube', prev.youtube ?? null),
+              nik: pick('nik', prev.nik ?? null),
             }
           : prev));
         const base = { ...(currentUser || {}), ...updated };
         storeUser({
           id: base.id || currentUser.id,
-          nama: updated.nama ?? currentUser.nama ?? currentUser.name,
+          nama: pick('nama', currentUser.nama ?? currentUser.name),
           username: base.username || currentUser.username,
           role: base.role || currentUser.role,
           family_role: base.family_role ?? currentUser.family_role,
           generasi: base.generasi ?? currentUser.generasi,
-          nickname: updated.nickname ?? currentUser.nickname ?? null,
-          birth_date: updated.birth_date ?? currentUser.birthDate ?? null,
-          phone: updated.phone ?? currentUser.phone ?? null,
-          avatar_url: updated.avatar_url ?? null,
-          blood: updated.blood ?? currentUser.blood ?? null,
-          allergy: updated.allergy ?? currentUser.allergy ?? null,
-          address: updated.address ?? currentUser.address ?? null,
-          instagram: updated.instagram ?? currentUser.instagram ?? null,
-          facebook: updated.facebook ?? currentUser.facebook ?? null,
-          tiktok: updated.tiktok ?? currentUser.tiktok ?? null,
-          twitter: updated.twitter ?? currentUser.twitter ?? null,
-          youtube: updated.youtube ?? currentUser.youtube ?? null,
-          nik: updated.nik ?? currentUser.nik ?? null,
+          nickname: pick('nickname', currentUser.nickname ?? null),
+          birth_date: pick('birth_date', currentUser.birthDate ?? null),
+          phone: pick('phone', currentUser.phone ?? null),
+          avatar_url: pick('avatar_url', null),
+          blood: pick('blood', currentUser.blood ?? null),
+          allergy: pick('allergy', currentUser.allergy ?? null),
+          address: pick('address', currentUser.address ?? null),
+          instagram: pick('instagram', currentUser.instagram ?? null),
+          facebook: pick('facebook', currentUser.facebook ?? null),
+          tiktok: pick('tiktok', currentUser.tiktok ?? null),
+          twitter: pick('twitter', currentUser.twitter ?? null),
+          youtube: pick('youtube', currentUser.youtube ?? null),
+          nik: pick('nik', currentUser.nik ?? null),
         });
         loadFromAPI(); // segarkan tree (avatar/nama)
         pushToast({ message: 'Profil akun diperbarui', duration: 2500 });
@@ -2753,27 +2759,31 @@ const deleteGoal = async (id) => {
   // (hindari field tanggal lahir basi) + reset preset agar bisa trigger lagi.
   const handleProfileSaved = (updatedUser) => {
     if (updatedUser) {
+      // Respons server selalu memuat kolom yang dipilih. null berarti field
+      // dikosongkan (harus dihormati), undefined berarti tidak dikirim.
+      const has = (k) => Object.prototype.hasOwnProperty.call(updatedUser, k);
+      const pick = (k, fallback) => (has(k) ? updatedUser[k] : fallback);
       const merged = {
         ...currentUser,
-        name: updatedUser.nama ?? currentUser?.name,
-        username: updatedUser.username ?? currentUser?.username,
-        nickname: updatedUser.nickname ?? currentUser?.nickname ?? null,
-        birthDate: updatedUser.birth_date ?? currentUser?.birthDate ?? null,
-        phone: updatedUser.phone ?? currentUser?.phone ?? null,
-        avatar: updatedUser.avatar_url ?? currentUser?.avatar ?? null,
-        avatar_url: updatedUser.avatar_url ?? currentUser?.avatar_url ?? null,
-        blood: updatedUser.blood ?? currentUser?.blood ?? null,
-        allergy: updatedUser.allergy ?? currentUser?.allergy ?? null,
-        address: updatedUser.address ?? currentUser?.address ?? null,
-        instagram: updatedUser.instagram ?? currentUser?.instagram ?? null,
-        facebook: updatedUser.facebook ?? currentUser?.facebook ?? null,
-        tiktok: updatedUser.tiktok ?? currentUser?.tiktok ?? null,
-        twitter: updatedUser.twitter ?? currentUser?.twitter ?? null,
-        youtube: updatedUser.youtube ?? currentUser?.youtube ?? null,
-        nik: updatedUser.nik ?? currentUser?.nik ?? null,
-        family_role: updatedUser.family_role ?? currentUser?.family_role,
-        generasi: updatedUser.generasi ?? currentUser?.generasi,
-        group_role: updatedUser.group_role ?? currentUser?.group_role,
+        name: pick('nama', currentUser?.name),
+        username: pick('username', currentUser?.username),
+        nickname: pick('nickname', currentUser?.nickname ?? null),
+        birthDate: pick('birth_date', currentUser?.birthDate ?? null),
+        phone: pick('phone', currentUser?.phone ?? null),
+        avatar: pick('avatar_url', currentUser?.avatar ?? null),
+        avatar_url: pick('avatar_url', currentUser?.avatar_url ?? null),
+        blood: pick('blood', currentUser?.blood ?? null),
+        allergy: pick('allergy', currentUser?.allergy ?? null),
+        address: pick('address', currentUser?.address ?? null),
+        instagram: pick('instagram', currentUser?.instagram ?? null),
+        facebook: pick('facebook', currentUser?.facebook ?? null),
+        tiktok: pick('tiktok', currentUser?.tiktok ?? null),
+        twitter: pick('twitter', currentUser?.twitter ?? null),
+        youtube: pick('youtube', currentUser?.youtube ?? null),
+        nik: pick('nik', currentUser?.nik ?? null),
+        family_role: pick('family_role', currentUser?.family_role),
+        generasi: pick('generasi', currentUser?.generasi),
+        group_role: pick('group_role', currentUser?.group_role),
       };
       setCurrentUser(merged);
       storeUser({
