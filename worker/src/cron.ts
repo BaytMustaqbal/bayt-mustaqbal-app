@@ -368,6 +368,57 @@ async function sendServiceReminders(env: Env): Promise<void> {
   }
 }
 
+/** Notif H-1 transaksi berulang (token listrik, gas LPG, dan sejenisnya).
+ *  `next_due` = perkiraan tanggal habis. Dikirim jam 08:00 WIB, sehari sebelum. */
+async function sendRecurringReminders(env: Env): Promise<void> {
+  const scopes = await listGroupScopes(env);
+  const target = await readFonnteTarget(env);
+  if (!target) return;
+
+  const wibMs = Date.now() + 7 * 60 * 60 * 1000;
+  const tomorrow = isoDate(new Date(wibMs + 24 * 60 * 60 * 1000));
+
+  for (const scope of scopes) {
+    const rows = await env.DB.prepare(
+      `SELECT * FROM recurring_txns WHERE group_id = ? AND void IS NULL AND active = 1 AND next_due IS NOT NULL`
+    ).bind(scope.group_id).all();
+    const items = (rows.results || []) as any[];
+
+    for (const t of items) {
+      const due = String(t.next_due || '').slice(0, 10);
+      if (!due || due !== tomorrow) continue;
+
+      const key = `recurring_alert:${t.id}:${due}`;
+      const notif = await env.DB.prepare(
+        `SELECT id FROM notification_log WHERE message = ? AND void IS NULL LIMIT 1`
+      ).bind(key).first();
+      if (notif) continue;
+
+      const amount = Number(t.amount) || 0;
+      const message = [
+        `🔄 *Transaksi Berulang*`,
+        `${t.nama}`,
+        `Perkiraan habis besok (${due})${t.interval_days ? `, pola tiap ${t.interval_days} hari` : ''}.`,
+        amount > 0 ? `Pembelian terakhir Rp ${formatIdr(amount)}.` : '',
+        `Beli hari ini supaya tidak kehabisan, lalu tekan "Sudah beli" di app.`,
+      ].filter(Boolean).join('\n');
+      if (!(await sendWA(env, message, target))) continue;
+
+      const nid = crypto.randomUUID();
+      const now = new Date().toISOString();
+      await env.DB.prepare(
+        `INSERT INTO notification_log (id, user_id, type, message, read, rev, created_at) VALUES (?, ?, 'info', ?, 0, 1, ?)`
+      ).bind(nid, scope.sample_user, key, now).run();
+
+      await sendPushToUser(env, scope.sample_user, {
+        title: 'Transaksi Berulang',
+        body: `${t.nama} perkiraan habis besok (${due}).`,
+        url: '/#terjadwal',
+      });
+    }
+  }
+}
+
 /** Notif WA untuk utang/piutang yang belum lunas (mingguan). */
 async function sendDebtReminders(env: Env): Promise<void> {
   const scopes = await listGroupScopes(env);
@@ -478,6 +529,9 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
         await sendServiceReminders(env);
         await sendDebtReminders(env);
       }
+
+      // Transaksi berulang: pengingat H-1, hanya jam 08:00 WIB.
+      if (hour === 8 && prefs.scheduledEnabled) await sendRecurringReminders(env);
     }
 
     await processOutbox(env);
