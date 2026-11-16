@@ -4185,6 +4185,9 @@ const deleteGoal = async (id) => {
                 items={recurringTxns}
                 canWrite={canWrite}
                 formatCurrency={formatCurrency}
+                categories={getBudgetCategoryOptions().filter((c) => c.value !== 'semua')}
+                accounts={accounts.filter((a) => a.user_id === currentUser?.id)}
+                vehicles={data.vehicles || []}
                 onSave={async (item) => {
                   const saved = item.id
                     ? await recurringApi.update(item.id, item)
