@@ -58,6 +58,7 @@ export async function detectIntent(env, userMessage, context, personaName) {
     '- rangkuman: ringkasan pengeluaran. {"intent":"rangkuman","period":"bulan_ini"|"7_hari"}',
     '- rincian_kategori: rekap per kategori. {"intent":"rincian_kategori"}',
     '- target_tabungan: progres target/tabungan. {"intent":"target_tabungan"}',
+    '- tanya_data: pertanyaan data keuangan bebas yang butuh angka (total, saldo dompet, kategori terbesar, transaksi terakhir). field: {"intent":"tanya_data","metric":"pengeluaran_total"|"pemasukan_total"|"saldo_dompet"|"tagihan_belum"|"top_kategori"|"transaksi_terakhir","period":"bulan_ini"|"bulan_lalu"|"7_hari"|"30_hari"|"tahun_ini","category":"<nama kategori atau null>","wallet":"<nama dompet atau null>"}. Period default "bulan_ini" bila tidak disebut. Jangan pernah menulis angka dalam balasan, cukup pilih metric dan period.',
     '- menu: minta bantuan/menu/halo. {"intent":"menu"}',
     '- chat: obrolan umum/tidak terkait data di atas. {"intent":"chat"}',
     '',

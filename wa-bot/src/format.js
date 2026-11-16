@@ -19,9 +19,82 @@ export function menuText() {
     '• "rangkuman bulan ini" / "rangkuman 7 hari"',
     '• "rincian pengeluaran per kategori"',
     '• "progres target tabungan"',
+    '• "pengeluaran bulan lalu" / "pemasukan 7 hari terakhir"',
+    '• "saldo semua dompet"',
+    '• "kategori terbesar bulan ini"',
+    '• "transaksi terakhir"',
     '',
     'Untuk menyimpan catatan/pengingat, saya akan minta konfirmasi "ya" dulu.',
+    'Salah catat? Kirim *undo* dalam 10 menit untuk membatalkan aksi terakhir.',
   ].join('\n');
+}
+
+export const PERIOD_LABELS = {
+  bulan_ini: 'bulan ini',
+  bulan_lalu: 'bulan lalu',
+  '7_hari': '7 hari terakhir',
+  '30_hari': '30 hari terakhir',
+  tahun_ini: 'tahun ini',
+};
+
+export function periodLabel(period) {
+  return PERIOD_LABELS[period] || PERIOD_LABELS.bulan_ini;
+}
+
+export function undoHint() {
+  return '\n\nSalah catat? Kirim *undo* dalam 10 menit.';
+}
+
+export function formatTotalMetric({ title, period, total, count }) {
+  const lines = [`📊 *${title}*`, ''];
+  if (!count) {
+    lines.push(`Tidak ada transaksi tercatat ${periodLabel(period)}.`);
+  } else {
+    lines.push(`Total: ${fmtRp(total)}`);
+    lines.push(`Jumlah transaksi: ${count}x`);
+  }
+  return lines.join('\n');
+}
+
+export function formatWallets(rows) {
+  const lines = ['👛 *Saldo Dompet Keluarga*', ''];
+  if (!rows.length) {
+    lines.push('Belum ada dompet terdaftar.');
+  } else {
+    let total = 0;
+    for (const r of rows) {
+      total += Number(r.saldo) || 0;
+      lines.push(`• ${r.nama}${r.bank ? ` (${r.bank})` : ''}: ${fmtRp(r.saldo)}`);
+    }
+    lines.push('', `Total: ${fmtRp(total)}`);
+  }
+  return lines.join('\n');
+}
+
+export function formatTopCategories(rows, period) {
+  const lines = [`📂 *Kategori Pengeluaran Terbesar*`, periodLabel(period), ''];
+  if (!rows.length) {
+    lines.push('Tidak ada pengeluaran tercatat pada periode ini.');
+  } else {
+    rows.forEach((r, i) => {
+      lines.push(`${i + 1}. ${r.label}: ${fmtRp(r.total)} (${Number(r.count) || 0}x)`);
+    });
+  }
+  return lines.join('\n');
+}
+
+export function formatLastTxns(rows) {
+  const lines = ['🧾 *Transaksi Terakhir*', ''];
+  if (!rows.length) {
+    lines.push('Belum ada transaksi.');
+  } else {
+    for (const r of rows) {
+      const sign = r.type === 'in' ? '+' : '-';
+      const label = r.description || r.kategori || (r.type === 'in' ? 'Pemasukan' : 'Pengeluaran');
+      lines.push(`• ${r.date} ${label}: ${sign}${fmtRp(r.amount)}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 export function formatSummary(rows, title) {

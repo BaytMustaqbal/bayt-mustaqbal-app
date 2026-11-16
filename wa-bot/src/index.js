@@ -2,6 +2,8 @@ import { normalizePhone, samePhone, digits } from './phone.js';
 import {
   menuText, formatSummary, formatSaldo, formatAgenda, formatBills,
   formatGoals, formatCategoryDetail, formatReminders,
+  formatTotalMetric, formatWallets, formatTopCategories, formatLastTxns,
+  periodLabel, undoHint,
   confirmExpense, confirmIncome, confirmBill, confirmAgenda, confirmReminder, fmtRp,
 } from './format.js';
 import {
@@ -10,13 +12,18 @@ import {
   insertBill, insertAgenda, listRecurringTemplates, matchRecurringTemplate,
   querySummary, querySaldo, queryAgenda,
   queryBills, queryGoals, queryCategoryDetail, insertReminder, listReminders,
+  periodRange, queryTxTotal, queryWalletBalances, queryTopCategories,
+  queryLastTransactions, undoAction,
 } from './db.js';
 import {
   parseExpense, parseIncome, matchAccountHint, isYes, isNo, isMenu, wantsReminderList,
   parseReminderLocal, parseDateId, parseTimeId,
 } from './parse.js';
 import { detectIntent, chatReply } from './ai.js';
-import { getPending, setPending, clearPending } from './state.js';
+import {
+  getPending, setPending, clearPending,
+  setLastAction, getLastAction, clearLastAction, UNDO_TTL_MINUTES,
+} from './state.js';
 
 const JSON_OK = () => new Response('ok', { status: 200 });
 
@@ -86,16 +93,33 @@ async function ensureDbUser(env, sender, ownerId) {
   if (ownerId && env.APP_DB) {
     try {
       return await env.APP_DB.prepare(
-        `SELECT id, nama, nickname, group_id, phone FROM users WHERE id = ? AND void IS NULL`
+        `SELECT id, nama, nickname, group_id, group_role, phone FROM users WHERE id = ? AND void IS NULL`
       ).bind(ownerId).first();
     } catch { return null; }
   }
   return null;
 }
 
+// Perintah undo: batalkan aksi tulis terakhir (10 menit).
+function isUndoCommand(text) {
+  const s = String(text || '').trim().toLowerCase();
+  if (/^(undo|urungkan)$/.test(s)) return true;
+  return /^batalkan(\s+(yang\s+)?(tadi|terakhir|aksi\s+terakhir|transaksi\s+terakhir|catatan\s+terakhir))?$/.test(s);
+}
+
+// Peran yang boleh menulis lewat bot. Anggota lain hanya boleh baca.
+const WRITE_ROLES = new Set(['kepala_keluarga', 'suami', 'istri']);
+const WRITE_DENIED = 'Maaf, nomor ini hanya bisa bertanya data. Pencatatan lewat bot hanya untuk kepala keluarga, suami, dan istri.';
+
+function canBotWrite(user, ownerId) {
+  if (!user || !user.id || !ownerId) return false;
+  if (ownerId !== user.id) return false;
+  return WRITE_ROLES.has(String(user.group_role || ''));
+}
+
 async function executePending(env, pending, user) {
   if (pending.type === 'expense') {
-    await insertExpense(env, {
+    const saved = await insertExpense(env, {
       userId: user.id,
       groupId: user.group_id || null,
       amount: pending.amount,
@@ -115,7 +139,10 @@ async function executePending(env, pending, user) {
         }
       } catch { /* hint opsional, jangan gagalkan pencatatan */ }
     }
-    return `Tercatat: ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}.\nTotal pengeluaran ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.${hint}`;
+    return {
+      message: `Tercatat: ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}.\nTotal pengeluaran ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.${hint}${undoHint()}`,
+      undo: { kind: 'transaction', id: saved.id, type: 'out', amount: pending.amount, accountId: null },
+    };
   }
   if (pending.type === 'income') {
     const res = await insertIncome(env, {
@@ -128,29 +155,38 @@ async function executePending(env, pending, user) {
     const ym = new Date().toISOString().slice(0, 7);
     const total = await monthIncomeTotal(env, { userId: user.id, groupId: user.group_id, ym });
     const ke = res.accountName ? ` ke dompet ${res.accountName}` : '';
-    return `Tercatat: pemasukan ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}${ke}.\nTotal pemasukan ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.`;
+    return {
+      message: `Tercatat: pemasukan ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}${ke}.\nTotal pemasukan ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.${undoHint()}`,
+      undo: { kind: 'transaction', id: res.id, type: 'in', amount: pending.amount, accountId: pending.accountId || null },
+    };
   }
   if (pending.type === 'reminder') {
-    await insertReminder(env, {
+    const id = await insertReminder(env, {
       userId: user.id,
       groupId: user.group_id || null,
       message: pending.message,
       remindAt: pending.remindAt,
     });
-    return `⏰ Pengingat disimpan: "${pending.message}".\nNanti saya ingatkan lewat WA.`;
+    return {
+      message: `⏰ Pengingat disimpan: "${pending.message}".\nNanti saya ingatkan lewat WA.${undoHint()}`,
+      undo: { kind: 'reminder', id },
+    };
   }
   if (pending.type === 'bill') {
-    await insertBill(env, {
+    const saved = await insertBill(env, {
       userId: user.id,
       name: pending.name,
       amount: pending.amount,
       dueDate: pending.dueDate,
       kategori: pending.kategori || null,
     });
-    return `🧾 Tagihan disimpan: ${pending.name} ${fmtRp(pending.amount)}, jatuh tempo ${pending.dueDate}.\nSaya ingatkan lewat WA saat jatuh tempo.`;
+    return {
+      message: `🧾 Tagihan disimpan: ${pending.name} ${fmtRp(pending.amount)}, jatuh tempo ${pending.dueDate}.\nSaya ingatkan lewat WA saat jatuh tempo.${undoHint()}`,
+      undo: { kind: 'bill', id: saved.id },
+    };
   }
   if (pending.type === 'agenda') {
-    await insertAgenda(env, {
+    const saved = await insertAgenda(env, {
       userId: user.id,
       groupId: user.group_id || null,
       title: pending.title,
@@ -159,9 +195,12 @@ async function executePending(env, pending, user) {
       category: pending.category || 'keluarga',
       description: pending.description || null,
     });
-    return `📅 Agenda disimpan: ${pending.title} pada ${pending.date}${pending.time ? ` jam ${pending.time}` : ''}.\nSudah muncul di kalender aplikasi.`;
+    return {
+      message: `📅 Agenda disimpan: ${pending.title} pada ${pending.date}${pending.time ? ` jam ${pending.time}` : ''}.\nSudah muncul di kalender aplikasi.${undoHint()}`,
+      undo: { kind: 'agenda', id: saved.id },
+    };
   }
-  return 'Aksi tidak dikenal.';
+  return { message: 'Aksi tidak dikenal.', undo: null };
 }
 
 async function answerReadIntent(env, user, intent, obj) {
@@ -174,6 +213,36 @@ async function answerReadIntent(env, user, intent, obj) {
   }
   if (!groupId) {
     return 'Akun belum tergabung ke grup keluarga, jadi data keluarga belum bisa ditampilkan.';
+  }
+  if (intent === 'tanya_data') {
+    const METRICS = new Set(['pengeluaran_total', 'pemasukan_total', 'saldo_dompet', 'tagihan_belum', 'top_kategori', 'transaksi_terakhir']);
+    const metric = typeof obj?.metric === 'string' ? obj.metric : 'pengeluaran_total';
+    if (!METRICS.has(metric)) {
+      return 'Pertanyaan itu belum bisa saya jawab dari data. Coba tanya total pengeluaran/pemasukan, saldo dompet, tagihan belum lunas, kategori terbesar, atau transaksi terakhir.';
+    }
+    const period = ['bulan_ini', 'bulan_lalu', '7_hari', '30_hari', 'tahun_ini'].includes(obj?.period)
+      ? obj.period
+      : 'bulan_ini';
+    if (metric === 'saldo_dompet') {
+      return formatWallets(await queryWalletBalances(env, groupId));
+    }
+    if (metric === 'tagihan_belum') {
+      return formatBills(await queryBills(env, groupId));
+    }
+    if (metric === 'transaksi_terakhir') {
+      return formatLastTxns(await queryLastTransactions(env, groupId, 5));
+    }
+    const { from, to } = periodRange(period, today);
+    if (metric === 'top_kategori') {
+      return formatTopCategories(await queryTopCategories(env, groupId, from, to, 5), period);
+    }
+    const category = typeof obj?.category === 'string' && obj.category.trim() ? obj.category.trim() : null;
+    const wallet = typeof obj?.wallet === 'string' && obj.wallet.trim() ? obj.wallet.trim() : null;
+    const type = metric === 'pemasukan_total' ? 'in' : 'out';
+    const { total, count } = await queryTxTotal(env, { groupId, type, from, to, category, wallet });
+    const extra = [category ? `kategori ${category}` : '', wallet ? `dompet ${wallet}` : ''].filter(Boolean).join(', ');
+    const title = `${type === 'in' ? 'Pemasukan' : 'Pengeluaran'}${extra ? ` ${extra}` : ''} ${periodLabel(period)}`;
+    return formatTotalMetric({ title, period, total, count });
   }
   if (intent === 'saldo_bulan_ini') {
     const s = await querySaldo(env, groupId, month);
@@ -250,16 +319,16 @@ async function handleFonnte(request, env, url) {
         await replyViaFonnte(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal, jadi aksi tidak bisa disimpan.');
         return JSON_OK();
       }
-      if ((pending.type === 'expense' || pending.type === 'income' || pending.type === 'reminder' || pending.type === 'bill' || pending.type === 'agenda') && ownerId && ownerId !== user.id) {
-        // whitelist menunjuk id lain: tolak demi aman
+      if (!canBotWrite(user, ownerId)) {
         await clearPending(env, sender);
-        await replyViaFonnte(env, sender, 'Nomor ini tidak diizinkan menyimpan data untuk akun tersebut.');
+        await replyViaFonnte(env, sender, WRITE_DENIED);
         return JSON_OK();
       }
       try {
-        const msg = await executePending(env, pending, user);
+        const { message, undo } = await executePending(env, pending, user);
         await clearPending(env, sender);
-        await replyViaFonnte(env, sender, msg);
+        if (undo) await setLastAction(env, sender, undo);
+        await replyViaFonnte(env, sender, message);
       } catch (e) {
         await replyViaFonnte(env, sender, 'Gagal menyimpan. Coba lagi sebentar.');
       }
@@ -272,6 +341,28 @@ async function handleFonnte(request, env, url) {
     }
     // pesan lain saat ada pending: ingatkan konfirmasi
     await replyViaFonnte(env, sender, 'Masih ada aksi yang menunggu konfirmasi. Balas *ya* untuk simpan atau *batal* untuk batalkan.');
+    return JSON_OK();
+  }
+
+  // 1b) Undo aksi tulis terakhir (berlaku 10 menit)
+  if (isUndoCommand(t)) {
+    const last = await getLastAction(env, sender);
+    if (!last) {
+      await replyViaFonnte(env, sender, 'Tidak ada aksi yang bisa dibatalkan. Undo hanya berlaku 10 menit setelah pencatatan.');
+      return JSON_OK();
+    }
+    if (!canBotWrite(user, ownerId)) {
+      await replyViaFonnte(env, sender, WRITE_DENIED);
+      return JSON_OK();
+    }
+    let ok = false;
+    try {
+      ok = await undoAction(env, last, user.id);
+    } catch (_) { ok = false; }
+    if (ok) await clearLastAction(env, sender);
+    await replyViaFonnte(env, sender, ok
+      ? 'Aksi terakhir sudah dibatalkan.'
+      : 'Gagal membatalkan: aksi sudah tidak ada atau di luar batas waktu.');
     return JSON_OK();
   }
 
@@ -294,12 +385,12 @@ async function handleFonnte(request, env, url) {
   // 4) Fast-path catat pengeluaran (rule-based, minta konfirmasi)
   const exp = parseExpense(t);
   if (exp) {
-    if (!ownerId) {
-      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
-      return JSON_OK();
-    }
     if (!user) {
       await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!canBotWrite(user, ownerId)) {
+      await replyViaFonnte(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     if (!exp.amount) {
@@ -315,12 +406,12 @@ async function handleFonnte(request, env, url) {
   // 4b) Fast-path catat pemasukan (rule-based, minta konfirmasi)
   const inc = parseIncome(t);
   if (inc) {
-    if (!ownerId) {
-      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
-      return JSON_OK();
-    }
     if (!user) {
       await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!canBotWrite(user, ownerId)) {
+      await replyViaFonnte(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     if (!inc.amount) {
@@ -349,12 +440,12 @@ async function handleFonnte(request, env, url) {
 
   // 5a) set pengingat (AI) — minta konfirmasi
   if (ai?.intent === 'set_pengingat') {
-    if (!ownerId) {
-      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk membuat pengingat. Hubungi admin.');
-      return JSON_OK();
-    }
     if (!user) {
       await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!canBotWrite(user, ownerId)) {
+      await replyViaFonnte(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const spec = {
@@ -379,12 +470,12 @@ async function handleFonnte(request, env, url) {
 
   // 5b) catat pengeluaran (AI fallback) — minta konfirmasi
   if (ai?.intent === 'catat_pengeluaran') {
-    if (!ownerId) {
-      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
-      return JSON_OK();
-    }
     if (!user) {
       await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!canBotWrite(user, ownerId)) {
+      await replyViaFonnte(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const amount = Number(ai.amount);
@@ -401,12 +492,12 @@ async function handleFonnte(request, env, url) {
 
   // 5b2) catat pemasukan (AI) — minta konfirmasi
   if (ai?.intent === 'catat_pemasukan') {
-    if (!ownerId) {
-      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
-      return JSON_OK();
-    }
     if (!user) {
       await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!canBotWrite(user, ownerId)) {
+      await replyViaFonnte(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const amount = Number(ai.amount);
@@ -435,12 +526,12 @@ async function handleFonnte(request, env, url) {
 
   // 5c) tambah tagihan (AI) — minta konfirmasi
   if (ai?.intent === 'tambah_tagihan') {
-    if (!ownerId) {
-      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
-      return JSON_OK();
-    }
     if (!user) {
       await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!canBotWrite(user, ownerId)) {
+      await replyViaFonnte(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const name = typeof ai.name === 'string' && ai.name.trim() ? ai.name.trim().slice(0, 120) : null;
@@ -468,12 +559,12 @@ async function handleFonnte(request, env, url) {
 
   // 5d) tambah agenda (AI) — minta konfirmasi
   if (ai?.intent === 'tambah_agenda') {
-    if (!ownerId) {
-      await replyViaFonnte(env, sender, 'Nomor tidak terdaftar untuk mencatat. Hubungi admin.');
-      return JSON_OK();
-    }
     if (!user) {
       await replyViaFonnte(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (!canBotWrite(user, ownerId)) {
+      await replyViaFonnte(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
     const title = typeof ai.title === 'string' && ai.title.trim() ? ai.title.trim().slice(0, 140) : null;
@@ -495,7 +586,7 @@ async function handleFonnte(request, env, url) {
   }
 
   // 5e) intent baca
-  const readIntents = new Set(['cek_pengingat','cek_tagihan','agenda_hari_ini','saldo_bulan_ini','rangkuman','rincian_kategori','target_tabungan','menu']);
+  const readIntents = new Set(['cek_pengingat','cek_tagihan','agenda_hari_ini','saldo_bulan_ini','rangkuman','rincian_kategori','target_tabungan','tanya_data','menu']);
   if (ai && readIntents.has(ai.intent)) {
     const msg = await answerReadIntent(env, user, ai.intent, ai);
     if (msg) { await replyViaFonnte(env, sender, msg); return JSON_OK(); }

@@ -24,7 +24,7 @@ export function formatRemindAtLabel(spec) {
 export async function findUserByPhone(env, senderPhone) {
   if (!env.APP_DB) return null;
   const rows = await env.APP_DB.prepare(
-    `SELECT id, nama, nickname, group_id, phone FROM users WHERE void IS NULL AND phone IS NOT NULL AND phone != ''`
+    `SELECT id, nama, nickname, group_id, group_role, phone FROM users WHERE void IS NULL AND phone IS NOT NULL AND phone != ''`
   ).all();
   const list = rows.results || [];
   return list.find((r) => samePhone(r.phone, senderPhone)) || null;
@@ -237,4 +237,128 @@ export async function listReminders(env, userId) {
     `SELECT message, remind_at FROM wa_reminders WHERE user_id = ? AND done = 0 ORDER BY remind_at ASC LIMIT 10`
   ).bind(userId).all();
   return (rows.results || []).map((r) => ({ message: r.message, remind_at: r.remind_at }));
+}
+
+/* ---------- Tanya data (baca) ---------- */
+
+/** Rentang tanggal dari preset periode. */
+export function periodRange(period, today) {
+  const day = (iso) => new Date(`${iso}T00:00:00Z`);
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const t = day(today);
+  if (period === 'bulan_lalu') {
+    const first = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() - 1, 1));
+    const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 0));
+    return { from: iso(first), to: iso(last) };
+  }
+  if (period === '7_hari') {
+    const from = new Date(t.getTime() - 6 * 86400000);
+    return { from: iso(from), to: today };
+  }
+  if (period === '30_hari') {
+    const from = new Date(t.getTime() - 29 * 86400000);
+    return { from: iso(from), to: today };
+  }
+  if (period === 'tahun_ini') {
+    return { from: `${t.getUTCFullYear()}-01-01`, to: today };
+  }
+  return { from: `${today.slice(0, 7)}-01`, to: today };
+}
+
+/** Total + jumlah transaksi dalam rentang, opsional filter kategori/dompet. */
+export async function queryTxTotal(env, { groupId, type, from, to, category, wallet }) {
+  const cond = ['t.group_id = ?', 't.void IS NULL', 't.type = ?', 't.date >= ?', 't.date <= ?'];
+  const args = [groupId, type, from, to];
+  if (category) {
+    cond.push(`(lower(COALESCE(t.description, '')) LIKE ? OR t.category_id IN (SELECT id FROM categories WHERE lower(name) LIKE ?))`);
+    args.push(`%${category.toLowerCase()}%`, `%${category.toLowerCase()}%`);
+  }
+  if (wallet) {
+    cond.push(`t.account_id IN (SELECT id FROM accounts WHERE lower(nama) LIKE ?)`);
+    args.push(`%${wallet.toLowerCase()}%`);
+  }
+  const row = await env.APP_DB.prepare(
+    `SELECT COALESCE(SUM(t.amount), 0) AS total, COUNT(*) AS cnt FROM transactions t WHERE ${cond.join(' AND ')}`
+  ).bind(...args).first();
+  return { total: Number(row?.total || 0), count: Number(row?.cnt || 0) };
+}
+
+/** Saldo semua dompet keluarga. */
+export async function queryWalletBalances(env, groupId) {
+  const rows = await env.APP_DB.prepare(
+    `SELECT a.nama, a.saldo, a.bank FROM accounts a
+     WHERE a.void IS NULL
+       AND (a.group_id = ? OR a.user_id IN (SELECT id FROM users WHERE group_id = ? AND void IS NULL))
+     ORDER BY a.saldo DESC LIMIT 15`
+  ).bind(groupId, groupId).all();
+  return (rows.results || []).map((r) => ({
+    nama: r.nama, saldo: Number(r.saldo) || 0, bank: r.bank || null,
+  }));
+}
+
+/** Kategori pengeluaran terbesar dalam rentang. */
+export async function queryTopCategories(env, groupId, from, to, limit = 5) {
+  const rows = await env.APP_DB.prepare(
+    `SELECT COALESCE(c.name, 'Tanpa kategori') AS label, SUM(t.amount) AS total, COUNT(*) AS cnt
+     FROM transactions t LEFT JOIN categories c ON c.id = t.category_id
+     WHERE t.group_id = ? AND t.type = 'out' AND t.void IS NULL
+       AND t.date >= ? AND t.date <= ?
+     GROUP BY t.category_id ORDER BY total DESC LIMIT ?`
+  ).bind(groupId, from, to, limit).all();
+  return (rows.results || []).map((r) => ({ label: r.label, total: Number(r.total) || 0, count: Number(r.cnt) || 0 }));
+}
+
+/** Transaksi terakhir keluarga. */
+export async function queryLastTransactions(env, groupId, limit = 5) {
+  const rows = await env.APP_DB.prepare(
+    `SELECT t.date, t.description, t.amount, t.type, COALESCE(c.name, '') AS kategori
+     FROM transactions t LEFT JOIN categories c ON c.id = t.category_id
+     WHERE t.group_id = ? AND t.void IS NULL
+     ORDER BY t.date DESC, t.created_at DESC LIMIT ?`
+  ).bind(groupId, limit).all();
+  return (rows.results || []).map((r) => ({
+    date: r.date, description: r.description || '', amount: Number(r.amount) || 0,
+    type: r.type, kategori: r.kategori || '',
+  }));
+}
+
+/* ---------- Undo aksi tulis terakhir ---------- */
+
+/** Batalkan aksi tulis terakhir (transaksi/tagihan/agenda/pengingat). */
+export async function undoAction(env, undo, userId) {
+  if (!undo || !undo.kind) return false;
+  const nowIso = new Date().toISOString();
+  if (undo.kind === 'transaction') {
+    const stmt = env.APP_DB.prepare(
+      'UPDATE transactions SET void = ?, rev = rev + 1, updated_at = ? WHERE id = ? AND user_id = ? AND void IS NULL'
+    ).bind(nowIso, nowIso, undo.id, userId);
+    const res = await stmt.run();
+    if (!res.meta?.changes) return false;
+    if (undo.accountId && undo.amount) {
+      const delta = undo.type === 'in' ? -Math.abs(Number(undo.amount)) : Math.abs(Number(undo.amount));
+      await env.APP_DB.prepare(
+        'UPDATE accounts SET saldo = saldo + ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL'
+      ).bind(delta, nowIso, undo.accountId).run();
+    }
+    return true;
+  }
+  if (undo.kind === 'bill') {
+    const res = await env.APP_DB.prepare(
+      'UPDATE bills SET void = ?, rev = rev + 1, updated_at = ? WHERE id = ? AND user_id = ? AND void IS NULL'
+    ).bind(nowIso, nowIso, undo.id, userId).run();
+    return !!res.meta?.changes;
+  }
+  if (undo.kind === 'agenda') {
+    const res = await env.APP_DB.prepare(
+      'UPDATE calendar_events SET void = ?, rev = rev + 1, updated_at = ? WHERE id = ? AND user_id = ? AND void IS NULL'
+    ).bind(nowIso, nowIso, undo.id, userId).run();
+    return !!res.meta?.changes;
+  }
+  if (undo.kind === 'reminder') {
+    const res = await env.APP_DB.prepare(
+      'UPDATE wa_reminders SET done = 1 WHERE id = ? AND user_id = ? AND done = 0'
+    ).bind(undo.id, userId).run();
+    return !!res.meta?.changes;
+  }
+  return false;
 }
