@@ -3899,25 +3899,53 @@ const deleteGoal = async (id) => {
             </div>
 
 
-            {/* Chip filter kategori pemasukan (pola sama dengan chip tugas) */}
+            {/* Chip filter kategori pengeluaran — satu baris scroll horizontal */}
+            {financeMode === 'pengeluaran' && (
+              <div className="mb-5 flex flex-nowrap gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter kategori pengeluaran">
+                {FINANCE_CATEGORIES.map((cat) => {
+                  const active = financeFilter === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setFinanceFilter(cat.id)}
+                      aria-pressed={active}
+                      className={`inline-flex min-h-[36px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition-colors ${
+                        active
+                          ? 'border-brand/25 bg-brandtint text-brandfg'
+                          : 'border-line text-mutedfg hover:bg-muted hover:text-ink'
+                      }`}
+                    >
+                      <Icon name={cat.icon} size={14} />
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Chip filter kategori pemasukan — satu baris scroll horizontal, sama dengan pengeluaran */}
             {financeMode === 'pemasukan' && (
-              <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter kategori pemasukan">
-                {INCOME_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setIncomeFilter(cat.id)}
-                    aria-pressed={incomeFilter === cat.id}
-                    className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors ${
-                      incomeFilter === cat.id
-                        ? 'border-brand/25 bg-brandtint text-brandfg'
-                        : 'border-line text-mutedfg hover:bg-muted hover:text-ink'
-                    }`}
-                  >
-                    <Icon name={cat.icon} size={14} />
-                    {cat.label}
-                  </button>
-                ))}
+              <div className="mb-5 flex flex-nowrap gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter kategori pemasukan">
+                {INCOME_CATEGORIES.map((cat) => {
+                  const active = incomeFilter === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setIncomeFilter(cat.id)}
+                      aria-pressed={active}
+                      className={`inline-flex min-h-[36px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition-colors ${
+                        active
+                          ? 'border-brand/25 bg-brandtint text-brandfg'
+                          : 'border-line text-mutedfg hover:bg-muted hover:text-ink'
+                      }`}
+                    >
+                      <Icon name={cat.icon} size={14} />
+                      {cat.label}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -4070,9 +4098,9 @@ const deleteGoal = async (id) => {
               )
             ) : filtered.length === 0 ? (
               <EmptyState
-                icon="wallet"
-                title="Tidak ada pengeluaran di kategori ini"
-                message="Pilih kategori lain, atau catat pengeluaran baru."
+                icon={financeFilter === 'semua' ? 'wallet' : (activeMeta?.icon || 'wallet')}
+                title={financeFilter === 'semua' ? 'Belum ada pengeluaran' : `Belum ada pengeluaran ${activeMeta?.label || financeFilter}`}
+                message={financeFilter === 'semua' ? 'Catat pengeluaran lewat tombol Tambah.' : `Tidak ada transaksi kategori ${activeMeta?.label || financeFilter}. Pilih kategori lain, atau catat pengeluaran baru.`}
               />
             ) : (
               <div className="stagger flex flex-col gap-2">
