@@ -210,6 +210,7 @@ export const txnTransform = {
   toExpense: (txn) => txnTransform.toTxn(txn),
   // Frontend item → API payload. `type` ikut dari item (default 'out')
   toPayload: (item) => ({
+    ...(typeof item.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(item.id) ? { id: item.id } : {}),
     amount: Number(item.amount) || 0,
     type: item.type === 'in' ? 'in' : 'out',
     date: item.date,
@@ -251,6 +252,7 @@ export const noteTransform = {
     updatedAt: (n.updated_at || n.created_at || '').slice(0, 10),
   }),
   toPayload: (item) => ({
+    ...(typeof item.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(item.id) ? { id: item.id } : {}),
     title: item.title,
     content: item.body || null,
     category: item.category || null,

@@ -266,8 +266,36 @@ export function ItemActions({ onEdit, onDelete, label = 'item', readOnly = false
   );
 }
 
+/* Baris status draft offline: badge + tombol coba lagi / hapus. */
+function PendingRow({ item, onRetry, onDiscard }) {
+  if (!item?.pending) return null;
+  return (
+    <div className="mb-3 flex items-center justify-between gap-2 rounded-lg bg-muted px-2.5 py-1.5">
+      <Badge tone={item.failed ? 'red' : 'amber'}>{item.failed ? 'Gagal sinkron' : 'Menunggu sinkron'}</Badge>
+      <span className="flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => onRetry?.(item)}
+          aria-label="Coba sinkron lagi"
+          className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-line hover:text-ink"
+        >
+          <Icon name="refresh" size={15} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onDiscard?.(item)}
+          aria-label="Hapus catatan offline"
+          className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg"
+        >
+          <Icon name="trash" size={15} />
+        </button>
+      </span>
+    </div>
+  );
+}
+
 /* Kartu pengeluaran (tile ikon mengikuti kategori) */
-export function ExpenseCard({ item, formatCurrency, onEdit, onDelete, readOnly = false }) {
+export function ExpenseCard({ item, formatCurrency, onEdit, onDelete, onRetry, onDiscard, readOnly = false }) {
   const meta = getCategoryMeta(FINANCE_CATEGORIES, item.category);
   return (
     <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-brand/50 sm:p-5`}>
@@ -286,12 +314,14 @@ export function ExpenseCard({ item, formatCurrency, onEdit, onDelete, readOnly =
         </p>
       </div>
 
+      <PendingRow item={item} onRetry={onRetry} onDiscard={onDiscard} />
+
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-2.5">
         <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-mutedfg">
           <Icon name="clock" size={13} />
           {item.date}
         </span>
-        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} readOnly={readOnly} />
+        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} readOnly={readOnly || item.pending} />
       </div>
     </Card>
   );
@@ -299,7 +329,7 @@ export function ExpenseCard({ item, formatCurrency, onEdit, onDelete, readOnly =
 
 /* Kartu pemasukan — kembaran ExpenseCard dengan nuansa hijau (emas/positif)
    supaya tidak tertukar dengan pengeluaran saat digulir. */
-export function IncomeCard({ item, formatCurrency, onEdit, onDelete, readOnly = false }) {
+export function IncomeCard({ item, formatCurrency, onEdit, onDelete, onRetry, onDiscard, readOnly = false }) {
   const meta = getCategoryMeta(INCOME_CATEGORIES, item.category);
   return (
     <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-success/50 sm:p-5`}>
@@ -318,12 +348,14 @@ export function IncomeCard({ item, formatCurrency, onEdit, onDelete, readOnly = 
         </p>
       </div>
 
+      <PendingRow item={item} onRetry={onRetry} onDiscard={onDiscard} />
+
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-2.5">
         <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-mutedfg">
           <Icon name="clock" size={13} />
           {item.date}
         </span>
-        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} readOnly={readOnly} />
+        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} readOnly={readOnly || item.pending} />
       </div>
     </Card>
   );

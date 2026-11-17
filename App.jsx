@@ -48,7 +48,8 @@ import {
 } from './components/categories';
 import { getBudget } from './components/budget';
 const Budgeting = lazy(() => import('./components/Budgeting').then((m) => ({ default: m.Budgeting })));
-import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi, vehicleApi, accountApi, recurringApi } from './services/client';
+import { auth, txn, cal, notesApi, settingsApi, billsApi, gcalApi, setToken, insightApi, goalsApi, scheduledTasksApi, pushApi, subApi, serviceInvApi, serviceHistoryApi, tasksApi, familyEntryApi, choresApi, debtApi, vehicleApi, accountApi, recurringApi, txnTransform, noteTransform, calTransform } from './services/client';
+import { readOutbox, enqueue, dequeue, markFailed, resetFailed, newOpId } from './components/outbox';
 import { readUiPrefs, applyUiPrefs } from './services/uiPrefs';
 import './App.css';
 
@@ -461,13 +462,20 @@ const clearAuthToken = () => {
   }
 };
 
-// Merge API data + local seed ? full data bundle
-const buildMergedData = (apiData, currentUser) => {
+// Padukan daftar server dengan draft offline tanpa membuat id ganda.
+const appendPendingItems = (list, extra = []) => {
+  const ids = new Set((list || []).map((x) => String(x.id)));
+  return [...(list || []), ...extra.filter((x) => !ids.has(String(x.id)))];
+};
+
+// Merge API data + local seed + draft offline ? full data bundle
+const buildMergedData = (apiData, currentUser, pendingOps = []) => {
   const bundle = buildDataBundle(apiData, currentUser);
   // Overlay localStorage-only data yang sudah dimodifikasi (tasks, family, service)
   const snapshot = loadSnapshot();
+  let merged = bundle;
   if (snapshot) {
-    return {
+    merged = {
       ...bundle,
       // family sekarang dari daftar akun backend (bukan localStorage-only lagi)
       family: bundle.family,
@@ -479,7 +487,30 @@ const buildMergedData = (apiData, currentUser) => {
       serviceHistory: bundle.serviceHistory,
     };
   }
-  return bundle;
+
+  // Draft offline ditempel di atas data server supaya tidak hilang saat reload
+  // atau saat loadFromAPI menimpa cache localStorage.
+  if (pendingOps.length > 0) {
+    const draftsOf = (section) => pendingOps
+      .filter((o) => o.section === section)
+      .map((o) => ({ ...(o.draft || {}), id: o.opId, pending: true, failed: !!o.failed }));
+    const expenses = appendPendingItems(merged.expenses, draftsOf('expenses'));
+    const income = appendPendingItems(merged.income, draftsOf('income'));
+    merged = {
+      ...merged,
+      expenses,
+      income,
+      notes: appendPendingItems(merged.notes, draftsOf('notes')),
+      serviceHistory: appendPendingItems(merged.serviceHistory, draftsOf('service')),
+      monthlyTrend: computeMonthlyTrend(expenses),
+      weekly: computeWeekly(expenses),
+      categories: computeCategories(expenses),
+      incomeTrend: computeMonthlyTrend(income),
+      incomeCategories: computeCategories(income, INCOME_CATEGORIES, INCOME_COLOR_MAP),
+    };
+  }
+
+  return merged;
 };
 
 // Fetch all API data (schedule, expenses, income, notes, budget settings)
@@ -1582,6 +1613,10 @@ const deleteGoal = async (id) => {
   const [data, setData] = useState(null);
   // Loading state untuk data API
   const [dataLoading, setDataLoading] = useState(false);
+  // Antrean tulis offline (outbox). Sumber kebenaran ada di localStorage;
+  // state hanya cermin untuk render.
+  const [outboxOps, setOutboxOps] = useState([]);
+  const outboxBusyRef = useRef(false);
 
   // dataRef menjaga snapshot terbaru untuk aksi yang berjalan belakangan
   // (mis. tombol "Urungkan" dari toast) tanpa closure basi.
@@ -1822,12 +1857,12 @@ const deleteGoal = async (id) => {
       // Offline ? gunakan cache
       const cached = readApiCache();
       if (cached) {
-        const merged = buildMergedData(cached, currentUser);
+        const merged = buildMergedData(cached, currentUser, readOutbox(currentUser?.id));
         saveData(merged);
         setAccounts(cached.accounts || []);
       } else {
         // Tidak ada cache ? tetap tampilkan app dengan data lokal saja
-        const merged = buildDataBundle({}, currentUser);
+        const merged = buildMergedData({}, currentUser, readOutbox(currentUser?.id));
         saveData(merged);
         pushToast({ message: 'Offline: hanya data lokal yang tersedia.', duration: 4000, tone: 'warning' });
       }
@@ -1837,7 +1872,7 @@ const deleteGoal = async (id) => {
     try {
       const apiData = await fetchApiData();
       cacheApiData(apiData);
-      const merged = buildMergedData(apiData, currentUser);
+      const merged = buildMergedData(apiData, currentUser, readOutbox(currentUser?.id));
       saveData(merged);
       setAccounts(apiData.accounts || []);
       setAuthError('');
@@ -1845,13 +1880,13 @@ const deleteGoal = async (id) => {
       // API fail ? fallback ke cache, tampilkan notif
       const cached = readApiCache();
       if (cached) {
-        const merged = buildMergedData(cached, currentUser);
+        const merged = buildMergedData(cached, currentUser, readOutbox(currentUser?.id));
         saveData(merged);
         setAccounts(cached.accounts || []);
         setAuthError('Tidak dapat memuat data dari server. Menampilkan cache lokal.');
       } else {
         // Tidak ada cache sama sekali ? tampilkan app dengan data lokal
-        const merged = buildDataBundle({}, currentUser);
+        const merged = buildMergedData({}, currentUser, readOutbox(currentUser?.id));
         saveData(merged);
         setAuthError('Gagal memuat data dari server. Menampilkan data lokal.');
       }
@@ -1859,6 +1894,110 @@ const deleteGoal = async (id) => {
       setDataLoading(false);
     }
   };
+
+  // ---- Antrean tulis offline ----
+  const refreshOutbox = () => setOutboxOps(readOutbox(currentUser?.id));
+
+  useEffect(() => {
+    setOutboxOps(readOutbox(currentUser?.id));
+  }, [currentUser?.id]);
+
+  // Kirim satu operasi ke API. `op.draft` sudah berbentuk item frontend,
+  // `op.payload` dipakai untuk service (bentuk backend) bila ada.
+  const sendOutboxOp = async (op) => {
+    if (op.kind === 'note') return notesApi.create(op.draft, currentUser);
+    if (op.kind === 'service') return serviceHistoryApi.create({ ...(op.payload || {}), id: op.opId });
+    return txn.create(op.draft);
+  };
+
+  // Kirim antrean berurutan. Berhenti saat jaringan putus supaya sisa antrean
+  // tidak ditandai gagal hanya karena sedang offline.
+  const flushOutbox = async () => {
+    const uid = currentUser?.id;
+    if (!uid || !navigator.onLine || outboxBusyRef.current) return;
+    const ops = readOutbox(uid);
+    if (ops.length === 0) return;
+    outboxBusyRef.current = true;
+    let sent = 0;
+    let failed = 0;
+    let networkDown = false;
+    for (const op of ops) {
+      if (op.failed) continue; // item gagal menunggu tombol coba lagi
+      try {
+        await sendOutboxOp(op);
+        dequeue(uid, op.opId);
+        sent += 1;
+      } catch (err) {
+        if (err?.message === 'NETWORK_ERROR' || err?.message === 'UNAUTHORIZED') {
+          networkDown = true;
+          break;
+        }
+        markFailed(uid, op.opId, err?.message);
+        failed += 1;
+      }
+    }
+    outboxBusyRef.current = false;
+    refreshOutbox();
+    if (sent > 0 && !networkDown) {
+      pushToast({ message: `${sent} catatan offline tersinkron`, duration: 3000 });
+      await loadFromAPI();
+    } else if (failed > 0) {
+      pushToast({ message: `${failed} catatan gagal disinkronkan`, duration: 4000, tone: 'danger' });
+    }
+  };
+
+  const retryOutboxOp = async (opId) => {
+    if (!currentUser?.id) return;
+    resetFailed(currentUser.id, opId);
+    refreshOutbox();
+    await flushOutbox();
+  };
+
+  // Hapus draft yang belum (atau gagal) tersinkron, termasuk dari state.
+  const discardOutboxOp = (opId) => {
+    const uid = currentUser?.id;
+    if (!uid) return;
+    dequeue(uid, opId);
+    const cur = dataRef.current;
+    if (cur) {
+      const expenses = (cur.expenses || []).filter((x) => String(x.id) !== String(opId));
+      const income = (cur.income || []).filter((x) => String(x.id) !== String(opId));
+      const expDerived = recomputeDerived(expenses);
+      const incDerived = recomputeIncomeDerived(income);
+      saveData({
+        ...cur,
+        expenses,
+        income,
+        monthlyTrend: expDerived.trend,
+        weekly: expDerived.weekly,
+        categories: expDerived.categories,
+        incomeTrend: incDerived.incomeTrend,
+        incomeCategories: incDerived.incomeCategories,
+        notes: (cur.notes || []).filter((x) => String(x.id) !== String(opId)),
+        serviceHistory: (cur.serviceHistory || []).filter((x) => String(x.id) !== String(opId)),
+      });
+    }
+    refreshOutbox();
+    pushToast({ message: 'Catatan offline dihapus', duration: 2500 });
+  };
+
+  // Masukkan draft ke antrean + state. Mengembalikan item dengan id = opId.
+  const queueDraft = (kind, section, draft, payload, givenId) => {
+    const uid = currentUser?.id;
+    if (!uid) return null;
+    const opId = givenId || newOpId();
+    const item = { ...draft, id: opId, pending: true };
+    enqueue(uid, { opId, kind, section, draft: item, payload });
+    refreshOutbox();
+    return item;
+  };
+
+  // Effect: coba kirim antrean setiap kali kembali online / sesi siap.
+  useEffect(() => {
+    if (!isLoggedIn || !authReady || !isOnline) return;
+    flushOutbox();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline, isLoggedIn, authReady, currentUser?.id]);
 
   // Effect: load data ketika auth state berubah
   useEffect(() => {
@@ -2258,8 +2397,28 @@ const deleteGoal = async (id) => {
   // Tambah item � untuk section yang terhubung API, panggil API dulu,
   // lalu update state. Untuk section lokal (tasks, family), update state langsung.
   const addItem = async (section, values) => {
+    // Offline: uang dan catatan masuk antrean supaya tersinkron saat online.
+    const canQueue = section === 'expenses' || section === 'income' || section === 'notes';
+    // UUID dibuat sebelum POST pertama supaya kalau respons hilang (jaringan
+    // putus setelah server menyimpan), kirim ulang memakai id yang sama.
+    const draftId = canQueue ? newOpId() : null;
+    const queueLocal = (forcedId) => {
+      const draft = buildLocalItem(section, values, null);
+      const item = queueDraft(section === 'notes' ? 'note' : 'txn', section, draft, undefined, forcedId || draftId);
+      if (!item) {
+        pushToast({ message: 'Belum masuk sesi. Coba lagi setelah login.', duration: 3000, tone: 'danger' });
+        return;
+      }
+      addItemToState(section, item);
+      pushToast({ message: `${SECTION_LABEL[section]} disimpan offline, menunggu sinkron`, duration: 3000, tone: 'warning' });
+    };
+
     if (!isOnline) {
-      // Offline ? tambah lokal saja
+      if (canQueue) {
+        queueLocal();
+        return;
+      }
+      // Section di luar cakupan offline: simpan lokal untuk sesi ini.
       const id = Date.now();
       const item = buildLocalItem(section, values, id);
       addItemToState(section, item);
@@ -2272,15 +2431,15 @@ const deleteGoal = async (id) => {
         const result = await cal.create({ title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member });
         addItemToState(section, result);
       } else if (section === 'expenses') {
-        const result = await txn.create({ category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto', accountId: values.accountId || null });
+        const result = await txn.create({ id: draftId, category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto', accountId: values.accountId || null });
         addItemToState(section, result);
         reloadAccounts();
       } else if (section === 'income') {
-        const result = await txn.create({ type: 'in', category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, accountId: values.accountId || null });
+        const result = await txn.create({ id: draftId, type: 'in', category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, accountId: values.accountId || null });
         addItemToState(section, result);
         reloadAccounts();
       } else if (section === 'notes') {
-        const result = await notesApi.create({ title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned }, currentUser);
+        const result = await notesApi.create({ id: draftId, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned }, currentUser);
         addItemToState(section, result);
       } else if (section === 'tasks') {
         const result = await tasksApi.create({ title: values.title, dueDate: values.dueDate || null, priority: values.priority, assignedTo: values.assignedTo });
@@ -2296,6 +2455,11 @@ const deleteGoal = async (id) => {
       }
       pushToast({ message: `${SECTION_LABEL[section]} ditambahkan`, duration: 2500 });
     } catch (err) {
+      // Jaringan putus di tengah POST: pindahkan ke antrean, jangan buang data.
+      if (err?.message === 'NETWORK_ERROR' && canQueue) {
+        queueLocal();
+        return;
+      }
       pushToast({ message: `Gagal menambah ${SECTION_LABEL[section].toLowerCase()}: ${err.message}`, duration: 4000, tone: 'danger' });
     }
   };
@@ -2476,6 +2640,12 @@ const deleteGoal = async (id) => {
       return;
     }
     const label = sectionItemLabel(item);
+    // Draft offline belum ada di server: hapus dari antrean, bukan via API.
+    if (item?.pending) {
+      if (!window.confirm(`Hapus "${label}" yang belum tersinkron?`)) return;
+      discardOutboxOp(item.id);
+      return;
+    }
     if (!window.confirm(`Hapus "${label}"?`)) return;
     let key = SECTION_KEY[section];
     let bagian = null;
@@ -2800,6 +2970,10 @@ const deleteGoal = async (id) => {
     loadFromAPI();
   };
   const openEdit = (section, item) => {
+    if (item?.pending) {
+      pushToast({ message: 'Catatan ini menunggu sinkron. Ubah setelah tersinkron.', duration: 3500, tone: 'warning' });
+      return;
+    }
     setEditing({ section, id: item.id });
     setSheetInitial(toFormValues(section, item));
     setSheetOpen(section);
@@ -3003,21 +3177,38 @@ const deleteGoal = async (id) => {
       notes: vals.notes,
       kategori: vals.kategori || 'service',
     };
+    const draftId = newOpId();
+    const payload = {
+      id: draftId,
+      tanggal: vals.date,
+      odometer: vals.odometer,
+      items: JSON.stringify(vals.items),
+      total: vals.total,
+      technician: vals.technician,
+      notes: vals.notes,
+      vehicleId: vehicleId || null,
+      kategori: vals.kategori || 'service',
+    };
     let savedRec = newRec;
     if (isOnline) {
       try {
-        const created = await serviceHistoryApi.create({
-          tanggal: vals.date,
-          odometer: vals.odometer,
-          items: JSON.stringify(vals.items),
-          total: vals.total,
-          technician: vals.technician,
-          notes: vals.notes,
-          vehicleId: vehicleId || null,
-          kategori: vals.kategori || 'service',
-        });
+        const created = await serviceHistoryApi.create(payload);
         savedRec = mapServiceHistory(created);
-      } catch { /* simpan lokal */ }
+      } catch (err) {
+        if (err?.message === 'NETWORK_ERROR') {
+          const item = queueDraft('service', 'service', { ...newRec, vehicleId: vehicleId || '' }, payload, draftId);
+          if (item) {
+            savedRec = item;
+            pushToast({ message: 'Service disimpan offline, menunggu sinkron', duration: 3000, tone: 'warning' });
+          }
+        }
+      }
+    } else {
+      const item = queueDraft('service', 'service', { ...newRec, vehicleId: vehicleId || '' }, payload, draftId);
+      if (item) {
+        savedRec = item;
+        pushToast({ message: 'Service disimpan offline, menunggu sinkron', duration: 3000, tone: 'warning' });
+      }
     }
     saveData({
       ...dataRef.current,
@@ -3026,7 +3217,9 @@ const deleteGoal = async (id) => {
     });
     // Opsi: sertakan sebagai pengeluaran.
     if (vals.includeExpense && Number(vals.total) > 0) {
+      const expenseDraftId = newOpId();
       const expensePayload = {
+        id: expenseDraftId,
         category: 'transportasi',
         description: `${vals.kategori === 'ganti_part' ? 'Ganti Part' : vals.kategori === 'perbaikan' ? 'Perbaikan' : 'Service'} · ${(dataRef.current.vehicles || []).find((v) => v.id === vehicleId)?.nama || 'Kendaraan'}`,
         amount: Number(vals.total),
@@ -3038,9 +3231,18 @@ const deleteGoal = async (id) => {
           const result = await txn.create(expensePayload);
           addItemToState('expenses', result);
           pushToast({ message: 'Service dicatat sebagai pengeluaran', duration: 2500 });
-        } catch { /* abaikan */ }
+        } catch (err) {
+          if (err?.message === 'NETWORK_ERROR') {
+            const item = queueDraft('txn', 'expenses', expensePayload, undefined, expenseDraftId);
+            if (item) {
+              addItemToState('expenses', item);
+              pushToast({ message: 'Pengeluaran service disimpan offline', duration: 3000, tone: 'warning' });
+            }
+          }
+        }
       } else {
-        addItemToState('expenses', { id: Date.now(), ...expensePayload });
+        const item = queueDraft('txn', 'expenses', expensePayload, undefined, expenseDraftId);
+        if (item) addItemToState('expenses', item);
       }
     }
     pushToast({ message: `Service ${vals.date} dicatat`, duration: 2500 });
@@ -3048,6 +3250,10 @@ const deleteGoal = async (id) => {
 
   const updateServiceRecord = async (id, vals, vehicleId = null) => {
     if (!canWrite) return;
+    if ((dataRef.current?.serviceHistory || []).some((h) => String(h.id) === String(id) && h.pending)) {
+      pushToast({ message: 'Service ini menunggu sinkron. Ubah setelah tersinkron.', duration: 3500, tone: 'warning' });
+      return;
+    }
     const prev = (dataRef.current?.serviceHistory || []).find((h) => h.id === id);
     const payload = {
       tanggal: vals.date,
@@ -3817,6 +4023,8 @@ const deleteGoal = async (id) => {
                       formatCurrency={formatCurrency}
                       onEdit={(it) => openEdit('income', it)}
                       onDelete={(it) => deleteItem('income', it)}
+                      onRetry={(it) => retryOutboxOp(it.id)}
+                      onDiscard={(it) => discardOutboxOp(it.id)}
                       readOnly={!canWrite}
                     />
                   ))}
@@ -3837,6 +4045,8 @@ const deleteGoal = async (id) => {
                     formatCurrency={formatCurrency}
                     onEdit={(it) => openEdit('expenses', it)}
                     onDelete={(it) => deleteItem('expenses', it)}
+                    onRetry={(it) => retryOutboxOp(it.id)}
+                    onDiscard={(it) => discardOutboxOp(it.id)}
                     readOnly={!canWrite}
                   />
                 ))}
@@ -3951,6 +4161,8 @@ const deleteGoal = async (id) => {
                 notes={filteredNotes}
                 onEdit={(item) => openEdit('notes', item)}
                 onDelete={(item) => deleteItem('notes', item)}
+                onRetry={(item) => retryOutboxOp(item.id)}
+                onDiscard={(item) => discardOutboxOp(item.id)}
               />
             )}
           </section>
@@ -4155,7 +4367,13 @@ const deleteGoal = async (id) => {
                 onRemoveSparepart={removeSparepart}
                 onAddService={addServiceRecord}
                 onUpdateService={updateServiceRecord}
+                onRetryRecord={(item) => retryOutboxOp(item.id)}
+                onDiscardRecord={(item) => discardOutboxOp(item.id)}
                 onDeleteRecord={async (id) => {
+                  if ((dataRef.current?.serviceHistory || []).some((h) => String(h.id) === String(id) && h.pending)) {
+                    discardOutboxOp(id);
+                    return;
+                  }
                   if (isOnline) { try { await serviceHistoryApi.remove(id); } catch { /* abaikan */ } }
                   const cur = dataRef.current?.serviceHistory || [];
                   saveData({ ...dataRef.current, serviceHistory: cur.filter((h) => h.id !== id) });
@@ -4374,6 +4592,29 @@ const deleteGoal = async (id) => {
           >
             <Icon name="wifiOff" size={16} />
             <span>Mode offline: perubahan akan disinkronkan saat online.</span>
+          </div>
+        )}
+        {outboxOps.length > 0 && (
+          <div
+            role="status"
+            className="mb-4 flex flex-wrap items-center gap-2.5 rounded-xl border border-toneamber/40 bg-toneamber/10 px-4 py-3 text-sm text-toneamberfg"
+          >
+            <Icon name="upload" size={16} />
+            <span className="min-w-0 flex-1">
+              {outboxOps.length} catatan menunggu sinkron
+              {outboxOps.some((o) => o.failed)
+                ? `, ${outboxOps.filter((o) => o.failed).length} gagal`
+                : ''}.
+            </span>
+            {isOnline && (
+              <button
+                type="button"
+                onClick={flushOutbox}
+                className="rounded-lg bg-toneamber/20 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-toneamber/30"
+              >
+                Sinkron sekarang
+              </button>
+            )}
           </div>
         )}
         {!canWrite && (

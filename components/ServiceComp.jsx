@@ -19,6 +19,8 @@ export function Service({
   onAddService,
   onUpdateService,
   onDeleteRecord,
+  onRetryRecord,
+  onDiscardRecord,
   onAddVehicle,
   onUpdateVehicle,
   onRemoveVehicle,
@@ -404,13 +406,34 @@ export function Service({
                               {it.vehicleId && vehicleName(it.vehicleId) ? ` · ${vehicleName(it.vehicleId)}` : ''}
                             </p>
                             <p className="text-xs text-mutedfg">{it.date}</p>
+                            {it.pending && (
+                              <span className="mt-1 flex items-center gap-1.5">
+                                <Badge tone={it.failed ? 'red' : 'amber'}>{it.failed ? 'Gagal sinkron' : 'Menunggu sinkron'}</Badge>
+                                <button
+                                  type="button"
+                                  onClick={() => onRetryRecord?.(it)}
+                                  aria-label="Coba sinkron lagi"
+                                  className="grid h-7 w-7 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+                                >
+                                  <Icon name="refresh" size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onDiscardRecord?.(it)}
+                                  aria-label="Hapus catatan service offline"
+                                  className="grid h-7 w-7 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg"
+                                >
+                                  <Icon name="trash" size={14} />
+                                </button>
+                              </span>
+                            )}
                             <p className="text-xs text-mutedfg">
                               {it.odometer} km • {it.technician}
                               {it.vehicleId && vehicleName(it.vehicleId) ? ` · ${vehicleName(it.vehicleId)}` : ''}
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
-                            {canWrite && (
+                            {canWrite && !it.pending && (
                               <button
                                 type="button"
                                 onClick={() => openEditRecord(it)}
