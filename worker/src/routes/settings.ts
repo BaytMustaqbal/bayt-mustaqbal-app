@@ -18,7 +18,68 @@ settingsRoutes.get('/', async (c) => {
   return c.json({ ok: true, data: results.results || [], error: null });
 });
 
-// POST /api/settings — simpan setting.
+// POST /api/settings/member-style — gaya bahasa milik sendiri (semua peran login).
+// Hanya mengubah members[<userId sendiri>].style di dalam ai_prefs; persona dan
+// maks. kalimat milik override dipertahankan, sisanya default keluarga.
+const MBR_STYLES = new Set(['santai', 'hangat', 'formal', 'profesional']);
+const intOr = (v: unknown, min: number, max: number, fallback: number): number => {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isInteger(n) && n >= min && n <= max ? n : fallback;
+};
+
+settingsRoutes.post('/member-style', async (c) => {
+  const userId = c.get('userId');
+  const groupId = c.get('groupId');
+  if (!userId) {
+    return c.json({ ok: false, data: null, error: { code: 'UNAUTHORIZED', message: 'Login diperlukan' } }, 401);
+  }
+  const { style } = (await c.req.json()) as { style?: string };
+  const s = String(style || '').trim().toLowerCase();
+  if (!MBR_STYLES.has(s)) {
+    return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: "Gaya bahasa harus: santai, hangat, formal, profesional" } }, 400);
+  }
+
+  const scope = groupScope(groupId, userId);
+  const now = new Date().toISOString();
+  const existing = (await c.env.DB.prepare(
+    `SELECT id, value FROM settings WHERE key = 'ai_prefs' AND ${scope.sql} AND void IS NULL`
+  ).bind(scope.val).first()) as { id: string; value: string } | null;
+
+  let pref: any = {};
+  try { pref = existing?.value ? JSON.parse(existing.value) : {}; } catch { pref = {}; }
+
+  const chatEnabled = pref.chatEnabled !== false;
+  const receiptScanEnabled = pref.receiptScanEnabled !== false;
+  const summaryItems = intOr(pref.summaryItems, 1, 10, 5);
+  const persona = typeof pref.persona === 'string' && pref.persona.trim() ? pref.persona.trim().slice(0, 40) : 'Neuro';
+  const globalStyle = MBR_STYLES.has(String(pref.style || '').toLowerCase()) ? String(pref.style).toLowerCase() : 'santai';
+  const maxSentences = intOr(pref.maxSentences, 1, 6, 3);
+  const members = pref.members && typeof pref.members === 'object' ? { ...pref.members } : {};
+
+  const prev = members[userId] && typeof members[userId] === 'object' ? members[userId] : {};
+  members[userId] = {
+    persona: typeof prev.persona === 'string' && prev.persona.trim() ? String(prev.persona).trim().slice(0, 40) : persona,
+    style: s,
+    maxSentences: intOr(prev.maxSentences, 1, 6, maxSentences),
+  };
+
+  const next = { chatEnabled, receiptScanEnabled, summaryItems, persona, style: globalStyle, maxSentences, members };
+  const value = JSON.stringify(next);
+
+  if (existing) {
+    await c.env.DB.prepare('UPDATE settings SET value = ?, rev = rev + 1, updated_at = ? WHERE id = ?')
+      .bind(value, now, existing.id).run();
+    const updated = await c.env.DB.prepare('SELECT * FROM settings WHERE id = ?').bind(existing.id).first();
+    return c.json({ ok: true, data: updated, error: null });
+  }
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare(
+    'INSERT INTO settings (id, user_id, group_id, key, value, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(id, userId, groupId || null, 'ai_prefs', value, 1, now, now).run();
+  return c.json({ ok: true, data: { id, key: 'ai_prefs', value, rev: 1, created_at: now, updated_at: now }, error: null });
+});
+
+// POST /api/settings - simpan setting.
 // Untuk setting milik KELUARGA (gaji rencana, rasio anggaran), POST berperilaku
 // upsat per-grup: kalau key yang sama sudah ada di grup, barinya diperbarui
 // (bukan bikin baris dobel) supaya satu keluarga punya SATU angka.
