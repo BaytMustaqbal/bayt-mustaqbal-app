@@ -4,6 +4,20 @@ import { canWriteGroup, forbiddenWrite, groupScope } from '../utils/group';
 
 export const txnRoutes = new Hono<{ Bindings: Env }>();
 
+// Rincian belanja disimpan sebagai JSON text di kolom `items`.
+// Bentuk kanonik: [{ name, price }]. Terima juga { nama, harga } dari klien lama.
+function normalizeItems(raw: unknown): string | null {
+  if (!Array.isArray(raw)) return null;
+  const list = raw
+    .map((it: any) => ({
+      name: String(it?.name ?? it?.nama ?? '').trim().slice(0, 120),
+      price: Math.max(0, Math.round(Number(it?.price ?? it?.harga) || 0)),
+    }))
+    .filter((it) => it.name.length > 0)
+    .slice(0, 100);
+  return list.length ? JSON.stringify(list) : null;
+}
+
 // GET /api/txn — list transactions (ordered by date DESC), optional ?category_id= &date= filters
 // Scope: data Grup Keluarga (semua anggota lihat data yang sama).
 txnRoutes.get('/', async (c) => {
@@ -25,7 +39,7 @@ txnRoutes.get('/', async (c) => {
     params.push(date);
   }
 
-  query += ' ORDER BY date DESC';
+  query += ' ORDER BY date DESC, created_at DESC';
 
   const results = await c.env.DB.prepare(query).bind(...params).all();
   return c.json({ ok: true, data: results.results || [], error: null });
@@ -35,8 +49,8 @@ txnRoutes.get('/', async (c) => {
 txnRoutes.post('/', async (c) => {
   const userId = c.get('userId');
   const groupId = c.get('groupId');
-  const { id: clientId, amount, type, date, category_id, account_id, description } = await c.req.json() as {
-    id?: string; amount: number; type: string; date: string; category_id?: string; account_id?: string; description?: string;
+  const { id: clientId, amount, type, date, category_id, account_id, description, items } = await c.req.json() as {
+    id?: string; amount: number; type: string; date: string; category_id?: string; account_id?: string; description?: string; items?: unknown;
   };
 
   if (amount == null || !type || !date) {
@@ -79,8 +93,8 @@ txnRoutes.post('/', async (c) => {
   }
 
   const inserted = await c.env.DB.prepare(
-    'INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING'
-  ).bind(id, userId, groupId, category_id || null, acct, amount, type, date, description || null, 1, now, now).run();
+    'INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, items, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING'
+  ).bind(id, userId, groupId, category_id || null, acct, amount, type, date, description || null, normalizeItems(items), 1, now, now).run();
 
   // Saldo hanya berubah kalau baris benar-benar baru masuk.
   if (acct && inserted.meta.changes > 0) {
@@ -129,8 +143,8 @@ txnRoutes.put('/:id', async (c) => {
     return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Transaction tidak ditemukan' } }, 404);
   }
 
-  const { amount, type, date, category_id, account_id, description } = await c.req.json() as {
-    amount?: number; type?: string; date?: string; category_id?: string; account_id?: string; description?: string;
+  const { amount, type, date, category_id, account_id, description, items } = await c.req.json() as {
+    amount?: number; type?: string; date?: string; category_id?: string; account_id?: string; description?: string; items?: unknown;
   };
 
   if (amount == null || !type || !date) {
@@ -162,8 +176,8 @@ txnRoutes.put('/:id', async (c) => {
   const oldEffect = oldType === 'in' ? oldAmt : -oldAmt;
   const newEffect = newType === 'in' ? amt : -amt;
   const batch: any[] = [
-    c.env.DB.prepare('UPDATE transactions SET category_id = ?, account_id = ?, amount = ?, type = ?, date = ?, description = ?, rev = rev + 1, updated_at = ? WHERE id = ?')
-      .bind(category_id || null, newAcct, amount, type, date, description || null, now, id),
+    c.env.DB.prepare('UPDATE transactions SET category_id = ?, account_id = ?, amount = ?, type = ?, date = ?, description = ?, items = ?, rev = rev + 1, updated_at = ? WHERE id = ?')
+      .bind(category_id || null, newAcct, amount, type, date, description || null, normalizeItems(items), now, id),
   ];
 
   if (oldAcct && oldAcct === newAcct) {
