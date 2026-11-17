@@ -25,6 +25,7 @@ export function menuText() {
     '• "transaksi terakhir"',
     '• "gaya hangat" — ganti gaya bahasa jawabanku untukmu',
     '• "gaya default" — kembali ke gaya keluarga',
+    '• Di grup Neuro: panggil "neuro <pertanyaan>" untuk tanya data (baca-saja)',
     '',
     'Pilihan gaya: santai, hangat, formal, profesional.',
     '',

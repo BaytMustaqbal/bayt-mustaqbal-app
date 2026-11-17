@@ -466,12 +466,35 @@ async function handleFonnte(request, env, url) {
   let payload;
   try { payload = await request.json(); } catch { return new Response('Invalid JSON', { status: 400 }); }
 
-  const sender = payload.sender || payload.member || '';
+  const senderRaw = String(payload.sender || payload.member || '').trim();
   const text = payload.message || payload.text || null;
-  if (!sender || !text) return JSON_OK();
-  // Bot hanya melayani chat 1:1. Pesan dari grup Fonnte (…@g.us) diabaikan
-  // supaya obrolan keluarga tidak memicu balasan atau pencatatan.
-  if (String(sender).includes('@g.us') || String(sender).includes('@broadcast')) return JSON_OK();
+  if (!senderRaw || !text) return JSON_OK();
+
+  // ---- Grup (Neuro): baca-saja, trigger "neuro ..." atau "/..." ----
+  if (senderRaw.includes('@g.us') || senderRaw.includes('@broadcast')) {
+    const groupId = senderRaw;
+    const member = String(payload.member || '').trim().replace(/@.*/, '');
+    if (!member) return JSON_OK(); // tanpa nomor pengirim, abaikan
+    const query = groupQueryFrom(text);
+    if (query === null) return JSON_OK(); // bukan perintah untuk bot
+    const minute = new Date().toISOString().slice(0, 16);
+    const dedupeKey = `fonnte:group:${groupId}:${member}:${minute}:${text}`;
+    if (env.WA_DEDUPE) {
+      const seen = await env.WA_DEDUPE.get(dedupeKey);
+      if (seen) return JSON_OK();
+      await env.WA_DEDUPE.put(dedupeKey, '1', { expirationTtl: 86400 });
+    }
+    try {
+      await env.WA_LOGS.prepare(
+        `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
+         VALUES (?, ?, ?, ?, ?, false)
+         ON CONFLICT(message_id) DO NOTHING`
+      ).bind(dedupeKey, member, 'fonnte', `[group:${groupId}] ${text}`, minute).run();
+    } catch (_) {}
+    await handleGroupQuery(env, { groupId, member, query });
+    return JSON_OK();
+  }
+  const sender = senderRaw;
 
   // Dedupe + log
   const minute = new Date().toISOString().slice(0, 16);
@@ -491,6 +514,79 @@ async function handleFonnte(request, env, url) {
 
   await handleIncomingText(env, sender, text);
   return JSON_OK();
+}
+
+/** Gaya bahasa milik sendiri; berlaku untuk semua peran (self-service).
+    Balas ke target (chat 1:1 atau grup). */
+async function handleStyleCommand(env, user, t, target) {
+  const styleCmd = parseStyleCommand(t);
+  if (!styleCmd) return false;
+  if (!user) {
+    await replyText(env, target, 'Nomor Anda belum terdaftar di Bayt Mustaqbal. Hubungi admin.');
+    return true;
+  }
+  if (styleCmd.value === null) {
+    const current = resolveFor(await readAiPrefs(env), user.id).style;
+    await replyText(env, target, `Gaya bahasa kamu saat ini: ${current}. Pilihan: santai, hangat, formal, profesional. Ketik "gaya <pilihan>" untuk mengubah, atau "gaya default" untuk kembali ke default keluarga.`);
+    return true;
+  }
+  const result = await setMemberStyle(env, user, styleCmd.value);
+  if (!result.ok) {
+    await replyText(env, target, 'Gagal mengubah gaya bahasa. Coba lagi sebentar.');
+    return true;
+  }
+  await replyText(env, target, result.reset
+    ? 'Gaya bahasa kamu kembali ke default keluarga.'
+    : `Gaya bahasa diubah ke ${result.style.charAt(0).toUpperCase() + result.style.slice(1)}.`);
+  return true;
+}
+
+/** Kembalikan query grup jika pesan diarahkan ke bot (diawali "/" atau memuat kata "neuro"), selain itu null. */
+function groupQueryFrom(text) {
+  const t = String(text || '').trim();
+  const slash = t.match(/^\/(.+)$/);
+  if (slash) return slash[1].trim();
+  const m = t.match(/^(?:halo|hai|pagi|siang|sore|malam)?[\s,.!]*neuro\b[\s,.!:]*/i);
+  if (!m) return null;
+  return t.slice(m[0].length).trim();
+}
+
+/** Intent yang boleh dipakai di grup Neuro (baca-saja). */
+const GROUP_READ_INTENTS = new Set([
+  'cek_pengingat', 'cek_tagihan', 'agenda_hari_ini', 'saldo_bulan_ini',
+  'rangkuman', 'rincian_kategori', 'target_tabungan', 'tanya_data', 'menu',
+]);
+
+/** Alur baca-saja untuk pesan di grup Neuro (trigger "neuro ..." / "/..."). */
+async function handleGroupQuery(env, { groupId, member, query }) {
+  const user = await ensureDbUser(env, member, resolveOwner(env, member));
+  const text = String(query || '').trim();
+  if (!user || !user.id) {
+    await replyText(env, groupId, 'Saya tidak mengenal nomor ini sebagai anggota keluarga. Hubungi admin.');
+    return;
+  }
+  const personaName = user ? (user.nickname || (user.nama || '').split(' ')[0] || '').trim() || null : null;
+  const aiPrefs = resolveFor(await readAiPrefs(env), user?.id);
+
+  if (!text) {
+    await replyText(env, groupId, 'Halo! Saya Neuro. Di grup ini saya hanya bisa baca data. Contoh: "neuro saldo bulan ini", "neuro tagihan belum lunas", "neuro agenda hari ini", "neuro rangkuman 7 hari". Untuk mencatat, chat saya pribadi atau buka app.');
+    return;
+  }
+  // Gaya bahasa milik sendiri (self-service, mengizinkan semua peran)
+  if (await handleStyleCommand(env, user, text, groupId)) return;
+  if (isMenu(text)) {
+    await replyText(env, groupId, menuText());
+    return;
+  }
+  const ai = await detectIntent(env, text, wibContext(), personaName, aiPrefs);
+  if (ai && GROUP_READ_INTENTS.has(ai.intent)) {
+    const msg = await answerReadIntent(env, user, ai.intent, ai);
+    if (msg) {
+      await replyText(env, groupId, msg);
+      return;
+    }
+  }
+  await replyText(env, groupId, 'Di grup ini saya hanya bisa baca data (saldo, tagihan, agenda, ringkasan, tanya angka). Untuk mencatat atau pengingat, chat saya pribadi atau buka app.');
 }
 
 /** Alur percakapan bersama untuk semua kanal (Fonnte maupun Meta). */
@@ -581,27 +677,8 @@ async function handleIncomingText(env, sender, text) {
   }
 
   // 2b) Gaya bahasa milik sendiri (tanpa AI; semua peran boleh)
-  const styleCmd = parseStyleCommand(t);
-  if (styleCmd) {
-    if (!user) {
-      await replyText(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal. Hubungi admin.');
-      return JSON_OK();
-    }
-    if (styleCmd.value === null) {
-      const current = resolveFor(await readAiPrefs(env), user.id).style;
-      await replyText(env, sender, `Gaya bahasa kamu saat ini: ${current}. Pilihan: santai, hangat, formal, profesional. Ketik "gaya <pilihan>" untuk mengubah, atau "gaya default" untuk kembali ke default keluarga.`);
-      return JSON_OK();
-    }
-    const result = await setMemberStyle(env, user, styleCmd.value);
-    if (!result.ok) {
-      await replyText(env, sender, 'Gagal mengubah gaya bahasa. Coba lagi sebentar.');
-      return JSON_OK();
-    }
-    await replyText(env, sender, result.reset
-      ? 'Gaya bahasa kamu kembali ke default keluarga.'
-      : `Gaya bahasa diubah ke ${result.style.charAt(0).toUpperCase() + result.style.slice(1)}.`);
-    return JSON_OK();
-  }
+  const styleHandled = await handleStyleCommand(env, user, t, sender);
+  if (styleHandled) return JSON_OK();
 
   // 3) Cek pengingat (baca, tanpa konfirmasi)
   if (wantsReminderList(t)) {
