@@ -16,6 +16,7 @@ const toRow = (r: any) => ({
   total: Number(r.total) || 0,
   technician: r.technician || '',
   notes: r.notes || '',
+  kategori: r.kategori || 'service',
   vehicleId: r.vehicle_id || '',
   rev: r.rev,
   created_at: r.created_at,
@@ -42,23 +43,33 @@ serviceHistoryRoutes.post('/', async (c) => {
   if (!canWriteGroup(c.get('groupRole'))) return c.json(forbiddenWrite(), 403);
   const userId = c.get('userId');
   const groupId = c.get('groupId');
-  const { tanggal, odometer, items, total, technician, notes, vehicleId } = await c.req.json().catch(() => ({})) as {
-    tanggal?: string; odometer?: number; items?: string; total?: number; technician?: string; notes?: string; vehicleId?: string;
+  const { id: clientId, tanggal, odometer, items, total, technician, notes, vehicleId, kategori } = await c.req.json().catch(() => ({})) as {
+    id?: string; tanggal?: string; odometer?: number; items?: string; total?: number; technician?: string; notes?: string; vehicleId?: string; kategori?: string;
   };
   if (!tanggal) {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Tanggal wajib diisi' } }, 400);
   }
-  const id = crypto.randomUUID();
+  const id = typeof clientId === 'string' && /^[0-9a-zA-Z_-]{8,64}$/.test(clientId) ? clientId : crypto.randomUUID();
+  const scope = groupScope(groupId, userId);
+  const existing = await c.env.DB.prepare(
+    `SELECT * FROM service_history WHERE id = ? AND ${scope.sql}`
+  ).bind(id, scope.val).first();
+  if (existing) {
+    return c.json({ ok: true, data: toRow(existing), error: null });
+  }
   const now = new Date().toISOString();
-  await c.env.DB.prepare(
-    `INSERT INTO service_history (id, user_id, group_id, tanggal, odometer, items, total, technician, notes, vehicle_id, rev, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
-  ).bind(id, userId, groupId, tanggal, Number(odometer) || 0, items || null, Number(total) || 0, technician || null, notes || null, vehicleId || null, now, now).run();
+  const inserted = await c.env.DB.prepare(
+    `INSERT INTO service_history (id, user_id, group_id, tanggal, odometer, items, total, technician, notes, vehicle_id, kategori, rev, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?) ON CONFLICT(id) DO NOTHING`
+  ).bind(id, userId, groupId, tanggal, Number(odometer) || 0, items || null, Number(total) || 0, technician || null, notes || null, vehicleId || null, kategori || 'service', now, now).run();
   // Odometer kendaraan ikut naik mengikuti catatan service (maksimum).
-  if (vehicleId && Number(odometer) > 0) {
+  if (inserted.meta.changes > 0 && vehicleId && Number(odometer) > 0) {
     await c.env.DB.prepare(
       'UPDATE vehicles SET odometer = MAX(odometer, ?), updated_at = ? WHERE id = ?'
     ).bind(Number(odometer), now, vehicleId).run();
+  }
+  if (inserted.meta.changes === 0) {
+    return c.json({ ok: false, data: null, error: { code: 'CONFLICT', message: 'ID riwayat sudah dipakai' } }, 409);
   }
   const created = await c.env.DB.prepare('SELECT * FROM service_history WHERE id = ?').bind(id).first();
   return c.json({ ok: true, data: toRow(created), error: null }, 201);
@@ -74,17 +85,18 @@ serviceHistoryRoutes.put('/:id', async (c) => {
     `SELECT * FROM service_history WHERE id = ? AND ${scope.sql} AND void IS NULL`
   ).bind(id, scope.val).first() as any;
   if (!existing) return c.json({ ok: false, data: null, error: { code: 'NOT_FOUND', message: 'Riwayat tidak ditemukan' } }, 404);
-  const { tanggal, odometer, items, total, technician, notes, vehicleId } = await c.req.json() as {
-    tanggal?: string; odometer?: number; items?: string; total?: number; technician?: string; notes?: string; vehicleId?: string;
+  const { tanggal, odometer, items, total, technician, notes, vehicleId, kategori } = await c.req.json() as {
+    tanggal?: string; odometer?: number; items?: string; total?: number; technician?: string; notes?: string; vehicleId?: string; kategori?: string;
   };
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    `UPDATE service_history SET tanggal = ?, odometer = ?, items = ?, total = ?, technician = ?, notes = ?, vehicle_id = ?, rev = rev + 1, updated_at = ? WHERE id = ?`
+    `UPDATE service_history SET tanggal = ?, odometer = ?, items = ?, total = ?, technician = ?, notes = ?, vehicle_id = ?, kategori = ?, rev = rev + 1, updated_at = ? WHERE id = ?`
   ).bind(
     tanggal ?? existing.tanggal, odometer != null ? Number(odometer) : existing.odometer,
     items !== undefined ? items : existing.items, total != null ? Number(total) : existing.total,
     technician !== undefined ? technician : existing.technician, notes !== undefined ? notes : existing.notes,
     vehicleId !== undefined ? (vehicleId || null) : existing.vehicle_id,
+    kategori !== undefined ? (kategori || 'service') : existing.kategori,
     now, id
   ).run();
   const updated = await c.env.DB.prepare('SELECT * FROM service_history WHERE id = ?').bind(id).first();

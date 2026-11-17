@@ -35,8 +35,8 @@ txnRoutes.get('/', async (c) => {
 txnRoutes.post('/', async (c) => {
   const userId = c.get('userId');
   const groupId = c.get('groupId');
-  const { amount, type, date, category_id, account_id, description } = await c.req.json() as {
-    amount: number; type: string; date: string; category_id?: string; account_id?: string; description?: string;
+  const { id: clientId, amount, type, date, category_id, account_id, description } = await c.req.json() as {
+    id?: string; amount: number; type: string; date: string; category_id?: string; account_id?: string; description?: string;
   };
 
   if (amount == null || !type || !date) {
@@ -55,7 +55,16 @@ txnRoutes.post('/', async (c) => {
     return c.json(forbiddenWrite(), 403);
   }
 
-  const id = crypto.randomUUID();
+  const id = typeof clientId === 'string' && /^[0-9a-zA-Z_-]{8,64}$/.test(clientId) ? clientId : crypto.randomUUID();
+  const scope = groupScope(groupId, userId);
+
+  const existing = await c.env.DB.prepare(
+    `SELECT * FROM transactions WHERE id = ? AND ${scope.sql}`
+  ).bind(id, scope.val).first();
+  if (existing) {
+    return c.json({ ok: true, data: existing, error: null });
+  }
+
   const now = new Date().toISOString();
   const acct = account_id || null;
 
@@ -69,16 +78,22 @@ txnRoutes.post('/', async (c) => {
     }
   }
 
-  await c.env.DB.batch([
-    c.env.DB.prepare(
-      'INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, userId, groupId, category_id || null, acct, amount, type, date, description || null, 1, now, now),
-    ...(acct ? [c.env.DB.prepare(
-      `UPDATE accounts SET saldo = saldo ${type === 'in' ? '+' : '-'} ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL`
-    ).bind(Math.abs(Number(amount)), now, acct)] : []),
-  ]);
+  const inserted = await c.env.DB.prepare(
+    'INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING'
+  ).bind(id, userId, groupId, category_id || null, acct, amount, type, date, description || null, 1, now, now).run();
 
-  return c.json({ ok: true, data: { id, user_id: userId, group_id: groupId, category_id, account_id: acct, amount, type, date, description, rev: 1, created_at: now, updated_at: now }, error: null });
+  // Saldo hanya berubah kalau baris benar-benar baru masuk.
+  if (acct && inserted.meta.changes > 0) {
+    await c.env.DB.prepare(
+      `UPDATE accounts SET saldo = saldo ${type === 'in' ? '+' : '-'} ?, updated_at = ?, rev = rev + 1 WHERE id = ? AND void IS NULL`
+    ).bind(Math.abs(Number(amount)), now, acct).run();
+  }
+  if (inserted.meta.changes === 0) {
+    return c.json({ ok: false, data: null, error: { code: 'CONFLICT', message: 'ID transaksi sudah dipakai' } }, 409);
+  }
+
+  const row = await c.env.DB.prepare('SELECT * FROM transactions WHERE id = ?').bind(id).first();
+  return c.json({ ok: true, data: row, error: null });
 });
 
 // GET /api/txn/:id — detail by id

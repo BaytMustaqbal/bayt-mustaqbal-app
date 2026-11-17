@@ -30,8 +30,8 @@ noteRoutes.get('/', async (c) => {
 noteRoutes.post('/', async (c) => {
   const userId = c.get('userId');
   const groupId = c.get('groupId');
-  const { title, content, category, important } = await c.req.json() as {
-    title: string; content?: string; category?: string; important?: number;
+  const { id: clientId, title, content, category, important } = await c.req.json() as {
+    id?: string; title: string; content?: string; category?: string; important?: number;
   };
 
   if (!title) {
@@ -41,14 +41,26 @@ noteRoutes.post('/', async (c) => {
     return c.json(forbiddenWrite(), 403);
   }
 
-  const id = crypto.randomUUID();
+  const id = typeof clientId === 'string' && /^[0-9a-zA-Z_-]{8,64}$/.test(clientId) ? clientId : crypto.randomUUID();
+  const scope = groupScope(groupId, userId);
+  const existing = await c.env.DB.prepare(
+    `SELECT * FROM notes WHERE id = ? AND ${scope.sql}`
+  ).bind(id, scope.val).first();
+  if (existing) {
+    return c.json({ ok: true, data: existing, error: null });
+  }
+
   const now = new Date().toISOString();
 
   await c.env.DB.prepare(
-    'INSERT INTO notes (id, user_id, group_id, title, content, category, important, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO notes (id, user_id, group_id, title, content, category, important, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING'
   ).bind(id, userId, groupId, title, content || null, category || null, important || 0, 1, now, now).run();
 
-  return c.json({ ok: true, data: { id, user_id: userId, group_id: groupId, title, content: content || null, category: category || null, important: important || 0, rev: 1, created_at: now, updated_at: now }, error: null });
+  const row = await c.env.DB.prepare('SELECT * FROM notes WHERE id = ? AND ' + scope.sql).bind(id, scope.val).first();
+  if (!row) {
+    return c.json({ ok: false, data: null, error: { code: 'CONFLICT', message: 'ID catatan sudah dipakai' } }, 409);
+  }
+  return c.json({ ok: true, data: row, error: null });
 });
 
 // GET /api/note/:id — detail by id
