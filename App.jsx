@@ -209,11 +209,20 @@ const budgetStatus = (expense, budgetIncome) => {
   return { level, pct, sisa: total - expense };
 };
 
+// Urutan daftar transaksi: tanggal terbaru dulu, lalu waktu input terbaru.
+// created_at dari backend, createdAt untuk draft offline.
+const waktuTransaksi = (item) => String(item?.created_at || item?.createdAt || item?.ts || '');
+const urutTransaksiTerbaru = (list = []) => [...list].sort((a, b) => {
+  const byDate = String(b?.date || '').localeCompare(String(a?.date || ''));
+  if (byDate !== 0) return byDate;
+  return waktuTransaksi(b).localeCompare(waktuTransaksi(a));
+});
+
 // Gabungkan API data + local seed ? data state penuh
 const buildDataBundle = (apiData, currentUser) => {
   const budget = apiData?.budget || {};
-  const expenses = apiData?.expenses || [];
-  const income = apiData?.income || [];
+  const expenses = urutTransaksiTerbaru(apiData?.expenses || []);
+  const income = urutTransaksiTerbaru(apiData?.income || []);
   // Anggota keluarga = semua akun aktif dari backend (master sudah disembunyikan backend).
   // Fallback ke currentUser saja bila daftar users tidak tersedia (offline).
   const apiUsers = apiData?.users || [];
@@ -493,7 +502,7 @@ const buildMergedData = (apiData, currentUser, pendingOps = []) => {
   if (pendingOps.length > 0) {
     const draftsOf = (section) => pendingOps
       .filter((o) => o.section === section)
-      .map((o) => ({ ...(o.draft || {}), id: o.opId, pending: true, failed: !!o.failed }));
+      .map((o) => ({ ...(o.draft || {}), id: o.opId, pending: true, failed: !!o.failed, createdAt: o.createdAt }));
     const expenses = appendPendingItems(merged.expenses, draftsOf('expenses'));
     const income = appendPendingItems(merged.income, draftsOf('income'));
     merged = {
@@ -1439,6 +1448,7 @@ const deleteGoal = async (id) => {
         { key: 'amount', label: 'Nominal (Rp)', type: 'currency', required: true, min: 0, placeholder: 'Rp 0' },
         { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
         { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: getBudgetCategoryOptions()[0].value, options: getBudgetCategoryOptions() },
+        { key: 'items', label: 'Rincian', type: 'items', required: false, placeholder: 'baris nama + harga (opsional)' },
         accountField,
         // Keranjang anggaran: "Otomatis" = ikut kategori (lihat CATEGORY_BUCKET
         // di components/categories.js); pilihan lain menimpanya untuk item ini.
@@ -2344,7 +2354,7 @@ const deleteGoal = async (id) => {
     const list = current[key] || [];
     const applyEdit = (item) => {
       if (section === 'agenda') return { ...item, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
-      if (section === 'expenses') return { ...item, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto' };
+      if (section === 'expenses') return { ...item, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto', items: values.items || item.items };
       if (section === 'income') return { ...item, type: 'in', description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category };
       if (section === 'tasks') return { ...item, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo };
       if (section === 'notes') return { ...item, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned, updatedAt: todayKey() };
@@ -2467,7 +2477,7 @@ const deleteGoal = async (id) => {
   // Build item object for local-only sections
   const buildLocalItem = (section, values, id) => {
     if (section === 'agenda') return { id, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
-    if (section === 'expenses') return { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto', accountId: values.accountId || null };
+    if (section === 'expenses') return { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto', accountId: values.accountId || null, items: values.items || [] };
     if (section === 'income') return { id, type: 'in', description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, accountId: values.accountId || null };
     if (section === 'tasks') return { id, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo, completed: false };
     if (section === 'notes') return { id, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned, author: currentUser?.name || '', updatedAt: todayKey() };
@@ -2835,7 +2845,8 @@ const deleteGoal = async (id) => {
   // Hasil pemindaian struk disimpan lewat jalur yang sama dengan form
   // "Tambah Pengeluaran", supaya ikut hitungan anggaran, daftar & total.
   const simpanStruk = async (values) => {
-    await addItem('expenses', { ...values, bucket: 'auto' });
+    const items = values.items || [];
+    await addItem('expenses', { ...values, bucket: 'auto', items });
     setScanOpen(false);
   };
   // Klik placeholder "+ Tambah" di FamilyTree ? buka halaman Akun dengan generasi preset
@@ -3768,20 +3779,22 @@ const deleteGoal = async (id) => {
       case 'expenses': {
         const activeMeta =
           FINANCE_CATEGORIES.find((c) => c.id === financeFilter) || FINANCE_CATEGORIES[0];
-        const filtered =
+        const filtered = urutTransaksiTerbaru(
           financeFilter === 'semua'
             ? data.expenses
-            : data.expenses.filter((item) => item.category === financeFilter);
+            : data.expenses.filter((item) => item.category === financeFilter),
+        );
         const filteredTotal = filtered.reduce((sum, item) => sum + item.amount, 0);
         const budget = getBudget(data);
 
         // ---- Pemasukan (mode ketiga) ----
         const incomeMeta = INCOME_CATEGORIES.find((c) => c.id === incomeFilter) || INCOME_CATEGORIES[0];
         const incomeList = data.income || [];
-        const filteredIncome =
+        const filteredIncome = urutTransaksiTerbaru(
           incomeFilter === 'semua'
             ? incomeList
-            : incomeList.filter((item) => item.category === incomeFilter);
+            : incomeList.filter((item) => item.category === incomeFilter),
+        );
         const incomeTotal = filteredIncome.reduce((sum, item) => sum + item.amount, 0);
 
         // Bulan berjalan � dipakai header & notifikasi pengingat
@@ -4015,7 +4028,7 @@ const deleteGoal = async (id) => {
                   message="Catat gaji, bonus, side job, atau pemasukan lain lewat tombol Tambah."
                 />
               ) : (
-                <div className="stagger grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="stagger flex flex-col gap-2">
                   {filteredIncome.map((item) => (
                     <IncomeCard
                       key={item.id}
@@ -4037,7 +4050,7 @@ const deleteGoal = async (id) => {
                 message="Pilih kategori lain, atau catat pengeluaran baru."
               />
             ) : (
-              <div className="stagger grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="stagger flex flex-col gap-2">
                 {filtered.map((item) => (
                   <ExpenseCard
                     key={item.id}

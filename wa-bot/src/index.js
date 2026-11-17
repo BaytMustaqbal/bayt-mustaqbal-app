@@ -9,6 +9,7 @@ import {
 import {
   wibNow, reminderIso, formatRemindAtLabel, findUserByPhone,
   insertExpense, monthExpenseTotal, insertIncome, monthIncomeTotal, listOwnedAccounts,
+  existingCategoryId,
   insertBill, insertAgenda, listRecurringTemplates, matchRecurringTemplate,
   querySummary, querySaldo, queryAgenda,
   queryBills, queryGoals, queryCategoryDetail, insertReminder, listReminders,
@@ -17,9 +18,10 @@ import {
 } from './db.js';
 import {
   parseExpense, parseIncome, matchAccountHint, isYes, isNo, isMenu, wantsReminderList,
-  parseReminderLocal, parseDateId, parseTimeId,
+  parseReminderLocal, parseDateId, parseTimeId, parseAmountToken,
 } from './parse.js';
 import { detectIntent, chatReply } from './ai.js';
+import { downloadMetaImage, scanReceiptImage } from './scan.js';
 import {
   getPending, setPending, clearPending,
   setLastAction, getLastAction, clearLastAction, UNDO_TTL_MINUTES,
@@ -59,7 +61,8 @@ function corsHeaders() {
   };
 }
 
-// Nomor WA -> user_id dari secret WA_ALLOWED (JSON). Tetap dipakai sebagai izin tulis.
+// Nomor WA -> user_id dari secret WA_ALLOWED (JSON). Cadangan bila pencocokan
+// nomor di tabel users gagal; bukan lagi syarat izin tulis.
 function resolveOwner(env, sender) {
   if (!env.WA_ALLOWED) return null;
   let map;
@@ -138,10 +141,135 @@ function isUndoCommand(text) {
 const WRITE_ROLES = new Set(['kepala_keluarga', 'suami', 'istri']);
 const WRITE_DENIED = 'Maaf, nomor ini hanya bisa bertanya data. Pencatatan lewat bot hanya untuk kepala keluarga, suami, dan istri.';
 
-function canBotWrite(user, ownerId) {
-  if (!user || !user.id || !ownerId) return false;
-  if (ownerId !== user.id) return false;
+// Nomor pengirim sudah diverifikasi WhatsApp (signature Meta / webhook Fonnte)
+// dan harus cocok dengan nomor di profil user (ensureDbUser). Peran menentukan
+// hak tulis. WA_ALLOWED hanya cadangan pencarian user, bukan gerbang kedua.
+function canBotWrite(user) {
+  if (!user || !user.id) return false;
   return WRITE_ROLES.has(String(user.group_role || ''));
+}
+
+// Label kategori struk (id sama dengan kategori app).
+const STRUK_KATEGORI = {
+  belanja: 'Belanja', cicilan: 'Cicilan', hiburan: 'Hiburan', hobi: 'Hobi',
+  ibadah: 'Ibadah', kesehatan: 'Kesehatan', kuliner: 'Kuliner',
+  pendidikan: 'Pendidikan', rumah: 'Rumah', tabungan: 'Tabungan',
+  transportasi: 'Transportasi', utilitas: 'Utilitas', lainnya: 'Lainnya',
+};
+
+function labelKategoriStruk(id) {
+  return STRUK_KATEGORI[id] || 'Lainnya';
+}
+
+/** Ringkasan bernomor untuk pending struk. */
+function ringkasanStruk(p) {
+  const rincian = Array.isArray(p.items) ? p.items : [];
+  let itemLine = '';
+  if (rincian.length) {
+    const tampil = rincian.slice(0, 5).map((it) => `${it.name} ${fmtRp(it.price)}`).join(', ');
+    const sisa = rincian.length - Math.min(5, rincian.length);
+    itemLine = `\nRincian: ${tampil}${sisa > 0 ? `, +${sisa} item lain` : ''}`;
+  }
+  return [
+    '🧾 Struk terbaca. Periksa dulu:',
+    `1. Toko: ${p.merchant || '-'}`,
+    `2. Total: ${fmtRp(p.total)}`,
+    `3. Tanggal: ${p.date || 'tidak terbaca'}`,
+    `4. Kategori: ${labelKategoriStruk(p.category)}`,
+  ].join('\n') + itemLine + '\n\nBalas nomor + nilai untuk koreksi (mis. 2 18500), *ya* untuk simpan, *batal* untuk buang. Berlaku 10 menit.';
+}
+
+/** "2 18500" / "1 Indomaret" / "3 2026-11-17" / "4 kuliner". */
+function koreksiStruk(text, pending) {
+  const m = String(text || '').trim().match(/^([1-4])\s*[.:=\-]?\s*(.+)$/);
+  if (!m) return null;
+  const field = Number(m[1]);
+  const value = m[2].trim();
+  const next = { ...pending };
+
+  if (field === 1) {
+    if (value.length < 2) return { error: 'Nama toko terlalu pendek.' };
+    next.merchant = value.slice(0, 120);
+  } else if (field === 2) {
+    const amount = parseAmountToken(value.replace(/\s+/g, ''));
+    if (!amount || amount <= 0) return { error: 'Nominal tidak dikenali. Contoh: 2 18500' };
+    next.total = amount;
+  } else if (field === 3) {
+    const tanggal = parseDateId(value, wibNow().today);
+    if (!tanggal) return { error: 'Tanggal tidak dikenali. Contoh: 3 2026-11-17' };
+    next.date = tanggal;
+  } else {
+    const k = value.toLowerCase();
+    const found = Object.keys(STRUK_KATEGORI).find((id) => k === id || k.startsWith(id));
+    if (!found) {
+      return { error: `Kategori tidak dikenal. Pilihan: ${Object.keys(STRUK_KATEGORI).join(', ')}.` };
+    }
+    next.category = found;
+  }
+  return { next };
+}
+
+/** Foto struk masuk lewat Meta: unduh, baca dengan AI, kirim ringkasan untuk dikoreksi. */
+async function handleReceiptImage(env, sender, msg) {
+  const ownerId = resolveOwner(env, sender);
+  const user = await ensureDbUser(env, sender, ownerId);
+  if (!user || !user.id) {
+    await replyText(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal, jadi struk tidak bisa dicatat.');
+    return;
+  }
+  if (!canBotWrite(user)) {
+    await replyText(env, sender, WRITE_DENIED);
+    return;
+  }
+  const mediaId = msg?.image?.id;
+  if (!mediaId) {
+    await replyText(env, sender, 'Foto tidak terbaca. Coba kirim ulang.');
+    return;
+  }
+
+  await replyText(env, sender, 'Foto diterima. Sedang membaca struk...');
+  const media = await downloadMetaImage(env, mediaId);
+  if (media.error) {
+    const pesan = {
+      TOO_LARGE: 'Foto terlalu besar (maksimal 4 MB). Coba foto ulang dengan ukuran lebih kecil.',
+      NOT_IMAGE: 'File bukan gambar. Kirim foto struk (JPEG/PNG).',
+      NO_TOKEN: 'Fitur baca struk belum siap: token Meta belum diset.',
+    }[media.error] || 'Gagal mengunduh foto dari WhatsApp. Coba kirim ulang.';
+    await replyText(env, sender, pesan);
+    return;
+  }
+
+  const hasil = await scanReceiptImage(env, media.base64, media.mime);
+  if (!hasil.ok) {
+    const pesan = {
+      NO_TOKEN: 'Fitur baca struk belum siap: token backend belum diset.',
+      UNREADABLE: 'Struk belum terbaca jelas. Coba foto lebih terang dan tegak, atau catat manual: "catat pengeluaran 50k makan siang".',
+      TOO_LARGE: 'Foto terlalu besar (maksimal ±4 MB). Coba foto ulang.',
+      NETWORK: 'Server baca struk tidak merespons. Coba lagi sebentar atau catat manual.',
+      AI_FAILED: 'Layanan baca struk sedang sibuk. Coba lagi sebentar atau catat manual.',
+    }[hasil.code] || 'Gagal membaca struk. Coba lagi atau catat manual.';
+    await replyText(env, sender, pesan);
+    return;
+  }
+
+  const d = hasil.data || {};
+  const pending = {
+    type: 'receipt',
+    merchant: String(d.merchant || '').trim().slice(0, 120),
+    total: Number(d.total) || 0,
+    date: d.date || null,
+    category: STRUK_KATEGORI[d.category] ? d.category : 'lainnya',
+    items: Array.isArray(d.items) ? d.items.slice(0, 20) : [],
+  };
+  if (!pending.merchant || !(pending.total > 0)) {
+    await replyText(env, sender, 'Struk belum terbaca jelas. Coba foto lebih terang atau catat manual.');
+    return;
+  }
+
+  const lama = await getPending(env, sender);
+  await setPending(env, sender, pending);
+  const awalan = lama && lama.type === 'receipt' ? 'Ringkasan sebelumnya diganti.\n\n' : '';
+  await replyText(env, sender, awalan + ringkasanStruk(pending));
 }
 
 async function executePending(env, pending, user) {
@@ -169,6 +297,24 @@ async function executePending(env, pending, user) {
     return {
       message: `Tercatat: ${fmtRp(pending.amount)}${pending.note ? ` (${pending.note})` : ''}.\nTotal pengeluaran ${user.group_id ? 'keluarga' : 'Anda'} bulan ini: ${fmtRp(total)}.${hint}${undoHint()}`,
       undo: { kind: 'transaction', id: saved.id, type: 'out', amount: pending.amount, accountId: null },
+    };
+  }
+  if (pending.type === 'receipt') {
+    const kategori = await existingCategoryId(env, pending.category);
+    const saved = await insertExpense(env, {
+      userId: user.id,
+      groupId: user.group_id || null,
+      amount: pending.total,
+      note: pending.merchant || null,
+      date: pending.date || undefined,
+      categoryId: kategori,
+      items: pending.items,
+    });
+    const ym = saved.today.slice(0, 7);
+    const total = await monthExpenseTotal(env, { userId: user.id, groupId: user.group_id, ym });
+    return {
+      message: `Tercatat: ${pending.merchant} ${fmtRp(pending.total)} (${kategori ? labelKategoriStruk(kategori) : 'tanpa kategori'}) tanggal ${saved.today}.\nTotal pengeluaran ${user.group_id ? 'keluarga' : 'Anda'} bulan ${ym}: ${fmtRp(total)}.${undoHint()}`,
+      undo: { kind: 'transaction', id: saved.id, type: 'out', amount: pending.total, accountId: null },
     };
   }
   if (pending.type === 'income') {
@@ -342,7 +488,7 @@ async function handleFonnte(request, env, url) {
 /** Alur percakapan bersama untuk semua kanal (Fonnte maupun Meta). */
 async function handleIncomingText(env, sender, text) {
   if (String(sender || '').includes('@')) return JSON_OK(); // grup/broadcast bukan target bot
-  const ownerId = resolveOwner(env, sender); // izin tulis (whitelist)
+  const ownerId = resolveOwner(env, sender); // cadangan: petakan nomor ke user_id
   const user = await ensureDbUser(env, sender, ownerId);
   const personaName = user ? (user.nickname || (user.nama || '').split(' ')[0] || '').trim() || null : null;
   const t = String(text || '').trim();
@@ -350,13 +496,26 @@ async function handleIncomingText(env, sender, text) {
   // 1) Konfirmasi aksi tertunda
   const pending = await getPending(env, sender);
   if (pending) {
+    // Pending struk: koreksi bernomor dulu, sebelum ya/batal dan intent lain.
+    if (pending.type === 'receipt') {
+      const koreksi = koreksiStruk(t, pending);
+      if (koreksi?.error) {
+        await replyText(env, sender, koreksi.error);
+        return JSON_OK();
+      }
+      if (koreksi?.next) {
+        await setPending(env, sender, koreksi.next);
+        await replyText(env, sender, ringkasanStruk(koreksi.next));
+        return JSON_OK();
+      }
+    }
     if (isYes(t)) {
       if (!user || !user.id) {
         await clearPending(env, sender);
         await replyText(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal, jadi aksi tidak bisa disimpan.');
         return JSON_OK();
       }
-      if (!canBotWrite(user, ownerId)) {
+      if (!canBotWrite(user)) {
         await clearPending(env, sender);
         await replyText(env, sender, WRITE_DENIED);
         return JSON_OK();
@@ -377,7 +536,9 @@ async function handleIncomingText(env, sender, text) {
       return JSON_OK();
     }
     // pesan lain saat ada pending: ingatkan konfirmasi
-    await replyText(env, sender, 'Masih ada aksi yang menunggu konfirmasi. Balas *ya* untuk simpan atau *batal* untuk batalkan.');
+    await replyText(env, sender, pending.type === 'receipt'
+      ? 'Ringkasan struk masih menunggu. Balas nomor + nilai (mis. *2 18500*), *ya* untuk simpan, atau *batal* untuk buang.'
+      : 'Masih ada aksi yang menunggu konfirmasi. Balas *ya* untuk simpan atau *batal* untuk batalkan.');
     return JSON_OK();
   }
 
@@ -388,7 +549,7 @@ async function handleIncomingText(env, sender, text) {
       await replyText(env, sender, 'Tidak ada aksi yang bisa dibatalkan. Undo hanya berlaku 10 menit setelah pencatatan.');
       return JSON_OK();
     }
-    if (!canBotWrite(user, ownerId)) {
+    if (!canBotWrite(user)) {
       await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
@@ -426,7 +587,7 @@ async function handleIncomingText(env, sender, text) {
       await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
-    if (!canBotWrite(user, ownerId)) {
+    if (!canBotWrite(user)) {
       await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
@@ -447,7 +608,7 @@ async function handleIncomingText(env, sender, text) {
       await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
-    if (!canBotWrite(user, ownerId)) {
+    if (!canBotWrite(user)) {
       await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
@@ -481,7 +642,7 @@ async function handleIncomingText(env, sender, text) {
       await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
-    if (!canBotWrite(user, ownerId)) {
+    if (!canBotWrite(user)) {
       await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
@@ -511,7 +672,7 @@ async function handleIncomingText(env, sender, text) {
       await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
-    if (!canBotWrite(user, ownerId)) {
+    if (!canBotWrite(user)) {
       await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
@@ -533,7 +694,7 @@ async function handleIncomingText(env, sender, text) {
       await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
-    if (!canBotWrite(user, ownerId)) {
+    if (!canBotWrite(user)) {
       await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
@@ -567,7 +728,7 @@ async function handleIncomingText(env, sender, text) {
       await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
-    if (!canBotWrite(user, ownerId)) {
+    if (!canBotWrite(user)) {
       await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
@@ -600,7 +761,7 @@ async function handleIncomingText(env, sender, text) {
       await replyText(env, sender, 'Akun Anda belum ditemukan di data keluarga. Hubungi admin.');
       return JSON_OK();
     }
-    if (!canBotWrite(user, ownerId)) {
+    if (!canBotWrite(user)) {
       await replyText(env, sender, WRITE_DENIED);
       return JSON_OK();
     }
@@ -800,8 +961,13 @@ async function handleMeta(request, env, ctx) {
 
           await noteChannel(env, from, 'meta');
 
+          if (msg.type === 'image') {
+            await handleReceiptImage(env, from, msg);
+            continue;
+          }
+
           if (!text) {
-            await replyText(env, from, 'Sementara saya hanya membaca pesan teks. Contoh: "catat pengeluaran 50k makan siang".');
+            await replyText(env, from, 'Saya membaca pesan teks dan foto struk. Contoh: "catat pengeluaran 50k makan siang" atau kirim foto struk.');
             continue;
           }
           await handleIncomingText(env, from, text);

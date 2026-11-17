@@ -13,6 +13,19 @@ export function buildChatPrompt(personaName) {
   );
 }
 
+/**
+ * Gemma 4 via Workers AI mengembalikan choices[0].message.content (format OpenAI),
+ * bukan result.response. Tangani dua bentuk supaya model lain tetap jalan.
+ */
+function aiText(result) {
+  if (!result) return '';
+  if (typeof result === 'string') return result;
+  if (typeof result.response === 'string' && result.response.trim()) return result.response;
+  const content = result.choices?.[0]?.message?.content;
+  if (typeof content === 'string' && content.trim()) return content;
+  return '';
+}
+
 function extractJson(text) {
   if (!text) return null;
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -30,10 +43,11 @@ export async function chatReply(env, userMessage, personaName) {
       { role: 'system', content: buildChatPrompt(personaName) },
       { role: 'user', content: userMessage },
     ],
+    chat_template_kwargs: { enable_thinking: false },
     max_tokens: 220,
   });
-  const text = result?.response;
-  return text && String(text).trim() ? String(text).trim() : null;
+  const text = aiText(result);
+  return text.trim() ? text.trim() : null;
 }
 
 export async function detectIntent(env, userMessage, context, personaName) {
@@ -72,9 +86,11 @@ export async function detectIntent(env, userMessage, context, personaName) {
       { role: 'system', content: system },
       { role: 'user', content: userMessage },
     ],
+    response_format: { type: 'json_object' },
+    chat_template_kwargs: { enable_thinking: false },
     max_tokens: 260,
   });
-  const text = result?.response ? String(result.response) : '';
+  const text = aiText(result);
   const obj = extractJson(text);
   if (!obj || typeof obj.intent !== 'string') return null;
   return obj;

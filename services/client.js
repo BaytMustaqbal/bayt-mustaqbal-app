@@ -77,6 +77,14 @@ export async function apiFetch(path, options = {}) {
   return result.data;
 }
 
+/* ---- Baca struk dengan AI (Gemma vision di backend) ---- */
+export const receipt = {
+  scan: (base64, mime = 'image/jpeg') => apiFetch('/receipt/scan', {
+    method: 'POST',
+    body: JSON.stringify({ image: base64, mime }),
+  }),
+};
+
 /* ---- Auth ---- */
 export const auth = {
   login: async (username, password, remember = true) => {
@@ -194,6 +202,18 @@ export const familyEntryApi = {
 };
 
 /* ---- Data transform: Transaction (backend) ↔ Expense/Income (frontend) ---- */
+// Rincian belanja: kolom `items` berisi JSON text [{ name, price }].
+const parseItems = (raw) => {
+  if (Array.isArray(raw)) return raw;
+  if (!raw) return [];
+  try {
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+};
+
 export const txnTransform = {
   // API response → frontend transaction (`type` = 'out' pengeluaran | 'in' pemasukan)
   toTxn: (txn) => ({
@@ -205,6 +225,11 @@ export const txnTransform = {
     date: txn.date,
     bucket: 'auto',
     accountId: txn.account_id || null,
+    createdAt: txn.created_at || null,
+    items: parseItems(txn.items).map((it) => ({
+      name: String(it?.name ?? it?.nama ?? ''),
+      price: Number(it?.price ?? it?.harga) || 0,
+    })),
   }),
   // Alias kompatibilitas (bentuk lama tanpa `type`)
   toExpense: (txn) => txnTransform.toTxn(txn),
@@ -217,6 +242,7 @@ export const txnTransform = {
     category_id: item.category,
     account_id: item.accountId || item.account_id || null,
     description: item.description || null,
+    items: Array.isArray(item.items) ? item.items : [],
   }),
 };
 

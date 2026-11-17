@@ -241,26 +241,33 @@ export function EmptyState({ icon = 'inbox', title, message }) {
 /* Tombol aksi per kartu data (edit + hapus). Dua kotak sentuh 44px agar
    nyaman di jari; dipakai seragam oleh kartu agenda, pengeluaran, tugas,
    dan catatan supaya pola "ubah/buang" konsisten. */
-export function ItemActions({ onEdit, onDelete, label = 'item', readOnly = false }) {
+export function ItemActions({ onEdit, onDelete, label = 'item', readOnly = false, compact = false }) {
   // Peran baca-saja (anak/cucu): aksi disembunyikan, kartu jadi informatif.
   if (readOnly) return null;
+  const btnCls = compact
+    ? 'grid h-9 w-9 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-muted hover:text-ink'
+    : 'grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink';
+  const delCls = compact
+    ? 'grid h-9 w-9 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg'
+    : 'grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg';
+  const iconSize = compact ? 15 : 17;
   return (
     <div className="flex shrink-0 items-center gap-0.5">
       <button
         type="button"
         onClick={onEdit}
         aria-label={`Ubah ${label}`}
-        className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+        className={btnCls}
       >
-        <Icon name="edit" size={17} />
+        <Icon name="edit" size={iconSize} />
       </button>
       <button
         type="button"
         onClick={onDelete}
         aria-label={`Hapus ${label}`}
-        className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg"
+        className={delCls}
       >
-        <Icon name="trash" size={17} />
+        <Icon name="trash" size={iconSize} />
       </button>
     </div>
   );
@@ -270,7 +277,7 @@ export function ItemActions({ onEdit, onDelete, label = 'item', readOnly = false
 function PendingRow({ item, onRetry, onDiscard }) {
   if (!item?.pending) return null;
   return (
-    <div className="mb-3 flex items-center justify-between gap-2 rounded-lg bg-muted px-2.5 py-1.5">
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-muted px-2.5 py-1.5">
       <Badge tone={item.failed ? 'red' : 'amber'}>{item.failed ? 'Gagal sinkron' : 'Menunggu sinkron'}</Badge>
       <span className="flex items-center gap-0.5">
         <button
@@ -294,69 +301,87 @@ function PendingRow({ item, onRetry, onDiscard }) {
   );
 }
 
-/* Kartu pengeluaran (tile ikon mengikuti kategori) */
+/* Tanggal ringkas untuk baris transaksi: "17 Nov", tambah tahun bila beda tahun. */
+function tanggalRingkas(iso) {
+  const teks = String(iso || '').slice(0, 10);
+  if (!teks) return '';
+  const d = new Date(`${teks}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return teks;
+  const opsi = { day: 'numeric', month: 'short' };
+  if (d.getFullYear() !== new Date().getFullYear()) opsi.year = 'numeric';
+  return new Intl.DateTimeFormat('id-ID', opsi).format(d).replace('.', '');
+}
+
+/* Baris pengeluaran ringkas (bukan kartu tinggi): ikon kategori, deskripsi,
+   kategori + tanggal, nominal, lalu aksi ubah/hapus. */
 export function ExpenseCard({ item, formatCurrency, onEdit, onDelete, onRetry, onDiscard, readOnly = false }) {
   const meta = getCategoryMeta(FINANCE_CATEGORIES, item.category);
+  const judul = item.description || meta?.label || 'Pengeluaran';
   return (
-    <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-brand/50 sm:p-5`}>
-      <div className="flex items-start justify-between gap-3 pb-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
-            <Icon name={meta?.icon || 'wallet'} size={19} />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate font-semibold text-ink">{meta?.label || item.category}</p>
-            <p className="mt-0.5 truncate text-sm text-mutedfg">{item.description}</p>
-          </div>
-        </div>
-        <p className="shrink-0 pt-0.5 text-right font-mono text-sm font-bold text-brandfg sm:text-base">
-          {formatCurrency(item.amount)}
-        </p>
-      </div>
-
-      <PendingRow item={item} onRetry={onRetry} onDiscard={onDiscard} />
-
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-2.5">
-        <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-mutedfg">
-          <Icon name="clock" size={13} />
-          {item.date}
+    <Card className="min-w-0 p-0">
+      <div className="flex min-w-0 items-center gap-2.5 px-3 py-2.5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
+          <Icon name={meta?.icon || 'wallet'} size={17} />
         </span>
-        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} readOnly={readOnly || item.pending} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold leading-5 text-ink">{judul}</p>
+          <p className="truncate text-xs leading-4 text-mutedfg">
+            {meta?.label || item.category}
+            <span className="px-1.5" aria-hidden="true">·</span>
+            {tanggalRingkas(item.date)}
+          </p>
+        </div>
+        <p className="shrink-0 font-mono text-sm font-bold text-brandfg">{formatCurrency(item.amount)}</p>
+        <ItemActions
+          label={item.description}
+          onEdit={() => onEdit?.(item)}
+          onDelete={() => onDelete?.(item)}
+          readOnly={readOnly || item.pending}
+          compact
+        />
       </div>
+      {item.pending && (
+        <div className="px-3 pb-2.5">
+          <PendingRow item={item} onRetry={onRetry} onDiscard={onDiscard} />
+        </div>
+      )}
     </Card>
   );
 }
 
-/* Kartu pemasukan — kembaran ExpenseCard dengan nuansa hijau (emas/positif)
+/* Baris pemasukan — kembaran ExpenseCard dengan nuansa hijau (emas/positif)
    supaya tidak tertukar dengan pengeluaran saat digulir. */
 export function IncomeCard({ item, formatCurrency, onEdit, onDelete, onRetry, onDiscard, readOnly = false }) {
   const meta = getCategoryMeta(INCOME_CATEGORIES, item.category);
+  const judul = item.description || meta?.label || 'Pemasukan';
   return (
-    <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-success/50 sm:p-5`}>
-      <div className="flex items-start justify-between gap-3 pb-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-success/25 bg-success/15 text-success" aria-hidden="true">
-            <Icon name={meta?.icon || 'wallet'} size={19} />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate font-semibold text-ink">{meta?.label || item.category}</p>
-            <p className="mt-0.5 truncate text-sm text-mutedfg">{item.description}</p>
-          </div>
-        </div>
-        <p className="shrink-0 pt-0.5 text-right font-mono text-sm font-bold text-success sm:text-base">
-          +{formatCurrency(item.amount)}
-        </p>
-      </div>
-
-      <PendingRow item={item} onRetry={onRetry} onDiscard={onDiscard} />
-
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-2.5">
-        <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-mutedfg">
-          <Icon name="clock" size={13} />
-          {item.date}
+    <Card className="min-w-0 p-0">
+      <div className="flex min-w-0 items-center gap-2.5 px-3 py-2.5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-success/25 bg-success/15 text-success" aria-hidden="true">
+          <Icon name={meta?.icon || 'wallet'} size={17} />
         </span>
-        <ItemActions label={item.description} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} readOnly={readOnly || item.pending} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold leading-5 text-ink">{judul}</p>
+          <p className="truncate text-xs leading-4 text-mutedfg">
+            {meta?.label || item.category}
+            <span className="px-1.5" aria-hidden="true">·</span>
+            {tanggalRingkas(item.date)}
+          </p>
+        </div>
+        <p className="shrink-0 font-mono text-sm font-bold text-success">+{formatCurrency(item.amount)}</p>
+        <ItemActions
+          label={item.description}
+          onEdit={() => onEdit?.(item)}
+          onDelete={() => onDelete?.(item)}
+          readOnly={readOnly || item.pending}
+          compact
+        />
       </div>
+      {item.pending && (
+        <div className="px-3 pb-2.5">
+          <PendingRow item={item} onRetry={onRetry} onDiscard={onDiscard} />
+        </div>
+      )}
     </Card>
   );
 }

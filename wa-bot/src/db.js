@@ -30,15 +30,31 @@ export async function findUserByPhone(env, senderPhone) {
   return list.find((r) => samePhone(r.phone, senderPhone)) || null;
 }
 
-export async function insertExpense(env, { userId, groupId, amount, note }) {
+export async function insertExpense(env, { userId, groupId, amount, note, date, categoryId, items }) {
   const nowIso = new Date().toISOString();
-  const today = nowIso.slice(0, 10);
+  const tanggal = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '')) ? date : nowIso.slice(0, 10);
   const id = crypto.randomUUID();
+  const itemsJson = typeof items === 'string' ? items : JSON.stringify(
+    Array.isArray(items) ? items : []
+  );
   await env.APP_DB.prepare(
-    `INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, rev, created_at, updated_at, void)
-     VALUES (?, ?, ?, NULL, NULL, ?, 'out', ?, ?, 1, ?, ?, NULL)`
-  ).bind(id, userId, groupId || null, amount, today, note || null, nowIso, nowIso).run();
-  return { id, today };
+    `INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, items, rev, created_at, updated_at, void)
+     VALUES (?, ?, ?, ?, NULL, ?, 'out', ?, ?, ?, 1, ?, ?, NULL)`
+  ).bind(id, userId, groupId || null, categoryId || null, amount, tanggal, note || null, itemsJson, nowIso, nowIso).run();
+  return { id, today: tanggal };
+}
+
+/** Kategori yang benar-benar ada di tabel categories (jaga FK saat simpan hasil struk). */
+export async function existingCategoryId(env, id) {
+  if (!env.APP_DB || !id) return null;
+  try {
+    const row = await env.APP_DB.prepare(
+      'SELECT id FROM categories WHERE id = ? AND void IS NULL'
+    ).bind(id).first();
+    return row?.id || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function monthExpenseTotal(env, { userId, groupId, ym }) {

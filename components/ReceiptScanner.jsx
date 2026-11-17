@@ -2,6 +2,8 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { CTA_CLASS, CurrencyInput } from './ui';
 import { saranDariTeks, daftarItemDariTeks, jumlahItemDariTeks } from './receiptOcr';
+import { siapkanGambarStruk } from './receiptImage';
+import { receipt } from '../services/client';
 import { useFocusTrap } from './useFocusTrap';
 
 /* Pemindai struk: mode semi-auto.
@@ -23,6 +25,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
   const camRef = useRef(null);
   const galRef = useRef(null);
   const urlRef = useRef('');
+  const fileRef = useRef(null);
   const panelRef = useRef(null);
   const [openState, setOpenState] = useState(true);
   useFocusTrap(panelRef, openState);
@@ -82,6 +85,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
     const url = URL.createObjectURL(file);
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     urlRef.current = url;
+    fileRef.current = file;
     setPreview(url);
     setForm((f) => ({ description: '', amount: '', date: defaultDate, category: f.category }));
     setNote('Foto siap. Tekan "Baca struk".');
@@ -93,10 +97,48 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
 
   const jalankanOCR = async () => {
     if (!preview || busy) return;
+    const file = fileRef.current;
+    if (!file) {
+      setErr('Pilih foto struk dulu.');
+      return;
+    }
     setBusy(true);
     setErr('');
-    setNote('Membaca teks struk...');
+    setNote('Membaca struk dengan AI...');
     setProgress(0);
+
+    // Jalur utama: Gemma vision lewat API app.
+    try {
+      const { base64, mime } = await siapkanGambarStruk(file);
+      const hasil = await receipt.scan(base64, mime);
+      const nama = String(hasil?.merchant || '').trim();
+      const total = Number(hasil?.total) || 0;
+      if (!nama || !(total > 0)) throw new Error('HASIL_KOSONG');
+
+      const daftar = Array.isArray(hasil.items)
+        ? hasil.items.map((it) => ({ nama: it.name, harga: Number(it.price) || 0 }))
+        : [];
+      setRawText('');
+      setItems(daftar);
+      setForm((f) => ({
+        ...f,
+        description: nama,
+        amount: String(total),
+        date: hasil.date || f.date,
+        category: categories.some((c) => c.value === hasil.category) ? hasil.category : f.category,
+      }));
+      setNote(daftar.length
+        ? 'Dibaca AI. Periksa isian dan rincian, lalu tekan Simpan.'
+        : 'Dibaca AI. Periksa isian lalu tekan Simpan.');
+      setProgress(100);
+      setBusy(false);
+      return;
+    } catch {
+      // Offline, kuota habis, atau hasil tidak terbaca: lanjut ke OCR perangkat.
+      setNote('AI tidak tersedia, memakai baca offline...');
+      setProgress(0);
+    }
+
     try {
       // Dimuat saat dibutuhkan supaya bundel utama tetap ringan
       const { createWorker } = await import('tesseract.js');
@@ -119,7 +161,7 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
       }));
       setNote(
         saran.amount > 0
-          ? 'Saran terbaca. Periksa isian lalu tekan Simpan.'
+          ? 'Saran terbaca offline. Periksa isian lalu tekan Simpan.'
           : 'Teks belum terbaca jelas. Silakan isi manual di bawah.',
       );
       setProgress(100);
