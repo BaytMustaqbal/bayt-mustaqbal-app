@@ -194,7 +194,7 @@ export function Navigation({
     { id: 'terjadwal:service', label: 'Services', icon: 'wrench' },
     { id: 'terjadwal:tabungan', label: 'Whishlist', icon: 'piggyBank' },
     { id: 'terjadwal:belanja', label: 'Belanja', icon: 'shoppingBag' },
-    { id: 'terjadwal:langganan', label: 'Langganan', icon: 'repeat' },
+    { id: 'terjadwal:langganan', label: 'Langganan', icon: 'card' },
     { id: 'terjadwal:utang', label: 'Utang', icon: 'handCoins' },
   ];
   const tugasDropRef = useRef(null);

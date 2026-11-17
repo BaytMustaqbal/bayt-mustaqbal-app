@@ -108,6 +108,12 @@ const PATHS = {
       <circle cx="12" cy="10" r="3" />
     </>
   ),
+  card: (
+    <>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
+    </>
+  ),
   check: <path d="M20 6 9 17l-5-5" />,
   close: <path d="M18 6 6 18M6 6l12 12" />,
   clock: (
@@ -356,10 +362,10 @@ const PATHS = {
   ),
   repeat: (
     <>
-      <path d="M21 15v4a2 2 0 0 1-2 2H5" />
-      <polyline points="7,10 12,5 17,10" />
-      <path d="M17 10V5a2 2 0 0 0-2-2H5" />
-      <polyline points="7,14 12,19 17,14" />
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
     </>
   ),
   piggyBank: (

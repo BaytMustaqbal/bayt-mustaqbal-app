@@ -41,7 +41,7 @@ function SubForm({ initial, onCancel, onSave }) {
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-base font-bold text-ink">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brandtint text-brandfg" aria-hidden="true">
-              <Icon name="repeat" size={16} />
+              <Icon name="card" size={16} />
             </span>
             {initial ? 'Ubah Langganan' : 'Tambah Langganan'}
           </h2>
@@ -105,7 +105,7 @@ export default function SubscriptionsComp({ subs = [], canWrite = false, formatC
       </div>
 
       {subs.length === 0 ? (
-        <EmptyState icon="repeat" title="Belum ada langganan" message="Tambahkan langganan/utilitas berkala di sini." />
+        <EmptyState icon="card" title="Belum ada langganan" message="Tambahkan langganan/utilitas berkala di sini." />
       ) : (
         <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
           {subs.map((s) => {
