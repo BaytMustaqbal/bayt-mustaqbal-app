@@ -107,6 +107,81 @@ export async function readAiPrefs(env) {
   return prefs;
 }
 
+/** Parse perintah ganti gaya bahasa lewat WA.
+    Mengembalikan { value } (value=null → tampilkan daftar) atau null bila
+    teksnya bukan perintah gaya bahasa. Cocok hanya jika seluruh pesan
+    adalah perintah pendek, supaya kalimat biasa tidak tertelan. */
+const MBR_STYLES = new Set(['santai', 'hangat', 'formal', 'profesional']);
+
+export function parseStyleCommand(text) {
+  const t = String(text || '').trim().toLowerCase();
+  const m = t.match(/^(?:ubah\s+)?gaya(?:\s+bahasa)?(?:\s+saya)?(?:\s+(?:jadi|ke|menjadi))?\s*:?\s*(santai|hangat|formal|profesional|default|reset)?\s*[.!?]*$/i);
+  if (!m) return null;
+  const value = (m[1] || '').toLowerCase();
+  if (!value) return { value: null };
+  return { value: value === 'reset' ? 'default' : value };
+}
+
+/** Ubah gaya bahasa milik sendiri di ai_prefs (self). `default`/`reset` menghapus override. */
+export async function setMemberStyle(env, user, value) {
+  const s = String(value || '').toLowerCase().trim();
+  const reset = s === 'default';
+  if (!reset && !MBR_STYLES.has(s)) return { ok: false, reason: 'VALUE' };
+  if (!env.APP_DB || !user?.id) return { ok: false, reason: 'NO_DB' };
+
+  const scopeSql = user.group_id ? 'group_id = ?' : 'user_id = ?';
+  const scopeVal = user.group_id || user.id;
+  const now = new Date().toISOString();
+
+  let existing = null;
+  try {
+    existing = await env.APP_DB.prepare(
+      `SELECT id, value FROM settings WHERE key = 'ai_prefs' AND ${scopeSql} AND void IS NULL`
+    ).bind(scopeVal).first();
+  } catch {
+    existing = null;
+  }
+  let pref = {};
+  try { pref = existing?.value ? JSON.parse(existing.value) : {}; } catch { pref = {}; }
+
+  const chatEnabled = pref.chatEnabled !== false;
+  const receiptScanEnabled = pref.receiptScanEnabled !== false;
+  const summaryItems = clampInt(pref.summaryItems, 1, 10, DEFAULT_AI_PREFS.summaryItems);
+  const persona = personaOf(pref.persona) || DEFAULT_AI_PREFS.persona;
+  const globalStyle = normalizeStyle(pref.style) || DEFAULT_AI_PREFS.style;
+  const maxSentences = clampInt(pref.maxSentences, 1, 6, DEFAULT_AI_PREFS.maxSentences);
+  const members = pref.members && typeof pref.members === 'object' ? { ...pref.members } : {};
+
+  if (reset) {
+    delete members[user.id];
+  } else {
+    const prev = members[user.id] && typeof members[user.id] === 'object' ? members[user.id] : {};
+    members[user.id] = {
+      persona: personaOf(prev.persona) || persona,
+      style: s,
+      maxSentences: intOrUndefined(prev.maxSentences, 1, 6) ?? maxSentences,
+    };
+  }
+
+  const next = { chatEnabled, receiptScanEnabled, summaryItems, persona, style: globalStyle, maxSentences, members };
+  const value2 = JSON.stringify(next);
+  try {
+    if (existing) {
+      await env.APP_DB.prepare('UPDATE settings SET value = ?, rev = rev + 1, updated_at = ? WHERE id = ?')
+        .bind(value2, now, existing.id).run();
+    } else {
+      const id = crypto.randomUUID();
+      await env.APP_DB.prepare(
+        'INSERT INTO settings (id, user_id, group_id, key, value, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      ).bind(id, user.id, user.group_id || null, 'ai_prefs', value2, 1, now, now).run();
+    }
+  } catch (e) {
+    return { ok: false, reason: e?.message || 'WRITE_FAILED' };
+  }
+  cache = { at: Date.now(), prefs: normalizeAiPrefs(value2) };
+  return { ok: true, reset, style: s, prefs: cache.prefs };
+}
+
 /** Susun instruksi gaya untuk system prompt. */
 export function styleInstruction(style) {
   switch (String(style || '').toLowerCase()) {

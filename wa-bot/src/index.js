@@ -21,7 +21,7 @@ import {
   parseReminderLocal, parseDateId, parseTimeId, parseAmountToken,
 } from './parse.js';
 import { detectIntent, chatReply } from './ai.js';
-import { readAiPrefs, resolveFor } from './botPrefs.js';
+import { readAiPrefs, resolveFor, parseStyleCommand, setMemberStyle } from './botPrefs.js';
 import { downloadMetaImage, scanReceiptImage } from './scan.js';
 import {
   getPending, setPending, clearPending,
@@ -577,6 +577,29 @@ async function handleIncomingText(env, sender, text) {
   // 2) Menu / sapaan
   if (isMenu(t)) {
     await replyText(env, sender, menuText());
+    return JSON_OK();
+  }
+
+  // 2b) Gaya bahasa milik sendiri (tanpa AI; semua peran boleh)
+  const styleCmd = parseStyleCommand(t);
+  if (styleCmd) {
+    if (!user) {
+      await replyText(env, sender, 'Nomor Anda belum terdaftar di Bayt Mustaqbal. Hubungi admin.');
+      return JSON_OK();
+    }
+    if (styleCmd.value === null) {
+      const current = resolveFor(await readAiPrefs(env), user.id).style;
+      await replyText(env, sender, `Gaya bahasa kamu saat ini: ${current}. Pilihan: santai, hangat, formal, profesional. Ketik "gaya <pilihan>" untuk mengubah, atau "gaya default" untuk kembali ke default keluarga.`);
+      return JSON_OK();
+    }
+    const result = await setMemberStyle(env, user, styleCmd.value);
+    if (!result.ok) {
+      await replyText(env, sender, 'Gagal mengubah gaya bahasa. Coba lagi sebentar.');
+      return JSON_OK();
+    }
+    await replyText(env, sender, result.reset
+      ? 'Gaya bahasa kamu kembali ke default keluarga.'
+      : `Gaya bahasa diubah ke ${result.style.charAt(0).toUpperCase() + result.style.slice(1)}.`);
     return JSON_OK();
   }
 
