@@ -253,7 +253,9 @@ export const calTransform = {
     title: evt.title,
     date: evt.date,
     time: evt.time || '',
-    member: evt.member_id || '',
+    // 'keluarga' = agenda bersama; selain itu user_id pemilik anggota.
+    member: evt.member_id || 'keluarga',
+    memberId: evt.member_id || 'keluarga',
     category: evt.category || 'keluarga',
   }),
   toPayload: (item) => ({
@@ -261,7 +263,7 @@ export const calTransform = {
     date: item.date,
     time: item.time || null,
     category: item.category || null,
-    member_id: item.member || null,
+    member_id: (item.member && item.member !== 'Keluarga' && item.member !== 'keluarga') ? item.member : null,
     description: item.description || null,
   }),
 };

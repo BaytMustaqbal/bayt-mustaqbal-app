@@ -28,7 +28,8 @@ export const toCalendarEvents = (data) => {
           date: s.date,
           time: s.time || '08:00',
           category: 'agenda',
-          color: EVENT_COLORS.agenda,
+          member: s.member,
+          color: s.color || EVENT_COLORS.agenda,
           data: { type: 'agenda', item: s },
         });
       }

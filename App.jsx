@@ -212,6 +212,25 @@ const budgetStatus = (expense, budgetIncome) => {
 // Urutan daftar transaksi: tanggal terbaru dulu, lalu waktu input terbaru.
 // created_at dari backend, createdAt untuk draft offline.
 const waktuTransaksi = (item) => String(item?.created_at || item?.createdAt || item?.ts || '');
+// Nilai khusus agenda bersama (sekeluarga). user_id menyimpan kepemilikan per anggota.
+const KELUARGA = 'keluarga';
+const memberLabelOf = (users, id) => {
+  if (!id || String(id).toLowerCase() === KELUARGA) return 'Keluarga';
+  const u = (users || []).find((x) => String(x.id) === String(id));
+  return u?.nickname || u?.name || u?.nama || 'Anggota';
+};
+const hashStr = (s) => {
+  let h = 0;
+  const str = String(s);
+  for (let i = 0; i < str.length; i += 1) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+/** Warna titik agenda per anggota (stabil dari user_id); Keluarga = member5. */
+const AGENDA_MEMBER_PALETTE = ['bg-member1', 'bg-member2', 'bg-member3', 'bg-member4'];
+const memberColorOf = (id) => {
+  if (!id || String(id).toLowerCase() === KELUARGA) return 'bg-member5';
+  return AGENDA_MEMBER_PALETTE[hashStr(id) % AGENDA_MEMBER_PALETTE.length];
+};
 const urutTransaksiTerbaru = (list = []) => [...list].sort((a, b) => {
   const byDate = String(b?.date || '').localeCompare(String(a?.date || ''));
   if (byDate !== 0) return byDate;
@@ -229,10 +248,16 @@ const buildDataBundle = (apiData, currentUser) => {
   const fallbackUsers = currentUser && apiUsers.length === 0
     ? [{ id: currentUser.id, nama: currentUser.nama, family_role: currentUser.family_role || 'anak', avatar_url: null }]
     : apiUsers;
+  const schedule = (apiData?.schedule || []).map((s) => ({
+    ...s,
+    memberId: s.member || KELUARGA,
+    member: memberLabelOf(fallbackUsers, s.member),
+    color: memberColorOf(s.member),
+  }));
   return {
     users: mapUsersToFamily(fallbackUsers),
     family: mapUsersToFamily(fallbackUsers),
-    schedule: apiData?.schedule || [],
+    schedule,
     familyMedical: apiData?.familyMedical || [],
     familyDocuments: apiData?.familyDocuments || [],
     familyContacts: apiData?.familyContacts || [],
@@ -268,7 +293,6 @@ import { DEFAULT_POS, DEFAULT_RATIOS, DEFAULT_MONTH } from './components/budget'
 
 // ---- Konfigurasi form "Tambah" per section (dipakai FormSheet) ----
 const MEMBER_PEOPLE = ['Rezki YT', 'Hilda AK', 'RAGASUCI', 'RAJABRANA'];
-const MEMBER_ALL = [...MEMBER_PEOPLE, 'Keluarga'];
 const memberOptions = (list) => list.map((m) => ({ value: m, label: m }));
 
 const todayKey = () => {
@@ -357,7 +381,7 @@ const mapServiceHistory = (r) => ({
 // (angka dijadikan string agar cocok dengan <input type="number">).
 const toFormValues = (section, item) => {
   if (section === 'agenda') {
-    return { title: item.title, date: item.date, time: item.time, category: item.category, member: item.member };
+    return { title: item.title, date: item.date, time: item.time, category: item.category, member: item.memberId || KELUARGA };
   }
   if (section === 'expenses') {
     return { description: item.description, amount: String(item.amount ?? ''), date: item.date, category: item.category, bucket: item.bucket || 'auto', accountId: item.accountId || '' };
@@ -814,6 +838,13 @@ export default function App() {
   // Hak tulis data keluarga: kepala_keluarga, suami, istri. anak & cucu = baca saja
   // (backend juga menolak 403; UI hanya menyembunyikan jalur tulis).
   const canWrite = ['kepala_keluarga', 'suami', 'istri'].includes(currentUser?.group_role);
+  // Anak/cucu boleh mengelola agenda miliknya sendiri (bukan agenda Keluarga / anggota lain).
+  const canManageOwnAgenda = (item) => {
+    if (canWrite) return true;
+    if (!currentUser?.id) return false;
+    const mid = item?.memberId ?? item?.member;
+    return !!mid && String(mid) === String(currentUser.id);
+  };
   // Splash screen: tampil setiap app dibuka, lepas setelah fade-out.
   const [splashDone, setSplashDone] = useState(false);
   // entered = pengguna sudah melewati splash & berada di app (atau login screen)
@@ -822,6 +853,8 @@ export default function App() {
   const [agendaFilter, setAgendaFilter] = useState('semua');
   // Sub-tampilan Agenda: jadwal (daftar) | tugas | kalender keluarga
   const [agendaMode, setAgendaMode] = useState('jadwal');
+  // Filter anggota di tampilan Kalender: 'semua' | 'keluarga' | user_id
+  const [memberFilter, setMemberFilter] = useState('semua');
   // Filter kategori pengeluaran (default: semua) � pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
   const [incomeFilter, setIncomeFilter] = useState('semua');
@@ -1428,6 +1461,55 @@ const deleteGoal = async (id) => {
     })),
   };
 
+  useEffect(() => {
+    // Inisialisasi budget categories dari localStorage saat app dimulai
+    initBudgetCategories();
+  }, []);
+
+
+  // Sub-tampilan Keuangan: 'ringkasan' (default) | 'pengeluaran' | 'anggaran' | 'pemasukan' | 'tagihan'
+  const [financeMode, setFinanceMode] = useState('ringkasan');
+  // Bulan yang ditinjau di tab Ringkasan (YYYY-MM). Tidak bisa maju dari bulan berjalan.
+  const [summaryMonth, setSummaryMonth] = useState(() => monthKeyOf(new Date()));
+  // Sub-tampilan Keuangan: daftar pengeluaran | halaman Anggaran (50/30/20)
+  // (financeMode dideklarasikan di atas bersama financeFilter/incomeFilter)
+  // Filter bagian keluarga (default: semua) � pola sama dengan agenda & keuangan
+  const [familyFilter, setFamilyFilter] = useState('semua');
+  // Filter tugas: status (semua/belum/selesai) & prioritas (tinggi/sedang/rendah)
+  const [taskFilter, setTaskFilter] = useState('semua');
+  // Filter catatan: semua | penting (disematkan) | kategori
+  const [noteFilter, setNoteFilter] = useState('semua');
+  // Pencarian catatan (judul + isi) � hanya berlaku di tab Catatan
+  const [noteQuery, setNoteQuery] = useState('');
+  // Tab aktif Service (inventory/history)
+  const [serviceActiveTab, setServiceActiveTab] = useState('history');
+  // Notifikasi ringkas + tombol "Urungkan" (undo hapus)
+  const [toast, setToast] = useState(null);
+  // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
+  const [notifRead, setNotifRead] = useState(readNotifRead);
+  // Tab aktif di halaman "Tugas Terjadwal" (pengeluaran/tabungan/belanja/service)
+  const [terjadwalTab, setTerjadwalTab] = useState('pengeluaran');
+  // Periode daftar belanja: 'mingguan' | 'bulanan'.
+  const [shoppingPeriod, setShoppingPeriod] = useState('bulanan');
+  // Sub-tab halaman Keluarga: 'keluarga' | 'tugas'.
+  const [familyTab, setFamilyTab] = useState('keluarga');
+  // Tab awal saat halaman Akun dibuka (default 'profil'; 'keamanan' dari Pengaturan)
+  const [accountInitialTab, setAccountInitialTab] = useState('profil');
+  // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
+  const [accountInitialGenerasi, setAccountInitialGenerasi] = useState(null);
+  // Data state � dimuat dari API + localStorage cache
+  const [data, setData] = useState(null);
+
+  // Pilihan anggota agenda: canWrite melihat 'Keluarga' + semua anggota;
+  // anak/cucu hanya bisa memilih dirinya sendiri.
+  const agendaMemberOptions = () => {
+    if (!canWrite) {
+      return [{ value: String(currentUser?.id || ''), label: currentUser?.nickname || currentUser?.name || currentUser?.nama || 'Saya' }];
+    }
+    const fam = (data?.users || []).map((u) => ({ value: String(u.id), label: u.nickname || u.name || u.nama || 'Anggota' }));
+    return [{ value: KELUARGA, label: 'Keluarga (bersama)' }, ...fam];
+  };
+
   const SHEET_CONFIG = {
     agenda: {
       title: 'Tambah Agenda',
@@ -1437,7 +1519,7 @@ const deleteGoal = async (id) => {
         { key: 'date', label: 'Tanggal', type: 'date', required: true, defaultValue: todayKey() },
         { key: 'time', label: 'Jam', type: 'time', defaultValue: '08:00' },
         { key: 'category', label: 'Kategori', type: 'select', required: true, defaultValue: catOptions(AGENDA_CATEGORIES)[0].value, options: catOptions(AGENDA_CATEGORIES) },
-        { key: 'member', label: 'Anggota', type: 'select', required: true, defaultValue: MEMBER_ALL[0], options: memberOptions(MEMBER_ALL) },
+        { key: 'member', label: 'Anggota', type: 'select', required: true, defaultValue: canWrite ? KELUARGA : (currentUser?.id || KELUARGA), options: agendaMemberOptions() },
       ],
     },
     expenses: {
@@ -1583,44 +1665,6 @@ const deleteGoal = async (id) => {
     },
   };
 
-  useEffect(() => {
-    // Inisialisasi budget categories dari localStorage saat app dimulai
-    initBudgetCategories();
-  }, []);
-
-
-  // Sub-tampilan Keuangan: 'ringkasan' (default) | 'pengeluaran' | 'anggaran' | 'pemasukan' | 'tagihan'
-  const [financeMode, setFinanceMode] = useState('ringkasan');
-  // Bulan yang ditinjau di tab Ringkasan (YYYY-MM). Tidak bisa maju dari bulan berjalan.
-  const [summaryMonth, setSummaryMonth] = useState(() => monthKeyOf(new Date()));
-  // Sub-tampilan Keuangan: daftar pengeluaran | halaman Anggaran (50/30/20)
-  // (financeMode dideklarasikan di atas bersama financeFilter/incomeFilter)
-  // Filter bagian keluarga (default: semua) � pola sama dengan agenda & keuangan
-  const [familyFilter, setFamilyFilter] = useState('semua');
-  // Filter tugas: status (semua/belum/selesai) & prioritas (tinggi/sedang/rendah)
-  const [taskFilter, setTaskFilter] = useState('semua');
-  // Filter catatan: semua | penting (disematkan) | kategori
-  const [noteFilter, setNoteFilter] = useState('semua');
-  // Pencarian catatan (judul + isi) � hanya berlaku di tab Catatan
-  const [noteQuery, setNoteQuery] = useState('');
-  // Tab aktif Service (inventory/history)
-  const [serviceActiveTab, setServiceActiveTab] = useState('history');
-  // Notifikasi ringkas + tombol "Urungkan" (undo hapus)
-  const [toast, setToast] = useState(null);
-  // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
-  const [notifRead, setNotifRead] = useState(readNotifRead);
-  // Tab aktif di halaman "Tugas Terjadwal" (pengeluaran/tabungan/belanja/service)
-  const [terjadwalTab, setTerjadwalTab] = useState('pengeluaran');
-  // Periode daftar belanja: 'mingguan' | 'bulanan'.
-  const [shoppingPeriod, setShoppingPeriod] = useState('bulanan');
-  // Sub-tab halaman Keluarga: 'keluarga' | 'tugas'.
-  const [familyTab, setFamilyTab] = useState('keluarga');
-  // Tab awal saat halaman Akun dibuka (default 'profil'; 'keamanan' dari Pengaturan)
-  const [accountInitialTab, setAccountInitialTab] = useState('profil');
-  // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
-  const [accountInitialGenerasi, setAccountInitialGenerasi] = useState(null);
-  // Data state � dimuat dari API + localStorage cache
-  const [data, setData] = useState(null);
   // Loading state untuk data API
   const [dataLoading, setDataLoading] = useState(false);
   // Antrean tulis offline (outbox). Sumber kebenaran ada di localStorage;
@@ -2353,7 +2397,7 @@ const deleteGoal = async (id) => {
     const current = dataRef.current;
     const list = current[key] || [];
     const applyEdit = (item) => {
-      if (section === 'agenda') return { ...item, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
+      if (section === 'agenda') return { ...item, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, memberId: values.member || KELUARGA, member: memberLabelOf(dataRef.current?.users, values.member), color: memberColorOf(values.member) };
       if (section === 'expenses') return { ...item, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto', items: values.items || item.items };
       if (section === 'income') return { ...item, type: 'in', description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category };
       if (section === 'tasks') return { ...item, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo };
@@ -2438,8 +2482,12 @@ const deleteGoal = async (id) => {
 
     try {
       if (section === 'agenda') {
-        const result = await cal.create({ title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member });
-        addItemToState(section, result);
+        const resultRaw = await cal.create({ title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member });
+        addItemToState(section, {
+          ...resultRaw,
+          member: memberLabelOf(dataRef.current?.users, resultRaw.memberId),
+          color: memberColorOf(resultRaw.memberId),
+        });
       } else if (section === 'expenses') {
         const result = await txn.create({ id: draftId, category: values.category, description: values.description, amount: Number(values.amount) || 0, date: values.date, bucket: values.bucket || 'auto', accountId: values.accountId || null });
         addItemToState(section, result);
@@ -2476,7 +2524,7 @@ const deleteGoal = async (id) => {
 
   // Build item object for local-only sections
   const buildLocalItem = (section, values, id) => {
-    if (section === 'agenda') return { id, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member };
+    if (section === 'agenda') return { id, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, memberId: values.member || KELUARGA, member: memberLabelOf(undefined, values.member), color: memberColorOf(values.member) };
     if (section === 'expenses') return { id, description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, bucket: values.bucket || 'auto', accountId: values.accountId || null, items: values.items || [] };
     if (section === 'income') return { id, type: 'in', description: values.description, amount: Number(values.amount) || 0, date: values.date, category: values.category, accountId: values.accountId || null };
     if (section === 'tasks') return { id, title: values.title, dueDate: values.dueDate, priority: values.priority, assignedTo: values.assignedTo, completed: false };
@@ -2506,7 +2554,12 @@ const deleteGoal = async (id) => {
     try {
       if (section === 'agenda') {
         const result = await cal.update(id, calTransform.toPayload({ title: values.title, date: values.date, time: values.time, category: values.category, member: values.member }));
-        const updated = calTransform.toSchedule(result);
+        const updatedRaw = calTransform.toSchedule(result);
+        const updated = {
+          ...updatedRaw,
+          member: memberLabelOf(current?.users, updatedRaw.memberId),
+          color: memberColorOf(updatedRaw.memberId),
+        };
         const list = current[key] || [];
         saveData({ ...current, [key]: list.map((it) => (it.id === id ? updated : it)) });
       } else if (section === 'expenses') {
@@ -2645,7 +2698,7 @@ const deleteGoal = async (id) => {
 
   // Hapus item + tawarkan "Urungkan". Mengembalikan true bila penghapusan berjalan.
   const deleteItem = async (section, item) => {
-    if (!canWrite) {
+    if (!(section === 'agenda' ? canManageOwnAgenda(item) : canWrite)) {
       pushToast({ message: 'Peran Anda hanya boleh melihat data keluarga.', duration: 3500, tone: 'danger' });
       return false;
     }
@@ -2708,7 +2761,7 @@ const deleteGoal = async (id) => {
         saveData({ ...dataRef.current, [key]: restored });
         // Jika online, restore via API juga
         if (isOnline) {
-          if (section === 'agenda') cal.create(item).catch(() => {});
+          if (section === 'agenda') cal.create({ ...item, member: item.memberId || 'keluarga' }).catch(() => {});
           else if (section === 'expenses') txn.create(item).catch(() => {});
           else if (section === 'income') txn.create(item).catch(() => {});
           else if (section === 'notes') notesApi.create(item, currentUser).catch(() => {});
@@ -3001,7 +3054,7 @@ const deleteGoal = async (id) => {
   // Pos anggaran punya jalur sendiri (bukan array di `data`, tapi `budget.pos`).
   const submitSheet = (section, values) => {
     // Penjaga pusat: peran baca-saja (anak/cucu) tak bisa menulis data keluarga.
-    if (!canWrite) {
+    if (!(section === 'agenda' ? canManageOwnAgenda({ ...values, memberId: values?.member }) : canWrite)) {
       pushToast({ message: 'Peran Anda hanya boleh melihat data keluarga.', duration: 3500, tone: 'danger' });
       return;
     }
@@ -3611,6 +3664,24 @@ const deleteGoal = async (id) => {
             ? data.schedule
             : data.schedule.filter((item) => item.category === agendaFilter);
 
+        // Filter anggota khusus tampilan Kalender: 'semua' | 'keluarga' | user_id
+        const agendaForCalendar =
+          memberFilter === 'semua'
+            ? filtered
+            : filtered.filter((item) => (item.memberId || KELUARGA) === memberFilter);
+        const memberChips = [
+          { value: 'semua', label: 'Semua', color: null },
+          { value: KELUARGA, label: 'Keluarga', color: 'bg-member5' },
+          ...(data?.users || []).map((u) => ({
+            value: String(u.id),
+            label: u.nickname || u.name || u.nama || 'Anggota',
+            color: memberColorOf(u.id),
+          })),
+        ];
+        const agendaMemberLegend = memberChips
+          .filter((chip) => chip.value !== 'semua')
+          .map((chip) => ({ label: chip.label, color: chip.color }));
+
         // calendarEvents sudah dihitung di body component (lihat useMemo di
         // atas renderSection) — hook tidak boleh di dalam case switch.
 
@@ -3638,7 +3709,7 @@ const deleteGoal = async (id) => {
                       icon: 'calendar',
                       title: activeMeta.label,
                       subtitle: `${(filtered || []).length} jadwal • ${(calendarEvents || []).length} aktivitas`,
-                      actionLabel: canWrite ? 'Tambah' : undefined,
+                      actionLabel: 'Tambah',
                       onAction: () => openAdd('agenda'),
                     })}
             />
@@ -3656,6 +3727,35 @@ const deleteGoal = async (id) => {
                 onChange={setAgendaMode}
               />
             </div>
+
+            {agendaMode === 'kalender' && (
+              <div className="mb-4 flex items-center gap-2" aria-label="Filter anggota agenda">
+                <span className="shrink-0 text-xs font-semibold text-mutedfg">Anggota:</span>
+                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1" role="group">
+                {memberChips.map((chip) => {
+                  const active = memberFilter === chip.value;
+                  return (
+                    <button
+                      key={chip.value}
+                      type="button"
+                      onClick={() => setMemberFilter(chip.value)}
+                      aria-pressed={active}
+                      className={`inline-flex min-h-[36px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-medium transition-colors ${
+                        active
+                          ? 'border-brand/25 bg-brandtint text-brandfg'
+                          : 'border-line text-mutedfg hover:bg-muted hover:text-ink'
+                      }`}
+                    >
+                      {chip.color
+                        ? <span className={`h-2.5 w-2.5 rounded-full ${chip.color}`} aria-hidden="true" />
+                        : <Icon name="users" size={14} />}
+                      {chip.label}
+                    </button>
+                  );
+                })}
+                </div>
+              </div>
+            )}
 
             {agendaMode === 'tugas' ? (
               <>
@@ -3717,16 +3817,17 @@ const deleteGoal = async (id) => {
                           item={item}
                           onEdit={(it) => openEdit('agenda', it)}
                           onDelete={(it) => deleteItem('agenda', it)}
-                          readOnly={!canWrite}
+                          readOnly={!canManageOwnAgenda(item)}
                         />
                       ))}
                     </div>
                   )
                 ) : (
-                  <FamilyCalendar 
-                    items={filtered} 
-                    tasks={data.tasks} 
-                    events={calendarEvents} 
+                  <FamilyCalendar
+                    items={agendaForCalendar}
+                    tasks={data.tasks}
+                    events={calendarEvents}
+                    memberLegend={agendaMemberLegend}
                     onEventClick={(event) => {
                 const { type, item } = event.data;
                 if (type === 'tagihan') {

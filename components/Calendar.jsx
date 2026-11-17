@@ -52,7 +52,7 @@ const memberColor = (member, categoryColor) => {
 };
 
 // ============================================================================
-export function FamilyCalendar({ items, tasks, events, onEventClick }) {
+export function FamilyCalendar({ items, tasks, events, onEventClick, memberLegend }) {
   const today = useMemo(() => toDate(new Date()), []);
   const [view, setView] = useState('month'); // 'week' | 'month' | 'year'
   const [cursor, setCursor] = useState(today);
@@ -146,33 +146,10 @@ export function FamilyCalendar({ items, tasks, events, onEventClick }) {
 
   return (
     <section aria-label="Kalender keluarga" className="space-y-4">
-      {/* Header: skala view + periode + navigasi */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex rounded-xl border border-line bg-surface p-1" role="group" aria-label="Skala kalender">
-          {[
-            { k: 'week', l: 'Minggu' },
-            { k: 'month', l: 'Bulan' },
-            { k: 'year', l: 'Tahun' },
-          ].map((v) => (
-            <button
-              key={v.k}
-              type="button"
-              onClick={() => setView(v.k)}
-              aria-pressed={view === v.k}
-              className={`inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-medium transition-colors ${
-                view === v.k ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
-              }`}
-            >
-              {v.l}
-            </button>
-          ))}
-        </div>
-
-        <h2 className="min-w-0 flex-1 truncate px-1 text-center font-mono text-sm font-bold text-ink">
-          {periodLabel}
-        </h2>
-
-        <div className="flex items-center gap-1">
+      {/* Toolbar: periode (kiri) + navigasi (kanan) */}
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="min-w-0 truncate text-base font-bold text-ink">{periodLabel}</h2>
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => shift(-1)}
@@ -197,6 +174,27 @@ export function FamilyCalendar({ items, tasks, events, onEventClick }) {
             <Icon name="chevronRight" size={18} />
           </button>
         </div>
+      </div>
+
+      {/* Skala: Minggu | Bulan | Tahun melebar penuh */}
+      <div className="grid grid-cols-3 rounded-xl border border-line bg-surface p-1" role="group" aria-label="Skala kalender">
+        {[
+          { k: 'week', l: 'Minggu' },
+          { k: 'month', l: 'Bulan' },
+          { k: 'year', l: 'Tahun' },
+        ].map((v) => (
+          <button
+            key={v.k}
+            type="button"
+            onClick={() => setView(v.k)}
+            aria-pressed={view === v.k}
+            className={`inline-flex min-h-[44px] items-center justify-center rounded-lg text-sm font-medium transition-colors ${
+              view === v.k ? 'bg-brandtint text-brandfg' : 'text-mutedfg hover:text-ink'
+            }`}
+          >
+            {v.l}
+          </button>
+        ))}
       </div>
 
       {view === 'month' && (
@@ -224,7 +222,7 @@ export function FamilyCalendar({ items, tasks, events, onEventClick }) {
 
       {view === 'month' && <DayList date={selected} dayMap={dayMap} tasksByKey={tasksByKey} onEventClick={onEventClick} />}
 
-      <Legend />
+      <Legend members={memberLegend} />
     </section>
   );
 }
@@ -525,19 +523,23 @@ function DayList({ date, dayMap, tasksByKey, onEventClick }) {
 }
 
 // ============================================================================
-// Legenda warna member — supaya warna bukan satu-satunya penanda.
+// Legenda warna anggota — supaya warna bukan satu-satunya penanda.
+// Fallback ke MEMBER_COLORS statis bila `members` tidak diberikan.
 // ============================================================================
-function Legend() {
+function Legend({ members }) {
+  const list = Array.isArray(members) && members.length
+    ? members
+    : Object.entries(MEMBER_COLORS).map(([m, c]) => ({ label: m, color: c }));
   return (
     <div
       className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-line bg-surface/60 px-3 py-2 text-xs text-mutedfg"
       role="note"
       aria-label="Legenda warna anggota"
     >
-      {Object.entries(MEMBER_COLORS).map(([m, c]) => (
-        <span key={m} className="inline-flex items-center gap-1.5">
-          <span className={`h-2 w-2 rounded-full ${c}`} aria-hidden="true" />
-          {m}
+      {list.map((m) => (
+        <span key={m.label} className="inline-flex items-center gap-1.5">
+          <span className={`h-2 w-2 rounded-full ${m.color}`} aria-hidden="true" />
+          {m.label}
         </span>
       ))}
       <span className="inline-flex items-center gap-1.5">
