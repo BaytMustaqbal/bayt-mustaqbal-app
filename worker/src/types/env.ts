@@ -2,7 +2,11 @@ import { Hono } from 'hono';
 
 export interface Env {
   DB: D1Database;
+  // Workers AI (baca foto struk). Binding [ai] di wrangler.toml.
+  AI: Ai;
   JWT_SECRET: string;
+  // Token bersama dengan bot WA untuk POST /api/receipt/scan (bukan JWT).
+  RECEIPT_TOKEN?: string;
   FONNTE_TOKEN: string;
   FONNTE_TARGET: string;
   FONNTE_DEVICE: string;

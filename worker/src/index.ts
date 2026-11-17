@@ -33,6 +33,7 @@ import { serviceInvRoutes } from './routes/serviceInv';
 import { vehicleRoutes } from './routes/vehicle';
 import { accountRoutes } from './routes/account';
 import { recurringTxnRoutes } from './routes/recurringTxn';
+import { receiptRoutes } from './routes/receipt';
 import { authMiddleware } from './middleware/auth';
 import { handleCron } from './cron';
 
@@ -84,6 +85,7 @@ app.route('/api/service-inv', serviceInvRoutes);
 app.route('/api/vehicle', vehicleRoutes);
 app.route('/api/account', accountRoutes);
 app.route('/api/recurring', recurringTxnRoutes);
+app.route('/api/receipt', receiptRoutes);
 
 app.get('/', (c) => c.json({ ok: true, message: 'Bayt Mustaqbal API' }));
 

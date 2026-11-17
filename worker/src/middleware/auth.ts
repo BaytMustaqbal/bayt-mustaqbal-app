@@ -4,6 +4,18 @@ import { Env } from '../types/env';
 
 export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
   const path = c.req.path;
+  // Bot WA memakai token bersama (bukan JWT) untuk baca foto struk.
+  // Scan tidak menulis data dan tidak butuh userId.
+  if (path === '/api/receipt/scan' && c.env.RECEIPT_TOKEN) {
+    const shared = c.req.header('X-Receipt-Token') || '';
+    if (safeEqual(shared, c.env.RECEIPT_TOKEN)) {
+      c.set('role', 'bot');
+      c.set('userId', '');
+      c.set('groupId', null);
+      c.set('groupRole', 'anak');
+      return next();
+    }
+  }
   if (
     path === '/api/auth/login' ||
     path === '/api/auth/register' ||
@@ -41,4 +53,14 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
   c.set('groupRole', row?.group_role ?? 'anak');
 
   await next();
+}
+
+// Bandingkan dua string tanpa membocorkan panjang/isi lewat waktu eksekusi.
+function safeEqual(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a);
+  const y = new TextEncoder().encode(b);
+  if (x.length !== y.length) return false;
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
 }

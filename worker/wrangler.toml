@@ -7,5 +7,10 @@ binding = "DB"
 database_name = "bayt-mustaqbal-db"
 database_id = "b9f5d75e-7d22-4f21-80f9-16660163da82"
 
+# Workers AI untuk baca foto struk (Gemma 4 vision).
+# Token bersama dengan bot WA disimpan sebagai secret: RECEIPT_TOKEN.
+[ai]
+binding = "AI"
+
 [triggers]
 crons = ["0 0 * * *", "0 * * * *", "30 17 * * *", "0 12 * * *"]
