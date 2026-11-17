@@ -106,6 +106,7 @@ export function FormSheet({
   submitLabel = 'Simpan',
   onClose,
   onSubmit,
+  onDelete,
 }) {
   const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
@@ -341,6 +342,16 @@ export function FormSheet({
         </div>
 
         <div className="mt-5 flex gap-2.5">
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="inline-flex min-h-[48px] shrink-0 items-center gap-2 rounded-xl border border-danger/40 px-3.5 text-sm font-semibold text-danger transition-colors hover:bg-danger/10"
+            >
+              <Icon name="trash" size={16} />
+              Hapus
+            </button>
+          )}
           <button
             type="button"
             onClick={requestClose}

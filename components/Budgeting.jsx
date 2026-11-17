@@ -33,7 +33,6 @@ export function Budgeting({
   onSaveBudget,
   onAddPos,
   onEditPos,
-  onDeletePos,
   readOnly = false,
 }) {
   const [editing, setEditing] = useState(false);
@@ -318,7 +317,8 @@ export function Budgeting({
                         <span className="min-w-0">{item.label}</span>
                       </span>
                       {/* Tombol 44px seperti ItemActions, ditulis lokal karena baris
-                          pos lebih rapat (bukan kartu) dan perlu penanda data-pos. */}
+                          pos lebih rapat (bukan kartu) dan perlu penanda data-pos.
+                          Hapus pos pindah ke modal Ubah (tombol footer kiri). */}
                       <span className="flex shrink-0 items-center gap-0.5">
                         <button
                           type="button"
@@ -328,15 +328,6 @@ export function Budgeting({
                           className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-brandtint hover:text-brandfg"
                         >
                           <Icon name="edit" size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          data-pos="delete"
-                          onClick={() => onDeletePos(bucket.id, item)}
-                          aria-label={`Hapus pos ${item.label}`}
-                          className="grid h-11 w-11 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg"
-                        >
-                          <Icon name="trash" size={16} />
                         </button>
                       </span>
                     </li>

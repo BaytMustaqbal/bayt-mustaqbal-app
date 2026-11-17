@@ -10,7 +10,7 @@ import { NOTE_CATEGORIES, getCategoryMeta } from './categories';
    (kategori + penulis + tanggal). Catatan "penting" (pinned) diberi badge.
    ============================================================================ */
 
-export function NoteList({ notes = [], onEdit, onDelete, onRetry, onDiscard }) {
+export function NoteList({ notes = [], onEdit, onDelete, onRetry, onDiscard, readOnly = false }) {
   return (
     <ul className="stagger grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
       {notes.map((note) => {
@@ -40,24 +40,26 @@ export function NoteList({ notes = [], onEdit, onDelete, onRetry, onDiscard }) {
               {note.pending && (
                 <div className="flex items-center justify-between gap-2 rounded-lg bg-muted px-2.5 py-1.5">
                   <Badge tone={note.failed ? 'red' : 'amber'}>{note.failed ? 'Gagal sinkron' : 'Menunggu sinkron'}</Badge>
-                  <span className="flex items-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => onRetry?.(note)}
-                      aria-label="Coba sinkron lagi"
-                      className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-line hover:text-ink"
-                    >
-                      <Icon name="refresh" size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDiscard?.(note)}
-                      aria-label="Hapus catatan offline"
-                      className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg"
-                    >
-                      <Icon name="trash" size={15} />
-                    </button>
-                  </span>
+                  {!readOnly && (
+                    <span className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => onRetry?.(note)}
+                        aria-label="Coba sinkron lagi"
+                        className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-line hover:text-ink"
+                      >
+                        <Icon name="refresh" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDiscard?.(note)}
+                        aria-label="Hapus catatan offline"
+                        className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-tonerose/15 hover:text-tonerosefg"
+                      >
+                        <Icon name="trash" size={15} />
+                      </button>
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -72,7 +74,7 @@ export function NoteList({ notes = [], onEdit, onDelete, onRetry, onDiscard }) {
                     {note.updatedAt && <span className="font-mono">{note.updatedAt}</span>}
                   </span>
                 </div>
-                <ItemActions label={note.title} onEdit={() => onEdit?.(note)} onDelete={() => onDelete?.(note)} readOnly={note.pending} />
+                <ItemActions label={note.title} onEdit={() => onEdit?.(note)} onDelete={() => onDelete?.(note)} readOnly={readOnly || note.pending} hideDelete />
               </div>
             </Card>
           </li>

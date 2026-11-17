@@ -82,16 +82,17 @@ const rowIcon = (row) => {
   return 'tasks';
 };
 
-/* Satu baris aktivitas — seluruh baris adalah tombol "Ubah". */
-function Row({ row, onEdit, formatCurrency }) {
+/* Satu baris aktivitas. Menjadi tombol "Ubah" bila boleh menulis;
+   `readOnly` merender div biasa (peran baca-saja: anak/cucu). */
+function Row({ row, onEdit, formatCurrency, readOnly = false }) {
   const { item } = row;
   const finished = row.kind === 'tugas' && item.completed;
+  const Tag = readOnly ? 'div' : 'button';
 
   return (
-    <button
-      type="button"
-      onClick={() => onEdit?.(row.section, item)}
-      className="flex min-h-[44px] w-full items-start gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 text-left transition-[background-color,border-color] duration-fast ease-crisp hover:border-brand/40 hover:bg-muted"
+    <Tag
+      {...(readOnly ? {} : { type: 'button', onClick: () => onEdit?.(row.section, item) })}
+      className={`flex min-h-[44px] w-full items-start gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 text-left transition-[background-color,border-color] duration-fast ease-crisp ${readOnly ? '' : 'hover:border-brand/40 hover:bg-muted'}`}
     >
       <span
         className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-brand/20 bg-brandtint text-brandfg"
@@ -151,12 +152,12 @@ function Row({ row, onEdit, formatCurrency }) {
           {formatCurrency(item.amount)}
         </span>
       )}
-    </button>
+    </Tag>
   );
 }
 
 /* Satu hari dalam alur: titik di rel + kepala tanggal + cabang ke tiap item. */
-function DayRow({ day, today, onEdit, formatCurrency }) {
+function DayRow({ day, today, onEdit, formatCurrency, readOnly = false }) {
   const isToday = day.date === today;
   const rel = relativeDay(day.date, today);
 
@@ -180,7 +181,7 @@ function DayRow({ day, today, onEdit, formatCurrency }) {
           <li key={row.key} className="relative">
             {/* cabang penghubung item → rel (dekoratif) */}
             <span aria-hidden="true" className="absolute -left-6 top-1/2 h-px w-6 bg-line" />
-            <Row row={row} onEdit={onEdit} formatCurrency={formatCurrency} />
+            <Row row={row} onEdit={onEdit} formatCurrency={formatCurrency} readOnly={readOnly} />
           </li>
         ))}
       </ul>
@@ -201,6 +202,7 @@ export function Timeline({
   limitDays,
   showHistory = true,
   showFilters = true,
+  readOnly = false,
 }) {
   const [filter, setFilter] = useState('semua');
 
@@ -326,6 +328,7 @@ export function Timeline({
               today={today}
               onEdit={onEdit}
               formatCurrency={formatCurrency}
+              readOnly={readOnly}
             />
           ))}
 

@@ -6,8 +6,9 @@ const PRIORITY_TONE = { high: 'red', medium: 'amber', low: 'green' };
 const PRIORITY_LABEL = { high: 'Tinggi', medium: 'Sedang', low: 'Rendah' };
 
 // Controlled: perubahan toggle diteruskan ke induk (App) agar tersimpan ke
-// localStorage — tidak hilang saat reload.
-export function TaskList({ tasks = [], onToggle, onEdit, onDelete }) {
+// localStorage — tidak hilang saat reload. `readOnly` = peran baca-saja
+// (anak/cucu): centang nonaktif dan tidak ada tombol aksi.
+export function TaskList({ tasks = [], onToggle, onEdit, onDelete, readOnly = false }) {
   return (
     <ul className="stagger space-y-3">
       {tasks.map((task) => (
@@ -19,9 +20,10 @@ export function TaskList({ tasks = [], onToggle, onEdit, onDelete }) {
                 <button
                   type="button"
                   onClick={() => onToggle?.(task.id)}
+                  disabled={readOnly}
                   aria-pressed={task.completed}
                   aria-label={`Tandai "${task.title}" ${task.completed ? 'belum selesai' : 'selesai'}`}
-                  className="-m-2 grid h-11 w-11 shrink-0 place-items-center rounded-xl"
+                  className={`-m-2 grid h-11 w-11 shrink-0 place-items-center rounded-xl ${readOnly ? 'cursor-default opacity-60' : ''}`}
                 >
                   <span
                     className={`grid h-7 w-7 place-items-center rounded-lg border-2 transition-colors ${
@@ -44,7 +46,7 @@ export function TaskList({ tasks = [], onToggle, onEdit, onDelete }) {
               <p className="truncate text-xs text-mutedfg">
                 {task.assignedTo} &middot; jatuh tempo {task.dueDate}
               </p>
-              <ItemActions label={task.title} onEdit={() => onEdit?.(task)} onDelete={() => onDelete?.(task)} />
+              <ItemActions label={task.title} onEdit={() => onEdit?.(task)} onDelete={() => onDelete?.(task)} readOnly={readOnly} hideDelete />
             </div>
           </Card>
         </li>

@@ -2643,20 +2643,20 @@ const deleteGoal = async (id) => {
     });
   };
 
-  // Hapus item + tawarkan "Urungkan"
+  // Hapus item + tawarkan "Urungkan". Mengembalikan true bila penghapusan berjalan.
   const deleteItem = async (section, item) => {
     if (!canWrite) {
       pushToast({ message: 'Peran Anda hanya boleh melihat data keluarga.', duration: 3500, tone: 'danger' });
-      return;
+      return false;
     }
     const label = sectionItemLabel(item);
     // Draft offline belum ada di server: hapus dari antrean, bukan via API.
     if (item?.pending) {
-      if (!window.confirm(`Hapus "${label}" yang belum tersinkron?`)) return;
+      if (!window.confirm(`Hapus "${label}" yang belum tersinkron?`)) return false;
       discardOutboxOp(item.id);
-      return;
+      return true;
     }
-    if (!window.confirm(`Hapus "${label}"?`)) return;
+    if (!window.confirm(`Hapus "${label}"?`)) return false;
     let key = SECTION_KEY[section];
     let bagian = null;
     if (section === 'family') {
@@ -2665,7 +2665,7 @@ const deleteGoal = async (id) => {
     }
     const list = (key ? dataRef.current[key] : []) || [];
     const index = list.findIndex((it) => it.id === item.id);
-    if (index < 0) return;
+    if (index < 0) return false;
 
     // Optimistic: hapus dari state + persist
     removeItemFromState(section, item);
@@ -2694,7 +2694,7 @@ const deleteGoal = async (id) => {
         restored.splice(Math.min(index, restored.length), 0, item);
         saveData({ ...dataRef.current, [key]: restored });
         pushToast({ message: `Gagal menghapus ${sectionItemLabel(item)}: ${err.message}`, duration: 4000, tone: 'danger' });
-        return;
+        return false;
       }
     }
 
@@ -2717,9 +2717,10 @@ const deleteGoal = async (id) => {
         }
       },
     });
+    return true;
   };
 
-  // Bottom sheet "Tambah/Ubah" � null = tertutup, selain itu = kunci section.
+  // Bottom sheet "Tambah/Ubah" — null = tertutup, selain itu = kunci section.
   const [sheetOpen, setSheetOpen] = useState(null);
   // Mode ubah: { section, id } item yang sedang diedit + nilai awal formnya.
   const [editing, setEditing] = useState(null);
@@ -2906,7 +2907,7 @@ const deleteGoal = async (id) => {
     const tpl = data.scheduledExpenses.find((t) => String(t.id) === String(id));
     const nama = tpl?.name || 'template ini';
     const ok = window.confirm(`Hapus pengeluaran terjadwal "${nama}"?`);
-    if (!ok) return;
+    if (!ok) return false;
     try {
       await scheduledTasksApi.delete(id);
     } catch (e) {
@@ -2915,6 +2916,7 @@ const deleteGoal = async (id) => {
     const next = data.scheduledExpenses.filter((t) => String(t.id) !== String(id));
     saveData({ ...data, scheduledExpenses: next });
     pushToast({ message: 'Template pengeluaran terjadwal dihapus', duration: 2500 });
+    return true;
   };
 
   // Konfirmasi sebelum catat: pengeluaran terjadwal yang jatuh tempo bulan ini
@@ -2985,7 +2987,7 @@ const deleteGoal = async (id) => {
       pushToast({ message: 'Catatan ini menunggu sinkron. Ubah setelah tersinkron.', duration: 3500, tone: 'warning' });
       return;
     }
-    setEditing({ section, id: item.id });
+    setEditing({ section, id: item.id, item });
     setSheetInitial(toFormValues(section, item));
     setSheetOpen(section);
   };
@@ -3021,6 +3023,26 @@ const deleteGoal = async (id) => {
     }
     if (editing && editing.section === section) updateItem(section, editing.id, values);
     else addItem(section, values);
+  };
+
+  // Hapus dari dalam modal Ubah (tombol footer kiri). Konfirmasi ditangani
+  // oleh fungsi hapus masing-masing; tutup sheet hanya bila penghapusan jalan.
+  const sheetDelete = async () => {
+    if (!editing) return;
+    const { section, item } = editing;
+    if (!item) return;
+    if (section === 'budgetPos') {
+      deletePos(item.bucket, item);
+      closeSheet();
+      return;
+    }
+    if (section === 'scheduledTemplate') {
+      const ok = await deleteScheduledTemplate(item.id);
+      if (ok) closeSheet();
+      return;
+    }
+    const ok = await deleteItem(section, item);
+    if (ok) closeSheet();
   };
 
   // Pantau status online/offline
@@ -3602,7 +3624,7 @@ const deleteGoal = async (id) => {
                       icon: taskMeta.icon,
                       title: taskMeta.label,
                       subtitle: `${filteredTasks.length} dari ${data.tasks.length} tugas`,
-                      actionLabel: 'Tambah',
+                      actionLabel: canWrite ? 'Tambah' : undefined,
                       onAction: () => openAdd('tasks'),
                     };
                   })()
@@ -3616,7 +3638,7 @@ const deleteGoal = async (id) => {
                       icon: 'calendar',
                       title: activeMeta.label,
                       subtitle: `${(filtered || []).length} jadwal • ${(calendarEvents || []).length} aktivitas`,
-                      actionLabel: 'Tambah',
+                      actionLabel: canWrite ? 'Tambah' : undefined,
                       onAction: () => openAdd('agenda'),
                     })}
             />
@@ -3672,11 +3694,12 @@ const deleteGoal = async (id) => {
                     onToggle={toggleTask}
                     onEdit={(item) => openEdit('tasks', item)}
                     onDelete={(item) => deleteItem('tasks', item)}
+                    readOnly={!canWrite}
                   />
                 )}
               </>
             ) : agendaMode === 'timeline' ? (
-              <Timeline data={data} onEdit={openEdit} formatCurrency={formatCurrency} />
+              <Timeline data={data} onEdit={openEdit} formatCurrency={formatCurrency} readOnly={!canWrite} />
             ) : (
               <>
                 {agendaMode === 'jadwal' ? (
@@ -3694,6 +3717,7 @@ const deleteGoal = async (id) => {
                           item={item}
                           onEdit={(it) => openEdit('agenda', it)}
                           onDelete={(it) => deleteItem('agenda', it)}
+                          readOnly={!canWrite}
                         />
                       ))}
                     </div>
@@ -3905,7 +3929,6 @@ const deleteGoal = async (id) => {
                 onSaveBudget={handleSaveBudget}
                 onAddPos={(bucket) => openAdd('budgetPos', { bucket })}
                 onEditPos={(bucket, pos) => openEdit('budgetPos', { ...pos, bucket })}
-                onDeletePos={(bucket, pos) => deletePos(bucket, pos)}
                 readOnly={!canWrite}
               />
             ) : financeMode === 'ringkasan' ? (
@@ -4178,6 +4201,7 @@ const deleteGoal = async (id) => {
                 onDelete={(item) => deleteItem('notes', item)}
                 onRetry={(item) => retryOutboxOp(item.id)}
                 onDiscard={(item) => discardOutboxOp(item.id)}
+                readOnly={!canWrite}
               />
             )}
           </section>
@@ -4290,14 +4314,6 @@ const deleteGoal = async (id) => {
                                 className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-muted hover:text-ink"
                               >
                                 <Icon name="edit" size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => deleteScheduledTemplate(tpl.id)}
-                                aria-label={`Hapus ${tpl.name}`}
-                                className="grid h-8 w-8 place-items-center rounded-lg text-mutedfg transition-colors hover:bg-tonerose/10 hover:text-tonerosefg"
-                              >
-                                <Icon name="trash" size={15} />
                               </button>
                             </>
                           )}
@@ -4479,6 +4495,7 @@ const deleteGoal = async (id) => {
             onOpenTimeline={handleOpenAgendaTimeline}
             onEditItem={openEdit}
             insight={insight}
+            canWrite={canWrite}
           />
         );
     }
@@ -4672,6 +4689,7 @@ const deleteGoal = async (id) => {
         submitLabel={editing ? 'Perbarui' : 'Simpan'}
         onClose={closeSheet}
         onSubmit={(values) => submitSheet(sheetOpen, values)}
+        onDelete={editing ? sheetDelete : undefined}
       />
 
       {/* RegisterScreen � hanya bisa diakses dari halaman Akun (master only) */}

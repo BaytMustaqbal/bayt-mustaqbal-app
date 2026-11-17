@@ -241,7 +241,7 @@ export function EmptyState({ icon = 'inbox', title, message }) {
 /* Tombol aksi per kartu data (edit + hapus). Dua kotak sentuh 44px agar
    nyaman di jari; dipakai seragam oleh kartu agenda, pengeluaran, tugas,
    dan catatan supaya pola "ubah/buang" konsisten. */
-export function ItemActions({ onEdit, onDelete, label = 'item', readOnly = false, compact = false }) {
+export function ItemActions({ onEdit, onDelete, label = 'item', readOnly = false, compact = false, hideDelete = false }) {
   // Peran baca-saja (anak/cucu): aksi disembunyikan, kartu jadi informatif.
   if (readOnly) return null;
   const btnCls = compact
@@ -261,14 +261,16 @@ export function ItemActions({ onEdit, onDelete, label = 'item', readOnly = false
       >
         <Icon name="edit" size={iconSize} />
       </button>
-      <button
-        type="button"
-        onClick={onDelete}
-        aria-label={`Hapus ${label}`}
-        className={delCls}
-      >
-        <Icon name="trash" size={iconSize} />
-      </button>
+      {!hideDelete && onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={`Hapus ${label}`}
+          className={delCls}
+        >
+          <Icon name="trash" size={iconSize} />
+        </button>
+      )}
     </div>
   );
 }
@@ -338,6 +340,7 @@ export function ExpenseCard({ item, formatCurrency, onEdit, onDelete, onRetry, o
           onDelete={() => onDelete?.(item)}
           readOnly={readOnly || item.pending}
           compact
+          hideDelete
         />
       </div>
       {item.pending && (
@@ -375,6 +378,7 @@ export function IncomeCard({ item, formatCurrency, onEdit, onDelete, onRetry, on
           onDelete={() => onDelete?.(item)}
           readOnly={readOnly || item.pending}
           compact
+          hideDelete
         />
       </div>
       {item.pending && (

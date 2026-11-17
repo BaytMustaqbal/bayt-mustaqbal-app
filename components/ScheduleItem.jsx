@@ -3,7 +3,7 @@ import { Icon } from './Icon';
 import { Card, Badge, ItemActions, CARD_INTERACTIVE } from './ui';
 import { AGENDA_CATEGORIES, getCategoryMeta } from './categories';
 
-export function ScheduleItem({ item, onEdit, onDelete }) {
+export function ScheduleItem({ item, onEdit, onDelete, readOnly = false }) {
   const meta = getCategoryMeta(AGENDA_CATEGORIES, item.category);
   return (
     <Card className={`flex h-full flex-col p-4 ${CARD_INTERACTIVE} hover:border-brand sm:p-5`}>
@@ -25,7 +25,7 @@ export function ScheduleItem({ item, onEdit, onDelete }) {
           <Badge tone="brand">{item.member}</Badge>
           <span className="text-xs text-mutedfg">{item.date}</span>
         </div>
-        <ItemActions label={item.title} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} />
+        <ItemActions label={item.title} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} readOnly={readOnly} hideDelete />
       </div>
     </Card>
   );

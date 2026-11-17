@@ -31,7 +31,7 @@ function Panel({ icon, title, action, children }) {
   );
 }
 
-export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem, insight = null }) {
+export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onNavigate, onOpenTimeline, onEditItem, insight = null, canWrite = true }) {
   // Jumlah uang di kartu hero disembunyikan secara default (privasi saat
   // orang lain melirik layar). Tombol mata menampilkannya sementara —
   // sengaja TIDAK disimpan, supaya tiap kali app dibuka kembali tersembunyi.
@@ -322,6 +322,7 @@ export function Dashboard({ data, user, formatCurrency, formatCurrencyShort, onN
           limitDays={3}
           showHistory={false}
           showFilters={false}
+          readOnly={!canWrite}
         />
       </Panel>
 
