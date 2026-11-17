@@ -314,17 +314,52 @@ function tanggalRingkas(iso) {
   return new Intl.DateTimeFormat('id-ID', opsi).format(d).replace('.', '');
 }
 
+/* Tombol ikon jenis: pembuka modal Ubah (area sentuh 44px). Item pending
+   tetap bisa ditekan → induk (openEdit) menampilkan toast "menunggu sinkron".
+   Peran baca-saja melihat ikon sebagai dekorasi, bukan tombol. */
+function TypeIconButton({ iconName, label, onEdit, readOnly = false, tone = 'brand' }) {
+  const tileTone = tone === 'success'
+    ? 'border-success/25 bg-success/15 text-success'
+    : 'border-brand/20 bg-brandtint text-brandfg';
+  const tile = (
+    <span
+      className={`grid h-full w-full place-items-center rounded-lg border ${tileTone}`}
+      aria-hidden="true"
+    >
+      <Icon name={iconName} size={17} />
+    </span>
+  );
+  if (readOnly) {
+    return <span className="grid h-11 w-11 shrink-0">{tile}</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onEdit}
+      aria-label={label}
+      title="Ubah"
+      className="h-11 w-11 shrink-0 transition-transform duration-fast ease-crisp active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+    >
+      {tile}
+    </button>
+  );
+}
+
 /* Baris pengeluaran ringkas (bukan kartu tinggi): ikon kategori, deskripsi,
-   kategori + tanggal, nominal, lalu aksi ubah/hapus. */
+   kategori + tanggal, nominal. Tombol pensil dihapus — ikon jenis di kiri
+   yang membuka modal Ubah. */
 export function ExpenseCard({ item, formatCurrency, onEdit, onDelete, onRetry, onDiscard, readOnly = false }) {
   const meta = getCategoryMeta(FINANCE_CATEGORIES, item.category);
   const judul = item.description || meta?.label || 'Pengeluaran';
   return (
     <Card className="min-w-0 p-0">
       <div className="flex min-w-0 items-center gap-2.5 px-3 py-2.5">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-brand/20 bg-brandtint text-brandfg" aria-hidden="true">
-          <Icon name={meta?.icon || 'wallet'} size={17} />
-        </span>
+        <TypeIconButton
+          iconName={meta?.icon || 'wallet'}
+          label={`Ubah ${judul}`}
+          onEdit={() => onEdit?.(item)}
+          readOnly={readOnly}
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-5 text-ink">{judul}</p>
           <p className="truncate text-xs leading-4 text-mutedfg">
@@ -334,14 +369,6 @@ export function ExpenseCard({ item, formatCurrency, onEdit, onDelete, onRetry, o
           </p>
         </div>
         <p className="shrink-0 font-mono text-sm font-bold text-brandfg">{formatCurrency(item.amount)}</p>
-        <ItemActions
-          label={item.description}
-          onEdit={() => onEdit?.(item)}
-          onDelete={() => onDelete?.(item)}
-          readOnly={readOnly || item.pending}
-          compact
-          hideDelete
-        />
       </div>
       {item.pending && (
         <div className="px-3 pb-2.5">
@@ -360,9 +387,13 @@ export function IncomeCard({ item, formatCurrency, onEdit, onDelete, onRetry, on
   return (
     <Card className="min-w-0 p-0">
       <div className="flex min-w-0 items-center gap-2.5 px-3 py-2.5">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-success/25 bg-success/15 text-success" aria-hidden="true">
-          <Icon name={meta?.icon || 'wallet'} size={17} />
-        </span>
+        <TypeIconButton
+          iconName={meta?.icon || 'wallet'}
+          label={`Ubah ${judul}`}
+          onEdit={() => onEdit?.(item)}
+          readOnly={readOnly}
+          tone="success"
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-5 text-ink">{judul}</p>
           <p className="truncate text-xs leading-4 text-mutedfg">
@@ -372,14 +403,6 @@ export function IncomeCard({ item, formatCurrency, onEdit, onDelete, onRetry, on
           </p>
         </div>
         <p className="shrink-0 font-mono text-sm font-bold text-success">+{formatCurrency(item.amount)}</p>
-        <ItemActions
-          label={item.description}
-          onEdit={() => onEdit?.(item)}
-          onDelete={() => onDelete?.(item)}
-          readOnly={readOnly || item.pending}
-          compact
-          hideDelete
-        />
       </div>
       {item.pending && (
         <div className="px-3 pb-2.5">
