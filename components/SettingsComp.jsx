@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { SectionHeader, Badge, CTA_CLASS } from './ui';
 import { settingsApi, gcalApi, auth, backupApi, waApi } from '../services/client';
+import { AI_PREFS_DEFAULTS, normalizeAiPrefs } from '../services/botPrefs';
 import { readUiPrefs, writeUiPrefs, applyUiPrefs, UI_PREFS_DEFAULTS } from '../services/uiPrefs';
 import RulesComp from './RulesComp';
 import AuditComp from './AuditComp';
@@ -25,6 +26,16 @@ const hoursOptions = () => {
   const arr = [];
   for (let h = 0; h < 24; h++) arr.push(h);
   return arr;
+};
+
+/* Label peran grup untuk daftar "Gaya per anggota". */
+const GROUP_ROLE_LABEL = { kepala_keluarga: 'Kepala Keluarga', suami: 'Suami', istri: 'Istri', anak: 'Anak', cucu: 'Cucu' };
+
+const initialsOfName = (n) => {
+  const w = String(n || '?').trim().split(/\s+/).filter(Boolean);
+  if (w.length === 0) return '?';
+  if (w.length === 1) return w[0].slice(0, 2).toUpperCase();
+  return (w[0][0] + w[w.length - 1][0]).toUpperCase();
 };
 
 /* Baris header accordion — satu area terbuka dalam satu waktu. */
@@ -60,11 +71,14 @@ function SettingSection({ icon, title, subtitle, open, onToggle, badge, children
    API /api/gcal dan menangani balikan ?gcal=connected|error dari OAuth.
    ============================================================================ */
 
-export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', onThemeChange, onChangePassword, users = [] }) {
-  // ---- Notifikasi WA (preferensi per grup) ----
+export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', onThemeChange, onChangePassword, users = [], botAdmin = false, currentUserId = null }) {
+  // ---- Notifikasi & AI bot WA (preferensi per grup) ----
   const [notif, setNotif] = useState(NOTIF_DEFAULTS);
   const [notifLoaded, setNotifLoaded] = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
+  const [ai, setAi] = useState(AI_PREFS_DEFAULTS);
+  const [aiLoaded, setAiLoaded] = useState(false);
+  const [aiSaved, setAiSaved] = useState(false);
 
   // ---- Privasi & tampilan (preferensi per perangkat) ----
   const [uiPrefs, setUiPrefs] = useState(() => readUiPrefs());
@@ -286,9 +300,21 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
             /* default */
           }
         }
+        const aiRow = (rows || []).find((s) => s.key === 'ai_prefs');
+        if (aiRow?.value) {
+          try {
+            setAi(normalizeAiPrefs(aiRow.value));
+          } catch {
+            /* default */
+          }
+        }
         setNotifLoaded(true);
+        setAiLoaded(true);
       })
-      .catch(() => setNotifLoaded(true));
+      .catch(() => {
+        setNotifLoaded(true);
+        setAiLoaded(true);
+      });
     return () => {
       alive = false;
     };
@@ -308,6 +334,56 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
     }
   };
 
+  const persistAi = async (patch) => {
+    const next = { ...ai, ...patch };
+    setAi(next);
+    setAiSaved(false);
+    try {
+      await settingsApi.upsert('ai_prefs', JSON.stringify(next));
+      setAiSaved(true);
+      setTimeout(() => setAiSaved(false), 2500);
+    } catch (e) {
+      console.warn('Gagal simpan preferensi AI:', e.message);
+    }
+  };
+
+  // ---- Gaya per anggota: override persona/gaya/kalimat di ai_prefs.members ----
+  const anggota = (users || []).filter((u) => u && u.id && !u.void);
+  const memberOverrides = ai.members || {};
+  const setMemberOverride = (userId, override) => {
+    const next = { ...memberOverrides };
+    if (override === null) delete next[userId];
+    else next[userId] = override;
+    persistAi({ members: next });
+  };
+
+  // ---- Gaya bahasa milik sendiri (untuk anggota non-admin) ----
+  const ownOverride = currentUserId ? memberOverrides[currentUserId] || null : null;
+  const ownStyle = ownOverride?.style || ai.style;
+  const persistOwnStyle = async (style) => {
+    setAiSaved(false);
+    try {
+      await settingsApi.setMemberStyle(style);
+      if (currentUserId) {
+        setAi((prev) => ({
+          ...prev,
+          members: {
+            ...(prev.members || {}),
+            [currentUserId]: {
+              persona: ownOverride?.persona || prev.persona,
+              style,
+              maxSentences: ownOverride?.maxSentences || prev.maxSentences,
+            },
+          },
+        }));
+      }
+      setAiSaved(true);
+      setTimeout(() => setAiSaved(false), 2500);
+    } catch (e) {
+      console.warn('Gagal simpan gaya bahasa:', e.message);
+    }
+  };
+
   return (
     <section className="app-fade-in">
       <SectionHeader
@@ -317,19 +393,20 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
       />
 
       <div className="space-y-4">
-        {/* ---- Notifikasi & pengingat WA ---- */}
+        {/* ---- Bot WhatsApp: Notifikasi & Pengingat + AI & Baca Struk ---- */}
         <SettingSection
-          icon="bell"
-          title="Notifikasi & Pengingat"
-          subtitle="Kirim pengingat lewat WhatsApp"
+          icon="sparkles"
+          title="Bot WhatsApp"
+          subtitle="Notifikasi & pengingat, dan pengaturan AI"
           open={openKey === 'notifikasi'}
           onToggle={() => toggleKey('notifikasi')}
-          badge={notifSaved && <Badge tone="green">Tersimpan</Badge>}
+          badge={(notifSaved || aiSaved) && <Badge tone="green">Tersimpan</Badge>}
         >
-          {!notifLoaded ? (
+          {!notifLoaded || !aiLoaded ? (
             <p className="text-xs text-mutedfg">Memuat preferensi…</p>
-          ) : (
+          ) : botAdmin ? (
             <div className="space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-mutedfg">Notifikasi &amp; Pengingat</p>
               <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-canvas px-3.5">
                 <input
                   type="checkbox"
@@ -424,6 +501,205 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
                   </div>
                 </div>
               </div>
+
+              {/* ---- Kelompok AI & Baca Struk ---- */}
+              <div className="border-t border-line pt-4">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-mutedfg">AI &amp; Baca Struk</p>
+                <div className="space-y-3">
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-canvas px-3.5">
+                    <input
+                      type="checkbox"
+                      checked={ai.chatEnabled}
+                      onChange={(e) => persistAi({ chatEnabled: e.target.checked })}
+                      className="h-5 w-5 shrink-0 rounded border-line bg-canvas accent-[#2563EB]"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-ink">Balasan AI Obrolan</span>
+                      <span className="block text-[11px] text-mutedfg">Jawab obrolan bebas lewat WA (catatan: fitur catat &amp; tanya angka tetap jalan)</span>
+                    </span>
+                  </label>
+
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-line bg-canvas px-3.5">
+                    <input
+                      type="checkbox"
+                      checked={ai.receiptScanEnabled}
+                      onChange={(e) => persistAi({ receiptScanEnabled: e.target.checked })}
+                      className="h-5 w-5 shrink-0 rounded border-line bg-canvas accent-[#2563EB]"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-ink">Baca Struk AI</span>
+                      <span className="block text-[11px] text-mutedfg">App &amp; WA membaca foto struk otomatis (Gemma)</span>
+                    </span>
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="ai-summary-items" className="mb-1 block text-xs font-semibold text-mutedfg">Item rincian di ringkasan WA</label>
+                      <select
+                        id="ai-summary-items"
+                        value={ai.summaryItems}
+                        onChange={(e) => persistAi({ summaryItems: Number(e.target.value) })}
+                        className="min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
+                      >
+                        {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                          <option key={n} value={n}>{n} item</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="ai-max-sentences" className="mb-1 block text-xs font-semibold text-mutedfg">Maks. kalimat jawaban AI</label>
+                      <select
+                        id="ai-max-sentences"
+                        value={ai.maxSentences}
+                        onChange={(e) => persistAi({ maxSentences: Number(e.target.value) })}
+                        className="min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
+                      >
+                        {Array.from({ length: 6 }, (_, i) => i + 1).map((n) => (
+                          <option key={n} value={n}>{n} kalimat</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="ai-persona" className="mb-1 block text-xs font-semibold text-mutedfg">Nama persona bot</label>
+                    <input
+                      id="ai-persona"
+                      type="text"
+                      value={ai.persona}
+                      maxLength={40}
+                      placeholder="Neuro"
+                      onChange={(e) => setAi((prev) => ({ ...prev, persona: e.target.value }))}
+                      onBlur={() => persistAi({})}
+                      className="min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="ai-style" className="mb-1 block text-xs font-semibold text-mutedfg">Gaya bahasa</label>
+                    <select
+                      id="ai-style"
+                      value={ai.style}
+                      onChange={(e) => persistAi({ style: e.target.value })}
+                      className="min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
+                    >
+                      <option value="santai">Santai</option>
+                      <option value="hangat">Hangat</option>
+                      <option value="formal">Formal</option>
+                      <option value="profesional">Profesional</option>
+                    </select>
+                  </div>
+
+                  {/* Gaya per anggota: override persona/gaya/kalimat */}
+                  <div className="border-t border-line pt-3">
+                    <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-mutedfg">Gaya per anggota</p>
+                    <p className="mb-2 text-[11px] leading-relaxed text-mutedfg">Persona, gaya bahasa, dan maks. kalimat boleh beda per anggota. Toggle &amp; jumlah item tetap satu keluarga.</p>
+                    {anggota.length === 0 ? (
+                      <p className="text-xs text-mutedfg">Daftar anggota belum tersedia.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {anggota.map((u) => {
+                          const id = String(u.id);
+                          const override = memberOverrides[id] || null;
+                          const nama = u.nama || u.name || u.nickname || 'Anggota';
+                          const roleLabel = GROUP_ROLE_LABEL[u.group_role] || 'Anggota';
+                          return (
+                            <div key={id} className="rounded-xl border border-line bg-canvas p-3">
+                              <div className="flex min-w-0 items-center gap-2.5">
+                                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-brand/20 bg-brandtint text-xs font-bold text-brandfg" aria-hidden="true">
+                                  {initialsOfName(nama)}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs font-semibold text-ink">{nama}</p>
+                                  <p className="text-[11px] text-mutedfg">{roleLabel}</p>
+                                </div>
+                                {botAdmin ? (
+                                  <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-mutedfg">
+                                    <input
+                                      type="checkbox"
+                                      checked={!override}
+                                      onChange={(e) => {
+                                        if (e.target.checked) setMemberOverride(id, null);
+                                        else setMemberOverride(id, { persona: ai.persona, style: ai.style, maxSentences: ai.maxSentences });
+                                      }}
+                                      className="h-4 w-4 shrink-0 rounded border-line bg-canvas accent-[#2563EB]"
+                                    />
+                                    Ikut default keluarga
+                                  </label>
+                                ) : (
+                                  <span className="shrink-0 text-[11px] font-medium text-mutedfg">{override ? 'Kustom' : 'Ikut default'}</span>
+                                )}
+                              </div>
+                              {override && (
+                                <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                  <div className="sm:col-span-2">
+                                    <label htmlFor={`ai-m-persona-${id}`} className="mb-1 block text-[11px] text-mutedfg">Persona</label>
+                                    <input
+                                      id={`ai-m-persona-${id}`}
+                                      type="text"
+                                      defaultValue={override.persona}
+                                      maxLength={40}
+                                      disabled={!botAdmin}
+                                      onBlur={(e) => setMemberOverride(id, { ...override, persona: e.target.value.trim() || 'Neuro' })}
+                                      className="min-h-[40px] w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none transition-colors focus:border-brand disabled:opacity-60"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label htmlFor={`ai-m-style-${id}`} className="mb-1 block text-[11px] text-mutedfg">Gaya bahasa</label>
+                                    <select
+                                      id={`ai-m-style-${id}`}
+                                      value={override.style}
+                                      disabled={!botAdmin}
+                                      onChange={(e) => setMemberOverride(id, { ...override, style: e.target.value })}
+                                      className="min-h-[40px] w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand disabled:opacity-60"
+                                    >
+                                      <option value="santai">Santai</option>
+                                      <option value="hangat">Hangat</option>
+                                      <option value="formal">Formal</option>
+                                      <option value="profesional">Profesional</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label htmlFor={`ai-m-max-${id}`} className="mb-1 block text-[11px] text-mutedfg">Maks. kalimat</label>
+                                    <select
+                                      id={`ai-m-max-${id}`}
+                                      value={override.maxSentences}
+                                      disabled={!botAdmin}
+                                      onChange={(e) => setMemberOverride(id, { ...override, maxSentences: Number(e.target.value) })}
+                                      className="min-h-[40px] w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus:border-brand disabled:opacity-60"
+                                    >
+                                      {Array.from({ length: 6 }, (_, i) => i + 1).map((n) => (
+                                        <option key={n} value={n}>{n} kalimat</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-mutedfg">Gaya bahasa</p>
+              <p className="text-[11px] leading-relaxed text-mutedfg">Bahasa jawaban Neuro untukmu di WhatsApp. Pengaturan bot lainnya hanya untuk kepala keluarga &amp; suami.</p>
+              <label htmlFor="bot-own-style" className="mb-1 block text-xs font-semibold text-mutedfg">Gaya bahasa saya</label>
+              <select
+                id="bot-own-style"
+                value={ownStyle}
+                onChange={(e) => persistOwnStyle(e.target.value)}
+                className="min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
+              >
+                <option value="santai">Santai</option>
+                <option value="hangat">Hangat</option>
+                <option value="formal">Formal</option>
+                <option value="profesional">Profesional</option>
+              </select>
             </div>
           )}
         </SettingSection>
@@ -724,8 +1000,9 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
               ) : sessions.length === 0 ? (
                 <p className="px-3.5 py-3 text-xs text-mutedfg">Tidak ada sesi aktif.</p>
               ) : (
+                <>
                 <ul className="divide-y divide-line">
-                  {sessions.map((s) => (
+                  {sessions.slice(0, 5).map((s) => (
                     <li key={s.id} className="flex items-center gap-3 px-3.5 py-2.5">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium text-ink">{s.device || 'Perangkat tidak dikenal'}</p>
@@ -744,6 +1021,12 @@ export function SettingsComp({ gcal, onConnect, onDisconnect, theme = 'system', 
                     </li>
                   ))}
                 </ul>
+                {sessions.length > 5 && (
+                  <p className="border-t border-line px-3.5 py-2 text-[11px] text-mutedfg">
+                    +{sessions.length - 5} sesi lama tidak ditampilkan.
+                  </p>
+                )}
+                </>
               )}
             </div>
           </div>

@@ -3760,6 +3760,8 @@ const deleteGoal = async (id) => {
             onThemeChange={setTheme}
             onChangePassword={openAccountSecurity}
             users={data.users || []}
+            botAdmin={['kepala_keluarga', 'suami'].includes(currentUser?.group_role)}
+            currentUserId={currentUser?.id || null}
           />
         );
       }

@@ -396,7 +396,7 @@ export const settingsApi = {
       return result;
     } catch (e) {
       if (e.message.includes('sudah ada') || e.message.includes('CONFLICT')) {
-        // Key exists — fetch all and update
+        // Key exists - fetch all and update
         const all = await apiFetch('/settings');
         const existing = all.find((s) => s.key === key);
         if (existing) {
@@ -408,6 +408,14 @@ export const settingsApi = {
       }
       throw e;
     }
+  },
+  // Gaya bahasa milik sendiri (semua peran login): hanya mengubah style punya
+  // user pemanggil di dalam ai_prefs.members, tidak menyentuh setting lain.
+  setMemberStyle: async (style) => {
+    return apiFetch('/settings/member-style', {
+      method: 'POST',
+      body: JSON.stringify({ style }),
+    });
   },
 };
 

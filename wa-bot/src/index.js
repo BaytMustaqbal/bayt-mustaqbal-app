@@ -21,6 +21,7 @@ import {
   parseReminderLocal, parseDateId, parseTimeId, parseAmountToken,
 } from './parse.js';
 import { detectIntent, chatReply } from './ai.js';
+import { readAiPrefs, resolveFor } from './botPrefs.js';
 import { downloadMetaImage, scanReceiptImage } from './scan.js';
 import {
   getPending, setPending, clearPending,
@@ -162,12 +163,13 @@ function labelKategoriStruk(id) {
 }
 
 /** Ringkasan bernomor untuk pending struk. */
-function ringkasanStruk(p) {
+function ringkasanStruk(p, prefs) {
   const rincian = Array.isArray(p.items) ? p.items : [];
+  const maxTampil = Number.isInteger(prefs?.summaryItems) ? prefs.summaryItems : 5;
   let itemLine = '';
   if (rincian.length) {
-    const tampil = rincian.slice(0, 5).map((it) => `${it.name} ${fmtRp(it.price)}`).join(', ');
-    const sisa = rincian.length - Math.min(5, rincian.length);
+    const tampil = rincian.slice(0, maxTampil).map((it) => `${it.name} ${fmtRp(it.price)}`).join(', ');
+    const sisa = rincian.length - Math.min(maxTampil, rincian.length);
     itemLine = `\nRincian: ${tampil}${sisa > 0 ? `, +${sisa} item lain` : ''}`;
   }
   return [
@@ -226,6 +228,12 @@ async function handleReceiptImage(env, sender, msg) {
     await replyText(env, sender, 'Foto tidak terbaca. Coba kirim ulang.');
     return;
   }
+  // Baca struk AI bisa dimatikan dari Pengaturan (app + WA sekaligus)
+  const aiPrefs = await readAiPrefs(env);
+  if (aiPrefs.receiptScanEnabled === false) {
+    await replyText(env, sender, 'Baca struk lewat AI sedang dimatikan di Pengaturan (Bot WhatsApp). Ketik manual, contoh: "catat pengeluaran 50rb makan siang".');
+    return;
+  }
 
   await replyText(env, sender, 'Foto diterima. Sedang membaca struk...');
   const media = await downloadMetaImage(env, mediaId);
@@ -269,7 +277,7 @@ async function handleReceiptImage(env, sender, msg) {
   const lama = await getPending(env, sender);
   await setPending(env, sender, pending);
   const awalan = lama && lama.type === 'receipt' ? 'Ringkasan sebelumnya diganti.\n\n' : '';
-  await replyText(env, sender, awalan + ringkasanStruk(pending));
+  await replyText(env, sender, awalan + ringkasanStruk(pending, aiPrefs));
 }
 
 async function executePending(env, pending, user) {
@@ -490,6 +498,8 @@ async function handleIncomingText(env, sender, text) {
   if (String(sender || '').includes('@')) return JSON_OK(); // grup/broadcast bukan target bot
   const ownerId = resolveOwner(env, sender); // cadangan: petakan nomor ke user_id
   const user = await ensureDbUser(env, sender, ownerId);
+  // Override per anggota (persona/gaya/kalimat) menang atas default keluarga
+  const aiPrefs = resolveFor(await readAiPrefs(env), user?.id);
   const personaName = user ? (user.nickname || (user.nama || '').split(' ')[0] || '').trim() || null : null;
   const t = String(text || '').trim();
 
@@ -505,7 +515,7 @@ async function handleIncomingText(env, sender, text) {
       }
       if (koreksi?.next) {
         await setPending(env, sender, koreksi.next);
-        await replyText(env, sender, ringkasanStruk(koreksi.next));
+        await replyText(env, sender, ringkasanStruk(koreksi.next, aiPrefs));
         return JSON_OK();
       }
     }
@@ -634,7 +644,7 @@ async function handleIncomingText(env, sender, text) {
   }
 
   // 5) AI intent
-  const ai = await detectIntent(env, t, wibContext(), personaName);
+  const ai = await detectIntent(env, t, wibContext(), personaName, aiPrefs);
 
   // 5a) set pengingat (AI) — minta konfirmasi
   if (ai?.intent === 'set_pengingat') {
@@ -792,12 +802,12 @@ async function handleIncomingText(env, sender, text) {
 
   // 5f) AI chat / fallback (selalu lewat chatReply agar konteks nama pengirim terbawa)
   if (ai?.intent === 'chat') {
-    const fallback = await chatReply(env, t, personaName);
+    const fallback = await chatReply(env, t, personaName, aiPrefs);
     await replyText(env, sender, fallback || menuText());
     return JSON_OK();
   }
 
-  const fallback = await chatReply(env, t, personaName);
+  const fallback = await chatReply(env, t, personaName, aiPrefs);
   await replyText(env, sender, fallback || menuText());
   return JSON_OK();
 }

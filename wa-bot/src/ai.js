@@ -1,15 +1,20 @@
+import { DEFAULT_AI_PREFS, styleInstruction } from './botPrefs.js';
+
 const AI_MODEL = '@cf/google/gemma-4-26b-a4b-it';
 
-export function buildChatPrompt(personaName) {
+export function buildChatPrompt(personaName, prefs = DEFAULT_AI_PREFS) {
+  const p = prefs || DEFAULT_AI_PREFS;
+  const persona = String(p.persona || 'Neuro').trim().slice(0, 40) || 'Neuro';
   const identity = personaName
     ? `Yang sedang chat: ${personaName}. Sapa seperlunya, tidak setiap balasan.`
     : 'Pengirim belum dikenal; jawab netral dan sopan.';
+  const maxSentences = Number.isInteger(p.maxSentences) ? p.maxSentences : DEFAULT_AI_PREFS.maxSentences;
   return (
-    'Kamu adalah Neuro, Asisten Pribadi Keluarga Bayt Mustaqbal. ' +
+    `Kamu adalah ${persona}, Asisten Pribadi Keluarga Bayt Mustaqbal. ` +
     'Identitasmu untuk seluruh anggota keluarga, bukan asisten pribadi milik satu orang tertentu. ' +
     identity + ' ' +
-    'Gunakan kata "Saya" untuk dirimu. Jangan pakai "aku" atau "gue". ' +
-    'Jawab dalam Bahasa Indonesia, santai, singkat, tanpa markdown berat. Maksimal 3 kalimat.'
+    styleInstruction(p.style) + ' ' +
+    'Jawab dalam Bahasa Indonesia, tanpa markdown berat. Maksimal ' + maxSentences + ' kalimat.'
   );
 }
 
@@ -36,11 +41,13 @@ function extractJson(text) {
   try { return JSON.parse(raw.slice(start, end + 1)); } catch { return null; }
 }
 
-export async function chatReply(env, userMessage, personaName) {
+export async function chatReply(env, userMessage, personaName, prefs = DEFAULT_AI_PREFS) {
   if (!env.AI) return null;
+  const p = prefs || DEFAULT_AI_PREFS;
+  if (p.chatEnabled === false) return null; // obrolan AI dimatikan dari Pengaturan
   const result = await env.AI.run(AI_MODEL, {
     messages: [
-      { role: 'system', content: buildChatPrompt(personaName) },
+      { role: 'system', content: buildChatPrompt(personaName, p) },
       { role: 'user', content: userMessage },
     ],
     chat_template_kwargs: { enable_thinking: false },
@@ -50,13 +57,15 @@ export async function chatReply(env, userMessage, personaName) {
   return text.trim() ? text.trim() : null;
 }
 
-export async function detectIntent(env, userMessage, context, personaName) {
+export async function detectIntent(env, userMessage, context, personaName, prefs = DEFAULT_AI_PREFS) {
   if (!env.AI) return null;
+  const p = prefs || DEFAULT_AI_PREFS;
+  const persona = String(p.persona || 'Neuro').trim().slice(0, 40) || 'Neuro';
   const who = personaName
     ? `Pengirim teridentifikasi: ${personaName}. Jika ditanya identitas ("siapa saya"), jawab bahwa dia ${personaName}.`
     : 'Pengirim belum teridentifikasi di data keluarga.';
   const system = [
-    'Kamu Neuro, Asisten Pribadi Keluarga Bayt Mustaqbal (pengurai intent bot WhatsApp keuangan keluarga).',
+    `Kamu ${persona}, Asisten Pribadi Keluarga Bayt Mustaqbal (pengurai intent bot WhatsApp keuangan keluarga).`,
     'Identitasmu untuk seluruh anggota keluarga, bukan milik satu orang tertentu.',
     'Balas HANYA JSON valid (tanpa teks lain).',
     'Pilih intent tepat:',

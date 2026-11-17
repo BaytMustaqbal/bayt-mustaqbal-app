@@ -4,6 +4,7 @@ import { CTA_CLASS, CurrencyInput } from './ui';
 import { saranDariTeks, daftarItemDariTeks, jumlahItemDariTeks } from './receiptOcr';
 import { siapkanGambarStruk } from './receiptImage';
 import { receipt } from '../services/client';
+import { fetchAiPrefs } from '../services/botPrefs';
 import { useFocusTrap } from './useFocusTrap';
 
 /* Pemindai struk: mode semi-auto.
@@ -29,6 +30,15 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
   const panelRef = useRef(null);
   const [openState, setOpenState] = useState(true);
   useFocusTrap(panelRef, openState);
+  // Baca struk AI bisa dimatikan lewat Pengaturan → Bot WhatsApp (app + WA)
+  const [scanEnabled, setScanEnabled] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    fetchAiPrefs()
+      .then((p) => { if (alive) setScanEnabled(p.receiptScanEnabled !== false); })
+      .catch(() => { /* defaults */ });
+    return () => { alive = false; };
+  }, []);
 
   const [preview, setPreview] = useState('');
   const [form, setForm] = useState({
@@ -235,6 +245,14 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
           silakan diperiksa dan diperbaiki sebelum disimpan.
         </p>
 
+        {!scanEnabled && (
+          <div className="mt-3 rounded-xl border border-line bg-canvas px-3.5 py-3 text-xs leading-relaxed text-mutedfg" role="status">
+            Baca struk lewat AI sedang dimatikan di <strong>Pengaturan → Bot WhatsApp</strong>. Isi deskripsi, nominal, tanggal, dan kategori manual di bawah, rincian tetap bisa ditambahkan.
+          </div>
+        )}
+
+        {scanEnabled && (
+          <>
         {/* ---------- Pilih sumber foto ---------- */}
         <input ref={camRef} type="file" accept="image/jpeg,image/png" capture="environment" className="hidden" onChange={onFile} />
         <input ref={galRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={onFile} />
@@ -280,6 +298,8 @@ export function ReceiptScanner({ categories = [], defaultDate = '', onClose, onS
             </div>
           )}
         </div>
+          </>
+        )}
 
         {/* ---------- Hasil semi-auto: pengguna mengedit ---------- */}
         <div className="mt-3.5 space-y-3 rounded-2xl border border-line bg-canvas p-3.5">
