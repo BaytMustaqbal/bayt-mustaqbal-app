@@ -5,10 +5,10 @@ import { readFileSync } from 'node:fs'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
 
-// Waktu build dalam zona WIB (GMT+7), format YY/MM/DD-HH:MM (mis. 26/11/17-14:35)
+// Waktu build dalam zona WIB (GMT+7), format YYMMDD-HHMM (mis. 261117-1302)
 const buildWib = new Date(Date.now() + 7 * 60 * 60 * 1000)
 const pad2 = (n) => String(n).padStart(2, '0')
-const buildTime = `${String(buildWib.getUTCFullYear()).slice(-2)}/${pad2(buildWib.getUTCMonth() + 1)}/${pad2(buildWib.getUTCDate())}-${pad2(buildWib.getUTCHours())}:${pad2(buildWib.getUTCMinutes())}`
+const buildTime = `${String(buildWib.getUTCFullYear()).slice(-2)}${pad2(buildWib.getUTCMonth() + 1)}${pad2(buildWib.getUTCDate())}-${pad2(buildWib.getUTCHours())}${pad2(buildWib.getUTCMinutes())}`
 
 export default defineConfig({
   plugins: [
