@@ -2,12 +2,78 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Env } from '../types/env';
 
+
+/* Password hashing: PBKDF2 via WebCrypto (native, cepat) sebagai skema utama.
+   Hash lama (bcrypt) tetap bisa diverifikasi (dual-verify) dan otomatis
+   di-upgrade ke PBKDF2 saat login berhasil. Format: pbkdf2$<iters>$<saltB64u>$<hashB64u>. */
+const PBKDF2_ITERS = 100_000;
+const PBKDF2_KEYLEN = 32;
+const PBKDF2_HASH = 'SHA-256';
+
+const b64urlEnc = (bytes: Uint8Array): string => {
+  let s = '';
+  bytes.forEach((b) => { s += String.fromCharCode(b); });
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+const b64urlDec = (s: string): Uint8Array => {
+  const pad = s.length % 4 ? '='.repeat(4 - (s.length % 4)) : '';
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/') + pad);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+};
+const pbkdf2Key = async (password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: PBKDF2_HASH, salt: salt as unknown as BufferSource, iterations },
+    key,
+    PBKDF2_KEYLEN * 8,
+  );
+  return new Uint8Array(bits);
+};
+
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await pbkdf2Key(password, salt, PBKDF2_ITERS);
+  return `pbkdf2$${PBKDF2_ITERS}$${b64urlEnc(salt)}$${b64urlEnc(hash)}`;
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  if (stored.startsWith('pbkdf2$')) {
+    const parts = stored.split('$');
+    const iterations = Number(parts[1]);
+    if (!Number.isInteger(iterations) || iterations <= 0) return false;
+    const salt = b64urlDec(parts[2] || '');
+    const expected = b64urlDec(parts[3] || '');
+    const got = await pbkdf2Key(password, salt, iterations);
+    if (got.length !== expected.length) return false;
+    let diff = 0;
+    for (let i = 0; i < got.length; i++) diff |= got[i] ^ expected[i];
+    return diff === 0;
+  }
+  return bcrypt.compare(password, stored);
+}
+
+/**
+ * Verifikasi password. Bila hash lama (bcrypt) cocok, kembalikan hash PBKDF2
+ * pengganti agar caller bisa menulis ulang (login berikutnya cepat).
+ */
+export async function verifyAndUpgrade(
+  password: string,
+  stored: string,
+): Promise<{ ok: boolean; upgradedHash?: string }> {
+  if (stored.startsWith('pbkdf2$')) {
+    return { ok: await verifyPassword(password, stored) };
+  }
+  const ok = await bcrypt.compare(password, stored);
+  if (!ok) return { ok: false };
+  return { ok: true, upgradedHash: await hashPassword(password) };
 }
 
 export function signToken(

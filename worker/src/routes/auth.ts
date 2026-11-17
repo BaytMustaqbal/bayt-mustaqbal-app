@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { hashPassword, verifyPassword, signToken, verifyToken, createSession, voidSessionByJti } from '../utils/auth';
+import { hashPassword, verifyAndUpgrade, signToken, verifyToken, createSession, voidSessionByJti } from '../utils/auth';
 import { logAudit } from '../utils/audit';
 import { checkRateLimit, recordFailedAttempt, clearRateLimit } from '../utils/rateLimit';
 import { normalizePhone } from '../utils/waBot';
@@ -146,10 +146,20 @@ authRoutes.post('/login', async (c) => {
     await recordFailedAttempt(c.env, rlKey);
     return c.json({ ok: false, data: null, error: { code: 'UNAUTHENTICATED', message: 'Username atau password salah' } }, 401);
   }
-  const valid = await verifyPassword(password, user.password_hash);
-  if (!valid) {
+  const { ok, upgradedHash } = await verifyAndUpgrade(password, user.password_hash);
+  if (!ok) {
     await recordFailedAttempt(c.env, rlKey);
     return c.json({ ok: false, data: null, error: { code: 'UNAUTHENTICATED', message: 'Username atau password salah' } }, 401);
+  }
+  // Hash lama (bcrypt) cocok: tulis ulang sebagai PBKDF2 supaya login berikutnya cepat.
+  if (upgradedHash) {
+    try {
+      await c.env.DB.prepare(
+        'UPDATE users SET password_hash = ?, rev = rev + 1, updated_at = ? WHERE id = ?'
+      ).bind(upgradedHash, new Date().toISOString(), user.id).run();
+    } catch (e) {
+      console.warn('Gagal upgrade hash password ke PBKDF2:', (e as Error).message);
+    }
   }
   await clearRateLimit(c.env, rlKey);
   const device = (c.req.header('User-Agent') || 'browser').slice(0, 120);
