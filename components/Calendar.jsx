@@ -414,9 +414,11 @@ function YearGrid({ cursor, today, dayMap, taskKeys, onPickMonth }) {
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4" role="list" aria-label={`Tahun ${year}`}>
       {MONTH_NAMES.map((name, m) => {
         const prefix = `${year}-${pad(m + 1)}-`;
-        const monthItems = Object.keys(dayMap)
-          .filter((k) => k.startsWith(prefix))
-          .reduce((sum, k) => sum + dayMap[k].length, 0);
+        const monthEvents = Object.entries(dayMap)
+          .filter(([k]) => k.startsWith(prefix))
+          .flatMap(([, v]) => v);
+        const monthAgenda = monthEvents.filter((e) => e.category !== 'tagihan').length;
+        const monthBills = monthEvents.filter((e) => e.category === 'tagihan').length;
         const monthTasks = [...taskKeys].filter((k) => k.startsWith(prefix)).length;
         const isCurrent = m === today.getMonth() && year === today.getFullYear();
         return (
@@ -424,7 +426,7 @@ function YearGrid({ cursor, today, dayMap, taskKeys, onPickMonth }) {
             key={name}
             type="button"
             onClick={() => onPickMonth(m)}
-            aria-label={`${name} ${year}: ${monthItems} jadwal, ${monthTasks} tugas`}
+            aria-label={`${name} ${year}: ${monthAgenda} agenda, ${monthTasks} tugas, ${monthBills} tagihan`}
             className={`min-h-[92px] rounded-2xl border p-3 text-left transition-colors ${
               /* Tint 14% (pola sama dengan penanda aktif lain). Tint 40% terbaca
                  pekat sehingga nama bulan & jumlah di atasnya gagal kontras
@@ -435,7 +437,7 @@ function YearGrid({ cursor, today, dayMap, taskKeys, onPickMonth }) {
           >
             <p className={`text-sm font-bold ${isCurrent ? 'text-brandfg' : 'text-ink'}`}>{name}</p>
             <p className="mt-0.5 font-mono text-xs text-mutedfg">
-              {monthItems} jadwal · {monthTasks} tugas
+              {monthAgenda} agenda · {monthTasks} tugas · {monthBills} tagihan
             </p>
             <MiniMonthDots year={year} month={m} dayMap={dayMap} taskKeys={taskKeys} />
           </button>
@@ -542,6 +544,10 @@ function Legend({ members }) {
           {m.label}
         </span>
       ))}
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2 w-2 rounded-full bg-orange-500" aria-hidden="true" />
+        Tagihan
+      </span>
       <span className="inline-flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-full bg-mutedfg/60" aria-hidden="true" />
         Tugas

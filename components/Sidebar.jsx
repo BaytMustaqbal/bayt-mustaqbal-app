@@ -11,13 +11,13 @@ import {
 import { SHOPPING_CATEGORY } from './shoppingList';
 
 const NAV_ITEMS = [
-  { id: 'wawasan', label: 'Wawasan', icon: 'barChart', dropdown: null },
+  { id: 'wawasan', label: 'Wawasan', icon: 'barChart', dropdown: null, mobile: true },
   { id: 'agenda', label: 'Agenda', icon: 'calendar', dropdown: AGENDA_CATEGORIES },
   { id: 'expenses', label: 'Keuangan', icon: 'wallet', dropdown: FINANCE_CATEGORIES },
   { id: 'terjadwal', label: 'Tugas Terjadwal', icon: 'clock', dropdown: null },
   { id: 'family', label: 'Keluarga', icon: 'users', dropdown: FAMILY_CATEGORIES },
-  { id: 'notes', label: 'Catatan', icon: 'note', dropdown: NOTES_FILTERS },
-  { id: 'pengaturan', label: 'Pengaturan', icon: 'settings', dropdown: null },
+  { id: 'notes', label: 'Catatan', icon: 'note', dropdown: NOTES_FILTERS, mobile: true },
+  { id: 'pengaturan', label: 'Pengaturan', icon: 'settings', dropdown: null, mobile: true },
 ];
 
 export function Sidebar({
@@ -134,7 +134,7 @@ export function Sidebar({
               const isOpen = isDropdown && openKey === item.id;
 
               return (
-                <li key={item.id}>
+                <li key={item.id} className={item.mobile ? undefined : 'hidden lg:block'}>
                   <details open={isOpen} className="group">
                     {/* Trigger */}
                     <summary

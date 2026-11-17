@@ -276,7 +276,7 @@ export function ItemActions({ onEdit, onDelete, label = 'item', readOnly = false
 }
 
 /* Baris status draft offline: badge + tombol coba lagi / hapus. */
-function PendingRow({ item, onRetry, onDiscard }) {
+export function PendingRow({ item, onRetry, onDiscard }) {
   if (!item?.pending) return null;
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg bg-muted px-2.5 py-1.5">

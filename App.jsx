@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { Icon } from './components/Icon';
 import { Navigation } from './components/Navigation';
 import { Sidebar } from './components/Sidebar';
@@ -11,7 +11,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { RegisterScreen } from './components/RegisterScreen';
 import { AccountModal } from './components/AccountModal';
 import { ReceiptScanner } from './components/ReceiptScanner';
-import { Card, SectionHeader, EmptyState, ExpenseCard, IncomeCard, StatCard, FamilyList, initialsOf, Badge } from './components/ui';
+import { Card, SectionHeader, EmptyState, StatCard, FamilyList, initialsOf, Badge } from './components/ui';
 import ShoppingList from './components/ShoppingListComp';
 import Service from './components/ServiceComp';
 import SubscriptionsComp from './components/SubscriptionsComp';
@@ -27,6 +27,7 @@ import { toCalendarEvents } from './components/calendarEvents';
 import { GroupedBarChart, DonutChart, BarChart } from './components/charts';
 import { FamilyCalendar } from './components/Calendar';
 import { Timeline } from './components/Timeline';
+import { HistoryTimeline } from './components/HistoryTimeline';
 import { FormSheet } from './components/FormSheet';
 import { FamilyTree } from './components/FamilyTree';
 import { MemberDetailModal } from './components/MemberDetailModal';
@@ -60,7 +61,7 @@ const BUILD_TIME = typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : '';
 
 /* ---- Data kosong untuk fitur TANPA tabel backend (localStorage-only) ----
    Fitur yang ada pasangan backend (schedule, expenses, notes, budget)
-   dimuat dari API. Yang tidak ada pasangannya � mulai dari kosong;
+   dimuat dari API. Yang tidak ada pasangannya ï¿½ mulai dari kosong;
    Kakang menambah lewat UI (mis. tombol "+ Data" di halaman Keluarga). */
 const LOCAL_SEED = {
   family: [],
@@ -72,7 +73,7 @@ const LOCAL_SEED = {
   serviceHistory: [],
 };
 
-/* Guard migrasi tagihan localStorage → API: React StrictMode (dev) menjalankan
+/* Guard migrasi tagihan localStorage â†’ API: React StrictMode (dev) menjalankan
    effect dua kali; flag sinkron ini memastikan migrasi hanya berjalan sekali
    per muat halaman, bahkan sebelum await pertama selesai. */
 let tagihanMigrationStarted = false;
@@ -80,7 +81,7 @@ let tagihanMigrationStarted = false;
 /* ---- Computed data (derived from expenses, NOT stored) ---- */
 const pad2 = (n) => String(n).padStart(2, '0');
 
-/* Ubah VAPID public key base64-url → Uint8Array (untuk pushManager.subscribe). */
+/* Ubah VAPID public key base64-url â†’ Uint8Array (untuk pushManager.subscribe). */
 const urlBase64ToUint8Array = (base64) => {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4);
   const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -121,7 +122,7 @@ const computeWeekly = (expenses) => {
   const now = new Date();
   return ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((label, i) => ({
     label: label,
-    value: days[(i + 1) % 7], // Minggu=0, Senin=1, ... ? susun Senin�Minggu
+    value: days[(i + 1) % 7], // Minggu=0, Senin=1, ... ? susun Seninï¿½Minggu
   }));
 };
 
@@ -333,7 +334,7 @@ const SECTION_KEY = { agenda: 'schedule', expenses: 'expenses', income: 'income'
 const SECTION_LABEL = { agenda: 'Agenda', expenses: 'Pengeluaran', income: 'Pemasukan', tasks: 'Tugas', notes: 'Catatan', family: 'Keluarga' };
 const sectionItemLabel = (item) => item.title || item.description || item.name || 'Item';
 
-// Map baris tasks backend (snake_case) → bentuk frontend (camelCase).
+// Map baris tasks backend (snake_case) â†’ bentuk frontend (camelCase).
 const mapTask = (t) => ({
   id: t.id,
   title: t.title,
@@ -343,7 +344,7 @@ const mapTask = (t) => ({
   completed: !!t.completed,
 });
 
-// Map baris family_entries backend (snake_case) → bentuk frontend.
+// Map baris family_entries backend (snake_case) â†’ bentuk frontend.
 const mapFamilyEntry = (e) => ({
   id: e.id,
   title: e.title,
@@ -352,7 +353,7 @@ const mapFamilyEntry = (e) => ({
   tone: e.tone || 'gray',
 });
 
-// Map baris chores backend (snake_case) → bentuk frontend.
+// Map baris chores backend (snake_case) â†’ bentuk frontend.
 const mapChore = (c) => ({
   id: c.id,
   title: c.title,
@@ -364,7 +365,7 @@ const mapChore = (c) => ({
 // Kunci state frontend untuk masing-masing bagian family.
 const FAMILY_SECTION_KEY = { medis: 'familyMedical', dokumen: 'familyDocuments', kontak: 'familyContacts' };
 
-// Map baris service_history backend → bentuk frontend (dibaca ServiceComp).
+// Map baris service_history backend â†’ bentuk frontend (dibaca ServiceComp).
 const mapServiceHistory = (r) => ({
   id: r.id,
   date: r.tanggal,
@@ -674,7 +675,7 @@ const formatCurrencyShort = (value) => {
 const USER_KEY = 'bm-user';
 
 /* Token bisa berada di localStorage ("Ingat saya" dicentang) atau
-   sessionStorage (tidak dicentang) � baca keduanya. */
+   sessionStorage (tidak dicentang) ï¿½ baca keduanya. */
 const storedToken = () => {
   try {
     return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || null;
@@ -711,7 +712,7 @@ const clearUser = () => {
   }
 };
 
-// Status "sudah dibaca" notifikasi � kunci terpisah dari snapshot data karena
+// Status "sudah dibaca" notifikasi ï¿½ kunci terpisah dari snapshot data karena
 // ini keadaan tampilan, bukan data keluarga. Isinya daftar `id` notifikasi.
 const NOTIF_STORAGE_KEY = 'bayt-mustaqbal-notif-read-v1';
 
@@ -849,13 +850,14 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false);
   // entered = pengguna sudah melewati splash & berada di app (atau login screen)
   const [entered, setEntered] = useState(false);
-  // Filter kategori agenda (default: semua) � sinkron antara dropdown nav & chip di section
+  // Filter kategori agenda (default: semua) ï¿½ sinkron antara dropdown nav & chip di section
   const [agendaFilter, setAgendaFilter] = useState('semua');
   // Sub-tampilan Agenda: jadwal (daftar) | tugas | kalender keluarga
-  const [agendaMode, setAgendaMode] = useState('jadwal');
+  // Sub-tab Agenda: default Timeline (alur gabungan) saat halaman dibuka
+  const [agendaMode, setAgendaMode] = useState('timeline');
   // Filter anggota di tampilan Kalender: 'semua' | 'keluarga' | user_id
   const [memberFilter, setMemberFilter] = useState('semua');
-  // Filter kategori pengeluaran (default: semua) � pola sama dengan agenda
+  // Filter kategori pengeluaran (default: semua) ï¿½ pola sama dengan agenda
   const [financeFilter, setFinanceFilter] = useState('semua');
   const [incomeFilter, setIncomeFilter] = useState('semua');
   // Kategori budget yang dikelola pengguna (ditetapkan di menu Budget)
@@ -880,7 +882,7 @@ export default function App() {
     notConfigured: false,
   });
 
-// Perencanaan Impian & Tabungan — dikelola pengguna, terpisah dari budget kategori
+// Perencanaan Impian & Tabungan â€” dikelola pengguna, terpisah dari budget kategori
 // Setiap goal: { id, nama, targetAmount, currentAmount, targetDate, achieved, createdAt }
 const [goals, setGoals] = useState([]);
 
@@ -1024,7 +1026,7 @@ const deleteGoal = async (id) => {
   //
   // Data lama di localStorage ('bayt-mustaqbal-tagihans') dimigrasi SEKALI ke
   // API saat load pertama (bila API masih kosong), lalu ditandai selesai.
-  // localStorage lama TIDAK dihapus dan TIDAK ditulis lagi — hanya dipakai
+  // localStorage lama TIDAK dihapus dan TIDAK ditulis lagi â€” hanya dipakai
   // sebagai cadangan baca saat API tidak terjangkau.
   const STORAGE_KEY_TAGIHAN = 'bayt-mustaqbal-tagihans';
   const STORAGE_MIGRATED_TAGIHAN = 'bayt-mustaqbal-tagihans-migrated';
@@ -1080,7 +1082,7 @@ const deleteGoal = async (id) => {
         }
         if (alive) setTagihans(rows.map(normalizeTagihan));
       } catch (e) {
-        // API tidak terjangkau → pakai cadangan lokal (baca saja) supaya
+        // API tidak terjangkau â†’ pakai cadangan lokal (baca saja) supaya
         // pengingat & anggaran tetap punya data.
         console.warn('Tagihan pakai cadangan lokal:', e.message);
         if (alive) setTagihans(loadTagihans().map(normalizeTagihan));
@@ -1224,7 +1226,7 @@ const deleteGoal = async (id) => {
     }
   };
 
-  // Hasil OAuth Google: ?gcal=connected atau ?gcal=error&reason=…
+  // Hasil OAuth Google: ?gcal=connected atau ?gcal=error&reason=â€¦
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const result = params.get('gcal');
@@ -1250,7 +1252,7 @@ const deleteGoal = async (id) => {
     refreshGcalStatus();
   }, []);
 
-  // Hasil login Google: ?google=success&token=… atau ?google=error&reason=…
+  // Hasil login Google: ?google=success&token=â€¦ atau ?google=error&reason=â€¦
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const result = params.get('google');
@@ -1342,7 +1344,7 @@ const deleteGoal = async (id) => {
     }
   };
 
-  // Catat pembayaran tagihan (bisa parsial → status lunas bila sudah penuh)
+  // Catat pembayaran tagihan (bisa parsial â†’ status lunas bila sudah penuh)
   const catatPembayaran = async (tagihanId, amount) => {
     const tagihan = tagihans.find((t) => t.id === tagihanId);
     if (!tagihan) return;
@@ -1457,7 +1459,7 @@ const deleteGoal = async (id) => {
     placeholder: 'Tanpa dompet',
     options: accounts.filter((a) => a.user_id === currentUser?.id).map((a) => ({
       value: a.id,
-      label: `${a.nama}${a.bank ? ` (${a.bank})` : ''} · ${formatCurrency(a.saldo)}`,
+      label: `${a.nama}${a.bank ? ` (${a.bank})` : ''} Â· ${formatCurrency(a.saldo)}`,
     })),
   };
 
@@ -1473,13 +1475,13 @@ const deleteGoal = async (id) => {
   const [summaryMonth, setSummaryMonth] = useState(() => monthKeyOf(new Date()));
   // Sub-tampilan Keuangan: daftar pengeluaran | halaman Anggaran (50/30/20)
   // (financeMode dideklarasikan di atas bersama financeFilter/incomeFilter)
-  // Filter bagian keluarga (default: semua) � pola sama dengan agenda & keuangan
+  // Filter bagian keluarga (default: semua) ï¿½ pola sama dengan agenda & keuangan
   const [familyFilter, setFamilyFilter] = useState('semua');
   // Filter tugas: status (semua/belum/selesai) & prioritas (tinggi/sedang/rendah)
   const [taskFilter, setTaskFilter] = useState('semua');
   // Filter catatan: semua | penting (disematkan) | kategori
   const [noteFilter, setNoteFilter] = useState('semua');
-  // Pencarian catatan (judul + isi) � hanya berlaku di tab Catatan
+  // Pencarian catatan (judul + isi) ï¿½ hanya berlaku di tab Catatan
   const [noteQuery, setNoteQuery] = useState('');
   // Tab aktif Service (inventory/history)
   const [serviceActiveTab, setServiceActiveTab] = useState('history');
@@ -1497,7 +1499,7 @@ const deleteGoal = async (id) => {
   const [accountInitialTab, setAccountInitialTab] = useState('profil');
   // Preset "posisi dalam silsilah" saat AccountModal dibuka dari placeholder FamilyTree
   const [accountInitialGenerasi, setAccountInitialGenerasi] = useState(null);
-  // Data state � dimuat dari API + localStorage cache
+  // Data state ï¿½ dimuat dari API + localStorage cache
   const [data, setData] = useState(null);
 
   // Pilihan anggota agenda: canWrite melihat 'Keluarga' + semua anggota;
@@ -1724,12 +1726,12 @@ const deleteGoal = async (id) => {
         setAuthReady(true);
         return;
       }
-      // Dev: login lewat proxy Vite (/api → API produksi) agar sama-origin,
+      // Dev: login lewat proxy Vite (/api â†’ API produksi) agar sama-origin,
       // tidak terganggu CORS untuk origin localhost.
       (async () => {
         try {
           const apiBase = import.meta.env.VITE_API_URL || '/api';
-          // Proxy lokal Kadang terputus sesaat (ECONNRESET) → coba beberapa kali.
+          // Proxy lokal Kadang terputus sesaat (ECONNRESET) â†’ coba beberapa kali.
           let data = null;
           let lastErr = null;
           for (let attempt = 1; attempt <= 3 && !data; attempt += 1) {
@@ -1803,9 +1805,9 @@ const deleteGoal = async (id) => {
     setAuthChecking(true);
     auth.me()
       .then((user) => {
-        // Token valid � user sudah terautentikasi.
+        // Token valid ï¿½ user sudah terautentikasi.
         // Segarkan currentUser dari server: grup & peran bisa berubah
-        // (mis. Kepala Keluarga menurunkan peran anggota) � jangan pakai
+        // (mis. Kepala Keluarga menurunkan peran anggota) ï¿½ jangan pakai
         // snapshot localStorage yang mungkin basi.
         const fresh = {
           id: user.id,
@@ -1854,7 +1856,7 @@ const deleteGoal = async (id) => {
       });
   }, []);
 
-  // Migrasi sekali: tasks lama dari localStorage → backend (kalau backend masih
+  // Migrasi sekali: tasks lama dari localStorage â†’ backend (kalau backend masih
   // kosong). Cegah data yang sudah dipakai hilang setelah pindah ke D1.
   useEffect(() => {
     if (!isLoggedIn || !authReady || !data) return;
@@ -1899,7 +1901,7 @@ const deleteGoal = async (id) => {
         });
         if (!cancelled) await pushApi.subscribe(sub);
       } catch {
-        /* izin ditolak / tidak didukung — abaikan */
+        /* izin ditolak / tidak didukung â€” abaikan */
       }
     })();
     return () => { cancelled = true; };
@@ -2099,7 +2101,7 @@ const deleteGoal = async (id) => {
   }, [isLoggedIn, authReady]);
 
   // Effect: auto-create scheduled expenses saat app mount
-  // DIPINDAHKAN ke cron backend (createScheduledTransactions) — di sini
+  // DIPINDAHKAN ke cron backend (createScheduledTransactions) â€” di sini
   // dinonaktifkan supaya tidak duplikasi. Cron membuat transaksi otomatis
   // pada tanggal jatuh tempo tanpa perlu app terbuka.
   // (Efek lama dihapus: loop tpl + txn.create di frontend)
@@ -2211,14 +2213,14 @@ const deleteGoal = async (id) => {
   }, [entered]);
 
   // Tombol tema di header: lompat ke kebalikan tema yang sedang terlihat
-  // (dari 'system' pun jadi pilihan tegas light/dark � tidak membingungkan).
+  // (dari 'system' pun jadi pilihan tegas light/dark ï¿½ tidak membingungkan).
   const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
 
   // Toast: tambah/ubah = konfirmasi singkat; hapus = tawarkan "Urungkan".
   const pushToast = (t) => setToast({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...t });
   const dismissToast = (id) => setToast((prev) => (prev && prev.id === id ? null : prev));
 
-  // Toggle selesai tugas — update state (optimistic) + sinkron ke backend.
+  // Toggle selesai tugas â€” update state (optimistic) + sinkron ke backend.
   const toggleTask = (taskId) => {
     const target = dataRef.current.tasks.find((t) => t.id === taskId);
     if (!target) return;
@@ -2230,7 +2232,7 @@ const deleteGoal = async (id) => {
     tasksApi.update(taskId, { completed: nextCompleted }).catch(() => {});
   };
 
-  // Reset data ke seed (tombol di LoginScreen � hanya untuk dev)
+  // Reset data ke seed (tombol di LoginScreen ï¿½ hanya untuk dev)
   const resetData = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -2448,7 +2450,7 @@ const deleteGoal = async (id) => {
     saveData(next);
   };
 
-  // Tambah item � untuk section yang terhubung API, panggil API dulu,
+  // Tambah item ï¿½ untuk section yang terhubung API, panggil API dulu,
   // lalu update state. Untuk section lokal (tasks, family), update state langsung.
   const addItem = async (section, values) => {
     // Offline: uang dan catatan masuk antrean supaya tersinkron saat online.
@@ -2539,7 +2541,7 @@ const deleteGoal = async (id) => {
     return { id };
   };
 
-  // Ubah item � untuk section yang terhubung API, panggil API.
+  // Ubah item ï¿½ untuk section yang terhubung API, panggil API.
   const updateItem = async (section, id, values) => {
     const key = SECTION_KEY[section];
     const current = dataRef.current;
@@ -2634,7 +2636,7 @@ const deleteGoal = async (id) => {
     }
   };
 
-  // Simpan pos anggaran (tambah/ubah) � keuangan settings
+  // Simpan pos anggaran (tambah/ubah) ï¿½ keuangan settings
   const savePos = async (values, posId) => {
     const current = dataRef.current;
     const label = String(values.label || '').trim();
@@ -2656,7 +2658,7 @@ const deleteGoal = async (id) => {
       try {
         await settingsApi.upsert('budget_pos', JSON.stringify(pos));
       } catch (err) {
-        /* gagal sinkron � tetap tersimpan di localStorage */
+        /* gagal sinkron ï¿½ tetap tersimpan di localStorage */
       }
     }
   };
@@ -2773,7 +2775,7 @@ const deleteGoal = async (id) => {
     return true;
   };
 
-  // Bottom sheet "Tambah/Ubah" — null = tertutup, selain itu = kunci section.
+  // Bottom sheet "Tambah/Ubah" â€” null = tertutup, selain itu = kunci section.
   const [sheetOpen, setSheetOpen] = useState(null);
   // Mode ubah: { section, id } item yang sedang diedit + nilai awal formnya.
   const [editing, setEditing] = useState(null);
@@ -2937,7 +2939,7 @@ const deleteGoal = async (id) => {
       }
       pushToast({ message: 'Template pengeluaran terjadwal disimpan', duration: 2500 });
     } catch (e) {
-      // Offline / gagal sinkron → simpan lokal sementara, tanpa hilang.
+      // Offline / gagal sinkron â†’ simpan lokal sementara, tanpa hilang.
       console.warn('Gagal sinkron template terjadwal:', e.message);
       pushToast({ message: 'Template disimpan Lokal (gagal sinkron)', duration: 4000, tone: 'warning' });
     }
@@ -3307,7 +3309,7 @@ const deleteGoal = async (id) => {
       const expensePayload = {
         id: expenseDraftId,
         category: 'transportasi',
-        description: `${vals.kategori === 'ganti_part' ? 'Ganti Part' : vals.kategori === 'perbaikan' ? 'Perbaikan' : 'Service'} · ${(dataRef.current.vehicles || []).find((v) => v.id === vehicleId)?.nama || 'Kendaraan'}`,
+        description: `${vals.kategori === 'ganti_part' ? 'Ganti Part' : vals.kategori === 'perbaikan' ? 'Perbaikan' : 'Service'} Â· ${(dataRef.current.vehicles || []).find((v) => v.id === vehicleId)?.nama || 'Kendaraan'}`,
         amount: Number(vals.total),
         date: vals.date,
         bucket: 'auto',
@@ -3368,12 +3370,12 @@ const deleteGoal = async (id) => {
     pushToast({ message: 'Riwayat service diperbarui', duration: 2500 });
   };
 
-  // Notifikasi turunan data (tanpa backend) � lihat components/notifications.js.
+  // Notifikasi turunan data (tanpa backend) ï¿½ lihat components/notifications.js.
   // Dihitung ulang tiap data berubah, jadi isinya ikut berubah, tidak basi.
   const notifications = useMemo(() => data ? buildNotifications(data, formatCurrencyShort) : [], [data]);
 
   // Simpan status "sudah dibaca" sekaligus buang id notifikasi yang sudah tidak
-  // ada � supaya daftarnya tidak menumpuk selamanya di localStorage.
+  // ada ï¿½ supaya daftarnya tidak menumpuk selamanya di localStorage.
   const saveNotifRead = (ids) => {
     const alive = new Set(notifications.map((n) => n.id));
     const next = ids.filter((id) => alive.has(id));
@@ -3435,7 +3437,7 @@ const deleteGoal = async (id) => {
     setEntered(true);
   };
 
-  // Logout � clear token + kembali ke login screen
+  // Logout ï¿½ clear token + kembali ke login screen
   const handleLogout = () => {
     // Hapus langganan push (sebelum token dibersihkan).
     try {
@@ -3495,17 +3497,19 @@ const deleteGoal = async (id) => {
     setActiveSection('notes');
   };
 
-  // Generate calendar events from all data types — WAJIB di body component,
+  // Generate calendar events from all data types â€” WAJIB di body component,
   // bukan di dalam case switch: hook conditional bikin React crash
   // ("Rendered more hooks") saat pengguna berpindah section dari Agenda.
-  const calendarEvents = useMemo(
-    () => toCalendarEvents({ ...data, bills: tagihans }),
+  // Kalender hanya menampilkan yang bersifat jadwal: agenda terjadwal +
+  // tagihan jatuh tempo. Pengeluaran/pemasukan biasa tidak masuk.
+  const tagihanEvents = useMemo(
+    () => toCalendarEvents({ ...data, bills: tagihans }).filter((e) => e.category === 'tagihan'),
     [data, tagihans]
   );
 
   // ---- Daftar Belanja (catatan kategori 'belanja') ----
   // Daftar belanja mingguan & bulanan dikelola sebagai catatan khusus
-  // ("Daftar Belanja Pekan · YYYY-Www" / "Daftar Belanja · YYYY-MM");
+  // ("Daftar Belanja Pekan Â· YYYY-Www" / "Daftar Belanja Â· YYYY-MM");
   // item disimpan sebagai JSON di `body`.
   const shoppingMonthKey = () => monthKeyOf(new Date());
   // Pekan ISO berjalan (Senin-Minggu), dipakai judul catatan mingguan.
@@ -3683,7 +3687,8 @@ const deleteGoal = async (id) => {
           .map((chip) => ({ label: chip.label, color: chip.color }));
 
         // calendarEvents sudah dihitung di body component (lihat useMemo di
-        // atas renderSection) — hook tidak boleh di dalam case switch.
+        // atas renderSection) â€” sekarang hanya tagihan jatuh tempo.
+        // atas renderSection) â€” hook tidak boleh di dalam case switch.
 
         return (
           <section className="app-fade-in">
@@ -3708,7 +3713,7 @@ const deleteGoal = async (id) => {
                   : {
                       icon: 'calendar',
                       title: activeMeta.label,
-                      subtitle: `${(filtered || []).length} jadwal • ${(calendarEvents || []).length} aktivitas`,
+                      subtitle: `${(filtered || []).length} agenda â€¢ ${tagihanEvents.length} tagihan`,
                       actionLabel: 'Tambah',
                       onAction: () => openAdd('agenda'),
                     })}
@@ -3759,7 +3764,7 @@ const deleteGoal = async (id) => {
 
             {agendaMode === 'tugas' ? (
               <>
-                {/* Filter tugas � status & prioritas (chip di dalam sub-tampilan Tugas) */}
+                {/* Filter tugas ï¿½ status & prioritas (chip di dalam sub-tampilan Tugas) */}
                 <div className="mb-5 flex flex-wrap gap-2" role="group" aria-label="Filter tugas">
                   {TASK_FILTERS.map((cat) => {
                     const active = taskFilter === cat.id;
@@ -3826,15 +3831,15 @@ const deleteGoal = async (id) => {
                   <FamilyCalendar
                     items={agendaForCalendar}
                     tasks={data.tasks}
-                    events={calendarEvents}
+                    events={tagihanEvents}
                     memberLegend={agendaMemberLegend}
                     onEventClick={(event) => {
                 const { type, item } = event.data;
                 if (type === 'tagihan') {
-                  // Tagihan belum punya FormSheet sendiri → ringkasan singkat dulu.
+                  // Tagihan belum punya FormSheet sendiri â†’ ringkasan singkat dulu.
                   const lunas = item.amount > 0 && (Number(item.dibayar) || 0) >= item.amount;
                   pushToast({
-                    message: `${item.nama} • jatuh tempo ${item.dueDate} • ${
+                    message: `${item.nama} â€¢ jatuh tempo ${item.dueDate} â€¢ ${
                       lunas ? 'sudah lunas' : `sisa ${formatCurrency(item.amount - (item.dibayar || 0))}`
                     }`,
                     duration: 4000,
@@ -3924,7 +3929,7 @@ const deleteGoal = async (id) => {
         );
         const incomeTotal = filteredIncome.reduce((sum, item) => sum + item.amount, 0);
 
-        // Bulan berjalan � dipakai header & notifikasi pengingat
+        // Bulan berjalan ï¿½ dipakai header & notifikasi pengingat
         const monthKey = `${new Date().getFullYear()}-${pad2(new Date().getMonth() + 1)}`;
         const incomeThisMonth = incomeList
           .filter((i) => (i.date || '').startsWith(monthKey))
@@ -3975,7 +3980,7 @@ const deleteGoal = async (id) => {
                 <SectionHeader
                   icon="wallet"
                   title={activeMeta.label}
-                  subtitle={`Total: ${formatCurrencyShort(filteredTotal)} · anggaran ${formatCurrencyShort(budget.income)}`}
+                  subtitle={`Total: ${formatCurrencyShort(filteredTotal)} Â· anggaran ${formatCurrencyShort(budget.income)}`}
                   actionLabel={canWrite ? 'Tambah' : undefined}
                   actionTone="accent"
                   actionIconOnly
@@ -4000,7 +4005,7 @@ const deleteGoal = async (id) => {
             </div>
 
 
-            {/* Chip filter kategori pengeluaran — satu baris scroll horizontal */}
+            {/* Chip filter kategori pengeluaran â€” satu baris scroll horizontal */}
             {financeMode === 'pengeluaran' && (
               <div className="mb-5 flex flex-nowrap gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter kategori pengeluaran">
                 {FINANCE_CATEGORIES.map((cat) => {
@@ -4025,7 +4030,7 @@ const deleteGoal = async (id) => {
               </div>
             )}
 
-            {/* Chip filter kategori pemasukan — satu baris scroll horizontal, sama dengan pengeluaran */}
+            {/* Chip filter kategori pemasukan â€” satu baris scroll horizontal, sama dengan pengeluaran */}
             {financeMode === 'pemasukan' && (
               <div className="mb-5 flex flex-nowrap gap-2 overflow-x-auto pb-1" role="group" aria-label="Filter kategori pemasukan">
                 {INCOME_CATEGORIES.map((cat) => {
@@ -4086,7 +4091,7 @@ const deleteGoal = async (id) => {
                   </button>
                 </div>
 
-                {/* Banner status anggaran � ikon + teks + warna (bukan warna saja) */}
+                {/* Banner status anggaran ï¿½ ikon + teks + warna (bukan warna saja) */}
                 {anggaranStatus.level === 'belum' ? (
                   <p className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-muted px-3 py-2.5 text-sm text-mutedfg">
                     <Icon name="target" size={16} className="shrink-0" />
@@ -4182,20 +4187,17 @@ const deleteGoal = async (id) => {
                   message="Catat gaji, bonus, side job, atau pemasukan lain lewat tombol Tambah."
                 />
               ) : (
-                <div className="stagger flex flex-col gap-2">
-                  {filteredIncome.map((item) => (
-                    <IncomeCard
-                      key={item.id}
-                      item={item}
-                      formatCurrency={formatCurrency}
-                      onEdit={(it) => openEdit('income', it)}
-                      onDelete={(it) => deleteItem('income', it)}
-                      onRetry={(it) => retryOutboxOp(it.id)}
-                      onDiscard={(it) => discardOutboxOp(it.id)}
-                      readOnly={!canWrite}
-                    />
-                  ))}
-                </div>
+                <HistoryTimeline
+                  items={filteredIncome}
+                  formatCurrency={formatCurrency}
+                  onEdit={(it) => openEdit('income', it)}
+                  readOnly={!canWrite}
+                  tone="success"
+                  categories={INCOME_CATEGORIES}
+                  amountPrefix="+"
+                  onRetry={(item) => retryOutboxOp(item.id)}
+                  onDiscard={(item) => discardOutboxOp(item.id)}
+                />
               )
             ) : filtered.length === 0 ? (
               <EmptyState
@@ -4204,20 +4206,16 @@ const deleteGoal = async (id) => {
                 message={financeFilter === 'semua' ? 'Catat pengeluaran lewat tombol Tambah.' : `Tidak ada transaksi kategori ${activeMeta?.label || financeFilter}. Pilih kategori lain, atau catat pengeluaran baru.`}
               />
             ) : (
-              <div className="stagger flex flex-col gap-2">
-                {filtered.map((item) => (
-                  <ExpenseCard
-                    key={item.id}
-                    item={item}
-                    formatCurrency={formatCurrency}
-                    onEdit={(it) => openEdit('expenses', it)}
-                    onDelete={(it) => deleteItem('expenses', it)}
-                    onRetry={(it) => retryOutboxOp(it.id)}
-                    onDiscard={(it) => discardOutboxOp(it.id)}
-                    readOnly={!canWrite}
-                  />
-                ))}
-              </div>
+              <HistoryTimeline
+                items={filtered}
+                formatCurrency={formatCurrency}
+                onEdit={(it) => openEdit('expenses', it)}
+                readOnly={!canWrite}
+                tone="brand"
+                categories={FINANCE_CATEGORIES}
+                onRetry={(item) => retryOutboxOp(item.id)}
+                onDiscard={(item) => discardOutboxOp(item.id)}
+              />
             )}
           </section>
         );
@@ -4288,7 +4286,7 @@ const deleteGoal = async (id) => {
               onAction={() => openAdd('notes')}
             />
 
-            {/* Pencarian catatan (judul + isi) � kotak cari 48px, ikon di kiri */}
+            {/* Pencarian catatan (judul + isi) ï¿½ kotak cari 48px, ikon di kiri */}
             <div className="relative mb-4">
               <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-mutedfg" aria-hidden="true">
                 <Icon name="search" size={17} />
@@ -4344,7 +4342,7 @@ const deleteGoal = async (id) => {
           { id: 'service', label: 'Services', icon: 'wrench' },
           { id: 'tabungan', label: 'Whishlist', icon: 'piggyBank' },
           { id: 'belanja', label: 'Belanja', icon: 'shoppingBag' },
-          { id: 'langganan', label: 'Langganan', icon: 'repeat' },
+          { id: 'langganan', label: 'Langganan', icon: 'card' },
           { id: 'utang', label: 'Utang', icon: 'handCoins' },
         ];
         return (
@@ -4429,7 +4427,7 @@ const deleteGoal = async (id) => {
                           <p className="truncate text-sm font-medium text-ink">{tpl.title || tpl.name}</p>
                           <p className="text-[11px] text-mutedfg">
                             {tpl.amount != null ? formatCurrency(tpl.amount) : ''}
-                            {tpl.frequency ? ` • ${tpl.frequency}` : ''}
+                            {tpl.frequency ? ` â€¢ ${tpl.frequency}` : ''}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
@@ -4634,7 +4632,7 @@ const deleteGoal = async (id) => {
   if (authChecking || !isLoggedIn || !entered) {
     return (
       <>
-        {/* Splash tetap muncul � berada sebelum early-return */}
+        {/* Splash tetap muncul ï¿½ berada sebelum early-return */}
         {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
         {authChecking ? null : (
           <LoginScreen
@@ -4787,7 +4785,7 @@ const deleteGoal = async (id) => {
             <span>Mode baca-saja: hanya Kepala Keluarga, Suami &amp; Istri yang bisa menambah atau mengubah data keluarga.</span>
           </div>
         )}
-        <Suspense fallback={<div className="py-10 text-center text-sm text-mutedfg">Memuat…</div>}>
+        <Suspense fallback={<div className="py-10 text-center text-sm text-mutedfg">Memuatâ€¦</div>}>
           {renderSection()}
         </Suspense>
       </main>
@@ -4802,7 +4800,7 @@ const deleteGoal = async (id) => {
         />
       )}
 
-      {/* Bottom sheet "Tambah/Ubah" � form per section (mode edit = nilai terisi) */}
+      {/* Bottom sheet "Tambah/Ubah" ï¿½ form per section (mode edit = nilai terisi) */}
       <FormSheet
         open={!!sheetOpen}
         title={
@@ -4821,7 +4819,7 @@ const deleteGoal = async (id) => {
         onDelete={editing ? sheetDelete : undefined}
       />
 
-      {/* RegisterScreen � hanya bisa diakses dari halaman Akun (master only) */}
+      {/* RegisterScreen ï¿½ hanya bisa diakses dari halaman Akun (master only) */}
       {registerOpen && (
         <RegisterScreen
           onLogin={handleLogin}
@@ -4840,7 +4838,7 @@ const deleteGoal = async (id) => {
       {/* Toast: konfirmasi ringkas + "Urungkan" untuk hapus */}
       <Toast toast={toast} onDismiss={dismissToast} />
 
-      {/* Splash screen � tampil setiap buka app, lepas setelah fade-out */}
+      {/* Splash screen ï¿½ tampil setiap buka app, lepas setelah fade-out */}
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
     </div>
   );
