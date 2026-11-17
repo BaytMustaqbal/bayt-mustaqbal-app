@@ -1,4 +1,4 @@
-const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const AI_MODEL = '@cf/google/gemma-4-26b-a4b-it';
 
 export function buildChatPrompt(personaName) {
   const identity = personaName
