@@ -503,6 +503,21 @@ async function checkWaReminders(env: Env): Promise<void> {
   if (list.length > 0) console.log(`WA reminders sent: ${list.length}`);
 }
 
+/** Hapus sesi kedaluwarsa & sesi yang sudah dicabut lebih dari 7 hari. */
+async function purgeOldSessions(env: Env): Promise<void> {
+  const now = new Date().toISOString();
+  const voidCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const res = await env.DB.prepare(
+      `DELETE FROM sessions WHERE expires_at <= ? OR (void IS NOT NULL AND void <= ?)`
+    ).bind(now, voidCutoff).run();
+    const deleted = res.meta?.changes ?? 0;
+    if (deleted > 0) console.log(`Sessions purged: ${deleted}`);
+  } catch (e) {
+    console.warn('Session purge gagal:', (e as Error).message);
+  }
+}
+
 export async function handleCron(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
   const now = new Date();
   const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -554,9 +569,10 @@ export async function handleCron(event: ScheduledEvent, env: Env, ctx: Execution
     }
   }
 
-  // Harian 07:00 WIB — rekap mingguan tiap Senin
-  if (event.cron === '0 0 * * *' && wib.getUTCDay() === 1) {
-    await sendWeeklyRecap(env);
+  // Harian 07:00 WIB — bersihkan sesi kedaluwarsa/dicabut >7 hari + rekap mingguan tiap Senin
+  if (event.cron === '0 0 * * *') {
+    await purgeOldSessions(env);
+    if (wib.getUTCDay() === 1) await sendWeeklyRecap(env);
   }
 
   // 19:00 WIB — peringatan ambang anggaran + aturan otomatis

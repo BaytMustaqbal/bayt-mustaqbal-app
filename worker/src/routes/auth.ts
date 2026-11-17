@@ -343,8 +343,8 @@ authRoutes.get('/sessions', async (c) => {
   const userId = c.get('userId');
   const rows = await c.env.DB.prepare(
     `SELECT id, jti, device, created_at, last_seen, expires_at
-     FROM sessions WHERE user_id = ? AND void IS NULL ORDER BY created_at DESC`
-  ).bind(userId).all();
+     FROM sessions WHERE user_id = ? AND void IS NULL AND expires_at > ? ORDER BY created_at DESC`
+  ).bind(userId, new Date().toISOString()).all();
   return c.json({ ok: true, data: rows.results || [], error: null });
 });
 
