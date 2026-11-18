@@ -83,3 +83,40 @@ export function budgetStatus(expense, budgetIncome) {
   const level = expense > total ? 'lewat' : pct >= 80 ? 'hati-hati' : 'aman';
   return { level, pct, sisa: total - expense };
 }
+
+/** Key bulan YYYY-MM dari sebuah Date. */
+export const monthKeyOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+
+/** Nama bulan panjang (mis. "November 2026"). */
+export const monthName = (d) => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d);
+
+/** Nama bulan panjang dari key "YYYY-MM". */
+export const monthNameLong = (key) => {
+  const [y, m] = String(key).split('-').map(Number);
+  if (!y || !m) return monthName(new Date());
+  return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(y, m - 1, 1));
+};
+
+/** Tren berpasangan 6 bulan TERAKHIR dari bulan acuan (bukan selalu bulan ini),
+    supaya Kakang bisa meninjau bulan lalu lengkap dengan konteks 6 bulannya. */
+export const buildPairedTrend = (expenses, income, endKey) => {
+  const [y, m] = String(endKey).split('-').map(Number);
+  const sumBy = (list) => {
+    const t = {};
+    (list || []).forEach((i) => {
+      if (!i) return;
+      const k = (i.date || '').slice(0, 7);
+      if (k) t[k] = (t[k] || 0) + (Number(i.amount) || 0);
+    });
+    return t;
+  };
+  const te = sumBy(expenses);
+  const ti = sumBy(income);
+  const out = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(y, m - 1 - i, 1);
+    const key = monthKeyOf(d);
+    out.push({ label: monthLabel(d), key, income: ti[key] || 0, expense: te[key] || 0 });
+  }
+  return out;
+};
