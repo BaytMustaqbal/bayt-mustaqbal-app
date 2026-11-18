@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Icon } from './Icon';
-import { Badge, CTA_CLASS, EmptyState } from './ui';
+import { Badge, CTA_CLASS, EmptyState, CurrencyInput } from './ui';
 import { useFocusTrap } from './useFocusTrap';
 
 const inputCls =
@@ -146,7 +146,7 @@ function TxnForm({ initial, categories = [], accounts = [], vehicles = [], onCan
         <label className="mb-1 block text-xs font-semibold text-mutedfg">
           {f.type === 'service' ? 'Biaya perkiraan (Rp)' : 'Nominal perkiraan (Rp)'}
         </label>
-        <input type="number" inputMode="decimal" min="0" value={f.amount} onChange={set('amount')} placeholder="0" className={inputCls} />
+        <CurrencyInput value={Number(f.amount) || 0} onChange={(n) => setF((prev) => ({ ...prev, amount: String(n) }))} placeholder="Rp 0" className={inputCls} />
       </div>
 
       {f.type === 'service' && (
@@ -250,7 +250,7 @@ function PurchaseForm({ item, formatCurrency, onCancel, onSave }) {
       </p>
       <div>
         <label className="mb-1 block text-xs font-semibold text-mutedfg">{isService ? 'Biaya (Rp)' : 'Nominal (Rp)'}</label>
-        <input type="number" inputMode="decimal" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} />
+        <CurrencyInput value={Number(amount) || 0} onChange={(n) => setAmount(String(n))} className={inputCls} />
         <p className="mt-1 text-[11px] text-mutedfg">
           {isService ? 'Tercatat di riwayat service' : 'Tercatat sebagai pengeluaran'}
           {formatCurrency ? ` ${formatCurrency(Number(amount) || 0)}` : ''}.

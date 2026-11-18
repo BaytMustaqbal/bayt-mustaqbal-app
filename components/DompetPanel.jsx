@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Icon } from './Icon';
-import { CTA_CLASS } from './ui';
+import { CTA_CLASS, CurrencyInput } from './ui';
 import { accountApi } from '../services/client';
 
 const fmt = (n) => 'Rp ' + (Math.round(Number(n) || 0)).toLocaleString('id-ID');
@@ -178,7 +178,7 @@ export function DompetPanel({ accounts = [], users = [], canWrite = true, onChan
           </div>
           <label className="block">
             <span className="mb-1 block text-[10px] font-semibold uppercase text-mutedfg">Saldo {editId ? '(koreksi manual)' : 'awal'}</span>
-            <input value={saldo} onChange={(e) => setSaldo(e.target.value)} type="number" min="0" inputMode="decimal" placeholder="0" className={inputCls} aria-label="Saldo" />
+            <CurrencyInput value={Number(saldo) || 0} onChange={(n) => setSaldo(String(n))} placeholder="0" className={inputCls} aria-label="Saldo" />
           </label>
           {error && <p className="text-xs font-medium text-danger">{error}</p>}
           <div className="flex justify-end gap-2">
@@ -201,7 +201,7 @@ export function DompetPanel({ accounts = [], users = [], canWrite = true, onChan
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.nama} · {ownerName(a.user_id)}</option>)}
             </select>
           </div>
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" min="0" inputMode="decimal" placeholder="Nominal (Rp)" className={inputCls} aria-label="Nominal transfer" />
+          <CurrencyInput value={Number(amount) || 0} onChange={(n) => setAmount(String(n))} placeholder="Nominal (Rp)" className={inputCls} aria-label="Nominal transfer" />
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan (opsional)" className={inputCls} aria-label="Catatan transfer" />
           {transferMsg && <p className={`text-xs font-medium ${transferMsg === 'Transfer berhasil' ? 'text-green' : 'text-danger'}`}>{transferMsg}</p>}
           <div className="flex justify-end">

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { debtApi } from '../services/client';
-import { Card, SectionHeader, EmptyState, Badge, CTA_CLASS } from './ui';
+import { Card, SectionHeader, EmptyState, Badge, CTA_CLASS, CurrencyInput } from './ui';
 import { Icon } from './Icon';
 
 /** Utang-Piutang keluarga — mandiri (fetch + CRUD via debtApi). */
@@ -124,15 +124,7 @@ export default function DebtComp({ users = [], canWrite = true, formatCurrency }
               className="input-field min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3.5 text-sm text-ink outline-none focus:border-brand"
             />
             <div className="grid grid-cols-2 gap-2.5">
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Jumlah"
-                className="input-field min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand"
-              />
+              <CurrencyInput value={Number(amount) || 0} onChange={(n) => setAmount(String(n))} placeholder="Jumlah" className="input-field min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand" />
               <select value={lenderId} onChange={(e) => setLenderId(e.target.value)} className="input-field min-h-[44px] w-full rounded-xl border border-line bg-canvas px-3 text-sm text-ink outline-none focus:border-brand">
                 <option value="">Memberi (opsional)</option>
                 {memberOptions(borrowerId)}

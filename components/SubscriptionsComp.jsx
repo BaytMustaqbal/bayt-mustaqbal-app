@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Icon } from './Icon';
-import { Badge, CTA_CLASS, EmptyState } from './ui';
+import { Badge, CTA_CLASS, EmptyState, CurrencyInput } from './ui';
 import { useFocusTrap } from './useFocusTrap';
 
 const CATEGORIES = [
@@ -64,7 +64,7 @@ function SubForm({ initial, onCancel, onSave }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs font-semibold text-mutedfg">Nominal (Rp)</label>
-              <input type="number" inputMode="decimal" min="0" value={f.amount} onChange={set('amount')} placeholder="0" className={inputCls} />
+              <CurrencyInput value={Number(f.amount) || 0} onChange={(n) => setF((prev) => ({ ...prev, amount: String(n) }))} placeholder="Rp 0" className={inputCls} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-mutedfg">Tanggal tagih</label>
