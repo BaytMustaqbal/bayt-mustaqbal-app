@@ -259,11 +259,12 @@ export const calTransform = {
     category: evt.category || 'keluarga',
   }),
   toPayload: (item) => ({
+    ...(typeof item.id === 'string' && /^[0-9a-zA-Z_-]{8,64}$/.test(item.id) ? { id: item.id } : {}),
     title: item.title,
     date: item.date,
     time: item.time || null,
     category: item.category || null,
-    member_id: (item.member && item.member !== 'Keluarga' && item.member !== 'keluarga') ? item.member : null,
+    member_id: (item.memberId && item.memberId !== 'Keluarga' && item.memberId !== 'keluarga') ? item.memberId : null,
     description: item.description || null,
   }),
 };

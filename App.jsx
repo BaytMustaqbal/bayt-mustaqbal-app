@@ -174,7 +174,6 @@ const buildDataBundle = (apiData, currentUser) => {
 import { DEFAULT_POS, DEFAULT_RATIOS, DEFAULT_MONTH } from './components/budget';
 
 // ---- Konfigurasi form "Tambah" per section (dipakai FormSheet) ----
-const MEMBER_PEOPLE = ['Rezki YT', 'Hilda AK', 'RAGASUCI', 'RAJABRANA'];
 const memberOptions = (list) => list.map((m) => ({ value: m, label: m }));
 
 const todayKey = () => {
@@ -1370,6 +1369,30 @@ const deleteGoal = async (id) => {
   const [toast, setToast] = useState(null);
   // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
   const [notifRead, setNotifRead] = useState(readNotifRead);
+
+  // Sinkronkan status "sudah dibaca" notifikasi per grup (settings key
+  // 'notif_read_ids') ke state saat login / user berubah. Peran baca-saja
+  // jatuh ke cache localStorage (tidak bisa menulis settings).
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser?.id) return;
+    let alive = true;
+    settingsApi
+      .fetchAll()
+      .then((rows) => {
+        if (!alive) return;
+        const row = Array.isArray(rows) ? rows.find((s) => s.key === 'notif_read_ids') : null;
+        if (row?.value) {
+          try {
+            const parsed = JSON.parse(row.value);
+            if (Array.isArray(parsed)) setNotifRead(parsed.filter((x) => typeof x === 'string'));
+          } catch {
+            /* biarkan cache lokal */
+          }
+        }
+      })
+      .catch(() => { /* offline: pakai cache lokal */ });
+    return () => { alive = false; };
+  }, [isLoggedIn, currentUser?.id]);
   // Tab aktif di halaman "Tugas Terjadwal" (pengeluaran/tabungan/belanja/service)
   const [terjadwalTab, setTerjadwalTab] = useState('pengeluaran');
   // Periode daftar belanja: 'mingguan' | 'bulanan'.
@@ -1460,7 +1483,7 @@ const deleteGoal = async (id) => {
             { value: 'low', label: 'Rendah' },
           ],
         },
-        { key: 'assignedTo', label: 'Penanggung jawab', type: 'select', required: true, defaultValue: MEMBER_PEOPLE[0], options: memberOptions(MEMBER_PEOPLE) },
+        { key: 'assignedTo', label: 'Penanggung jawab', type: 'select', required: true, defaultValue: ((data?.users || [])[0]?.nickname || (data?.users || [])[0]?.name || (data?.users || [])[0]?.nama || 'Rezki YT'), options: ((data?.users || []).length ? (data?.users || []).map((u) => ({ value: u.nickname || u.name || u.nama, label: u.nickname || u.name || u.nama })) : memberOptions(['Rezki YT', 'Hilda AK', 'RAGASUCI', 'RAJABRANA'])) },
       ],
     },
     notes: {
@@ -1844,6 +1867,8 @@ const deleteGoal = async (id) => {
   const sendOutboxOp = async (op) => {
     if (op.kind === 'note') return notesApi.create(op.draft, currentUser);
     if (op.kind === 'service') return serviceHistoryApi.create({ ...(op.payload || {}), id: op.opId });
+    if (op.kind === 'agenda') return cal.create(op.draft);
+    if (op.kind === 'task') return tasksApi.create(op.draft);
     return txn.create(op.draft);
   };
 
@@ -2335,13 +2360,14 @@ const deleteGoal = async (id) => {
   // lalu update state. Untuk section lokal (tasks, family), update state langsung.
   const addItem = async (section, values) => {
     // Offline: uang dan catatan masuk antrean supaya tersinkron saat online.
-    const canQueue = section === 'expenses' || section === 'income' || section === 'notes';
+    const canQueue = section === 'expenses' || section === 'income' || section === 'notes' || section === 'agenda' || section === 'tasks';
     // UUID dibuat sebelum POST pertama supaya kalau respons hilang (jaringan
     // putus setelah server menyimpan), kirim ulang memakai id yang sama.
     const draftId = canQueue ? newOpId() : null;
     const queueLocal = (forcedId) => {
       const draft = buildLocalItem(section, values, null);
-      const item = queueDraft(section === 'notes' ? 'note' : 'txn', section, draft, undefined, forcedId || draftId);
+      const kind = section === 'notes' ? 'note' : section === 'agenda' ? 'agenda' : section === 'tasks' ? 'task' : 'txn';
+      const item = queueDraft(kind, section, draft, undefined, forcedId || draftId);
       if (!item) {
         pushToast({ message: 'Belum masuk sesi. Coba lagi setelah login.', duration: 3000, tone: 'danger' });
         return;
@@ -2365,7 +2391,7 @@ const deleteGoal = async (id) => {
 
     try {
       if (section === 'agenda') {
-        const resultRaw = await cal.create({ title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member });
+        const resultRaw = await cal.create({ id: draftId, title: values.title, date: values.date, time: values.time || '08:00', category: values.category, member: values.member });
         addItemToState(section, {
           ...resultRaw,
           member: memberLabelOf(dataRef.current?.users, resultRaw.memberId),
@@ -2383,7 +2409,7 @@ const deleteGoal = async (id) => {
         const result = await notesApi.create({ id: draftId, title: values.title, body: values.body || '', category: values.category, pinned: !!values.pinned }, currentUser);
         addItemToState(section, result);
       } else if (section === 'tasks') {
-        const result = await tasksApi.create({ title: values.title, dueDate: values.dueDate || null, priority: values.priority, assignedTo: values.assignedTo });
+        const result = await tasksApi.create({ id: draftId, title: values.title, dueDate: values.dueDate || null, priority: values.priority, assignedTo: values.assignedTo });
         addItemToState(section, mapTask(result));
       } else if (section === 'family' && values.bagian && values.bagian !== 'anggota') {
         const result = await familyEntryApi.create({ bagian: values.bagian, title: values.title, meta: values.meta || '' });
@@ -3261,7 +3287,12 @@ const deleteGoal = async (id) => {
     const alive = new Set(notifications.map((n) => n.id));
     const next = ids.filter((id) => alive.has(id));
     setNotifRead(next);
-    storeNotifRead(next);
+    // Persist per grup (settings, key 'notif_read_ids') bila boleh tulis;
+    // fallback localStorage untuk perangkat & peran baca-saja.
+    try { localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(next)); } catch {}
+    if (canWrite) {
+      settingsApi.upsert('notif_read_ids', JSON.stringify(next)).catch(() => {});
+    }
   };
 
   const markAllNotifRead = () => saveNotifRead(notifications.map((n) => n.id));
