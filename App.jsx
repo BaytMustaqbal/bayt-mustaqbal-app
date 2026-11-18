@@ -24,6 +24,7 @@ const DebtComp = lazy(() => import('./components/DebtComp'));
 import { monthTitle, weekTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_WEEK_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload, calculateNextDue } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
+import { urutTransaksiTerbaru } from './utils/sort';
 import { GroupedBarChart, DonutChart, BarChart } from './components/charts';
 import { FamilyCalendar } from './components/Calendar';
 import { Timeline } from './components/Timeline';
@@ -210,9 +211,6 @@ const budgetStatus = (expense, budgetIncome) => {
   return { level, pct, sisa: total - expense };
 };
 
-// Urutan daftar transaksi: tanggal terbaru dulu, lalu waktu input terbaru.
-// created_at dari backend, createdAt untuk draft offline.
-const waktuTransaksi = (item) => String(item?.created_at || item?.createdAt || item?.ts || '');
 // Nilai khusus agenda bersama (sekeluarga). user_id menyimpan kepemilikan per anggota.
 const KELUARGA = 'keluarga';
 const memberLabelOf = (users, id) => {
@@ -232,12 +230,6 @@ const memberColorOf = (id) => {
   if (!id || String(id).toLowerCase() === KELUARGA) return 'bg-member5';
   return AGENDA_MEMBER_PALETTE[hashStr(id) % AGENDA_MEMBER_PALETTE.length];
 };
-const urutTransaksiTerbaru = (list = []) => [...list].sort((a, b) => {
-  const byDate = String(b?.date || '').localeCompare(String(a?.date || ''));
-  if (byDate !== 0) return byDate;
-  return waktuTransaksi(b).localeCompare(waktuTransaksi(a));
-});
-
 // Gabungkan API data + local seed ? data state penuh
 const buildDataBundle = (apiData, currentUser) => {
   const budget = apiData?.budget || {};
