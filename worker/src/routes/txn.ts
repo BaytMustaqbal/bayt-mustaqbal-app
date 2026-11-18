@@ -4,6 +4,17 @@ import { canWriteGroup, forbiddenWrite, groupScope } from '../utils/group';
 
 export const txnRoutes = new Hono<{ Bindings: Env }>();
 
+// Kategori yang benar-benar ada di tabel categories (jaga FK saat simpan).
+async function existingCategoryId(env: Env, id: unknown): Promise<string | null> {
+  if (!env.DB || !id) return null;
+  try {
+    const row = await env.DB.prepare('SELECT id FROM categories WHERE id = ? AND void IS NULL').bind(String(id)).first();
+    return (row as { id?: string } | null)?.id || null;
+  } catch {
+    return null;
+  }
+}
+
 // Rincian belanja disimpan sebagai JSON text di kolom `items`.
 // Bentuk kanonik: [{ name, price }]. Terima juga { nama, harga } dari klien lama.
 function normalizeItems(raw: unknown): string | null {
@@ -69,6 +80,10 @@ txnRoutes.post('/', async (c) => {
     return c.json(forbiddenWrite(), 403);
   }
 
+  // Validasi kategori ke tabel categories (jaga FK): kategori yang tidak
+  // ada disimpan sebagai NULL, bukan 500.
+  const categoryId = await existingCategoryId(c.env, category_id);
+
   const id = typeof clientId === 'string' && /^[0-9a-zA-Z_-]{8,64}$/.test(clientId) ? clientId : crypto.randomUUID();
   const scope = groupScope(groupId, userId);
 
@@ -94,7 +109,7 @@ txnRoutes.post('/', async (c) => {
 
   const inserted = await c.env.DB.prepare(
     'INSERT INTO transactions (id, user_id, group_id, category_id, account_id, amount, type, date, description, items, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING'
-  ).bind(id, userId, groupId, category_id || null, acct, amount, type, date, description || null, normalizeItems(items), 1, now, now).run();
+  ).bind(id, userId, groupId, categoryId, acct, amount, type, date, description || null, normalizeItems(items), 1, now, now).run();
 
   // Saldo hanya berubah kalau baris benar-benar baru masuk.
   if (acct && inserted.meta.changes > 0) {
@@ -154,6 +169,9 @@ txnRoutes.put('/:id', async (c) => {
     return c.json(forbiddenWrite(), 403);
   }
 
+  // Validasi kategori (jaga FK): kategori yang tidak ada disimpan sebagai NULL.
+  const categoryId = await existingCategoryId(c.env, category_id);
+
   const now = new Date().toISOString();
   const oldAcct = existing.account_id || null;
   const newAcct = account_id || null;
@@ -177,7 +195,7 @@ txnRoutes.put('/:id', async (c) => {
   const newEffect = newType === 'in' ? amt : -amt;
   const batch: any[] = [
     c.env.DB.prepare('UPDATE transactions SET category_id = ?, account_id = ?, amount = ?, type = ?, date = ?, description = ?, items = ?, rev = rev + 1, updated_at = ? WHERE id = ?')
-      .bind(category_id || null, newAcct, amount, type, date, description || null, normalizeItems(items), now, id),
+      .bind(categoryId, newAcct, amount, type, date, description || null, normalizeItems(items), now, id),
   ];
 
   if (oldAcct && oldAcct === newAcct) {
