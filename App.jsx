@@ -24,7 +24,7 @@ const DebtComp = lazy(() => import('./components/DebtComp'));
 import { monthTitle, weekTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_WEEK_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload, calculateNextDue } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
-import { computeMonthlyTrend, computeWeekly, computeCategories, budgetStatus } from './utils/finance';
+import { computeMonthlyTrend, computeWeekly, computeCategories, budgetStatus, monthKeyOf, monthName, monthNameLong, buildPairedTrend } from './utils/finance';
 import { urutTransaksiTerbaru } from './utils/sort';
 import { GroupedBarChart, DonutChart, BarChart } from './components/charts';
 import { FamilyCalendar } from './components/Calendar';
@@ -92,51 +92,6 @@ const urlBase64ToUint8Array = (base64) => {
   for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
   return arr;
 };
-const monthLabel = (d) => new Intl.DateTimeFormat('id-ID', { month: 'short' }).format(d).replace('.', '');
-const dayLabel = (d) => new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(d).replace('.', '');
-const monthKeyOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
-const monthName = (d) => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d);
-const monthNameLong = (key) => {
-  const [y, m] = String(key).split('-').map(Number);
-  if (!y || !m) return monthName(new Date());
-  return new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date(y, m - 1, 1));
-};
-// Tren berpasangan 6 bulan TERAKHIR dari bulan acuan (bukan selalu bulan ini),
-// supaya Kakang bisa meninjau bulan lalu lengkap dengan konteks 6 bulannya.
-const buildPairedTrend = (expenses, income, endKey) => {
-  const [y, m] = String(endKey).split('-').map(Number);
-  const sumBy = (list) => {
-    const t = {};
-    (list || []).forEach((i) => {
-      const k = (i.date || '').slice(0, 7);
-      if (k) t[k] = (t[k] || 0) + (Number(i.amount) || 0);
-    });
-    return t;
-  };
-  const te = sumBy(expenses);
-  const ti = sumBy(income);
-  const out = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(y, m - 1 - i, 1);
-    const key = monthKeyOf(d);
-    out.push({ label: monthLabel(d), key, income: ti[key] || 0, expense: te[key] || 0 });
-  }
-  return out;
-};
-
-// 6-bulan tren pengeluaran dari expenses
-
-// (lewat parameter daftar kategori + peta warna).
-const INCOME_COLOR_MAP = {
-  gaji: 'rgb(var(--chart2))',
-  bonus: 'rgb(var(--chart5))',
-  sidejob: 'rgb(var(--chart3))',
-  investasi: 'rgb(var(--chart6))',
-  pemberian: 'rgb(var(--chart4))',
-  lainnya: 'rgb(var(--chart9))',
-};
-
-// Nilai khusus agenda bersama (sekeluarga). user_id menyimpan kepemilikan per anggota.
 const KELUARGA = 'keluarga';
 const memberLabelOf = (users, id) => {
   if (!id || String(id).toLowerCase() === KELUARGA) return 'Keluarga';
