@@ -22,19 +22,33 @@ taskRoutes.get('/', async (c) => {
 
 taskRoutes.post('/', async (c) => {
   if (!canWriteGroup(c.get('groupRole'))) return c.json(forbiddenWrite(), 403);
-  const { title, dueDate, priority, assignedTo } = await c.req.json().catch(() => ({})) as {
-    title?: string; dueDate?: string; priority?: string; assignedTo?: string;
+  const { id: clientId, title, dueDate, priority, assignedTo } = await c.req.json().catch(() => ({})) as {
+    id?: string; title?: string; dueDate?: string; priority?: string; assignedTo?: string;
   };
   if (!title || !String(title).trim()) {
     return c.json({ ok: false, data: null, error: { code: 'VALIDATION', message: 'Judul tugas wajib diisi' } }, 400);
   }
-  const id = crypto.randomUUID();
+  const id = typeof clientId === 'string' && /^[0-9a-zA-Z_-]{8,64}$/.test(clientId) ? clientId : crypto.randomUUID();
+  const userId = c.get('userId');
+  const groupId = c.get('groupId');
+  const scope = groupScope(groupId, userId);
+  const existing = await c.env.DB.prepare(
+    `SELECT * FROM tasks WHERE id = ? AND ${scope.sql} AND void IS NULL`
+  ).bind(id, scope.val).first() as any;
+  if (existing) {
+    return c.json({ ok: true, data: existing, error: null }, 201);
+  }
   const now = new Date().toISOString();
   const prio = PRIORITIES.includes(priority || '') ? priority : 'sedang';
-  await c.env.DB.prepare(
+  const inserted = await c.env.DB.prepare(
     `INSERT INTO tasks (id, user_id, group_id, title, due_date, priority, assigned_to, rev, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
-  ).bind(id, c.get('userId'), c.get('groupId'), String(title).trim(), dueDate || null, prio, assignedTo || null, now, now).run();
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?) ON CONFLICT(id) DO NOTHING`
+  ).bind(id, userId, groupId, String(title).trim(), dueDate || null, prio, assignedTo || null, now, now).run();
+  if (inserted.meta.changes === 0) {
+    const row = await c.env.DB.prepare('SELECT * FROM tasks WHERE id = ?').bind(id).first() as any;
+    if (row) return c.json({ ok: true, data: row, error: null }, 201);
+    return c.json({ ok: false, data: null, error: { code: 'CONFLICT', message: 'ID tugas sudah dipakai' } }, 409);
+  }
   const created = await c.env.DB.prepare('SELECT * FROM tasks WHERE id = ?').bind(id).first();
   return c.json({ ok: true, data: created, error: null }, 201);
 });

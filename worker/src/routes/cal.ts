@@ -56,8 +56,8 @@ calRoutes.get('/', async (c) => {
 calRoutes.post('/', async (c) => {
   const userId = c.get('userId');
   const groupId = c.get('groupId');
-  const { title, date, time, category, member_id, description } = await c.req.json() as {
-    title: string; date: string; time?: string; category?: string; member_id?: string; description?: string;
+  const { id: clientId, title, date, time, category, member_id, description } = await c.req.json() as {
+    id?: string; title: string; date: string; time?: string; category?: string; member_id?: string; description?: string;
   };
 
   if (!title || !date) {
@@ -70,17 +70,31 @@ calRoutes.post('/', async (c) => {
   const midNorm = String(member_id || '').trim();
   const memberStore = !midNorm || midNorm.toLowerCase() === 'keluarga' ? null : midNorm;
 
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
+  const id = typeof clientId === 'string' && /^[0-9a-zA-Z_-]{8,64}$/.test(clientId) ? clientId : crypto.randomUUID();
+  const scope = groupScope(groupId, userId);
+  const existing = await c.env.DB.prepare(
+    `SELECT * FROM calendar_events WHERE id = ? AND ${scope.sql} AND void IS NULL`
+  ).bind(id, scope.val).first() as any;
+  if (existing) {
+    return c.json({ ok: true, data: existing, error: null });
+  }
 
-  await c.env.DB.prepare(
-    'INSERT INTO calendar_events (id, user_id, group_id, title, date, time, category, member_id, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  const now = new Date().toISOString();
+  const inserted = await c.env.DB.prepare(
+    'INSERT INTO calendar_events (id, user_id, group_id, title, date, time, category, member_id, description, rev, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING'
   ).bind(id, userId, groupId, title, date, time || null, category || null, memberStore, description || null, 1, now, now).run();
+
+  if (inserted.meta.changes === 0) {
+    const row = await c.env.DB.prepare('SELECT * FROM calendar_events WHERE id = ?').bind(id).first() as any;
+    if (row) return c.json({ ok: true, data: row, error: null });
+    return c.json({ ok: false, data: null, error: { code: 'CONFLICT', message: 'ID agenda sudah dipakai' } }, 409);
+  }
 
   // Sinkron ke Google Calendar (diam-diam; gagal? cron yang ulang)
   await syncToGcal(c.env, { writerUserId: userId, groupId, entityType: 'cal', entityId: id, action: 'upsert' });
 
-  return c.json({ ok: true, data: { id, user_id: userId, group_id: groupId, title, date, time: time || null, category: category || null, member_id: memberStore, description: description || null, rev: 1, created_at: now, updated_at: now }, error: null });
+  const created = await c.env.DB.prepare('SELECT * FROM calendar_events WHERE id = ?').bind(id).first() as any;
+  return c.json({ ok: true, data: created, error: null });
 });
 
 // GET /api/cal/:id — detail by id
