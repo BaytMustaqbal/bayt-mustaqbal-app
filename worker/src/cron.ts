@@ -31,8 +31,39 @@ async function sendDailyDigest(env: Env): Promise<void> {
 📈 Saldo bersih: Rp ${net.toLocaleString('id-ID')}`;
 
   const target = await readFonnteTarget(env);
-  await sendWA(env, message, target);
-  console.log('Daily digest sent');
+  const nowIso = new Date().toISOString();
+  const result = await sendWA(env, message, target);
+  const logKey = 'digest:' + today;
+  if (result.ok) {
+    const already = await env.DB.prepare("SELECT id FROM notification_log WHERE message = ? AND void IS NULL LIMIT 1").bind(logKey).first();
+    if (!already) {
+      try {
+        const uid = (await env.DB.prepare("SELECT id FROM users WHERE void IS NULL ORDER BY created_at ASC LIMIT 1").first()) as { id: string } | null;
+        if (uid?.id) {
+          const nid = crypto.randomUUID();
+          await env.DB.prepare("INSERT INTO notification_log (id, user_id, type, message, read, rev, created_at) VALUES (?, ?, 'info', ?, 0, 1, ?)").bind(nid, uid.id, logKey, nowIso).run();
+        }
+      } catch (e) {
+        console.warn('Gagal mencatat log digest:', (e as Error).message);
+      }
+    }
+    console.log('Daily digest sent');
+  } else {
+    const failKey = logKey + ':fail:' + (result.reason || 'unknown');
+    const already = await env.DB.prepare("SELECT id FROM notification_log WHERE message = ? AND void IS NULL LIMIT 1").bind(logKey + ':fail').first();
+    if (!already) {
+      try {
+        const uid = (await env.DB.prepare("SELECT id FROM users WHERE void IS NULL ORDER BY created_at ASC LIMIT 1").first()) as { id: string } | null;
+        if (uid?.id) {
+          const nid = crypto.randomUUID();
+          await env.DB.prepare("INSERT INTO notification_log (id, user_id, type, message, read, rev, created_at) VALUES (?, ?, 'info', ?, 0, 1, ?)").bind(nid, uid.id, failKey, nowIso).run();
+        }
+      } catch (e) {
+        console.warn('Gagal mencatat log digest gagal:', (e as Error).message);
+      }
+    }
+    console.error('Daily digest FAILED:', result.reason);
+  }
 }
 
 // Bill reminder: check overdue bills
@@ -57,7 +88,7 @@ async function sendBillReminder(env: Env): Promise<void> {
 ${bill.name}
 Jumlah: Rp ${bill.amount.toLocaleString('id-ID')}
 Jatuh tempo: ${bill.due_date}`;
-    if (!(await sendWA(env, message, target))) continue;
+    if (!(await sendWA(env, message, target)).ok) continue;
     await sendPushToUser(env, bill.user_id, {
       title: 'Reminder Tagihan',
       body: `${bill.name} jatuh tempo ${bill.due_date}`,
@@ -141,7 +172,7 @@ async function sendBudgetAlerts(env: Env): Promise<void> {
     if (alerts.length === 0 || notif) continue;
 
     const message = `📊 *Pengingat Anggaran* ${month}\n${alerts.join('\n')}`;
-    if (!(await sendWA(env, message, target))) continue;
+    if (!(await sendWA(env, message, target)).ok) continue;
 
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -220,7 +251,7 @@ async function sendScheduledTaskReminders(env: Env): Promise<void> {
 
       const label = task.amount != null ? ` (${formatIdr(task.amount)})` : '';
       const message = `⏰ *Tugas Terjadwal*\n${task.name}${label}\nJatuh tempo dalam 3 hari (${due}).`;
-      if (!(await sendWA(env, message, target))) continue;
+      if (!(await sendWA(env, message, target)).ok) continue;
       await sendPushToUser(env, scope.sample_user, {
         title: 'Tugas Terjadwal',
         body: `${task.name} jatuh tempo dalam 3 hari (${due}).`,
@@ -267,7 +298,7 @@ async function sendSubscriptionReminders(env: Env): Promise<void> {
       if (notif) continue;
 
       const message = `🔌 *Langganan*\n${sub.name} (${sub.category})\nJatuh tempo dalam 3 hari (tagihan ${dueDay}).`;
-      if (!(await sendWA(env, message, target))) continue;
+      if (!(await sendWA(env, message, target)).ok) continue;
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -309,7 +340,7 @@ async function sendGoalReminders(env: Env): Promise<void> {
 
       const sisa = Math.max(0, Number(g.target_amount) - Number(g.current_amount));
       const message = `🎯 *Target Tabungan*\n${g.nama}\nSisa Rp ${formatIdr(sisa)} — target ${due} dalam 3 hari.`;
-      if (!(await sendWA(env, message, target))) continue;
+      if (!(await sendWA(env, message, target)).ok) continue;
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -351,7 +382,7 @@ async function sendServiceReminders(env: Env): Promise<void> {
       if (notif) continue;
 
       const message = `🔧 *Service Motor*\n${sp.nama}${sp.jenis ? ` (${sp.jenis})` : ''}\nJadwal service ${due} dalam 3 hari.`;
-      if (!(await sendWA(env, message, target))) continue;
+      if (!(await sendWA(env, message, target)).ok) continue;
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -402,7 +433,7 @@ async function sendRecurringReminders(env: Env): Promise<void> {
         amount > 0 ? `Pembelian terakhir Rp ${formatIdr(amount)}.` : '',
         `Beli hari ini supaya tidak kehabisan, lalu tekan "Sudah beli" di app.`,
       ].filter(Boolean).join('\n');
-      if (!(await sendWA(env, message, target))) continue;
+      if (!(await sendWA(env, message, target)).ok) continue;
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -449,7 +480,7 @@ async function sendDebtReminders(env: Env): Promise<void> {
         : (d.title || 'Utang keluarga');
 
       const message = `💸 *Utang Belum Lunas*\n${d.title || 'Utang'}\n${who}\nJumlah: Rp ${amount.toLocaleString('id-ID')}`;
-      if (!(await sendWA(env, message, target))) continue;
+      if (!(await sendWA(env, message, target)).ok) continue;
 
       const nid = crypto.randomUUID();
       const now = new Date().toISOString();
@@ -496,7 +527,8 @@ async function checkWaReminders(env: Env): Promise<void> {
 
   const list = rows?.results || [];
   for (const r of list) {
-    const sent = await sendWA(env, `⏰ Pengingat:\n${r.message}`, r.phone);
+    const sentRes = await sendWA(env, `⏰ Pengingat:\n${r.message}`, r.phone);
+    const sent = sentRes.ok;
     if (!sent) continue;
     await env.DB.prepare('UPDATE wa_reminders SET done = 1 WHERE id = ?').bind(r.id).run();
   }

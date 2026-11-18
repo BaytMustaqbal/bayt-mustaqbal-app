@@ -27,13 +27,13 @@ waRoutes.post('/test', async (c) => {
     );
   }
 
-  const ok = await sendWA(c.env, 'Tes dari Bayt Mustaqbal: notifikasi WhatsApp berfungsi.', target);
-  if (!ok) {
+  const result = await sendWA(c.env, 'Tes dari Bayt Mustaqbal: notifikasi WhatsApp berfungsi.', target);
+  if (!result.ok) {
     return c.json(
       {
         ok: false,
         data: null,
-        error: { code: 'WA_SEND_FAILED', message: 'Gagal mengirim pesan uji. Periksa token Fonnte & nomor tujuan.' },
+        error: { code: 'WA_SEND_FAILED', message: `Gagal mengirim pesan uji: ${result.reason || 'alasan tidak tersedia'}` },
       },
       502
     );

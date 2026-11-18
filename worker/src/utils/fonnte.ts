@@ -10,13 +10,14 @@ import { Env } from '../types/env';
  *                  membalas pesan dalam percakapan yang sama (bukan chat baru).
  * @returns true if sent successfully, false on failure
  */
-export async function sendWA(env: Env, message: string, target?: string, inboxId?: string): Promise<boolean> {
+export async function sendWA(env: Env, message: string, target?: string, inboxId?: string): Promise<{ ok: boolean; reason?: string }> {
   const token = env.FONNTE_TOKEN;
   const recipient = target || env.FONNTE_TARGET;
 
   if (!token || !recipient || token.startsWith('dev-')) {
+    const reason = 'dev or no token/target';
     console.log('WA skip (dev or no token/target):', { hasToken: !!token, hasTarget: !!recipient });
-    return false;
+    return { ok: false, reason };
   }
 
   try {
@@ -38,21 +39,18 @@ export async function sendWA(env: Env, message: string, target?: string, inboxId
 
     const result = await res.json() as any;
 
-    // Fonnte membalas status via `status`/`reason`, bukan field `error`.
-    // Status false atau non-2xx = gagal (token invalid, device not connected,
-    // target not found, quota exceeded, dsb.). Jangan pernah anggap sukses
-    // tanpa verifikasi ini.
     const failed = !res.ok || result?.status === false || !!result?.error || !!result?.reason;
     if (failed) {
       const reason = result?.reason || result?.error?.message || result?.message || `HTTP ${res.status}`;
       console.error('WA send error:', reason);
-      return false;
+      return { ok: false, reason };
     }
 
     console.log('WA sent successfully');
-    return true;
+    return { ok: true };
   } catch (e) {
-    console.error('WA send failed:', e);
-    return false;
+    const reason = e instanceof Error ? e.message : String(e);
+    console.error('WA send failed:', reason);
+    return { ok: false, reason };
   }
 }
