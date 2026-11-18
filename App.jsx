@@ -24,6 +24,7 @@ const DebtComp = lazy(() => import('./components/DebtComp'));
 import { monthTitle, weekTitle, parseShoppingNote, serializeShopping, isShoppingNote, emptyShopping, newShoppingItem, copyForMonth, toTemplateItems, SHOPPING_CATEGORY, SHOPPING_MONTH_PREFIX, SHOPPING_WEEK_PREFIX, SHOPPING_TEMPLATE_TITLE, sumItems } from './components/shoppingList';
 import { newSparepart, emptyServiceRecord, SERVICE_CATEGORY, sumServiceItems, sparepartToPayload, serviceRecordToPayload, calculateNextDue } from './components/service';
 import { toCalendarEvents } from './components/calendarEvents';
+import { computeMonthlyTrend, computeWeekly, computeCategories, budgetStatus } from './utils/finance';
 import { urutTransaksiTerbaru } from './utils/sort';
 import { GroupedBarChart, DonutChart, BarChart } from './components/charts';
 import { FamilyCalendar } from './components/Calendar';
@@ -93,87 +94,8 @@ const urlBase64ToUint8Array = (base64) => {
 };
 const monthLabel = (d) => new Intl.DateTimeFormat('id-ID', { month: 'short' }).format(d).replace('.', '');
 const dayLabel = (d) => new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(d).replace('.', '');
-
-// 6-bulan tren pengeluaran dari expenses
-const computeMonthlyTrend = (expenses) => {
-  const months = {};
-  expenses.forEach((e) => {
-    const m = (e.date || '').slice(0, 7);
-    months[m] = (months[m] || 0) + (Number(e.amount) || 0);
-  });
-  const result = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
-    result.push({ label: monthLabel(d), value: months[key] || 0 });
-  }
-  return result;
-};
-
-// Distribusi mingguan dari expenses (berdasarkan hari)
-const computeWeekly = (expenses) => {
-  const days = Array(7).fill(0);
-  expenses.forEach((e) => {
-    const d = new Date((e.date || '').replace(/-/g, '/'));
-    if (!Number.isNaN(d.getTime())) {
-      days[d.getDay()] += Number(e.amount) || 0;
-    }
-  });
-  const now = new Date();
-  return ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((label, i) => ({
-    label: label,
-    value: days[(i + 1) % 7], // Minggu=0, Senin=1, ... ? susun Seninï¿½Minggu
-  }));
-};
-
-// Donut chart: agregat per kategori. Dipakai pengeluaran (default) & pemasukan
-// (lewat parameter daftar kategori + peta warna).
-const INCOME_COLOR_MAP = {
-  gaji: 'rgb(var(--chart2))',
-  bonus: 'rgb(var(--chart5))',
-  sidejob: 'rgb(var(--chart3))',
-  investasi: 'rgb(var(--chart6))',
-  pemberian: 'rgb(var(--chart4))',
-  lainnya: 'rgb(var(--chart9))',
-};
-
-const computeCategories = (items, categories = FINANCE_CATEGORIES, colorMap) => {
-  const COLOR_MAP = colorMap || {
-    rumah: 'rgb(var(--chart8))',
-    cicilan: 'rgb(var(--chart3))',
-    hiburan: 'rgb(var(--chart7))',
-    belanja: 'rgb(var(--chart1))',
-    kuliner: 'rgb(var(--chart2))',
-    hobi: 'rgb(var(--chart4))',
-    tabungan: 'rgb(var(--chart9))',
-    pendidikan: 'rgb(var(--chart2))',
-    utilitas: 'rgb(var(--chart3))',
-    ibadah: 'rgb(var(--chart4))',
-    transportasi: 'rgb(var(--chart5))',
-    kesehatan: 'rgb(var(--chart6))',
-  };
-  const totals = {};
-  items.forEach((e) => {
-    const cat = e.category || 'lainnya';
-    totals[cat] = (totals[cat] || 0) + (Number(e.amount) || 0);
-  });
-  const LABEL_MAP = {};
-  categories.forEach((c) => { if (c.id !== 'semua') LABEL_MAP[c.id] = c.label; });
-  return Object.entries(totals)
-    .map(([cat]) => ({
-      label: LABEL_MAP[cat] || cat,
-      value: totals[cat],
-      color: COLOR_MAP[cat] || 'rgb(var(--chart1))',
-    }))
-    .sort((a, b) => b.value - a.value);
-};
-
-// Month label for budget
-const monthName = (d) => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d);
-
-/* ---- Helper tab Ringkasan (halaman Keuangan) ---- */
 const monthKeyOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+const monthName = (d) => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(d);
 const monthNameLong = (key) => {
   const [y, m] = String(key).split('-').map(Number);
   if (!y || !m) return monthName(new Date());
@@ -201,14 +123,17 @@ const buildPairedTrend = (expenses, income, endKey) => {
   }
   return out;
 };
-// Status anggaran: aman (<80%), hati-hati (80-100%), lewat (>100%).
-// Anggaran belum diisi ? 'belum' (bukan 0% yang menyesatkan).
-const budgetStatus = (expense, budgetIncome) => {
-  const total = Number(budgetIncome) || 0;
-  if (total <= 0) return { level: 'belum', pct: 0, sisa: 0 };
-  const pct = Math.round((expense / total) * 100);
-  const level = expense > total ? 'lewat' : pct >= 80 ? 'hati-hati' : 'aman';
-  return { level, pct, sisa: total - expense };
+
+// 6-bulan tren pengeluaran dari expenses
+
+// (lewat parameter daftar kategori + peta warna).
+const INCOME_COLOR_MAP = {
+  gaji: 'rgb(var(--chart2))',
+  bonus: 'rgb(var(--chart5))',
+  sidejob: 'rgb(var(--chart3))',
+  investasi: 'rgb(var(--chart6))',
+  pemberian: 'rgb(var(--chart4))',
+  lainnya: 'rgb(var(--chart9))',
 };
 
 // Nilai khusus agenda bersama (sekeluarga). user_id menyimpan kepemilikan per anggota.
