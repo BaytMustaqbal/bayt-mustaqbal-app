@@ -3,9 +3,11 @@ import { Icon } from './components/Icon';
 import { Navigation } from './components/Navigation';
 import { Sidebar } from './components/Sidebar';
 import { NotesSection } from './components/NotesSection';
+import { PengaturanSection } from './components/PengaturanSection';
 import { AgendaSection } from './components/AgendaSection';
 import { TerjadwalSection } from './components/TerjadwalSection';
 import { useShoppingList } from './hooks/useShoppingList';
+import { useGoogleCalendar } from './hooks/useGoogleCalendar';
 import { useNotes } from './hooks/useNotes';
 import { Dashboard } from './components/Dashboard';
 import { SplashScreen } from './components/SplashScreen';
@@ -18,7 +20,6 @@ import ShoppingList from './components/ShoppingListComp';
 import Service from './components/ServiceComp';
 import SubscriptionsComp from './components/SubscriptionsComp';
 import RecurringTxnPanel from './components/RecurringTxnPanel';
-const SettingsComp = lazy(() => import('./components/SettingsComp'));
 const InsightComp = lazy(() => import('./components/InsightComp').then((m) => ({ default: m.InsightComp })));
 import ChoresComp from './components/ChoresComp';
 import TargetTabunganComp from './components/TargetTabunganComp';
@@ -750,15 +751,12 @@ export default function App() {
   const [recurringTxns, setRecurringTxns] = useState([]);
   // Analitik & insight (API /api/insight)
   const [insight, setInsight] = useState(null);
-  // Status integrasi Google Calendar (dipakai halaman Pengaturan)
-  const [gcal, setGcal] = useState({
-    loading: false,
-    connecting: false,
-    connected: false,
-    email: null,
-    error: null,
-    notConfigured: false,
-  });
+  // Notifikasi ringkas + tombol Urungkan; dipakai banyak section.
+  const [toast, setToast] = useState(null);
+  const pushToast = (t) => setToast({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...t });
+
+  // Status & aksi integrasi Google Calendar (halaman Pengaturan).
+  const { gcal, refreshGcalStatus, connectGoogleCalendar, disconnectGoogleCalendar } = useGoogleCalendar(pushToast);
 
 // Perencanaan Impian & Tabungan â€” dikelola pengguna, terpisah dari budget kategori
 // Setiap goal: { id, nama, targetAmount, currentAmount, targetDate, achieved, createdAt }
@@ -1051,84 +1049,6 @@ const deleteGoal = async (id) => {
     }
   };
 
-  // ---- Status & aksi integrasi Google Calendar (halaman Pengaturan) ----
-  const refreshGcalStatus = async () => {
-    setGcal((prev) => ({ ...prev, loading: true, error: null }));
-    try {
-      const s = await gcalApi.status();
-      setGcal({
-        loading: false,
-        connecting: false,
-        connected: !!s.connected,
-        email: s.email || null,
-        calendarId: s.calendar_id || null,
-        error: null,
-        notConfigured: false,
-      });
-    } catch (e) {
-      setGcal((prev) => ({
-        ...prev,
-        loading: false,
-        error: e.message === 'NETWORK_ERROR' ? 'Tidak dapat menghubungi server.' : e.message,
-      }));
-    }
-  };
-
-  // Pergi ke halaman consent Google; balikannya lewat ?gcal=connected / ?gcal=error
-  const connectGoogleCalendar = async () => {
-    setGcal((prev) => ({ ...prev, connecting: true, error: null }));
-    try {
-      const { url } = await gcalApi.login(window.location.origin);
-      window.location.href = url;
-    } catch (e) {
-      const notConfigured = e.message.includes('belum di-set');
-      setGcal((prev) => ({
-        ...prev,
-        connecting: false,
-        notConfigured,
-        error: notConfigured ? null : `Gagal memulai: ${e.message}`,
-      }));
-    }
-  };
-
-  const disconnectGoogleCalendar = async () => {
-    try {
-      await gcalApi.disconnect();
-      setGcal((prev) => ({ ...prev, connected: false, email: null }));
-      pushToast({
-        message: 'Google Calendar diputus. Event yang sudah terlanjur dikirim tetap tersimpan di Google.',
-        duration: 4500,
-      });
-    } catch (e) {
-      pushToast({ message: `Gagal memutus koneksi: ${e.message}`, duration: 3500, tone: 'danger' });
-    }
-  };
-
-  // Hasil OAuth Google: ?gcal=connected atau ?gcal=error&reason=â€¦
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const result = params.get('gcal');
-    if (!result) return;
-    const reason = params.get('reason');
-    params.delete('gcal');
-    params.delete('reason');
-    const qs = params.toString();
-    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
-
-    if (result === 'connected') {
-      pushToast({
-        message: 'Google Calendar tersambung. Agenda & tagihan otomatis ikut ter-push.',
-        duration: 4500,
-      });
-    } else {
-      pushToast({
-        message: `Gagal menyambungkan Google Calendar${reason ? ` (${reason})` : ''}. Coba lagi dari menu Pengaturan.`,
-        duration: 5500,
-        tone: 'danger',
-      });
-    }
-    refreshGcalStatus();
-  }, []);
 
   // Hasil login Google: ?google=success&token=â€¦ atau ?google=error&reason=â€¦
   useEffect(() => {
@@ -1361,8 +1281,6 @@ const deleteGoal = async (id) => {
   // Pencarian catatan (judul + isi) ï¿½ hanya berlaku di tab Catatan
   // Tab aktif Service (inventory/history)
   const [serviceActiveTab, setServiceActiveTab] = useState('history');
-  // Notifikasi ringkas + tombol "Urungkan" (undo hapus)
-  const [toast, setToast] = useState(null);
   // Notifikasi belum dibaca: daftar `id` yang sudah dilihat (tersimpan)
   const [notifRead, setNotifRead] = useState(readNotifRead);
 
@@ -2119,7 +2037,6 @@ const deleteGoal = async (id) => {
   const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
 
   // Toast: tambah/ubah = konfirmasi singkat; hapus = tawarkan "Urungkan".
-  const pushToast = (t) => setToast({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...t });
   const dismissToast = (id) => setToast((prev) => (prev && prev.id === id ? null : prev));
 
   // Toggle selesai tugas â€” update state (optimistic) + sinkron ke backend.
@@ -3515,7 +3432,7 @@ const deleteGoal = async (id) => {
 
       case 'pengaturan': {
         return (
-          <SettingsComp
+          <PengaturanSection
             gcal={gcal}
             onConnect={connectGoogleCalendar}
             onDisconnect={disconnectGoogleCalendar}
