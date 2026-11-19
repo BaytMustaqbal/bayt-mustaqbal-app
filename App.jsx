@@ -1,10 +1,11 @@
-﻿import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { Icon } from './components/Icon';
 import { Navigation } from './components/Navigation';
 import { Sidebar } from './components/Sidebar';
 import { ScheduleItem } from './components/ScheduleItem';
 import { TaskList } from './components/TaskList';
-import { NoteList } from './components/NoteList';
+import { NotesSection } from './components/NotesSection';
+import { useNotes } from './hooks/useNotes';
 import { Dashboard } from './components/Dashboard';
 import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
@@ -46,7 +47,6 @@ import {
   FAMILY_CATEGORIES,
   TASK_FILTERS,
   NOTE_CATEGORIES,
-  NOTES_FILTERS,
   countByCategory,
   countByTaskFilter,
 } from './components/categories';
@@ -1363,9 +1363,7 @@ const deleteGoal = async (id) => {
   // Filter tugas: status (semua/belum/selesai) & prioritas (tinggi/sedang/rendah)
   const [taskFilter, setTaskFilter] = useState('semua');
   // Filter catatan: semua | penting (disematkan) | kategori
-  const [noteFilter, setNoteFilter] = useState('semua');
   // Pencarian catatan (judul + isi) ï¿½ hanya berlaku di tab Catatan
-  const [noteQuery, setNoteQuery] = useState('');
   // Tab aktif Service (inventory/history)
   const [serviceActiveTab, setServiceActiveTab] = useState('history');
   // Notifikasi ringkas + tombol "Urungkan" (undo hapus)
@@ -1408,6 +1406,8 @@ const deleteGoal = async (id) => {
   const [accountInitialGenerasi, setAccountInitialGenerasi] = useState(null);
   // Data state ï¿½ dimuat dari API + localStorage cache
   const [data, setData] = useState(null);
+  // Filter catatan + pencarian (lihat hooks/useNotes.js)
+  const { noteFilter, setNoteFilter, noteQuery, setNoteQuery, filteredNotes, totalNonShopping } = useNotes(data?.notes);
 
   // Pilihan anggota agenda: canWrite melihat 'Keluarga' + semua anggota;
   // anak/cucu hanya bisa memilih dirinya sendiri.
@@ -3044,21 +3044,6 @@ const deleteGoal = async (id) => {
     return data.tasks.filter((t) => t.priority === taskFilter);
   }, [data, taskFilter]);
 
-  // Catatan sesuai filter aktif (semua | penting | kategori) + pencarian.
-  // Note kategori `belanja` (template + bulan) disembunyikan dari tab Catatan.
-  const filteredNotes = useMemo(() => {
-    if (!data) return [];
-    const base =
-      noteFilter === 'semua'
-        ? (data.notes || []).filter((n) => n.category !== SHOPPING_CATEGORY && n.category !== SERVICE_CATEGORY)
-        : noteFilter === 'penting'
-          ? (data.notes || []).filter((n) => n.pinned && n.category !== SHOPPING_CATEGORY && n.category !== SERVICE_CATEGORY)
-          : (data.notes || []).filter((n) => n.category === noteFilter && n.category !== SHOPPING_CATEGORY && n.category !== SERVICE_CATEGORY);
-    const q = noteQuery.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((n) => `${n.title} ${n.body || ''}`.toLowerCase().includes(q));
-  }, [data, noteFilter, noteQuery]);
-
   /* ---- Service motor helpers ---- */
   const serviceInventory = data?.serviceInventory || [];
   const serviceHistory = data?.serviceHistory || [];
@@ -3950,65 +3935,20 @@ case 'expenses': {
       }
 
       case 'notes': {
-        const activeMeta = NOTES_FILTERS.find((c) => c.id === noteFilter) || NOTES_FILTERS[0];
-        const searching = noteQuery.trim().length > 0;
-        const totalNonShopping = (data.notes || []).filter((n) => n.category !== SHOPPING_CATEGORY).length;
         return (
-          <section className="app-fade-in">
-            <SectionHeader
-              icon={activeMeta.icon}
-              title={activeMeta.label}
-              subtitle={`${filteredNotes.length} dari ${totalNonShopping} catatan`}
-              actionLabel={canWrite ? 'Tambah' : undefined}
-              onAction={() => openAdd('notes')}
-            />
-
-            {/* Pencarian catatan (judul + isi) ï¿½ kotak cari 48px, ikon di kiri */}
-            <div className="relative mb-4">
-              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-mutedfg" aria-hidden="true">
-                <Icon name="search" size={17} />
-              </span>
-              <input
-                type="search"
-                value={noteQuery}
-                onChange={(e) => setNoteQuery(e.target.value)}
-                placeholder="Cari judul atau isi catatan..."
-                aria-label="Cari catatan"
-                className="input-field min-h-[48px] w-full rounded-xl border border-line bg-canvas py-2 pl-11 pr-12 text-sm text-ink outline-none transition-colors placeholder:text-mutedfg/60 focus:border-brand"
-              />
-              {searching && (
-                <button
-                  type="button"
-                  onClick={() => setNoteQuery('')}
-                  aria-label="Bersihkan pencarian"
-                  className="absolute right-0.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-xl text-mutedfg transition-colors hover:bg-muted hover:text-ink"
-                >
-                  <Icon name="close" size={16} />
-                </button>
-              )}
-            </div>
-
-            {filteredNotes.length === 0 ? (
-              <EmptyState
-                icon={searching ? 'search' : 'note'}
-                title={searching ? 'Catatan tidak ditemukan' : 'Tidak ada catatan di filter ini'}
-                message={
-                  searching
-                    ? `Tidak ada catatan yang cocok dengan "${noteQuery.trim()}". Coba kata kunci lain.`
-                    : 'Ubah filter, atau tambahkan catatan baru.'
-                }
-              />
-            ) : (
-              <NoteList
-                notes={filteredNotes}
-                onEdit={(item) => openEdit('notes', item)}
-                onDelete={(item) => deleteItem('notes', item)}
-                onRetry={(item) => retryOutboxOp(item.id)}
-                onDiscard={(item) => discardOutboxOp(item.id)}
-                readOnly={!canWrite}
-              />
-            )}
-          </section>
+          <NotesSection
+            filteredNotes={filteredNotes}
+            totalNonShopping={totalNonShopping}
+            noteFilter={noteFilter}
+            noteQuery={noteQuery}
+            setNoteQuery={setNoteQuery}
+            canWrite={canWrite}
+            onAdd={() => openAdd('notes')}
+            onEdit={(item) => openEdit('notes', item)}
+            onDelete={(item) => deleteItem('notes', item)}
+            onRetry={(item) => retryOutboxOp(item.id)}
+            onDiscard={(item) => discardOutboxOp(item.id)}
+          />
         );
       }
 
