@@ -63,7 +63,7 @@ function Sheet({ title, icon, children, onCancel, footer }) {
   return (
     <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true">
       <button type="button" aria-label="Tutup" onClick={onCancel} className="sheet-backdrop absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-sm" />
-      <form ref={panelRef} onSubmit={(e) => e.preventDefault()} noValidate className="sheet-panel absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl">
+      <form ref={panelRef} onSubmit={(e) => e.preventDefault()} noValidate className="sheet-panel absolute inset-x-0 bottom-0 mx-auto max-h-[85vh] max-w-lg overflow-y-auto rounded-t-3xl border border-b-0 border-line bg-surface/95 p-5 pb-[calc(1.25rem_+_env(safe-area-inset-bottom))] shadow-pop backdrop-blur-xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-base font-bold text-ink">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brandtint text-brandfg" aria-hidden="true">

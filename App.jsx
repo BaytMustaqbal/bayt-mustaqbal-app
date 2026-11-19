@@ -74,6 +74,7 @@ const LOCAL_SEED = {
   tasks: [],
   serviceInventory: [],
   serviceHistory: [],
+  subs: [],
 };
 
 /* Guard migrasi tagihan localStorage â†’ API: React StrictMode (dev) menjalankan
@@ -147,6 +148,7 @@ const buildDataBundle = (apiData, currentUser) => {
     income,
     scheduledExpenses: apiData?.scheduledExpenses || [],
     tasks: apiData?.tasks || [],
+    subs: apiData?.subs || [],
     vehicles: apiData?.vehicles || [],
     chores: apiData?.chores || [],
     debts: apiData?.debts || [],
@@ -429,7 +431,7 @@ const buildMergedData = (apiData, currentUser, pendingOps = []) => {
 
 // Fetch all API data (schedule, expenses, income, notes, budget settings)
 const fetchApiData = async () => {
-  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries, serviceHistory, chores, debts, vehicles, accounts] = await Promise.all([
+  const [schedule, expenses, income, notes, settings, users, scheduledTasks, tasks, familyEntries, serviceHistory, chores, debts, vehicles, accounts, subs] = await Promise.all([
     cal.fetch().catch(() => []),
     txn.fetch().catch(() => []),
     txn.fetchIncome().catch(() => []),
@@ -444,6 +446,7 @@ const fetchApiData = async () => {
     debtApi.fetch().catch(() => []),
     vehicleApi.fetch().catch(() => []),
     accountApi.fetch().catch(() => []),
+    subApi.fetch().catch(() => []),
   ]);
 
   // Parse budget settings
@@ -483,7 +486,7 @@ const fetchApiData = async () => {
   const mappedDebts = Array.isArray(debts) ? debts : [];
   const mappedVehicles = Array.isArray(vehicles) ? vehicles : [];
 
-  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts, serviceHistory: mappedHistory, chores: mappedChores, debts: mappedDebts, vehicles: mappedVehicles, accounts: Array.isArray(accounts) ? accounts : [] };
+  return { schedule, expenses, income, notes, budget, scheduledExpenses, users, tasks: Array.isArray(tasks) ? tasks : [], familyMedical, familyDocuments, familyContacts, serviceHistory: mappedHistory, chores: mappedChores, debts: mappedDebts, vehicles: mappedVehicles, accounts: Array.isArray(accounts) ? accounts : [], subs: Array.isArray(subs) ? subs : [] };
 };
 
 /* Label status keluarga dari kolom family_role backend */
@@ -3419,6 +3422,38 @@ const deleteGoal = async (id) => {
     [data, tagihans]
   );
 
+  // Jadwal terjadwal (akan datang): scheduled expenses, recurring txns, langganan, service motor.
+  const scheduledEvents = useMemo(() => {
+    if (!data) return [];
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const out = [];
+    const clampDay = (day) => Math.min(Math.max(Number(day) || 1, 1), new Date(y, m, 0).getDate());
+    (data.scheduledExpenses || []).forEach((tpl) => {
+      if (tpl.active === false) return;
+      const date = `${y}-${pad2(m)}-${pad2(clampDay(tpl.day))}`;
+      out.push({ id: `scheduled-${tpl.id}`, title: tpl.name || 'Pengeluaran terjadwal', date, time: '08:00', category: 'scheduled', amount: Number(tpl.amount) || 0, color: 'bg-amber-500', data: { type: 'scheduled', item: tpl } });
+    });
+    (recurringTxns || []).forEach((t) => {
+      if (t.active === false) return;
+      const date = String(t.next_due || '').slice(0, 10);
+      if (!date) return;
+      out.push({ id: `recurring-${t.id}`, title: t.nama || 'Transaksi berulang', date, time: '08:00', category: 'recurring', amount: Number(t.amount) || 0, color: 'bg-amber-500', data: { type: 'recurring', item: t } });
+    });
+    (data.subs || []).forEach((s) => {
+      if (s.active === false) return;
+      const date = `${y}-${pad2(m)}-${pad2(clampDay(s.billing_day))}`;
+      out.push({ id: `sub-${s.id}`, title: s.name || 'Langganan', date, time: '08:00', category: 'langganan', amount: Number(s.amount) || 0, color: 'bg-amber-500', data: { type: 'langganan', item: s } });
+    });
+    (data.serviceInventory || []).forEach((sp) => {
+      const date = String(sp.nextDue || '').slice(0, 10);
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+      out.push({ id: `svc-due-${sp.id}`, title: `Service: ${sp.nama || 'Motor'}`, date, time: '08:00', category: 'service-due', amount: Number(sp.biaya || sp.amount || 0) || 0, color: 'bg-amber-500', data: { type: 'service-due', item: sp } });
+    });
+    return out;
+  }, [data, recurringTxns]);
+
   // ---- Daftar Belanja (catatan kategori 'belanja') ----
   // Daftar belanja mingguan & bulanan dikelola sebagai catatan khusus
   // ("Daftar Belanja Pekan Â· YYYY-Www" / "Daftar Belanja Â· YYYY-MM");
@@ -3743,8 +3778,12 @@ const deleteGoal = async (id) => {
                   <FamilyCalendar
                     items={agendaForCalendar}
                     tasks={data.tasks}
-                    events={tagihanEvents}
+                    events={[...tagihanEvents, ...scheduledEvents]}
                     memberLegend={agendaMemberLegend}
+                    onCatatScheduled={recordScheduledExpense}
+                    onNavigate={setActiveSection}
+                    formatCurrency={formatCurrency}
+                    readOnly={!canWrite}
                     onEventClick={(event) => {
                 const { type, item } = event.data;
                 if (type === 'tagihan') {
@@ -3756,6 +3795,22 @@ const deleteGoal = async (id) => {
                     }`,
                     duration: 4000,
                   });
+                  return;
+                }
+                if (type === 'scheduled') {
+                  pushToast({ message: `Pengeluaran terjadwal: ${item.name || item.nama || 'Jadwal'} • ${formatCurrency(item.amount || 0)} • jatuh tempo ${item.day || ''}`.trim(), duration: 4000 });
+                  return;
+                }
+                if (type === 'recurring') {
+                  pushToast({ message: `Transaksi berulang: ${item.nama || item.name || 'Jadwal'} • ${formatCurrency(item.amount || 0)} • perkiraan habis ${item.next_due || ''}`.trim(), duration: 4000 });
+                  return;
+                }
+                if (type === 'langganan') {
+                  pushToast({ message: `Langganan: ${item.name || 'Langganan'} • ${formatCurrency(item.amount || 0)} • tagih tanggal ${item.billing_day || ''}`.trim(), duration: 4000 });
+                  return;
+                }
+                if (type === 'service-due') {
+                  pushToast({ message: `Service motor: ${item.nama || 'Motor'} • jatuh tempo ${item.nextDue || ''}`.trim(), duration: 4000 });
                   return;
                 }
                 openEdit(type, item);

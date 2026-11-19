@@ -52,7 +52,7 @@ const memberColor = (member, categoryColor) => {
 };
 
 // ============================================================================
-export function FamilyCalendar({ items, tasks, events, onEventClick, memberLegend }) {
+export function FamilyCalendar({ items, tasks, events, onEventClick, memberLegend, onCatatScheduled, onNavigate, formatCurrency = (v) => String(v), readOnly = false }) {
   const today = useMemo(() => toDate(new Date()), []);
   const [view, setView] = useState('month'); // 'week' | 'month' | 'year'
   const [cursor, setCursor] = useState(today);
@@ -220,7 +220,7 @@ export function FamilyCalendar({ items, tasks, events, onEventClick, memberLegen
         />
       )}
 
-      {view === 'month' && <DayList date={selected} dayMap={dayMap} tasksByKey={tasksByKey} onEventClick={onEventClick} />}
+      {view === 'month' && <DayList date={selected} dayMap={dayMap} tasksByKey={tasksByKey} onEventClick={onEventClick} onCatatScheduled={onCatatScheduled} onNavigate={onNavigate} formatCurrency={formatCurrency} readOnly={readOnly} />}
 
       <Legend members={memberLegend} />
     </section>
@@ -310,12 +310,7 @@ function DayCell({ date, today, selected, dayMap, taskKeys, onPickDay }) {
   const isSelected = isSameDay(date, selected);
 
   const handleClick = (e) => {
-    if (itemWithClick) {
-      e.stopPropagation();
-      itemWithClick.onClick?.();
-    } else {
-      onPickDay(date);
-    }
+    onPickDay(date);
   };
 
   return (
@@ -337,13 +332,16 @@ function DayCell({ date, today, selected, dayMap, taskKeys, onPickDay }) {
     >
       <span className="font-mono leading-none">{date.getDate()}</span>
       <span className="flex items-center gap-[3px]">
-        {items.map((item) => (
-          <span 
-            key={item.id} 
-            className={`h-1.5 w-1.5 rounded-full ${item.color || memberColor(item.member)}`} 
-            aria-hidden="true" 
+        {items.slice(0, 3).map((item) => (
+          <span
+            key={item.id}
+            className={`h-1.5 w-1.5 rounded-full ${item.color || memberColor(item.member)}`}
+            aria-hidden="true"
           />
         ))}
+        {items.length > 3 && (
+          <span className="font-mono text-[9px] font-bold leading-none text-mutedfg">+{items.length - 3}</span>
+        )}
       </span>
       {hasTask && (
         <span className="absolute bottom-1 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-full bg-mutedfg/60" aria-hidden="true" />
@@ -417,7 +415,8 @@ function YearGrid({ cursor, today, dayMap, taskKeys, onPickMonth }) {
         const monthEvents = Object.entries(dayMap)
           .filter(([k]) => k.startsWith(prefix))
           .flatMap(([, v]) => v);
-        const monthAgenda = monthEvents.filter((e) => e.category !== 'tagihan').length;
+        const monthAgenda = monthEvents.filter((e) => e.category === 'agenda').length;
+        const monthScheduled = monthEvents.filter((e) => e.category === 'scheduled' || e.category === 'recurring' || e.category === 'langganan' || e.category === 'service-due').length;
         const monthBills = monthEvents.filter((e) => e.category === 'tagihan').length;
         const monthTasks = [...taskKeys].filter((k) => k.startsWith(prefix)).length;
         const isCurrent = m === today.getMonth() && year === today.getFullYear();
@@ -426,7 +425,7 @@ function YearGrid({ cursor, today, dayMap, taskKeys, onPickMonth }) {
             key={name}
             type="button"
             onClick={() => onPickMonth(m)}
-            aria-label={`${name} ${year}: ${monthAgenda} agenda, ${monthTasks} tugas, ${monthBills} tagihan`}
+            aria-label={`${name} ${year}: ${monthAgenda} agenda, ${monthScheduled} terjadwal, ${monthTasks} tugas, ${monthBills} tagihan`}
             className={`min-h-[92px] rounded-2xl border p-3 text-left transition-colors ${
               /* Tint 14% (pola sama dengan penanda aktif lain). Tint 40% terbaca
                  pekat sehingga nama bulan & jumlah di atasnya gagal kontras
@@ -437,7 +436,7 @@ function YearGrid({ cursor, today, dayMap, taskKeys, onPickMonth }) {
           >
             <p className={`text-sm font-bold ${isCurrent ? 'text-brandfg' : 'text-ink'}`}>{name}</p>
             <p className="mt-0.5 font-mono text-xs text-mutedfg">
-              {monthAgenda} agenda · {monthTasks} tugas · {monthBills} tagihan
+              {monthAgenda} agenda · {monthScheduled} terjadwal · {monthTasks} tugas · {monthBills} tagihan
             </p>
             <MiniMonthDots year={year} month={m} dayMap={dayMap} taskKeys={taskKeys} />
           </button>
@@ -477,10 +476,22 @@ function MiniMonthDots({ year, month, dayMap, taskKeys }) {
 // ============================================================================
 // Daftar agenda hari terpilih (view Bulan).
 // ============================================================================
-function DayList({ date, dayMap, tasksByKey, onEventClick }) {
+function DayList({ date, dayMap, tasksByKey, onEventClick, onCatatScheduled, onNavigate, formatCurrency = (v) => String(v), readOnly = false }) {
   const key = fmtKey(date);
   const items = dayMap[key] || [];
   const ttasks = tasksByKey[key] || [];
+
+  const isScheduled = (it) => {
+    const c = String(it?.category || '');
+    return c === 'scheduled' || c === 'recurring' || c === 'langganan' || c === 'service-due';
+  };
+  const badgeFor = (it) => {
+    if (it.category === 'scheduled') return 'Terjadwal';
+    if (it.category === 'recurring') return 'Berulang';
+    if (it.category === 'langganan') return 'Langganan';
+    if (it.category === 'service-due') return 'Service';
+    return it.category || it.member || 'Keluarga';
+  };
 
   return (
     <div className="rounded-2xl border border-line bg-surface/70 p-4">
@@ -494,20 +505,44 @@ function DayList({ date, dayMap, tasksByKey, onEventClick }) {
         {items.length + ttasks.length === 0 && (
           <p className="text-sm text-mutedfg">Tidak ada agenda di hari ini.</p>
         )}
-        {items.map((it) => (
-          <div 
-            key={`s${it.id}`} 
-            className={`flex min-w-0 items-center gap-2 cursor-pointer rounded-lg p-2 text-sm transition-colors hover:bg-muted ${
-              it.onClick ? 'cursor-pointer' : ''
-            }`}
-            onClick={it.onClick || (onEventClick ? () => onEventClick(it) : undefined)}
-          >
-            <span className={`h-2 w-2 shrink-0 rounded-full ${it.color || memberColor(it.member)}`} aria-hidden="true" />
-            <span className="shrink-0 font-mono text-xs text-mutedfg">{it.time || ''}</span>
-            <span className="truncate font-medium text-ink">{it.title}</span>
-            <Badge tone="gray">{it.category || it.member || 'Keluarga'}</Badge>
-          </div>
-        ))}
+        {items.map((it) => {
+          const scheduled = isScheduled(it);
+          return (
+            <div
+              key={`s${it.id}`}
+              className={`flex min-w-0 items-center gap-2 rounded-lg p-2 text-sm ${scheduled ? '' : 'cursor-pointer'} ${scheduled ? '' : 'hover:bg-muted'}`}
+              onClick={scheduled ? undefined : (it.onClick || (onEventClick ? () => onEventClick(it) : undefined))}
+            >
+              <span className={`h-2 w-2 shrink-0 rounded-full ${it.color || memberColor(it.member)}`} aria-hidden="true" />
+              <span className="shrink-0 font-mono text-xs text-mutedfg">{it.time || ''}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-ink">{it.title}</span>
+              <Badge tone={scheduled ? 'amber' : 'gray'}>{badgeFor(it)}</Badge>
+              {it.amount ? <span className="shrink-0 font-mono text-xs font-bold text-brandfg">{formatCurrency(it.amount)}</span> : null}
+              {scheduled && !readOnly && (
+                <span className="flex shrink-0 items-center gap-1">
+                  {it.category === 'scheduled' && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onCatatScheduled?.(it.data?.item); }}
+                      className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-line bg-canvas px-2 text-[11px] font-semibold text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+                    >
+                      Catat
+                    </button>
+                  )}
+                  {(it.category === 'recurring' || it.category === 'langganan' || it.category === 'service-due') && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onNavigate?.('terjadwal'); }}
+                      className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-line bg-canvas px-2 text-[11px] font-semibold text-mutedfg transition-colors hover:bg-muted hover:text-ink"
+                    >
+                      Lihat
+                    </button>
+                  )}
+                </span>
+              )}
+            </div>
+          );
+        })}
         {ttasks.map((t) => (
           <div key={`t${t.id}`} className="flex min-w-0 items-center gap-2 text-sm">
             <span className="shrink-0 text-mutedfg" aria-hidden="true">
@@ -547,6 +582,10 @@ function Legend({ members }) {
       <span className="inline-flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-full bg-orange-500" aria-hidden="true" />
         Tagihan
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+        Jadwal terjadwal
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-full bg-mutedfg/60" aria-hidden="true" />
