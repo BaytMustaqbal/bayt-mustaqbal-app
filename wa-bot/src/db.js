@@ -20,6 +20,46 @@ export function formatRemindAtLabel(spec) {
   return `${day} jam ${hh}:${mm} WIB`;
 }
 
+/** Cari user app berdasarkan id (untuk hasil mapping LID grup). */
+export async function findUserById(env, id) {
+  if (!env.APP_DB || !id) return null;
+  try {
+    return await env.APP_DB.prepare(
+      `SELECT id, nama, nickname, group_id, group_role, phone FROM users WHERE id = ? AND void IS NULL`
+    ).bind(String(id)).first();
+  } catch {
+    return null;
+  }
+}
+
+/** Mapping LID grup WhatsApp ke user app, disimpan di D1 log bot. */
+export async function findUserByLid(env, lid) {
+  if (!env.WA_LOGS || !lid) return null;
+  try {
+    return await env.WA_LOGS.prepare(
+      `SELECT lid, user_id, name FROM wa_identities WHERE lid = ?`
+    ).bind(String(lid)).first();
+  } catch {
+    return null;
+  }
+}
+
+export async function saveIdentity(env, lid, userId, name) {
+  if (!env.WA_LOGS || !lid || !userId) return false;
+  const now = new Date().toISOString();
+  try {
+    await env.WA_LOGS.prepare(
+      `INSERT INTO wa_identities (lid, user_id, name, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(lid) DO UPDATE SET user_id = excluded.user_id,
+         name = COALESCE(excluded.name, wa_identities.name), updated_at = excluded.updated_at`
+    ).bind(String(lid), String(userId), name || null, now, now).run();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Cari user app dari nomor WA (cocok setelah normalisasi). */
 export async function findUserByPhone(env, senderPhone) {
   if (!env.APP_DB) return null;

@@ -8,6 +8,7 @@ import {
 } from './format.js';
 import {
   wibNow, reminderIso, formatRemindAtLabel, findUserByPhone,
+  findUserById, findUserByLid, saveIdentity,
   insertExpense, monthExpenseTotal, insertIncome, monthIncomeTotal, listOwnedAccounts,
   existingCategoryId,
   insertBill, insertAgenda, listRecurringTemplates, matchRecurringTemplate,
@@ -22,6 +23,7 @@ import {
 } from './parse.js';
 import { detectIntent, chatReply } from './ai.js';
 import { readAiPrefs, resolveFor, parseStyleCommand, setMemberStyle } from './botPrefs.js';
+import { groupQueryFrom, canGroupReply } from './groupRules.js';
 import { downloadMetaImage, scanReceiptImage } from './scan.js';
 import {
   getPending, setPending, clearPending,
@@ -139,16 +141,12 @@ function isUndoCommand(text) {
 }
 
 // Peran yang boleh menulis lewat bot. Anggota lain hanya boleh baca.
-const WRITE_ROLES = new Set(['kepala_keluarga', 'suami', 'istri']);
 const WRITE_DENIED = 'Maaf, nomor ini hanya bisa bertanya data. Pencatatan lewat bot hanya untuk kepala keluarga, suami, dan istri.';
 
 // Nomor pengirim sudah diverifikasi WhatsApp (signature Meta / webhook Fonnte)
 // dan harus cocok dengan nomor di profil user (ensureDbUser). Peran menentukan
 // hak tulis. WA_ALLOWED hanya cadangan pencarian user, bukan gerbang kedua.
-function canBotWrite(user) {
-  if (!user || !user.id) return false;
-  return WRITE_ROLES.has(String(user.group_role || ''));
-}
+const canBotWrite = canGroupReply;
 
 // Label kategori struk (id sama dengan kategori app).
 const STRUK_KATEGORI = {
@@ -470,10 +468,11 @@ async function handleFonnte(request, env, url) {
   const text = payload.message || payload.text || null;
   if (!senderRaw || !text) return JSON_OK();
 
-  // ---- Grup (Neuro): baca-saja, trigger "neuro ..." atau "/..." ----
+  // ---- Grup (Neuro): baca-saja, trigger "neuro ..." ----
   if (senderRaw.includes('@g.us') || senderRaw.includes('@broadcast')) {
     const groupId = senderRaw;
     const member = String(payload.member || '').trim().replace(/@.*/, '');
+    const profileName = String(payload.name || '').trim();
     if (!member) return JSON_OK(); // tanpa nomor pengirim, abaikan
     const query = groupQueryFrom(text);
     if (query === null) return JSON_OK(); // bukan perintah untuk bot
@@ -491,7 +490,7 @@ async function handleFonnte(request, env, url) {
          ON CONFLICT(message_id) DO NOTHING`
       ).bind(dedupeKey, member, 'fonnte', `[group:${groupId}] ${text}`, minute).run();
     } catch (_) {}
-    await handleGroupQuery(env, { groupId, member, query });
+    await handleGroupQuery(env, { groupId, member, name: profileName, query });
     return JSON_OK();
   }
   const sender = senderRaw;
@@ -541,30 +540,26 @@ async function handleStyleCommand(env, user, t, target) {
   return true;
 }
 
-/** Kembalikan query grup jika pesan diarahkan ke bot (diawali "/" atau memuat kata "neuro"), selain itu null. */
-function groupQueryFrom(text) {
-  const t = String(text || '').trim();
-  const slash = t.match(/^\/(.+)$/);
-  if (slash) return slash[1].trim();
-  const m = t.match(/^(?:halo|hai|pagi|siang|sore|malam)?[\s,.!]*neuro\b[\s,.!:]*/i);
-  if (!m) return null;
-  return t.slice(m[0].length).trim();
-}
-
 /** Intent yang boleh dipakai di grup Neuro (baca-saja). */
 const GROUP_READ_INTENTS = new Set([
   'cek_pengingat', 'cek_tagihan', 'agenda_hari_ini', 'saldo_bulan_ini',
   'rangkuman', 'rincian_kategori', 'target_tabungan', 'tanya_data', 'menu',
 ]);
 
-/** Alur baca-saja untuk pesan di grup Neuro (trigger "neuro ..." / "/..."). */
-async function handleGroupQuery(env, { groupId, member, query }) {
-  const user = await ensureDbUser(env, member, resolveOwner(env, member));
-  const text = String(query || '').trim();
+/** Alur baca-saja untuk pesan di grup Neuro (trigger "neuro ..."). */
+async function handleGroupQuery(env, { groupId, member, name, query }) {
+  let user = null;
+  const mapped = await findUserByLid(env, member);
+  if (mapped?.user_id) user = await findUserById(env, mapped.user_id);
   if (!user || !user.id) {
-    await replyText(env, groupId, 'Saya tidak mengenal nomor ini sebagai anggota keluarga. Hubungi admin.');
-    return;
+    user = await ensureDbUser(env, member, resolveOwner(env, member));
+    if (user && user.id) await saveIdentity(env, member, user.id, name || null);
   }
+  // Nomor/LID tak dikenal: abaikan total, tanpa balasan.
+  if (!user || !user.id) return;
+  // Hanya kepala keluarga, suami, istri yang dibalas di grup.
+  if (!canBotWrite(user)) return;
+  const text = String(query || '').trim();
   const personaName = user ? (user.nickname || (user.nama || '').split(' ')[0] || '').trim() || null : null;
   const aiPrefs = resolveFor(await readAiPrefs(env), user?.id);
 
