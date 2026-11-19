@@ -23,7 +23,7 @@ import {
 } from './parse.js';
 import { detectIntent, chatReply } from './ai.js';
 import { readAiPrefs, resolveFor, parseStyleCommand, setMemberStyle } from './botPrefs.js';
-import { groupQueryFrom, canGroupReply } from './groupRules.js';
+import { groupQueryFrom, canGroupReply, GROUP_READ_INTENTS } from './groupRules.js';
 import { downloadMetaImage, scanReceiptImage } from './scan.js';
 import {
   getPending, setPending, clearPending,
@@ -539,12 +539,6 @@ async function handleStyleCommand(env, user, t, target) {
     : `Gaya bahasa diubah ke ${result.style.charAt(0).toUpperCase() + result.style.slice(1)}.`);
   return true;
 }
-
-/** Intent yang boleh dipakai di grup Neuro (baca-saja). */
-const GROUP_READ_INTENTS = new Set([
-  'cek_pengingat', 'cek_tagihan', 'agenda_hari_ini', 'saldo_bulan_ini',
-  'rangkuman', 'rincian_kategori', 'target_tabungan', 'tanya_data', 'menu',
-]);
 
 /** Alur baca-saja untuk pesan di grup Neuro (trigger "neuro ..."). */
 async function handleGroupQuery(env, { groupId, member, name, query }) {

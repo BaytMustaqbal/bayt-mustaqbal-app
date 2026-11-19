@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strictEqual, ok } from 'node:assert';
 
-import { groupQueryFrom, canGroupReply, WRITE_ROLES } from '../wa-bot/src/groupRules.js';
+import { groupQueryFrom, canGroupReply, isGroupReadIntent, GROUP_READ_INTENTS, WRITE_ROLES } from '../wa-bot/src/groupRules.js';
 
 test('groupQueryFrom: prefix neuro + pemisah', () => {
   strictEqual(groupQueryFrom('neuro saldo bulan ini'), 'saldo bulan ini');
@@ -50,4 +50,23 @@ test('canGroupReply: peran lain dan user kosong ditolak', () => {
   strictEqual(canGroupReply({ group_role: 'istri' }), false);
   strictEqual(canGroupReply(null), false);
   strictEqual(canGroupReply(undefined), false);
+});
+
+test('isGroupReadIntent: hanya intent baca data', () => {
+  ['cek_pengingat', 'cek_tagihan', 'agenda_hari_ini', 'saldo_bulan_ini',
+    'rangkuman', 'rincian_kategori', 'target_tabungan', 'tanya_data', 'menu',
+  ].forEach((intent) => strictEqual(isGroupReadIntent(intent), true, intent));
+  strictEqual(isGroupReadIntent(' SALDO_BULAN_INI '), true);
+});
+
+test('isGroupReadIntent: intent tulis dan sampah ditolak', () => {
+  ['catat_pengeluaran', 'catat_pemasukan', 'catat_agenda', 'catat_pengingat',
+    'hapus', 'undo', '', null, undefined,
+  ].forEach((intent) => strictEqual(isGroupReadIntent(intent), false, String(intent)));
+});
+
+test('GROUP_READ_INTENTS: tidak memuat intent tulis', () => {
+  strictEqual(GROUP_READ_INTENTS.size, 9);
+  ['catat_pengeluaran', 'catat_pemasukan', 'catat_agenda', 'catat_pengingat']
+    .forEach((intent) => strictEqual(GROUP_READ_INTENTS.has(intent), false, intent));
 });

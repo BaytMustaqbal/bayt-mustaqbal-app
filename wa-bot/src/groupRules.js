@@ -12,6 +12,17 @@ export function groupQueryFrom(text) {
   return m[1].trim();
 }
 
+/** Intent yang boleh dipakai di grup Neuro (baca-saja). */
+export const GROUP_READ_INTENTS = new Set([
+  'cek_pengingat', 'cek_tagihan', 'agenda_hari_ini', 'saldo_bulan_ini',
+  'rangkuman', 'rincian_kategori', 'target_tabungan', 'tanya_data', 'menu',
+]);
+
+/** True bila intent hanya membaca data, bukan mencatat. */
+export function isGroupReadIntent(intent) {
+  return GROUP_READ_INTENTS.has(String(intent || '').trim().toLowerCase());
+}
+
 /** Hanya kepala keluarga, suami, dan istri yang boleh dibalas di grup. */
 export function canGroupReply(user) {
   if (!user || !user.id) return false;

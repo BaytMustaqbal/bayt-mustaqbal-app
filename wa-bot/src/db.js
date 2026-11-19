@@ -22,7 +22,7 @@ export function formatRemindAtLabel(spec) {
 
 /** Cari user app berdasarkan id (untuk hasil mapping LID grup). */
 export async function findUserById(env, id) {
-  if (!env.APP_DB || !id) return null;
+  if (!env || !env.APP_DB || !id) return null;
   try {
     return await env.APP_DB.prepare(
       `SELECT id, nama, nickname, group_id, group_role, phone FROM users WHERE id = ? AND void IS NULL`
@@ -34,7 +34,7 @@ export async function findUserById(env, id) {
 
 /** Mapping LID grup WhatsApp ke user app, disimpan di D1 log bot. */
 export async function findUserByLid(env, lid) {
-  if (!env.WA_LOGS || !lid) return null;
+  if (!env || !env.WA_LOGS || !lid) return null;
   try {
     return await env.WA_LOGS.prepare(
       `SELECT lid, user_id, name FROM wa_identities WHERE lid = ?`
@@ -45,7 +45,7 @@ export async function findUserByLid(env, lid) {
 }
 
 export async function saveIdentity(env, lid, userId, name) {
-  if (!env.WA_LOGS || !lid || !userId) return false;
+  if (!env || !env.WA_LOGS || !lid || !userId) return false;
   const now = new Date().toISOString();
   try {
     await env.WA_LOGS.prepare(
@@ -62,7 +62,7 @@ export async function saveIdentity(env, lid, userId, name) {
 
 /** Cari user app dari nomor WA (cocok setelah normalisasi). */
 export async function findUserByPhone(env, senderPhone) {
-  if (!env.APP_DB) return null;
+  if (!env || !env.APP_DB) return null;
   const rows = await env.APP_DB.prepare(
     `SELECT id, nama, nickname, group_id, group_role, phone FROM users WHERE void IS NULL AND phone IS NOT NULL AND phone != ''`
   ).all();
@@ -86,7 +86,7 @@ export async function insertExpense(env, { userId, groupId, amount, note, date, 
 
 /** Kategori yang benar-benar ada di tabel categories (jaga FK saat simpan hasil struk). */
 export async function existingCategoryId(env, id) {
-  if (!env.APP_DB || !id) return null;
+  if (!env || !env.APP_DB || !id) return null;
   try {
     const row = await env.APP_DB.prepare(
       'SELECT id FROM categories WHERE id = ? AND void IS NULL'
@@ -114,7 +114,7 @@ export async function monthExpenseTotal(env, { userId, groupId, ym }) {
 
 /** Dompet milik user (untuk catat pemasukan ke akun). */
 export async function listOwnedAccounts(env, userId) {
-  if (!env.APP_DB || !userId) return [];
+  if (!env || !env.APP_DB || !userId) return [];
   const rows = await env.APP_DB.prepare(
     `SELECT id, nama, saldo FROM accounts WHERE user_id = ? AND void IS NULL ORDER BY created_at ASC`
   ).bind(userId).all();
