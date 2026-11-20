@@ -106,6 +106,16 @@ async function replyText(env, target, text) {
 async function replyViaFonnte(env, target, text) {
   const token = env.FONNTE_TOKEN;
   if (!token) return { ok: false, text: async () => 'no token' };
+  // Log diagnostik keluar: berapa kali balasan dikirim (buang setelah masalah tuntas).
+  try {
+    if (env.WA_LOGS) {
+      const outKey = `send:${target}:${new Date().toISOString().slice(0, 16)}:${String(text).length}:${Math.random().toString(36).slice(2, 8)}`;
+      await env.WA_LOGS.prepare(
+        `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
+         VALUES (?, ?, ?, ?, ?, true)`
+      ).bind(outKey, target, 'fonnte', `[out] ${String(text).slice(0, 120)}`, new Date().toISOString().slice(0, 16)).run();
+    }
+  } catch (_) {}
   return fetch('https://api.fonnte.com/send', {
     method: 'POST',
     headers: { Authorization: token, 'Content-Type': 'application/json' },
