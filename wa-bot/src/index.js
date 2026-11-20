@@ -498,44 +498,53 @@ async function processFonnte(env, payload) {
     if (!member) return; // tanpa nomor pengirim, abaikan
     const query = groupQueryFrom(text);
     if (query === null) return; // bukan perintah untuk bot
-    const minute = new Date().toISOString().slice(0, 16);
-    const dedupeKey = `fonnte:group:${groupId}:${member}:${minute}:${text}`;
     if (env.WA_DEDUPE) {
-      const seen = await env.WA_DEDUPE.get(dedupeKey);
+      const seen = await env.WA_DEDUPE.get(dedupeKeyGroup(groupId, member, text));
       if (seen) return;
-      await env.WA_DEDUPE.put(dedupeKey, '1', { expirationTtl: 86400 });
     }
-    try {
-      await env.WA_LOGS.prepare(
-        `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
-         VALUES (?, ?, ?, ?, ?, false)
-         ON CONFLICT(message_id) DO NOTHING`
-      ).bind(dedupeKey, member, 'fonnte', `[group:${groupId}] ${text}`, minute).run();
-    } catch (_) {}
+    if (!(await logOrReplay(env, dedupeKeyGroup(groupId, member, text), member, 'fonnte', `[group:${groupId}] ${text}`))) return;
     if (!(await isBurstAllowed(env, member, bucket))) return;
     await handleGroupQuery(env, { groupId, member, name: profileName, query });
     return;
   }
   const sender = senderRaw;
 
-  // Dedupe + log
-  const minute = new Date().toISOString().slice(0, 16);
-  const dedupeKey = `fonnte:${sender}:${minute}:${text}`;
+  const dedupeKey = `fonnte:${sender}:${minuteKey()}:${text}`;
   if (env.WA_DEDUPE) {
     const seen = await env.WA_DEDUPE.get(dedupeKey);
     if (seen) return;
+  }
+  if (!(await logOrReplay(env, dedupeKey, sender, 'fonnte', text))) return;
+  if (!(await isBurstAllowed(env, sender, bucket))) return;
+  await handleIncomingText(env, sender, text);
+}
+
+function minuteKey() {
+  return new Date().toISOString().slice(0, 16);
+}
+
+function dedupeKeyGroup(groupId, member, text) {
+  return `fonnte:group:${groupId}:${member}:${minuteKey()}:${text}`;
+}
+
+/** Catat pesan ke D1. Kembalikan true hanya jika baris baru benar-benar dibuat
+    (changes = 1); false bila duplikat (sudah diproses). Ini gerbang dedupe
+    atomik, mencegah race dua delivery webhook yang sama. */
+async function logOrReplay(env, dedupeKey, from, phoneNumberId, messageText) {
+  if (env.WA_DEDUPE) {
     await env.WA_DEDUPE.put(dedupeKey, '1', { expirationTtl: 86400 });
   }
+  if (!env.WA_LOGS) return true;
   try {
-    await env.WA_LOGS.prepare(
+    const ins = await env.WA_LOGS.prepare(
       `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
        VALUES (?, ?, ?, ?, ?, false)
        ON CONFLICT(message_id) DO NOTHING`
-    ).bind(dedupeKey, sender, 'fonnte', text, minute).run();
-  } catch (_) {}
-
-  if (!(await isBurstAllowed(env, sender, bucket))) return;
-  await handleIncomingText(env, sender, text);
+    ).bind(dedupeKey, from, phoneNumberId, messageText, minuteKey()).run();
+    return ins?.meta?.changes !== 0;
+  } catch (_) {
+    return true;
+  }
 }
 
 async function handleFonnte(request, env, ctx) {
