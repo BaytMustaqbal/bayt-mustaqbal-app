@@ -48,7 +48,7 @@ export default {
     }
 
     if (url.pathname.startsWith('/fonnte/') && request.method === 'POST') {
-      return handleFonnte(request, env, url);
+      return handleFonnte(request, env, ctx);
     }
 
     return new Response('Not found', { status: 404 });
@@ -455,32 +455,54 @@ async function answerReadIntent(env, user, intent, obj) {
   return null;
 }
 
-async function handleFonnte(request, env, url) {
-  const pathSecret = url.pathname.slice('/fonnte/'.length);
-  if (!env.FONNTE_WEBHOOK_PATH || pathSecret !== env.FONNTE_WEBHOOK_PATH) {
-    return new Response('Forbidden', { status: 403 });
+/** Batas balasan per pengirim per menit; lebih dari itu hentikan (cegah loop). */
+const MAX_BURST_PER_MINUTE = 6;
+const BURST_WINDOW_MS = 60000;
+
+/** State murni penjaga ledakan; bisa diuji tanpa KV.
+    Kembalikan { allowed, next } di mana next state untuk disimpan. */
+export function nextBurstState(prev, bucket, max) {
+  const cur = prev && prev.bucket === bucket ? prev : { bucket, count: 0 };
+  const count = cur.count + 1;
+  return { allowed: count <= max, next: { bucket, count }, rejected: count > max };
+}
+
+async function isBurstAllowed(env, sender, bucket) {
+  if (!env.WA_DEDUPE) return true;
+  const key = `fonnte:burst:${sender}`;
+  try {
+    const raw = await env.WA_DEDUPE.get(key);
+    const prev = raw ? JSON.parse(raw) : null;
+    const { allowed, next } = nextBurstState(prev, bucket, MAX_BURST_PER_MINUTE);
+    if (allowed) {
+      await env.WA_DEDUPE.put(key, JSON.stringify(next), { expirationTtl: Math.ceil((BURST_WINDOW_MS * 2) / 1000) });
+    }
+    return allowed;
+  } catch (_) {
+    return true;
   }
+}
 
-  let payload;
-  try { payload = await request.json(); } catch { return new Response('Invalid JSON', { status: 400 }); }
-
+async function processFonnte(env, payload) {
   const senderRaw = String(payload.sender || payload.member || '').trim();
   const text = payload.message || payload.text || null;
-  if (!senderRaw || !text) return JSON_OK();
+  if (!senderRaw || !text) return;
+
+  const bucket = Math.floor(Date.now() / BURST_WINDOW_MS);
 
   // ---- Grup (Neuro): baca-saja, trigger "neuro ..." ----
   if (senderRaw.includes('@g.us') || senderRaw.includes('@broadcast')) {
     const groupId = senderRaw;
     const member = String(payload.member || '').trim().replace(/@.*/, '');
     const profileName = String(payload.name || '').trim();
-    if (!member) return JSON_OK(); // tanpa nomor pengirim, abaikan
+    if (!member) return; // tanpa nomor pengirim, abaikan
     const query = groupQueryFrom(text);
-    if (query === null) return JSON_OK(); // bukan perintah untuk bot
+    if (query === null) return; // bukan perintah untuk bot
     const minute = new Date().toISOString().slice(0, 16);
     const dedupeKey = `fonnte:group:${groupId}:${member}:${minute}:${text}`;
     if (env.WA_DEDUPE) {
       const seen = await env.WA_DEDUPE.get(dedupeKey);
-      if (seen) return JSON_OK();
+      if (seen) return;
       await env.WA_DEDUPE.put(dedupeKey, '1', { expirationTtl: 86400 });
     }
     try {
@@ -490,8 +512,9 @@ async function handleFonnte(request, env, url) {
          ON CONFLICT(message_id) DO NOTHING`
       ).bind(dedupeKey, member, 'fonnte', `[group:${groupId}] ${text}`, minute).run();
     } catch (_) {}
+    if (!(await isBurstAllowed(env, member, bucket))) return;
     await handleGroupQuery(env, { groupId, member, name: profileName, query });
-    return JSON_OK();
+    return;
   }
   const sender = senderRaw;
 
@@ -500,7 +523,7 @@ async function handleFonnte(request, env, url) {
   const dedupeKey = `fonnte:${sender}:${minute}:${text}`;
   if (env.WA_DEDUPE) {
     const seen = await env.WA_DEDUPE.get(dedupeKey);
-    if (seen) return JSON_OK();
+    if (seen) return;
     await env.WA_DEDUPE.put(dedupeKey, '1', { expirationTtl: 86400 });
   }
   try {
@@ -511,7 +534,30 @@ async function handleFonnte(request, env, url) {
     ).bind(dedupeKey, sender, 'fonnte', text, minute).run();
   } catch (_) {}
 
+  if (!(await isBurstAllowed(env, sender, bucket))) return;
   await handleIncomingText(env, sender, text);
+}
+
+async function handleFonnte(request, env, ctx) {
+  const slash = request.url.indexOf('/fonnte/');
+  if (slash === -1) {
+    return new Response('Forbidden', { status: 403 });
+  }
+  const pathSecret = request.url.slice(slash + '/fonnte/'.length).split('?')[0];
+  if (!env.FONNTE_WEBHOOK_PATH || pathSecret !== env.FONNTE_WEBHOOK_PATH) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  let payload;
+  try { payload = await request.json(); } catch { return new Response('Invalid JSON', { status: 400 }); }
+
+  // Balas 200 cepat lalu proses di background, supaya platform tidak retry
+  // saat AI lambat (retry menyebabkan pemrosesan ulang berulang).
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(processFonnte(env, payload));
+    return JSON_OK();
+  }
+  await processFonnte(env, payload);
   return JSON_OK();
 }
 
