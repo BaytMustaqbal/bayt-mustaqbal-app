@@ -519,12 +519,12 @@ async function processFonnte(env, payload) {
   const text = payload.message || payload.text || null;
   if (!senderRaw || !text) return;
 
-  // DEBUG sementara: rekam payload mentah untuk lacak echo loop.
-  try {
-    if (env.WA_DEDUPE) {
-      await env.WA_DEDUPE.put(`raw:${Date.now()}`, JSON.stringify(payload).slice(0, 2000), { expirationTtl: 3600 });
-    }
-  } catch (_) {}
+  // Abaikan pesan yang dikirim dari device bot sendiri (echo loop). Fonnte
+  // mengembalikan pengiriman keluar sebagai event "masuk" yang membawa device
+  // = device bot. Tanpa filter ini, balasan kita diproses ulang tanpa henti.
+  const botDevice = String(env.FONNTE_DEVICE || '').replace(/\D/g, '');
+  const inDevice = String(payload.device || '').replace(/\D/g, '');
+  if (botDevice && inDevice && inDevice === botDevice) return;
 
   const bucket = Math.floor(Date.now() / BURST_WINDOW_MS);
 
