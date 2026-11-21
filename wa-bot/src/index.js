@@ -519,6 +519,13 @@ async function processFonnte(env, payload) {
   const text = payload.message || payload.text || null;
   if (!senderRaw || !text) return;
 
+  // DEBUG sementara: rekam payload mentah untuk lacak echo loop.
+  try {
+    if (env.WA_DEDUPE) {
+      await env.WA_DEDUPE.put(`raw:${Date.now()}`, JSON.stringify(payload).slice(0, 2000), { expirationTtl: 3600 });
+    }
+  } catch (_) {}
+
   const bucket = Math.floor(Date.now() / BURST_WINDOW_MS);
 
   // ---- Grup (Neuro): baca-saja, trigger "neuro ..." ----
