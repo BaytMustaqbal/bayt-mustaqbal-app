@@ -509,41 +509,56 @@ async function processFonnte(env, payload) {
     if (!member) return; // tanpa nomor pengirim, abaikan
     const query = groupQueryFrom(text);
     if (query === null) return; // bukan perintah untuk bot
+    const key = dedupeKeyFor('group', groupId, member, text);
     if (env.WA_DEDUPE) {
-      const seen = await env.WA_DEDUPE.get(dedupeKeyGroup(groupId, member, text));
+      const seen = await env.WA_DEDUPE.get(key);
       if (seen) return;
     }
-    if (!(await logOrReplay(env, dedupeKeyGroup(groupId, member, text), member, 'fonnte', `[group:${groupId}] ${text}`))) return;
+    if (!(await logOrReplay(env, key, member, 'fonnte', `[group:${groupId}] ${text}`))) return;
     if (!(await isBurstAllowed(env, member, bucket))) return;
     await handleGroupQuery(env, { groupId, member, name: profileName, query });
     return;
   }
   const sender = senderRaw;
 
-  const dedupeKey = `fonnte:${sender}:${minuteKey()}:${text}`;
+  const key = dedupeKeyFor('dm', sender, null, text);
   if (env.WA_DEDUPE) {
-    const seen = await env.WA_DEDUPE.get(dedupeKey);
+    const seen = await env.WA_DEDUPE.get(key);
     if (seen) return;
   }
-  if (!(await logOrReplay(env, dedupeKey, sender, 'fonnte', text))) return;
+  if (!(await logOrReplay(env, key, sender, 'fonnte', text))) return;
   if (!(await isBurstAllowed(env, sender, bucket))) return;
   await handleIncomingText(env, sender, text);
+}
+
+// Kunci dedupe STABIL (tanpa menit/timestamp), supaya delivery ulang dari
+// Fonnte yang berjarak lintas menit tidak lolos. Kunci = jenis + pengirim +
+// hash isi teks. Expired pendek (berlaku ~2 menit) agar balasan sah yang
+// diulang menyengaja tetap bisa diproses.
+function dedupeKeyFor(kind, recipient, member, text) {
+  const h = simpleHash(`${recipient}|${member || ''}|${text}`);
+  return `fonnte:${kind}:${recipient}:${h}`;
 }
 
 function minuteKey() {
   return new Date().toISOString().slice(0, 16);
 }
 
-function dedupeKeyGroup(groupId, member, text) {
-  return `fonnte:group:${groupId}:${member}:${minuteKey()}:${text}`;
+function simpleHash(s) {
+  let h = 0;
+  const str = String(s);
+  for (let i = 0; i < str.length; i += 1) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h).toString(36) + str.length.toString(36);
 }
+
+const DEDUPE_TTL_S = 120;
 
 /** Catat pesan ke D1. Kembalikan true hanya jika baris baru benar-benar dibuat
     (changes = 1); false bila duplikat (sudah diproses). Ini gerbang dedupe
     atomik, mencegah race dua delivery webhook yang sama. */
 async function logOrReplay(env, dedupeKey, from, phoneNumberId, messageText) {
   if (env.WA_DEDUPE) {
-    await env.WA_DEDUPE.put(dedupeKey, '1', { expirationTtl: 86400 });
+    await env.WA_DEDUPE.put(dedupeKey, '1', { expirationTtl: DEDUPE_TTL_S });
   }
   if (!env.WA_LOGS) return true;
   try {
