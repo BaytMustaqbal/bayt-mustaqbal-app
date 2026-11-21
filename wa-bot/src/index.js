@@ -106,17 +106,6 @@ async function replyText(env, target, text) {
 async function replyViaFonnte(env, target, text) {
   const token = env.FONNTE_TOKEN;
   if (!token) return { ok: false, text: async () => 'no token' };
-  console.log(`[send-fonnte] to=${target} len=${String(text).length}`);
-  // Log diagnostik keluar: berapa kali balasan dikirim (buang setelah masalah tuntas).
-  try {
-    if (env.WA_LOGS) {
-      const outKey = `send:${target}:${new Date().toISOString().slice(0, 16)}:${String(text).length}:${Math.random().toString(36).slice(2, 8)}`;
-      await env.WA_LOGS.prepare(
-        `INSERT INTO wa_messages (message_id, from_number, phone_number_id, message_text, timestamp, processed)
-         VALUES (?, ?, ?, ?, ?, true)`
-      ).bind(outKey, target, 'fonnte', `[out] ${String(text).slice(0, 120)}`, new Date().toISOString().slice(0, 16)).run();
-    }
-  } catch (_) {}
   return fetch('https://api.fonnte.com/send', {
     method: 'POST',
     headers: { Authorization: token, 'Content-Type': 'application/json' },
@@ -661,7 +650,6 @@ async function handleGroupQuery(env, { groupId, member, name, query }) {
 
 /** Alur percakapan bersama untuk semua kanal (Fonnte maupun Meta). */
 async function handleIncomingText(env, sender, text) {
-  console.log(`[incoming] sender=${sender} text="${String(text).slice(0, 40)}"`);
   if (String(sender || '').includes('@')) return JSON_OK(); // grup/broadcast bukan target bot
   const ownerId = resolveOwner(env, sender); // cadangan: petakan nomor ke user_id
   const user = await ensureDbUser(env, sender, ownerId);
@@ -1167,7 +1155,6 @@ async function handleMeta(request, env, ctx) {
 }
 
 async function replyViaMeta(accessToken, phoneId, to, text) {
-  console.log(`[send-meta] to=${to} len=${String(text).length}`);
   if (!accessToken || !phoneId) {
     return { ok: false, text: async () => 'meta belum dikonfigurasi (WA_ACCESS_TOKEN / WA_PHONE_ID)' };
   }
