@@ -106,6 +106,7 @@ async function replyText(env, target, text) {
 async function replyViaFonnte(env, target, text) {
   const token = env.FONNTE_TOKEN;
   if (!token) return { ok: false, text: async () => 'no token' };
+  console.log(`[send-fonnte] to=${target} len=${String(text).length}`);
   // Log diagnostik keluar: berapa kali balasan dikirim (buang setelah masalah tuntas).
   try {
     if (env.WA_LOGS) {
@@ -645,6 +646,7 @@ async function handleGroupQuery(env, { groupId, member, name, query }) {
 
 /** Alur percakapan bersama untuk semua kanal (Fonnte maupun Meta). */
 async function handleIncomingText(env, sender, text) {
+  console.log(`[incoming] sender=${sender} text="${String(text).slice(0, 40)}"`);
   if (String(sender || '').includes('@')) return JSON_OK(); // grup/broadcast bukan target bot
   const ownerId = resolveOwner(env, sender); // cadangan: petakan nomor ke user_id
   const user = await ensureDbUser(env, sender, ownerId);
@@ -1150,6 +1152,7 @@ async function handleMeta(request, env, ctx) {
 }
 
 async function replyViaMeta(accessToken, phoneId, to, text) {
+  console.log(`[send-meta] to=${to} len=${String(text).length}`);
   if (!accessToken || !phoneId) {
     return { ok: false, text: async () => 'meta belum dikonfigurasi (WA_ACCESS_TOKEN / WA_PHONE_ID)' };
   }
