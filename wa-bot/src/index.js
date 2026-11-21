@@ -99,6 +99,8 @@ async function channelFor(env, target) {
 
 async function replyText(env, target, text) {
   const channel = await channelFor(env, target);
+  // Simpan hash balasan untuk deteksi echo loop.
+  await markReply(env, target, text);
   if (channel === 'meta') return replyViaMeta(env.WA_ACCESS_TOKEN, env.WA_PHONE_ID, target, text);
   return replyViaFonnte(env, target, text);
 }
@@ -456,8 +458,37 @@ async function answerReadIntent(env, user, intent, obj) {
 }
 
 /** Batas balasan per pengirim per menit; lebih dari itu hentikan (cegah loop). */
-const MAX_BURST_PER_MINUTE = 6;
+const MAX_BURST_PER_MINUTE = 4;
 const BURST_WINDOW_MS = 60000;
+
+const LAST_REPLY_PREFIX = 'lastreply:';
+const LAST_REPLY_LEN = 3;
+
+/** True bila pesan masuk mirip balasan terakhir yang dikirim ke pengirim ini
+    (echo loop). Simpan sampai 3 hash balasan terakhir. */
+async function isEcho(env, sender, text) {
+  if (!env.WA_DEDUPE || !text) return false;
+  try {
+    const raw = await env.WA_DEDUPE.get(LAST_REPLY_PREFIX + sender);
+    if (!raw) return false;
+    const list = JSON.parse(raw);
+    return Array.isArray(list) && list.includes(simpleHash(text));
+  } catch (_) {
+    return false;
+  }
+}
+
+async function markReply(env, target, text) {
+  if (!env.WA_DEDUPE || !text) return;
+  try {
+    const raw = await env.WA_DEDUPE.get(LAST_REPLY_PREFIX + target);
+    let list = [];
+    try { list = raw ? JSON.parse(raw) : []; } catch (_) { list = []; }
+    if (!Array.isArray(list)) list = [];
+    list = [simpleHash(text), ...list.filter((h) => h !== simpleHash(text))].slice(0, LAST_REPLY_LEN);
+    await env.WA_DEDUPE.put(LAST_REPLY_PREFIX + target, JSON.stringify(list), { expirationTtl: 600 });
+  } catch (_) {}
+}
 
 /** State murni penjaga ledakan; bisa diuji tanpa KV.
     Kembalikan { allowed, next } di mana next state untuk disimpan. */
@@ -651,6 +682,8 @@ async function handleGroupQuery(env, { groupId, member, name, query }) {
 /** Alur percakapan bersama untuk semua kanal (Fonnte maupun Meta). */
 async function handleIncomingText(env, sender, text) {
   if (String(sender || '').includes('@')) return JSON_OK(); // grup/broadcast bukan target bot
+  // Cegah loop echo: kalau ini balasan kita sendiri yang masuk lagi, abaikan.
+  if (await isEcho(env, sender, String(text || '').trim())) return JSON_OK();
   const ownerId = resolveOwner(env, sender); // cadangan: petakan nomor ke user_id
   const user = await ensureDbUser(env, sender, ownerId);
   // Override per anggota (persona/gaya/kalimat) menang atas default keluarga
